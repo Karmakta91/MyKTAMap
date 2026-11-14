@@ -730,7 +730,8 @@
     const tagDefaut   = opts.pointTag || "default";
     const typeDefaut  = opts.roadType || "secondaire";
     // 🩸 Défaut d'un polygone non reconnu = masse au sol (décision produit) : un Comblé posé en silence par un import
-    // mal reconnu deviendrait un obstacle ; l'écran de correspondance dit combien tombent dans ce défaut.
+    // mal reconnu serait évité par l'itinéraire et bouché en 3D ; l'écran de correspondance dit combien tombent
+    // dans ce défaut.
     const zoneDefaut  = opts.zoneType || "masse-sol";
     const cleType     = opts.cleType  || null;         // colonne SIG choisie
     const mapTraces   = opts.mapTraces || {};

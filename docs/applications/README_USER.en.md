@@ -215,6 +215,7 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 - Once the route is drawn, the **guidance banner** tells you what to do at each junction; during an emergency exit it cannot be closed, even if guidance is turned off. If you stray, its button becomes **Nearest exit from here** (see "🪧 Guidance" in the route section).
 - An exit marked **Straight-line distance — route not verified** (dashed card) has no computed path: it is filed under **Unconfirmed**, and if no exit has a verified path, a red banner says so first. Beware: it may be unreachable (walls, isolated floor).
+- An exit whose path goes through a **Filled to roof** or **collapsed** zone is ranked after those that avoid it, and the window says so (no other path avoids it).
 
 **Where the computation starts**: from your current position, as soon as tracking is on or you have located yourself once since opening the map ("📍 I am here", realignment, portal, restored session); the window tells you which. If you have **never** located yourself, the app asks **Where are you?**: tap your position on the map. That tap also realigns tracking, so the route and the XL display start from the same spot.
 
@@ -834,6 +835,8 @@ If no other path exists, the route goes through anyway and says so: **⚠️ Can
 
 **Inaccessible zones ⛔**, on the other hand, are **never crossed**, unless you untick **Respect impassable areas and walls (line)** (useful on an incomplete survey). **Walls (line)** 🟦 follow the same rule. I'm lost and Rescue mode always respect them.
 
+**Filled to roof** and **Collapse** zones never block: the route **avoids them whenever another path exists**, even a much longer one. With no other path, it goes through anyway and the result says so (**Goes through a Filled to roof zone for 12 m: no other path avoids it**). No box to tick: it always applies, emergency exit and routes to another map included. A gallery drawn on purpose through a Filled to roof zone therefore stays passable; “Check the map” flags it so you can confirm.
+
 ---
 
 ## 🌀 Inter-plan links
@@ -985,9 +988,9 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 
 | Type | Look | Effect on the route |
 |---|---|---|
-| ⬛ **Filled to roof** | dark grey | none |
+| ⬛ **Filled to roof** | dark grey | **avoided** whenever another path exists; otherwise crossed, and the result says so |
 | ⬛ **Partial fill** | grained sand, dashed outline | none for now |
-| 🟥 **Collapse** | red | none |
+| 🟥 **Collapse** | red | like Filled to roof |
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 | 🪜 **Junction zone** (multi-level map) | junction trace colour, light veil | none: the route follows the junction trace that crosses it (see 🏗️ Multi-level mode) |
@@ -1891,7 +1894,7 @@ The 🚑 **free rescuer** has neither route nor steps: they add notes, each with
 
 A step set to **Casualty found** gives a position: the step's position, level included. **📍 Refine on the map** adjusts it. A **red ✚** marks it on the map, for everyone; the operator sees it in a banner at the top of their view, and the report prints it first.
 
-**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed). Before the calculation, the **stretcher options**: zones to avoid (water and rubble ticked by default) and, as a last resort, passing through inaccessible zones. If no path avoids these zones, the window says so.
+**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed). Before the calculation, the **stretcher options**: zones to avoid (water ticked by default; Filled to roof and collapse are always avoided when another path exists) and, as a last resort, passing through inaccessible zones. If no path avoids these zones, the window says so.
 
 #### 🚒 4. External rescue services
 
@@ -2118,7 +2121,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
   - **👁️ Preview on the map**: your realigned data is drawn dashed over the map before downloading; the preview disappears when the tool closes. You then get `_conv.json` files.
   - From the home screen (no map open), only resolutions and landmarks typed by hand are available. Inter-map links, georeferencing and scale have to be redone on the new map.
 - **🔗 Connections to check** (map open): lists the places where two lines of the network do not touch, up to 6 m apart on the same level, when joining them would connect two parts of the network that are separate today (the shortest per pair of parts). Tap a row: the window folds away, the map shows the spot (both points circled) and a banner at the bottom takes you from one to the next (**◀ Previous · 3 / 12 · Next ▶**). **🔗 Connect** snaps the vertex onto the other line, which gains a vertex there: the junction is exact, the route and the 3D view follow, and **Ctrl+Z** undoes it. A line from a data layer of the map is first opened for editing (same question as **🔄 Edit**). **Ignore** remembers an intended gap on this map (a wall, a walled-up gallery): it does not come back unless you redraw the spot; **Show ignored again (N)** brings them all back.
-- **Check the map** (map open): lists the data errors that mislead routes and the emergency exit, sorted by severity then by check: a **line cut by an inaccessible zone or a wall (line)** (with the length inside the zone; "at the edge" when it only enters by a few centimetres, often a drawing to redo), a **level passage** (stairs, shaft) **without a confirmed connection** on one of its levels, or whose connection no longer touches any gallery, a **junction line** that connects a level to itself or whose end touches no gallery. Tap a row: the map goes to the right level, shows the spot (the object highlighted, the obstacle outlined) and opens its details; the bottom banner moves from one to the next (**Previous** · 1 / 4 · **Next**), **Obstacle details** opens those of the zone or wall. **Seen, normal** remembers an intended case (a walled-up gallery) on this device, for this map: it does not come back, even if you edit the object; **Seen, normal (N)** lists them, **Restore** brings one back. While drawing, a message also warns you when a line you draw (or an inaccessible zone, a wall) cuts a gallery.
+- **Check the map** (map open): lists the data errors that mislead routes and the emergency exit, sorted by severity then by check: a **line cut by an inaccessible zone or a wall (line)** (with the length inside the zone; "at the edge" when it only enters by a few centimetres, often a drawing to redo), a **level passage** (stairs, shaft) **without a confirmed connection** on one of its levels, or whose connection no longer touches any gallery, a **junction line** that connects a level to itself or whose end touches no gallery. Under **To review**, a **path crossing a Filled to roof or collapsed zone**: not an error (the route avoids it if it can, otherwise goes through), but confirm the gallery or correct the zone. Tap a row: the map goes to the right level, shows the spot (the object highlighted, the obstacle outlined) and opens its details; the bottom banner moves from one to the next (**Previous** · 1 / 4 · **Next**), **Obstacle details** opens those of the zone or wall. **Seen, normal** remembers an intended case (a walled-up gallery) on this device, for this map: it does not come back, even if you edit the object; **Seen, normal (N)** lists them, **Restore** brings one back. While drawing, a message also warns you when a line you draw (or an inaccessible zone, a wall) cuts a gallery.
 - **🧹 Deduplicate data**: removes consecutive identical vertices from paths, zones, structures and measurements, invisible but making files heavier. You get a `_dedup.json` file and a count of what was removed; points are never touched.
 
 If the source contains several datasets, a selector lets you choose.

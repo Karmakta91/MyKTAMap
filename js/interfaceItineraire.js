@@ -352,6 +352,9 @@ window.itineraireYAller = function(x, y, nom, opts) {
 
       const alerteRaccord = _texteAlerteRaccord(newRoad);
       if (alerteRaccord) _toastIti("⚠️ " + alerteRaccord, "warn");
+      // Zone Comblé ou effondrée traversée faute d'autre chemin (sortie d'urgence tracée comprise) : on le dit.
+      const alerteZones = window.Pathfinder.texteZonesTraversees(result.zonesTraversees);
+      if (alerteZones) _toastIti("⚠️ " + alerteZones, "warn");
 
     } catch(err) {
       window.ktaAlerte(window.I18n.t("iti.err.compute", { err: (err.message || err) }), { type: "erreur" });
@@ -1232,7 +1235,8 @@ function _setItiAvoidPrefs(prefs) {
 }
 
 // Types de zones à éviter (une case par TYPE, pas par instance) : window.getAvoidableZoneTypes()
-// (types des zones session + embarquées, sauf les types durs : pathfinder.js > TYPES_ZONES_DURS). Contrainte SOUPLE.
+// (types des zones session + embarquées, sauf les types durs et à coût : pathfinder.js > TYPES_ZONES_DURS,
+// TYPES_ZONES_COUT, déjà bloqués ou évités d'office). Contrainte SOUPLE.
 function _rafraichirListeAvoidZones() {
   const el = document.getElementById("kta-iti-avoid-zones-list");
   if (!el) return;
@@ -2206,8 +2210,15 @@ window.ouvrirItinerairModal = function() {
       const raccordHtml = alerteRaccord
         ? '<div class="kta-iti-result-row kta-guid-alerte">⚠️ ' + _escapeHtml(alerteRaccord) + '</div>'
         : '';
+      const alerteZones = window.Pathfinder.texteZonesTraversees(result.zonesTraversees);
+      const zonesHtml = alerteZones
+        ? '<div class="kta-iti-result-row kta-guid-alerte kta-iti-zones-cout">' + window.ktaIcone("triangle-alert") + " " +
+          _escapeHtml(alerteZones) +
+          '</div>'
+        : '';
       resEl.innerHTML =
         fallbackHtml +
+        zonesHtml +
         raccordHtml +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distM, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +

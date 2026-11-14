@@ -215,6 +215,7 @@ Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨
 
 - Una vez trazada la ruta, el **banner de guiado** te dice qué hacer en cada cruce; en la salida de emergencia no se puede cerrar, aunque el guiado esté desactivado. Si te desvías, su botón pasa a **Salida más cercana desde aquí** (ver «🪧 Guiado» en el itinerario).
 - Una salida marcada **Distancia en línea recta — camino no verificado** (tarjeta con línea discontinua) no tiene camino calculado: se coloca bajo **No confirmadas**, y si ninguna salida tiene camino verificado, un banner rojo lo dice primero. Cuidado: puede ser inaccesible (muros, planta aislada).
+- Una salida cuyo camino pasa por una zona **colmatada** o **derrumbada** se coloca después de las que la evitan, y la ventana lo indica (ningún otro camino la evita).
 
 **Desde dónde parte el cálculo**: desde tu posición actual, en cuanto el seguimiento está activo o te has situado una vez desde que abriste el mapa («📍 Estoy aquí», recolocación, portal, sesión restaurada); la ventana indica cuál. Si **nunca** te has situado, la app pregunta **¿Dónde estás?**: toca tu posición en el mapa. Ese toque también recoloca el seguimiento, para que la ruta y la visualización XL partan del mismo lugar.
 
@@ -834,6 +835,8 @@ Si no existe ningún otro camino, el itinerario pasa igualmente y lo indica: **�
 
 Las **zonas inaccesibles ⛔**, en cambio, **nunca se atraviesan**, salvo si desmarcas **Respetar las zonas inaccesibles y los muros (línea)** (útil en un levantamiento incompleto). Los **muros (línea)** 🟦 siguen la misma regla. Estoy perdido y el Modo Rescate las respetan siempre.
 
+Las zonas **Colmatado** y **Derrumbe** nunca bloquean: el itinerario **las evita si existe otro camino**, aunque sea mucho más largo. Sin otro camino, pasa de todos modos y el resultado lo indica (**Pasa por una zona Colmatado a lo largo de 12 m: ningún otro camino la evita**). Sin casilla que marcar: siempre es así, salida de emergencia e itinerario hacia otro plano incluidos. Una galería trazada a propósito a través de un Colmatado sigue siendo transitable; «Revisar el mapa» la señala para que la confirmes.
+
 ---
 
 ## 🌀 Enlaces entre mapas
@@ -985,9 +988,9 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 
 | Tipo | Aspecto | Efecto en el itinerario |
 |---|---|---|
-| ⬛ **Colmatado** | gris oscuro | ninguno |
+| ⬛ **Colmatado** | gris oscuro | **evitado** si existe otro camino; si no, atravesado, y el resultado lo indica |
 | ⬛ **Relleno parcial** | arena con granos, contorno discontinuo | ninguno por ahora |
-| 🟥 **Derrumbe** | rojo | ninguno |
+| 🟥 **Derrumbe** | rojo | como el Colmatado |
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 | 🪜 **Zona de unión** (mapa multinivel) | color del trazado de unión, velo ligero | ninguno: el itinerario pasa por el trazado de unión que la cruza (ver 🏗️ Modo multinivel) |
@@ -1891,7 +1894,7 @@ El 🚑 **socorrista libre** no tiene recorrido ni etapas: añade notas, cada un
 
 Una etapa marcada como **Víctima encontrada** da una posición: la de la etapa, nivel incluido. **📍 Precisar en el mapa** la ajusta. Un **✚ rojo** la marca en el mapa, para todos; el operador la ve en una banda en la cabecera de su vista, y el informe la imprime en primer lugar.
 
-**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del mapa y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado). Antes del cálculo, las **opciones de camilla**: zonas que evitar (agua y escombros marcados por defecto) y, como último recurso, paso por las zonas inaccesibles. Si ningún camino evita esas zonas, la ventana lo indica.
+**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del mapa y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado). Antes del cálculo, las **opciones de camilla**: zonas que evitar (agua marcada por defecto; Colmatado y derrumbe siempre se evitan si existe otro camino) y, como último recurso, paso por las zonas inaccesibles. Si ningún camino evita esas zonas, la ventana lo indica.
 
 #### 🚒 4. Rescate exterior
 
@@ -2118,7 +2121,7 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
   - **👁️ Vista previa en el mapa**: tus datos recalados se dibujan en discontinuo sobre el mapa antes de descargar; la vista previa desaparece al cerrar la herramienta. Luego obtienes archivos `_conv.json`.
   - Desde la pantalla de inicio (ningún mapa abierto), solo están disponibles las resoluciones y las referencias escritas a mano. Los enlaces entre mapas, la georreferenciación y la escala hay que rehacerlos en el mapa nuevo.
 - **🔗 Empalmes por revisar** (mapa abierto): enumera los lugares donde dos trazados de la red no se tocan, hasta 6 m de separación en un mismo nivel, cuando unirlos juntaría dos partes de la red hoy separadas (la más corta por par de partes). Toca una línea: la ventana se pliega, el mapa muestra el lugar (los dos puntos rodeados) y una banda abajo te lleva de uno a otro (**◀ Anterior · 3 / 12 · Siguiente ▶**). **🔗 Empalmar** pega el vértice sobre el otro trazado, que gana ahí un vértice: el cruce es exacto, el itinerario y la vista 3D lo siguen, y **Ctrl+Z** lo deshace. Un trazado de una capa de datos del mapa pasa primero a modificación (misma pregunta que **🔄 Modificar**). **Ignorar** guarda en este mapa una separación voluntaria (un muro, una galería tapiada): no vuelve, salvo si redibujas el lugar; **Volver a mostrar los ignorados (N)** los devuelve todos.
-- **Revisar el mapa** (mapa abierto): enumera los errores de datos que engañan al itinerario y a la salida de emergencia, ordenados por gravedad y luego por control: un **trazado cortado por una zona inaccesible o un muro (línea)** (con la longitud dentro de la zona; «en el borde» cuando solo entra unos centímetros, suele ser un dibujo que rehacer), un **paso entre niveles** (escalera, pozo) **sin empalme validado** en uno de sus niveles, o cuyo empalme ya no toca ninguna galería, un **trazado de unión** que une un nivel consigo mismo o cuyo extremo no toca ninguna galería. Toca una línea: el mapa va al nivel correcto, muestra el lugar (el objeto resaltado, el obstáculo rodeado) y abre la ficha; la banda inferior pasa de uno a otro (**Anterior** · 1 / 4 · **Siguiente**), **Ficha del obstáculo** abre la de la zona o el muro. **Visto, normal** recuerda un caso voluntario (una galería tapiada) en este dispositivo, para este mapa: no vuelve, aunque modifiques el objeto; **Vistos, normales (N)** los enumera, **Restablecer** devuelve uno. Al dibujar, un mensaje también te avisa cuando un trazado que colocas (o una zona inaccesible, un muro) corta una galería.
+- **Revisar el mapa** (mapa abierto): enumera los errores de datos que engañan al itinerario y a la salida de emergencia, ordenados por gravedad y luego por control: un **trazado cortado por una zona inaccesible o un muro (línea)** (con la longitud dentro de la zona; «en el borde» cuando solo entra unos centímetros, suele ser un dibujo que rehacer), un **paso entre niveles** (escalera, pozo) **sin empalme validado** en uno de sus niveles, o cuyo empalme ya no toca ninguna galería, un **trazado de unión** que une un nivel consigo mismo o cuyo extremo no toca ninguna galería. En **Por revisar**, un **trazado que atraviesa una zona colmatada o derrumbada**: no es un error (el itinerario la evita si puede, si no pasa por ella), pero confirma la galería o corrige la zona. Toca una línea: el mapa va al nivel correcto, muestra el lugar (el objeto resaltado, el obstáculo rodeado) y abre la ficha; la banda inferior pasa de uno a otro (**Anterior** · 1 / 4 · **Siguiente**), **Ficha del obstáculo** abre la de la zona o el muro. **Visto, normal** recuerda un caso voluntario (una galería tapiada) en este dispositivo, para este mapa: no vuelve, aunque modifiques el objeto; **Vistos, normales (N)** los enumera, **Restablecer** devuelve uno. Al dibujar, un mensaje también te avisa cuando un trazado que colocas (o una zona inaccesible, un muro) corta una galería.
 - **🧹 Desduplicar los datos**: elimina los vértices idénticos consecutivos de trazados, zonas, estructuras y medidas, invisibles pero que hacen más pesados los archivos. Obtienes un archivo `_dedup.json` y el recuento de lo eliminado; los puntos nunca se tocan.
 
 Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.

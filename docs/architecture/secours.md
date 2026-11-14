@@ -1633,7 +1633,7 @@ Quand les niveaux du plan portent une profondeur (`plan.niveauxProfondeur`), « 
 
 ## 🚑 Vague 8a (v1.98.24, 30/09/2026) — contre-audits GRIMP et IGC
 
-- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés. **Options brancard** d'abord (`_demanderOptionsBrancard`) : types de zones du plan (eau et remblais cochés d'office), case « lever les inaccessibles » décochée → `contraintes: { avoidZones, respecterInaccessibles }`, portées jusqu'au tracé et à ses recalculs (`road.evacuation`) — détail : `multilevel-pathfinding.md` (encadré inaccessibles).
+- **Évacuer** : `SortieUrgence.declencherDepuis(x, y, level, { sortiesSupp: [{x, y, level, nom, tags: []}], origine: "victime" })`. Un candidat à < 10 m d'un POI de sortie ne s'ajoute pas. `_sortiesScenario(s)` = `_accesSurface(s)` nommés. **Options brancard** d'abord (`_demanderOptionsBrancard`) : types de zones évitables du plan (eau cochée d'office ; Comblé et effondrement n'y sont pas, toujours évités par leur coût sans jamais bloquer), case « lever les inaccessibles » décochée → `contraintes: { avoidZones, respecterInaccessibles }`, portées jusqu'au tracé et à ses recalculs (`road.evacuation`) — détail : `multilevel-pathfinding.md` (encadré inaccessibles).
 - **Chemin coupé** (`sortieUrgence.js > _calculerDistPathfinder`, brancard **et** Sortie d'urgence classique) : une zone
   qui coupe la galerie d'une sortie fait caler le moteur sur la galerie restante, le chemin s'arrête court. Les écarts
   de calage (départ + arrivée) comptent dans la distance ; au-delà de **10 m** (ou passe de repli du pathfinder), le

@@ -366,9 +366,10 @@ Une zone (tout type, `cust-*` compris) peut toucher plusieurs niveaux : un effon
   invalidé). Pas de cases hors multi-niveau, pendant un dessin ou sur une zone de calque (lecture seule).
 - **Niveau d'origine changé** (liste « Niveau ») : l'ancien est **remplacé** dans `niveaux`, les autres restent
   (`_poserNiveau`) ; s'il ne reste que `level`, le champ disparaît. Zone convertie en structure : `niveaux` retiré.
-- **Itinéraire** : une zone bloquante (inaccessible, ou type à éviter) bloque sur **chacun** de ses niveaux
+- **Itinéraire** : une zone bloquante (inaccessible, ou type à éviter) bloque, et une zone à coût (Comblé,
+  effondrement) coûte, sur **chacun** de ses niveaux
   (`pathfinder.js > _zoneBloquante`, niveaux calculés une fois par calcul), y compris sur un réseau d'un autre plan
-  (`computeRouteOnRoads`, `opts.zones` / `avoidZonesResolved`).
+  (`computeRouteOnRoads`, `opts.zones` / `avoidZonesResolved`). « Vérifier le plan » suit la même règle (C1, C12).
 - **Vue 3D** : dessinée et bloquante sur chacun de ses niveaux, pas ailleurs (`vue3d.js > _zoneSurNiveau` pour la
   scène et les volumes enjambés par l'itinéraire, `galerieEmprise.js > _zoneSurNiveau` pour la règle du pas, dont
   `ctx.libre` d'une greffe) ; `niveaux` entre dans l'empreinte des données de la vue et dans la signature de
@@ -468,7 +469,7 @@ seulement. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` 
    - **Clic carte** : bouton "📍 Cliquer sur la carte" → mode flottant orange (`_itiAvoidClickActive`, handler isolé du mode clic waypoints), chaque clic ajoute un point d'évitement aux prefs (label "📍 Clic carte (x, y)"). Cf. `_activerModeClicAvoid` / `_desactiverModeClicAvoid` dans interface.js.
 2. **Tags** : `avoidTags: ["pa", "danger", ...]` → expansion auto en tous les points du plan portant ces tags (via `SearchPoints.getAllPoints`, **async**)
 3. **Marge** : `avoidRadius` px (défaut 100, configurable 0-500)
-4. **Zones** (depuis v1.48.0 ; **par TYPE depuis v1.48.1**) : `avoidZones: ["eau", "cust-…", ...]` → liste de **types de zones** à contourner (1 coche par type, comme les autres filtres — plus de liste par instance). `getAvoidableZoneTypes()` (exposé `window.getAvoidableZoneTypes`) liste les **types distincts** des zones évitables (session `getZones` + embarquées `_ktaDataPolygons`) — **exclut `inaccessible`** (déjà contrainte DURE, cf. §31.1). Label **legend-aware** : type custom (`cust-…`) via `LegendCustomization.findCustomEntry(type).label` (« galerie basse »), built-in via `getLabel("zones", type)` (« Eau »…). ⚠️ `getLabel` ne consulte PAS `customEntries` → d'où le recours à `findCustomEntry` pour les customs. `_collecterZonesAEviter(types)` collecte **toutes** les zones dont le type est coché. Côté pathfinder, un segment traversant une de ces zones est coupé du graphe via `_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)` (niveau-aware : une zone ne bloque que les segments de ses niveaux ; passe souple uniquement).
+4. **Zones** (depuis v1.48.0 ; **par TYPE depuis v1.48.1**) : `avoidZones: ["eau", "cust-…", ...]` → liste de **types de zones** à contourner (1 coche par type, comme les autres filtres — plus de liste par instance). `getAvoidableZoneTypes()` (exposé `window.getAvoidableZoneTypes`) liste les **types distincts** des zones évitables (session `getZones` + embarquées `_ktaDataPolygons`) — **exclut `inaccessible`** (déjà contrainte DURE, cf. §31.1) **et les types à coût** `remblais` / `effondrement` (évités d'office, cf. § Zones à coût ; un de ces types resté coché dans d'anciennes préférences est ignoré : l'exclure du graphe ferait échouer la passe 1 et relâcher tous les autres évitements). Label **legend-aware** : type custom (`cust-…`) via `LegendCustomization.findCustomEntry(type).label` (« galerie basse »), built-in via `getLabel("zones", type)` (« Eau »…). ⚠️ `getLabel` ne consulte PAS `customEntries` → d'où le recours à `findCustomEntry` pour les customs. `_collecterZonesAEviter(types)` collecte **toutes** les zones dont le type est coché. Côté pathfinder, un segment traversant une de ces zones est coupé du graphe via `_segmentBloqueParZoneInaccess(prevP, p, segLevel, avoidZones)` (niveau-aware : une zone ne bloque que les segments de ses niveaux ; passe souple uniquement).
 
 **Algo 2 passes** (clé du fallback) :
 1. **Passe 1** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, allAvoidPts, avoidRadius, avoidZones)` — graphe avec dur+souple (points **et** zones évitées), tentative Dijkstra
@@ -487,6 +488,8 @@ seulement. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` 
   snappedPoints:  [...],
   usedFallback:   boolean,            // v169 : true si fallback passe 2 utilisé
   avoidedThrough: [{x, y, label}, ...], // v169 : points évités traversés
+  cout:           number,             // coût Dijkstra (= totalDistance sans zone à coût traversée)
+  zonesTraversees: [{type, longueurPx, objet}], // zones à coût traversées faute d'autre chemin
   avoidRadius:    number              // v169 : marge appliquée
 }
 ```
@@ -573,7 +576,7 @@ Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" 
 
 #### 31.7 Ajouter un type de zone
 
-Types actuels : `eau`, `masse-sol` (masse au sol, part comblée `comble`), `remblais`, `effondrement`, `inaccessible`,
+Types actuels : `eau`, `masse-sol` (masse au sol, part comblée `comble`), `remblais` (« Comblé »), `effondrement`, `inaccessible`,
 `pente`. La liste des ~25 sites (style du canon, saisie, icône, légende, filtres, zones embarquées, exports, échanges
 KMZ / GeoJSON / SIG / Générateur, champ propre au type, palettes délibérées, effets 3D / itinéraire, garde-fous, doc)
 vit dans la skill `.claude/skills/add-zone-type` (relevée sur l'ajout de `masse-sol`). Un grep large sur
@@ -589,8 +592,8 @@ le lot 6 de `docs/ETUDE_REMBLAIS.md` n'est pas livré : ni contrainte dure, ni c
 **Module `js/interPlanRoute.js`** (`window.InterPlanRoute = { computeEtAfficher(dest), onPlanLoaded() }`) :
 
 - **Leg A** (plan courant) : `Pathfinder.computeRoute` classique — position tracker → point-portail côté A, avec les prefs d'évitement du plan courant.
-- **Leg B** (plan distant, **non chargé**) : `Pathfinder.computeRouteOnRoads(waypoints, roads, opts)` — nouvelle API **synchrone** exposant `_computeRouteInterne` sur des roads fournies. Les données viennent de `InterPlanLinks.collectRoutingDataForPlan(plan, stats)` : **roads + zones + scale** lus depuis la session localStorage + les datalayers (serveur `fetch` / ZIP IndexedDB). Zones `inaccessible` = contrainte dure ; évitements du plan B (prefs `myktamap_route_avoid_<planB>`) résolus par l'appelant (tags → points du plan B via `collectPointsForPlan`).
-- **Portails candidats** (3:a) : liaisons A↔B du registre, tri par proximité euclidienne du départ, **≤ 5 testés au coût réel**, total minimal retenu.
+- **Leg B** (plan distant, **non chargé**) : `Pathfinder.computeRouteOnRoads(waypoints, roads, opts)` — nouvelle API **synchrone** exposant `_computeRouteInterne` sur des roads fournies. Les données viennent de `InterPlanLinks.collectRoutingDataForPlan(plan, stats)` : **roads + zones + scale** lus depuis la session localStorage + les datalayers (serveur `fetch` / ZIP IndexedDB). Zones `inaccessible` = contrainte dure, Comblé / effondrement = coût (`opts.zones`, même règle que le plan ouvert) ; évitements du plan B (prefs `myktamap_route_avoid_<planB>`) résolus par l'appelant (tags → points du plan B via `collectPointsForPlan`).
+- **Portails candidats** (3:a) : liaisons A↔B du registre, tri par proximité euclidienne du départ, **≤ 5 testés au coût réel**, coût minimal retenu (`_coutM` : distance + zones à coût traversées, en mètres par plan ; la distance affichée reste `distM`). Une étape qui traverse une zone Comblé ou effondrée le dit dans le résumé (une ligne par plan).
 - ⚠️ **Échelles** : `totalM = legA.px/scaleA + legB.px/scaleB` — le scale du plan B est lu depuis SON plan-config (`tracking.scale`). Ne JAMAIS sommer des px de plans différents.
 - **Traversée** (4:a, coût 0 m — 5:a) : modale résumé par étapes → « Prendre le portail » → `InterPlanLinks.goTo` → **`_pendingRoute`** (RAM) consommée par `onPlanLoaded` (hook `main.js`) **+3 s après l'arrivée** (le restore SessionPersist écrase les roads sinon). Le leg tracé = road `type:"itinerary"` standard.
 - **Erreurs codées** (exigence KARMA) : `NO_PLAN`/`NO_POS`/`SAME_PLAN`/`NO_LINK`/`NO_DIRECT_LINK` (BFS borné profondeur 4 sur le méta-graphe des plans → nomme le plan intermédiaire ; le calcul multi-hop reste **V2**)/`DATA_UNREACHABLE`/`NO_ROADS_B`/`ALL_FAILED` (détail par portail, côté A ou B). i18n `ipr.err.*`.
@@ -633,7 +636,7 @@ le lot 6 de `docs/ETUDE_REMBLAIS.md` n'est pas livré : ni contrainte dure, ni c
 > Décisions KARMA `1:a 2:a 3:a 4:a` + case à cocher (5) + « prendre le portail n'a pas de sens, on n'est pas à côté » + « plusieurs points de passage sur le plan A ».
 
 **Moteur multi-hop** (`interPlanRoute.js > _computeMultiHop`) — actif quand la case « 🌀 Itinéraire via plusieurs plans » est cochée (`myktamap_ipr_multihop_v1`, OFF par défaut ; exposée dans la recherche multi-plans via `InterPlanRoute.is/setMultiHopEnabled`) :
-- **Graphe de portails** : nœuds `@start` (position) + chaque CÔTÉ de portail + `@dest` ; arêtes de traversée à 0 m ; arêtes intra-plan **PARESSEUSES** — le coût (Dijkstra réel via `_legEntre`, en MÈTRES par échelle du plan, mémoïsé `legCache`) n'est calculé qu'à l'expansion du nœud. Le Dijkstra global couvre AUSSI le cas direct → case cochée = `_computeMultiHop` remplace entièrement le single-hop.
+- **Graphe de portails** : nœuds `@start` (position) + chaque CÔTÉ de portail + `@dest` ; arêtes de traversée à 0 m ; arêtes intra-plan **PARESSEUSES** — le coût (`coutM` : Dijkstra réel via `_legEntre`, en MÈTRES par échelle du plan, mémoïsé `legCache`) n'est calculé qu'à l'expansion du nœud. Le Dijkstra global couvre AUSSI le cas direct → case cochée = `_computeMultiHop` remplace entièrement le single-hop.
 - **Périmètre** : plans sur un chemin BFS `dFrom + dTo ≤ MAX_HOPS (3)` uniquement ; `MAX_PORTALS_PER_PAIR = 5` par frontière ; budget `MAX_LEGS_COMPUTE = 60` Dijkstras (signalé si atteint : `ipr.err.budget`). Plans injoignables → écartés + nommés (`ipr.err.blocked`) si aucun chemin ne survit. Adjacence via `InterPlanLinks.getAllLinks()` (registre ; les liaisons baked des datalayers n'y sont pas — même périmètre que le single-hop).
 - **Format unique « chaîne de legs »** : `{ legs: [{planId, planName, path, distM, waypoints, portalOut}], totalM, dest }` — le single-hop est adapté via `_chainDepuisSingleHop`. UN SEUL renderer (`_afficherResume`) et UN SEUL consommateur (`onPlanLoaded`).
 
@@ -681,6 +684,7 @@ code disait le contraire de ses propres commentaires.
 |---|---|---|---|
 | Zones d'un type dur (`Pathfinder.TYPES_ZONES_DURS` : `inaccessible`) | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ case « Respecter… » |
 | Structures `mur-ligne` (Mur (ligne)) | session + `_ktaDataStructurePolygons` | **dure**, même niveau | ✅ même case |
+| Zones à coût (`Pathfinder.TYPES_ZONES_COUT` : `remblais` « Comblé », `effondrement`) | session + `_ktaDataPolygons` | **coût**, jamais bloquantes, jamais levées | sans objet (toujours actif, ni case ni passe 2) |
 | Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
 | Points / tags à éviter | `SearchPoints` | souple | ✅ |
 | **Autres structures** (piliers, mur polygone, fronts, arc de soutènement `arc`) | — | **aucune** | sans objet |
@@ -712,14 +716,42 @@ Perdu) garde les zones inaccessibles et les murs en toutes circonstances : une p
 confort n'a pas à élargir un périmètre de secours. `interPlanRoute` et la Sortie
 d'urgence lancée par 🚨 ne passent pas l'option — ils héritent du comportement sûr.
 **Seule exception : « 🚑 Évacuer » du Mode Secours** (options brancard) — l'opérateur
-choisit les types de zones à éviter (eau et remblais cochés d'office) et peut lever les
+choisit les types de zones à éviter (eau cochée d'office ; Comblé et effondrement n'y sont pas, toujours évités par leur coût) et peut lever les
 inaccessibles et les murs par une case **décochée par défaut** (dernier recours, nommé comme
 tel ; son compte = `Pathfinder.nbObstaclesDurs()`).
 Les contraintes vont `SortieUrgence.declencherDepuis(…, { contraintes })` → classement des
 sorties → `itineraireYAller(…, { evacuation })` → `road.evacuation`, relu par les recalculs
 (`_replanifierDepuis`, `SortieUrgence.relancerDepuis`). Une sortie atteinte seulement en
 traversant une zone « à éviter » (passe 2 du moteur) est classée après celles qui la
-respectent, et la fenêtre le dit.
+respectent, et la fenêtre le dit ; de même, une sortie atteinte seulement à travers une zone à coût est classée après
+celles qui l'évitent (`sortieUrgence.js > _traverseZoneCout`), et la fenêtre affiche la phrase du pathfinder.
+
+### Zones à coût : Comblé et effondrement (jamais bloquantes)
+
+Décision de KARMA (révision du 14/11/2026, `docs/ETUDE_REMBLAIS.md`) : une zone mal comprise ou posée à tort ne doit
+jamais casser un itinéraire, et un tracé posé exprès à travers dit que ça passe. `pathfinder.js > TYPES_ZONES_COUT`
+(`remblais`, `effondrement` ; `Pathfinder.estZoneCout`) est la **seule** table de ces types.
+
+- **Coût, pas obstacle** : chaque arête porte `{ weight: coût, len: longueur }`. `_addEdge` mesure la longueur de
+  l'arête **dans** chaque zone à coût de son niveau (`_coutZonesArete` : `_zonesQuiBloquent` puis
+  `_longueurDansPolygone`, grille `graph.zonesCout` posée par `_buildGraph`) et ajoute `PENALITE_ZONE_COUT` (10⁶)
+  par pixel traversé. Toutes les arêtes passent par là (build, croisements, T, chaînage, calage), le niveau du segment
+  connu ou déduit des nœuds ; une arête de puits ou de milieu de jonction (en l'air) ne paie rien, une arête qui touche
+  seulement le bord non plus. Effet : **tout autre chemin l'emporte** (un détour 10⁶ fois plus long que la traversée),
+  mais le coût reste fini — sans autre chemin, l'itinéraire passe.
+- 🩸 **Le coût n'est pas la distance** : `_dijkstra` ordonne sur le coût et suit la longueur à côté (`lg`) ;
+  `totalDistance` = la vraie longueur, `cout` = le coût. Sans zone à coût, ce sont les mêmes additions dans le même
+  ordre : chemins et distances inchangés au bit près. `computeReachable` (Secours / Perdu) n'en a pas : le périmètre
+  d'une personne ne rétrécit pas pour une zone qu'on peut traverser.
+- **Le résultat le dit** : `zonesTraversees` (`[{ type, longueurPx, objet }]`, la plus traversée d'abord) ;
+  `Pathfinder.texteZonesTraversees(zones, echelle?)` rend la phrase unique (`iti.zonesCout.traverse`, libellés de la
+  légende) affichée par la fenêtre Itinéraire (`kta-iti-zones-cout`), le toast de « Y aller » (sortie d'urgence tracée
+  comprise), la fenêtre de la sortie d'urgence (`kta-sortie-zones-cout`), le résumé de l'inter-plans et le toast de
+  l'itinéraire d'une équipe du Secours.
+- **Jamais levées** : ni par la case « Respecter… » (qui ne vise que les contraintes dures), ni en passe 2, ni au
+  brancard ; elles ne sont pas des « Zones à éviter ». Inter-plans : `computeRouteOnRoads(…, { zones })` applique la
+  même règle, et le choix du portail se fait au coût.
+- Garde-fous : `scripts/check-zones-cout.js` (Node), `scripts/smoke/checkup-comble-itineraire.js` (relevé fictif).
 
 ### Table unique des types de zone durs
 
@@ -727,9 +759,9 @@ respectent, et la fenêtre le dit.
 **seule** liste des types de zone qui bloquent : collecte des obstacles (`_zonesDuresDe`), liste des évitables
 (`getAvoidableZoneTypes`, un type dur n'y figure pas), évitements souples (`_collecterZonesAEviter`), réseau fourni de
 l'inter-plans (`computeRouteOnRoads`) et ses deux filtres d'évitement (`interPlanRoute.js > _zoneDure`), « Vérifier
-le plan ». Elle ne contient que `inaccessible` : le type Comblé (`remblais`) y entrera avec son propre lot
-(`docs/ETUDE_REMBLAIS.md`), pas avant. `check-verifier-plan.js` refuse un test `=== "inaccessible"` écrit à part dans
-`pathfinder.js` ou `interPlanRoute.js`.
+le plan ». Elle ne contient que `inaccessible` (décision produit : seule zone posée exprès pour dire « interdit ») ; Comblé
+et effondrement sont des zones à coût (ci-dessus). `check-verifier-plan.js` refuse un test `=== "inaccessible"` écrit
+à part dans `pathfinder.js` ou `interPlanRoute.js`, `check-zones-cout.js` un test sur `remblais` / `effondrement`.
 
 ### Vérifier le plan (`js/verifierPlan.js`)
 
@@ -738,7 +770,7 @@ décisions : `docs/ETUDE_VERIFIER_PLAN.md`). Il lit ce que lit l'itinéraire : `
 structures de session plus registres des calques (sans les calques en modification), points de session et des calques.
 Lecture seule.
 
-⚠️ **Même vérité que le graphe** : C1 et C3 appellent les tests du pathfinder, exposés pour lui dans
+⚠️ **Même vérité que le graphe** : C1, C3 et C12 appellent les tests du pathfinder, exposés pour lui dans
 `Pathfinder.controle`, jamais une copie. `_segmentBloqueParZoneInaccess` et `_segmentCoupeParMur` sont des façades de
 `_zonesQuiBloquent` / `_mursQuiCoupent` (qui rendent **tous** les obstacles d'un segment quand on le demande) : le
 graphe et l'outil passent par le même code. `check-verifier-plan.js` vérifie, tracé par tracé, que les segments
@@ -749,6 +781,7 @@ déclarés coupés sont exactement ceux que `grapheDeTraces(…, { includeZones:
 | **C1** tracé coupé | Chaque segment de galerie (tout type sauf jonction et itinéraire) contre les obstacles durs de son niveau (plan ouvert : `controle.obstaclesDuPlan`, la collecte même de l'itinéraire ; données fournies : `obstaclesDe` ; puis `preparer`), zones candidates par une grille de leurs boîtes (`controle.grilleZones`, 128 px, filtre exact). Un constat par paire (tracé, obstacle) ; zone : longueur du tracé dans la zone (`longueurDansPolygone`) ; mur : point de croisement. **Au bord** sous 0,5 m (`BORD_M` ; plan sans échelle : 10 px/m supposés, `ECHELLE_SANS_CALAGE`) : longueur dans la zone, ou distance du croisement au bout du tracé le plus proche | Bloquant |
 | **C2** passage sans raccord | POI qui relie des niveaux (`KtaPoiJonction.estJonction`) avec un moyen de passage (pas le puits d'aération) : pour chaque niveau, aucun raccord validé (`accroches`), ou aucun qui retombe à `PROXIMITY_TOLERANCE` (15 px) d'une galerie de ce niveau (« perdu », comme `_injecterJonctionsPoi` qui l'ignore). Le nombre de galeries que `proposerRaccords` proposerait est affiché | Bloquant au niveau de départ ou d'arrivée ; **Info** pour un niveau intermédiaire sans raccord, marqué « traversé » (le pathfinder le traverse sans y déboucher : l'itinéraire n'est pas trompé, décision produit) |
 | **C3** tracé jonction mal posé | `fromLevel` = `toLevel`, ou un bout à plus de `PROXIMITY_TOLERANCE` de toute galerie de son niveau (le graphe ne le raccroche à rien) | Bloquant |
+| **C12** tracé qui traverse une zone Comblé ou effondrée | Même parcours que C1 (`_traversees`), sur les zones à coût que lit le graphe (`controle.zonesCoutDuPlan` / `zonesCoutDe`) : un constat par paire, longueur dans la zone, « au bord » sous 0,5 m. Ce n'est pas une erreur : l'itinéraire l'évite s'il peut et dit quand il y passe ; on confirme la galerie ou on corrige la zone (décision produit) | À revoir |
 
 C2 et C3 ne valent qu'en plan multi-niveau. **Vu, normal** : clé `contrôle|identité[|identité|détail]` (identité = `uid`,
 sinon empreinte du type et des sommets au dixième de px) dans la pref du plan `verifVus` (`config.js >
@@ -757,7 +790,7 @@ calque sans `uid` revient s'il est redessiné. **Saisie** : à chaque `kta:donne
 structures, calques ; 700 ms de calme), C1 sur les seuls objets de session dont la signature a changé **et** dont
 `updatedAt` a moins d'une minute (la session restaurée ou rejouée par Ctrl+Z n'est pas une saisie) : un toast `warn`
 par coupure nouvelle, une fois par plan ouvert. Pas encore : passe au chargement, fin du Générateur, contrôles C4 à
-C10, corrections (lots 2 à 4 de l'étude). Garde-fous : `check-verifier-plan.js` (Node), `checkup-verifier-plan.js`.
+C10, avertissement à la saisie pour C12, corrections (lots 2 à 4 de l'étude). Garde-fous : `check-verifier-plan.js` (Node), `checkup-verifier-plan.js`.
 
 ---
 

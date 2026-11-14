@@ -42,7 +42,7 @@ Gravité : **Bloquant** = l'itinéraire ou la sortie d'urgence se trompent ; **�
 
 | # | Contrôle | Comment on le détecte | Gravité | Correction sûre ? | Reco |
 |---|---|---|---|---|---|
-| C1 | **Tracé coupé par une zone bloquante** (inaccessible, Comblé demain, murs en ligne) | Le test **du pathfinder** (`_segmentTraversePolygon`, `_segmentCoupeParMur`, à exposer), niveau compris (zone multi-niveau : chacun de ses niveaux), par paire (tracé, obstacle), avec la longueur dans la zone ; marqué « au bord » sous ~0,5 m (souvent une erreur de dessin) | Bloquant | Non : changer le type de la zone (Comblé → Masse au sol, en lot), ajuster les sommets, ou « vu, normal » (galerie condamnée) | **Oui** |
+| C1 | **Tracé coupé par une zone bloquante** (inaccessible, murs en ligne ; Comblé ne bloque plus : C12) | Le test **du pathfinder** (`_segmentTraversePolygon`, `_segmentCoupeParMur`, à exposer), niveau compris (zone multi-niveau : chacun de ses niveaux), par paire (tracé, obstacle), avec la longueur dans la zone ; marqué « au bord » sous ~0,5 m (souvent une erreur de dessin) | Bloquant | Non : changer le type de la zone (Comblé → Masse au sol, en lot), ajuster les sommets, ou « vu, normal » (galerie condamnée) | **Oui** |
 | C2 | **POI jonction : un de ses niveaux sans raccord validé** | `niveaux` sans `accroches` à ce niveau (`KtaPoiJonction.niveaux`, `accroches`) | Bloquant (le passage est ignoré) | Proposer les raccords (`proposerRaccords`), l'utilisateur valide | **Oui** |
 | C3 | **Tracé jonction mal posé** : `fromLevel` = `toLevel`, ou un bout à plus de la tolérance du pathfinder (`PROXIMITY_TOLERANCE`, 15 px) de toute galerie de son niveau | Lecture des bouts, mêmes seuils que le graphe | Bloquant | Non (où accrocher ?) | **Oui** |
 | C4 | **Objets en double** : même famille, même type, même niveau, même géométrie au cm près ; points : même position, même tag **et** même nom | Empreinte arrondie, table de hachage | À revoir | **Oui si identiques en tout** (hors `uid` / `updatedAt`) : garder un exemplaire ; sinon montrer les deux | **Oui** |
@@ -53,6 +53,7 @@ Gravité : **Bloquant** = l'itinéraire ou la sortie d'urgence se trompent ; **�
 | C9 | **Type absent de la légende** (import, faute de frappe) | `ktaResolveStyle` sans entrée | Info (couleur de repli, exclu des filtres) | Non | **Oui** |
 | C10 | **Sommets en double** (dédoublonnage existant) | `_dedupliquerFichier` sur une copie, compte seul | Info | Oui (existant) | **Oui, intégré** |
 | C11 | Liaison vers un plan absent | Déjà dans le gestionnaire des liaisons | Info | — | **Renvoi** vers le gestionnaire, pas de doublon |
+| C12 | **Tracé qui traverse une zone Comblé ou effondrée** (ajouté par la révision du 14/11/2026 de `ETUDE_REMBLAIS.md` : ces zones ne bloquent plus, l'itinéraire les évite et dit quand il y passe) | Même parcours que C1, sur les zones à coût du graphe (`Pathfinder.controle.zonesCoutDuPlan`) | À revoir (pas une erreur) | Non : confirmer la galerie (« vu, normal ») ou corriger la zone | **Livré** |
 | — | Écartés | Noms en double (légitime), tracés très courts, POI superposés de tags différents (légitime), angle aigu, sommet très proche d'un autre sur le même tracé | — | — | Non : bruit |
 
 ## Où on le lance

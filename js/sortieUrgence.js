@@ -129,7 +129,8 @@
       const ecart = _distEucl(origine, res.path[0]) + _distEucl(res.path[res.path.length - 1], cible);
       d += ecart;
       const contourne = !!(res.usedFallback || ecart > 10 * pxParM);
-      return { distPx: d, path: res.path, contourne: contourne, ecartM: ecart / pxParM };
+      return { distPx: d, path: res.path, contourne: contourne, ecartM: ecart / pxParM,
+               zonesTraversees: Array.isArray(res.zonesTraversees) ? res.zonesTraversees : [] };
     }).catch(function(err) {
       console.warn("[SortieUrgence] computeRoute échec pour", cible.nom, ":", err);
       return null;
@@ -160,7 +161,7 @@
       return _calculerDistPathfinder(origine, item.point, contraintes).then(function(pf) {
         if (pf) {
           return { point: item.point, distPx: pf.distPx, path: pf.path, fallback: false,
-                   contourne: pf.contourne, ecartM: pf.ecartM };
+                   contourne: pf.contourne, ecartM: pf.ecartM, zonesTraversees: pf.zonesTraversees };
         }
         // Repli : distance euclidienne, sortie gardée mais marquée fallback
         return { point: item.point, distPx: item.dEucl, path: null, fallback: true };
@@ -171,6 +172,10 @@
         if (a.fallback !== b.fallback) return a.fallback ? 1 : -1;
         // Chemin entier avant chemin coupé (> 10 m de la sortie ou de la position, ou zone à éviter traversée)
         if (!!a.contourne !== !!b.contourne) return a.contourne ? 1 : -1;
+        // Puis le chemin qui évite les zones Comblé et effondrées avant celui qui en traverse une (pathfinder.js >
+        // TYPES_ZONES_COUT) : même règle que l'itinéraire, qui ne les traverse que faute d'autre chemin.
+        const za = _traverseZoneCout(a), zb = _traverseZoneCout(b);
+        if (za !== zb) return za ? 1 : -1;
         return a.distPx - b.distPx;
       });
     });
@@ -234,6 +239,16 @@
 
   // Options brancard : rappel de ce qui est évité + alerte si la meilleure sortie n'est atteignable qu'en
   // traversant une zone « à éviter ». Sans options : même alerte si le meilleur chemin est coupé (> 10 m).
+  function _traverseZoneCout(r) { return !!(r && Array.isArray(r.zonesTraversees) && r.zonesTraversees.length); }
+
+  // Alerte « passe par une zone Comblé / effondrée » de la sortie retenue (texte unique du pathfinder).
+  function _htmlZonesCout(meilleure) {
+    if (!_traverseZoneCout(meilleure) || !window.Pathfinder || !window.Pathfinder.texteZonesTraversees) return "";
+    const txt = window.Pathfinder.texteZonesTraversees(meilleure.zonesTraversees);
+    return txt ? '<div class="kta-sortie-fallback-txt kta-sortie-zones-cout">' + window.ktaIcone("triangle-alert") + " " +
+      window.ktaEsc(txt) + '</div>' : "";
+  }
+
   function _htmlContraintes(meta, meilleure) {
     const c = meta && meta.contraintes;
     if (!c) {
@@ -314,6 +329,7 @@
       '</div>' +
       '<div class="kta-sortie-origine">' + _texteOrigine(meta) + '</div>' +
       _htmlContraintes(meta, meilleure) +
+      _htmlZonesCout(meilleure) +
       '<div class="kta-sortie-actions">' +
         '<button type="button" class="kta-btn kta-btn-primary kta-sortie-btn-tracer" data-sortie-action="tracer">' +
           window.ktaIcone("route") + " " + window.I18n.t("sortie.btn.tracer") +

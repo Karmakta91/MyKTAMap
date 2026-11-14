@@ -5520,7 +5520,7 @@ const _SIG_TYPES = {
   lignes:    ["chemin", "secondaire", "principal"],
   // `pente` = zone « Jonction » : niveaux de/à saisis sous la table (_htmlNiveauxPente), plan multi-niveau.
   // 🩸 `masse-sol` EN TÊTE : c'est le type d'une valeur non reconnue (1re option de sa liste), comme le défaut
-  // d'ingest (sigImport.js > zoneDefaut). Un Comblé posé en silence deviendrait un obstacle.
+  // d'ingest (sigImport.js > zoneDefaut). Un Comblé posé en silence serait évité par l'itinéraire et bouché en 3D.
   polygones: ["masse-sol", "remblais", "eau", "effondrement", "inaccessible", "pente"]
 };
 // Structures proposées EN PLUS, par famille. Chaque géométrie peut viser toutes les familles : un polygone

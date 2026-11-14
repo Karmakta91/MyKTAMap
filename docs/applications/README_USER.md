@@ -215,6 +215,7 @@ Pour ressortir **tout de suite**, sans réfléchir : blessure, batterie faible, 
 
 - Une fois l'itinéraire tracé, le **bandeau de guidage** te dit quoi faire à chaque croisement ; en sortie d'urgence il ne se ferme pas, même si le guidage est coupé. Si tu t'écartes, son bouton devient **Sortie la plus proche d'ici** (voir « 🪧 Guidage » dans l'itinéraire).
 - Une sortie marquée **Distance à vol d'oiseau — chemin non vérifié** (carte en pointillés) n'a pas de chemin calculé : elle est rangée sous **Non confirmées**, et si aucune sortie n'a de chemin vérifié, un bandeau rouge le dit d'abord. Méfie-toi : elle peut être inaccessible (murs, étage isolé).
+- Une sortie dont le chemin passe par une zone **Comblé** ou **effondrée** est rangée après celles qui l'évitent, et la fenêtre le dit (aucun autre chemin ne l'évite).
 
 **D'où part le calcul** : de ta position actuelle, dès que le suivi est actif ou que tu t'es situé une fois depuis l'ouverture du plan (« 📍 Je suis ici », recalage, portail, session restaurée) ; la fenêtre précise laquelle. Si tu ne t'es **jamais** situé, l'app demande **Où es-tu ?** : tape ta position sur la carte. Ce tap recale aussi le suivi, pour que l'itinéraire et l'Affichage XL partent du même endroit.
 
@@ -834,6 +835,8 @@ S'il n'existe aucun autre chemin, l'itinéraire passe quand même et l'affiche :
 
 Les **zones inaccessibles ⛔**, elles, ne sont **jamais traversées**, sauf si tu décoches **Respecter les zones inaccessibles et les murs (ligne)** (utile sur un relevé incomplet). Les **murs (ligne)** 🟦 suivent la même règle. Je suis perdu et le Mode Secours les respectent toujours.
 
+Les zones **Comblé** et **Effondrement** ne bloquent jamais : l'itinéraire les **évite dès qu'un autre chemin existe**, même beaucoup plus long. Sans autre chemin, il passe quand même et le résultat le dit (**Passe par une zone Comblé sur 12 m : aucun autre chemin ne l'évite**). Pas de case à cocher : c'est toujours le cas, sortie d'urgence et itinéraire vers un autre plan compris. Une galerie tracée volontairement à travers un Comblé reste donc praticable ; « Vérifier le plan » la signale pour que tu confirmes.
+
 ---
 
 ## 🌀 Liaisons inter-plan
@@ -985,9 +988,9 @@ Dans le groupe **⬛ Zones**, des surfaces fermées pour annoter le plan :
 
 | Type | Aspect | Effet sur l'itinéraire |
 |---|---|---|
-| ⬛ **Comblé** | gris foncé | aucun |
+| ⬛ **Comblé** | gris foncé | **évité** dès qu'un autre chemin existe ; sinon traversé, et le résultat le dit |
 | ⬛ **Masse au sol** | sable à grains, contour en tirets | aucun pour l'instant |
-| 🟥 **Effondrement** | rouge | aucun |
+| 🟥 **Effondrement** | rouge | comme le Comblé |
 | 🟦 **Eau** | bleu | aucun |
 | ⛔ **Inaccessible** | hachures rouge sombre / noir | **bloque** le passage |
 | 🪜 **Zone jonction** (plan multi-niveau) | couleur du tracé jonction, voile léger | aucun : l'itinéraire passe par le tracé jonction qui la traverse (voir 🏗️ Mode multi-niveau) |
@@ -1892,7 +1895,7 @@ Le 🚑 **secouriste libre** n'a ni parcours ni étapes : il ajoute des notes, c
 
 Une étape passée en **Victime trouvée** donne une position : celle de l'étape, niveau compris. **📍 Préciser sur la carte** l'ajuste. Un **✚ rouge** la marque sur la carte, pour tous ; l'opérateur la voit en bandeau en tête de sa vue, et le rapport l'imprime en premier.
 
-**🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime : sorties du plan et accès des équipes, classés par distance réelle (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé). Avant le calcul, les **options brancard** : zones à éviter (eau et remblais cochés d'office) et, en dernier recours, passage par les zones inaccessibles. Si aucun chemin n'évite ces zones, la fenêtre le dit.
+**🚑 Évacuer** ouvre la Sortie d'urgence depuis la victime : sorties du plan et accès des équipes, classés par distance réelle (« Accès n° 3 (Charlie, Delta) — à ouvrir par la surface » s'il est fermé). Avant le calcul, les **options brancard** : zones à éviter (eau cochée d'office ; Comblé et effondrement sont toujours évités quand un autre chemin existe) et, en dernier recours, passage par les zones inaccessibles. Si aucun chemin n'évite ces zones, la fenêtre le dit.
 
 #### 🚒 4. Secours extérieurs
 
@@ -2119,7 +2122,7 @@ Si un gros plan plante ou rame encore, ouvre **⚙️ Réglages** → **🚀 Per
   - **👁️ Aperçu sur le plan** : tes données recalées s'affichent en tireté par-dessus le plan avant le téléchargement ; l'aperçu disparaît à la fermeture de l'outil. Tu récupères ensuite des fichiers `_conv.json`.
   - Depuis l'accueil (aucun plan ouvert), seules les résolutions et des repères saisis à la main sont possibles. Liaisons inter-plans, géoréférencement et échelle restent à refaire sur le nouveau plan.
 - **🔗 Raccords à vérifier** (plan ouvert) : liste les endroits où deux tracés du réseau ne se touchent pas, jusqu'à 6 m d'écart sur un même niveau, quand les relier joindrait deux morceaux du réseau aujourd'hui séparés (le plus court par paire de morceaux). Touche une ligne : la fenêtre se replie, la carte montre l'endroit (les deux points entourés) et un bandeau en bas te fait passer de l'un à l'autre (**◀ Précédent · 3 / 12 · Suivant ▶**). **🔗 Raccorder** colle le sommet sur l'autre tracé, qui y gagne un sommet : le carrefour est exact, l'itinéraire et la vue 3D suivent, et **Ctrl+Z** l'annule. Un tracé d'un calque du plan passe d'abord en modification (même question que **🔄 Modifier**). **Ignorer** retient sur ce plan un écart voulu (un mur, une galerie murée) : il ne revient plus, sauf si tu redessines l'endroit ; **Réafficher les ignorés (N)** les rend tous.
-- **Vérifier le plan** (plan ouvert) : liste les erreurs de données qui trompent l'itinéraire et la sortie d'urgence, rangées par gravité puis par contrôle : un **tracé coupé par une zone inaccessible ou un mur (ligne)** (avec la longueur dans la zone ; « au bord » quand il n'y entre que de quelques centimètres, souvent un dessin à reprendre), un **passage entre niveaux** (escalier, puits) **sans raccord validé** à un de ses niveaux, ou dont le raccord ne touche plus aucune galerie, un **tracé jonction** qui relie un niveau à lui-même ou dont un bout ne touche aucune galerie. Touche une ligne : la carte va au bon niveau, montre l'endroit (l'objet surligné, l'obstacle cerné) et ouvre la fiche ; le bandeau du bas fait passer de l'un à l'autre (**Précédent** · 1 / 4 · **Suivant**), **Fiche de l'obstacle** ouvre celle de la zone ou du mur. **Vu, normal** retient un cas voulu (une galerie murée) sur cet appareil, pour ce plan : il ne revient pas, même si tu modifies l'objet ; **Vus, normaux (N)** les liste, **Rétablir** en rend un. En dessinant, un message te prévient aussi quand un tracé que tu poses (ou une zone inaccessible, un mur) coupe une galerie.
+- **Vérifier le plan** (plan ouvert) : liste les erreurs de données qui trompent l'itinéraire et la sortie d'urgence, rangées par gravité puis par contrôle : un **tracé coupé par une zone inaccessible ou un mur (ligne)** (avec la longueur dans la zone ; « au bord » quand il n'y entre que de quelques centimètres, souvent un dessin à reprendre), un **passage entre niveaux** (escalier, puits) **sans raccord validé** à un de ses niveaux, ou dont le raccord ne touche plus aucune galerie, un **tracé jonction** qui relie un niveau à lui-même ou dont un bout ne touche aucune galerie. En **À revoir**, un **tracé qui traverse une zone Comblé ou effondrée** : ce n'est pas une erreur (l'itinéraire l'évite s'il peut, sinon il y passe), mais confirme la galerie ou corrige la zone. Touche une ligne : la carte va au bon niveau, montre l'endroit (l'objet surligné, l'obstacle cerné) et ouvre la fiche ; le bandeau du bas fait passer de l'un à l'autre (**Précédent** · 1 / 4 · **Suivant**), **Fiche de l'obstacle** ouvre celle de la zone ou du mur. **Vu, normal** retient un cas voulu (une galerie murée) sur cet appareil, pour ce plan : il ne revient pas, même si tu modifies l'objet ; **Vus, normaux (N)** les liste, **Rétablir** en rend un. En dessinant, un message te prévient aussi quand un tracé que tu poses (ou une zone inaccessible, un mur) coupe une galerie.
 - **🧹 Dédoublonner les données** : retire les sommets identiques consécutifs des tracés, zones, structures et mesures, invisibles mais qui alourdissent les fichiers. Tu récupères un fichier `_dedup.json` et le compte de ce qui a été retiré ; les points ne sont jamais touchés.
 
 Si la source contient plusieurs jeux de données, un sélecteur te laisse choisir.

@@ -290,6 +290,10 @@ node scripts/check-masse-sol.js || exit $?
 # Verifier le plan : C1 (troncons coupes) = graphe de l'itineraire, C1 a C3 sur donnees fictives, "vu, normal".
 node scripts/check-verifier-plan.js || exit $?
 
+# Zones a cout (Comble, effondrement) : evitees si un autre chemin existe, jamais bloquantes, traversees et dites
+# sinon ; distance non gonflee ; inaccessible reste dure ; C12 de Verifier le plan en "a revoir".
+node scripts/check-zones-cout.js || exit $?
+
 # Niveaux en hauteur : sol, hauteur et ecart par niveau lus par un seul acces (getNiveauVertical), plan sans la
 # donnee inchange, pref locale qui gagne, ecart jamais stocke.
 node scripts/check-niveaux-verticaux.js || exit $?

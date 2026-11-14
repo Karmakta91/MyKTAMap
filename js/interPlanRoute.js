@@ -52,11 +52,22 @@
     return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k;
   }
   function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
-  // Type de zone dur : la table unique du pathfinder (pathfinder.js > TYPES_ZONES_DURS) ; un type dur n'est jamais
-  // un évitement souple, il est déjà un obstacle (sans pathfinder, aucun itinéraire ne se calcule).
+  // Type de zone dur ou à coût : les tables uniques du pathfinder (pathfinder.js > TYPES_ZONES_DURS,
+  // TYPES_ZONES_COUT) ; un tel type n'est jamais un évitement souple, il est déjà un obstacle ou évité d'office
+  // (sans pathfinder, aucun itinéraire ne se calcule).
   function _zoneDure(type) {
     const PF = window.Pathfinder;
     return !!(PF && typeof PF.estZoneDure === "function" && PF.estZoneDure(type));
+  }
+  function _horsEvitables(type) {
+    const PF = window.Pathfinder;
+    return _zoneDure(type) || !!(PF && typeof PF.estZoneCout === "function" && PF.estZoneCout(type));
+  }
+  // Coût d'un trajet en mètres (distance + zones à coût traversées), pour CHOISIR entre portails ; la distance
+  // affichée reste `distM`. Sans zone à coût, coût = distance.
+  function _coutM(r, scale, distM) {
+    const s = scale > 0 ? scale : 1;
+    return (Number.isFinite(r.cout) ? r.cout - r.totalDistance : 0) / s + distM;
   }
   function _err(code, msg) {
     const e = new Error(msg);
@@ -174,7 +185,7 @@
       } catch(e) { /* tags non résolus → points/zones seulement */ }
     }
     const avoidZones = (routing.zones || []).filter(function(z) {
-      return z && !_zoneDure(z.type) && prefs.zones.indexOf(z.type) >= 0;
+      return z && !_horsEvitables(z.type) && prefs.zones.indexOf(z.type) >= 0;
     });
     return {
       planId: planId, isCurrent: false,
@@ -216,9 +227,11 @@
         profondeurs: ctx.profondeurs
       });
     }
+    const distM = r.totalDistance / ctx.scale + _raccordsM(r, ctx.scale);
     return {
-      path: r.path, distM: r.totalDistance / ctx.scale + _raccordsM(r, ctx.scale), usedFallback: !!r.usedFallback,
-      raccords: r.raccords || [], carrefours: r.carrefours || []
+      path: r.path, distM: distM, coutM: _coutM(r, ctx.scale, distM), usedFallback: !!r.usedFallback,
+      raccords: r.raccords || [], carrefours: r.carrefours || [],
+      zonesTexte: window.Pathfinder.texteZonesTraversees(r.zonesTraversees, ctx.scale)
     };
   }
 
@@ -322,7 +335,7 @@
           legCache[key] = leg;
         }
         if (!leg) continue;
-        const nd = du + leg.distM;
+        const nd = du + leg.coutM;   // coût : une zone Comblé ou effondrée n'est prise que faute d'autre chemin
         if (dist[v] === undefined || nd < dist[v]) {
           dist[v] = nd;
           prev[v] = { from: u, type: "leg", leg: leg };
@@ -355,7 +368,7 @@
             : ((nFrom.side && nFrom.side.pointNom) || "");
           curLeg = {
             planId: nTo.planId, planName: ctxs[nTo.planId].planName,
-            path: [], distM: 0, usedFallback: false, raccords: [], carrefours: [],
+            path: [], distM: 0, usedFallback: false, raccords: [], carrefours: [], zonesTexte: [],
             fromWp: { x: nFrom.x, y: nFrom.y, source: (ids[i - 1] === "@start") ? "tracker" : "portal", label: fromLabel }
           };
           if (ids[i - 1] === "@start" && Number.isInteger(nFrom.level)) curLeg.fromWp.level = nFrom.level;
@@ -373,6 +386,7 @@
         curLeg.path = curLeg.path.concat(pr.leg.path);
         curLeg.distM += pr.leg.distM;
         curLeg.usedFallback = curLeg.usedFallback || pr.leg.usedFallback;
+        if (pr.leg.zonesTexte) curLeg.zonesTexte.push(pr.leg.zonesTexte);
         curLeg.toNode = nTo;
         curLeg.toId = ids[i];
       } else {
@@ -495,7 +509,7 @@
       } catch(e) { /* tags B non résolus → on continue avec points/zones */ }
     }
     const avoidZonesB = (routingB.zones || []).filter(function(z) {
-      return z && !_zoneDure(z.type) && prefsB.zones.indexOf(z.type) >= 0;
+      return z && !_horsEvitables(z.type) && prefsB.zones.indexOf(z.type) >= 0;
     });
 
     const scaleA = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
@@ -537,12 +551,17 @@
       const distAM = legA.totalDistance / scaleA + _raccordsM(legA, scaleA);
       const distBM = legB.totalDistance / scaleB + _raccordsM(legB, scaleB);
       const totalM = distAM + distBM;
-      if (!best || totalM < best.totalM) {
+      // Choix au coût (zones Comblé ou effondrées évitées si un autre portail le permet), affichage en distance.
+      const coutM = _coutM(legA, scaleA, distAM) + _coutM(legB, scaleB, distBM);
+      if (!best || coutM < best.coutM) {
         best = {
           portal: c, legA: legA, legB: legB,
           distAM: distAM,
           distBM: distBM,
           totalM: totalM,
+          coutM: coutM,
+          zonesA: window.Pathfinder.texteZonesTraversees(legA.zonesTraversees, scaleA),
+          zonesB: window.Pathfinder.texteZonesTraversees(legB.zonesTraversees, scaleB),
           nomPortail: nomPortail
         };
       }
@@ -616,6 +635,7 @@
         {
           planId: planA, planName: nomA,
           path: res.legA.path, distM: res.distAM, usedFallback: !!res.legA.usedFallback,
+          zonesTexte: res.zonesA ? [res.zonesA] : [],
           raccords: res.legA.raccords || [], carrefours: res.legA.carrefours || [],
           waypoints: [{ x: 0, y: 0, source: "tracker", label: "" }]
             .concat(_viaWps(via))
@@ -633,6 +653,7 @@
         {
           planId: res.planB.id, planName: res.planB.name || res.planB.id,
           path: res.legB.path, distM: res.distBM, usedFallback: !!res.legB.usedFallback,
+          zonesTexte: res.zonesB ? [res.zonesB] : [],
           raccords: res.legB.raccords || [], carrefours: res.legB.carrefours || [],
           waypoints: [
             { x: res.portal.entreeB.x, y: res.portal.entreeB.y, source: "portal", label: res.portal.entreeB.pointNom || "" },
@@ -698,8 +719,12 @@
     function _cercle() { return CERCLES[num++] || "•"; }
     let stepsHtml = "";
     let anyFallback = false;
+    const zonesTextes = [];   // une ligne par plan qui passe par une zone Comblé ou effondrée
     chain.legs.forEach(function(leg, i) {
       anyFallback = anyFallback || leg.usedFallback;
+      (leg.zonesTexte || []).forEach(function(z) {
+        zonesTextes.push(chain.legs.length > 1 ? leg.planName + " : " + z : z);
+      });
       if (leg.portalOut) {
         stepsHtml += '<div class="kta-ipr-step">' + _cercle() + ' ' +
           _esc(_t("ipr.result.step1", { portail: leg.portalOut.nom, dist: _fmtDist(leg.distM) })) + '</div>';
@@ -723,6 +748,11 @@
           '<div class="kta-ipr-total">' + _esc(_t("ipr.result.total", { dist: _fmtDist(chain.totalM) })) + '</div>' +
           (anyFallback
             ? '<div style="font-size:12px; color:var(--kta-avert); margin-top:6px;">' + _esc(_t("ipr.result.fallback")) + '</div>' : '') +
+          zonesTextes.map(function(z) {
+            return '<div class="kta-ipr-zones-cout" style="font-size:12px; color:var(--kta-avert); margin-top:6px;">' +
+              window.ktaIcone("triangle-alert") + " " +
+              _esc(z) + '</div>';
+          }).join("") +
           '<div style="font-size:12px; color:var(--kta-texte-3); margin-top:8px;">' + _esc(_t("ipr.result.hint")) + '</div>' +
         '</div>' +
         '<div class="kta-modal-actions">' +
