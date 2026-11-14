@@ -31,6 +31,10 @@
 
 ## Maintenant
 
+- **Essai fond OSM sous le plan** — `6e30b19f` + `7b6fd204` + `19f4e457` : panneau du bouton carte (on/off,
+  transparence retenue par plan, Ma position, Enregistrer hors ligne). Mesuré sur le fictif en émulation seulement.
+  `qui: KARMA · action: iPhone sur dev, vrai plan tuilé : fluidité plan orienté tourné, attribution, hors ligne
+  · fini: conforme, ou bugs ouverts · depuis: 14/11/2026 · taille: XS`
 - **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
   quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
   plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
@@ -51,12 +55,6 @@
   · depuis: 11/11/2026 · taille: M`
 
 ## Ensuite
-
-- **Fond OSM sous le plan (bouton OSM du plan)** — petit panneau : on/off du fond OSM sous le plan, transparence de
-  l'image du plan, « Ma position » ponctuelle ; modale OSM depuis l'accueil seulement ; éteint à l'ouverture. QCM
-  du 13/11/2026, couche canvas dans la carte du plan, exports sans fond. Brief : session chef de projet du 13/11.
-  `qui: Claude · action: lot M dès que les tests KARMA en attente ≤ 3 · fini: checkup (calage < 1 px, rotation, aucune
-  requête hors ligne / incognito), docs et NETWORK_AUDIT · depuis: 13/11/2026 · taille: M`
 
 - **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
   `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
@@ -152,6 +150,9 @@
 
 ## Entrant
 
+- **`myktamap_plan_prefs_<planId>` jamais purgée** — la suppression d'un plan ne l'efface pas
+  (`planRegistry > purgeAssociatedData`), vu au lot du fond OSM (14/11).
+  `qui: Claude · action: l'ajouter à la purge et au transfert, test · depuis: 14/11/2026 · taille: XS`
 - **Deux checkups rouges hérités** — `checkup-ouvertures-enchainees` : erreur Leaflet `_clear` / `_redraw`, reproduite
   à l'identique sur `938dda8e` (14/11) ; `checkup-tuiles-hors-ecran` : attend un plan V2 absent d'une copie séparée.
   `qui: Claude · action: corriger l'erreur Leaflet ou le test ; plan V2 fictif fourni au second · depuis: 14/11/2026
