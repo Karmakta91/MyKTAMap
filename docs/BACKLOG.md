@@ -44,11 +44,10 @@
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Comblé bloque l'itinéraire (remblais, lot 1)** — `remblais` entre dans `Pathfinder.TYPES_ZONES_DURS`, libellés
-  « Comblé » fr / en / es, case « Respecter… », brancard, 3D jusqu'au ciel ; dans le même lot, le message à l'échec
-  (sortie d'urgence comprise) qui nomme les zones Comblé en cause. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lot 1 de ETUDE_REMBLAIS.md · fini: Comblé dur partout, message à l'échec, checkups verts
-  · depuis: 11/11/2026 · taille: M`
+- **Comblé évité, jamais bloquant (remblais, lot 1)** — révision KARMA du 14/11 : libellés « Comblé » fr / en / es ;
+  itinéraire qui l'évite s'il y a un autre chemin, sinon passe et le dit (urgence comprise) ; 3D jusqu'au ciel sauf le
+  long d'un tracé qui le traverse ; Vérifier le plan signale ces tracés. Après la masse au sol. `docs/ETUDE_REMBLAIS.md`.
+  `qui: Claude · action: lot 1 révisé, après les lots 2-4 · fini: checkups verts · depuis: 11/11/2026 · taille: M`
 
 ## Ensuite
 

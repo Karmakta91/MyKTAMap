@@ -14,6 +14,20 @@ sur un même niveau, la hauteur de vide varie du tout au tout, et l'on marche tr
 remblai partiel par une pente douce, marcher dessus sous le ciel, ramper là où il reste peu de vide, et buter
 seulement là où il n'en reste plus.
 
+## Révision de KARMA (14/11/2026) — Comblé ne bloque plus, le tracé l'emporte
+
+Remplace le (a) ci-dessous et les questions 2 et 11 sur ce point. Raison : une zone Comblé mal comprise ou posée à
+tort ne doit jamais casser un itinéraire ; quelqu'un qui a tracé volontairement une galerie à travers, sans zone
+effondrée ni inaccessible, considère que ça passe.
+
+- **Itinéraire** : Comblé n'est **plus une contrainte dure**. Il est **évité quand un autre chemin existe** (coût
+  élevé, jamais infini) ; sans autre chemin, l'itinéraire **passe et le dit** (« passe par une zone Comblé »), sortie
+  d'urgence comprise. Jamais « aucun chemin » à cause d'un Comblé.
+- **Vue 3D** : Comblé monte jusqu'au ciel et arrête le pas, **sauf le long d'un tracé qui le traverse** : là, la galerie
+  reste praticable (le tracé « débloque » l'obstacle), comme une galerie creusée dans le remblai.
+- **Vérifier le plan** signale chaque tracé qui traverse un Comblé (à vérifier, pas une erreur).
+- **Ordre** : la masse au sol (lots 2 → 4) passe avant Comblé.
+
 ## Décision de KARMA (11/11/2026)
 
 Sur un plan, ce qui compte est le **comblement total** : les atlas de l'IGC notent des masses, « mc » (masse au ciel)
