@@ -530,6 +530,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - Avec la largeur du corps, on bute contre les piliers, murs et fronts (personnalisés compris) en Structures, contre les parois en Galerie, contre les deux en Mixte (dans une chambre, seulement les structures).
 - Dans les trois rendus, un **remblais**, un **effondrement** ou une zone **⛔ inaccessible** arrête aussi, dans une galerie comme dans une chambre.
 - Si tu pars de l'intérieur de l'une d'elles, tu es ramené au bord et tu repars.
+- Une **masse au sol** ne t'arrête pas d'office : tu montes dessus par sa pente. La vue se courbe s'il reste moins de 1,8 m sous le plafond, tu passes à plat ventre sous 1 m, et le pas s'arrête là où il reste moins de 0,5 m (demi-tour toujours possible).
 - C'est la 3D seulement : la carte, l'itinéraire, le guidage et le tracker n'en tiennent pas compte (l'itinéraire, lui, évite déjà les zones ⛔).
 
 #### 🧭 Suivi ou 🕹️ Libre
@@ -586,7 +587,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **🏛️ Structures**
 
 - Piliers, murs et fronts de taille dressés à la hauteur de galerie du niveau (⚙️ Réglages › 📉 Niveaux, ou ⛏️ Volume exploité sur un plan à un niveau ; 2 m sinon).
-- Remblais et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles.
+- Remblais et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles, masses au sol à leur part comblée.
 - Tracés et itinéraire au sol.
 - Points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
 
@@ -999,11 +1000,13 @@ Une **masse au sol** est un remblai partiel : il ne remplit qu'une partie de la 
 
 - Dans la bulle de la zone, choisis la **part comblée** : ¼, ½, ¾ ou **Autre** (une valeur comme 0,9), puis **Appliquer la part comblée**. La bulle affiche aussi l'équivalent en mètres, d'après la hauteur du niveau (réglages du plan).
 - Sans valeur, une masse au sol vaut ½.
+- Une part **négative** (−¼, −½, −¾ ou une valeur comme −0,4) abaisse le sol : la bulle dit alors de combien il descend. Sur la carte, ses grains sont clairs, en creux, sans galets. En dessous de −1, la valeur est refusée.
 - Sur la carte, plus la part est haute, plus il y a de grains.
 - À 1 ou plus, la galerie est pleine : la bulle propose de passer la zone en **Remblais**.
 - Le **Tableur** a une colonne **comble**, avec les mêmes choix.
 - La valeur suit la zone dans les exports **KMZ** et **GeoJSON**. À l'**import SIG**, « ms », « masse au sol » et « remblai partiel » donnent une masse au sol ; une colonne de hauteur facultative donne sa part (0,5 ou 50 %). Un polygone dont le type n'est pas reconnu devient une masse au sol, et l'écran de correspondance dit combien.
-- Pour l'instant, la masse au sol ne change ni l'itinéraire ni la vue 3D.
+- En **vue 3D**, on marche dessus : son dessus monte en pente douce depuis ses bords libres (pas le long des parois ni des piliers) jusqu'à la part comblée. Debout s'il reste 1,8 m ou plus sous le plafond, courbé entre 1 et 1,8 m, à plat ventre entre 0,5 et 1 m ; sous 0,5 m, on ne passe plus (demi-tour toujours possible). Le ruban de l'itinéraire, les panneaux et la mini-carte suivent. Un sol abaissé descend de la même pente douce, et tu y descends debout.
+- Pour l'instant, la masse au sol ne change pas l'itinéraire.
 
 ### ⛔ Zone « Inaccessible » — bloque l'itinéraire
 

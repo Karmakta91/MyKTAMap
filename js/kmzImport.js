@@ -323,10 +323,11 @@
             continue;
           }
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
-          // Masse au sol : part comblée (décimale), gardée seulement si elle est un nombre > 0.
+          // Masse au sol : part comblée (décimale signée : négative = sol abaissé), gardée si c'est un nombre non nul
+          // d'au moins −1 (≥ 1 gardé : la fiche propose Comblé).
           if (name === "mkm:comble") {
-            const c = Number((valEl.textContent || "").trim().replace(",", "."));
-            if (Number.isFinite(c) && c > 0) out.comble = c;
+            const c = Number((valEl.textContent || "").trim().replace(",", ".").replace("−", "-"));
+            if (Number.isFinite(c) && c !== 0 && c >= -1) out.comble = c;
             continue;
           }
           // Ancien marqueur de zone jonction (KMZ d'avant le type `pente`) : converti à l'import.

@@ -912,7 +912,7 @@
           contenu = _escapeHtml(pts.map(function(a) { return q(a.x) + ", " + q(a.y); }).join(" → "));
         } else if (col === "comble" && p.type === "masse-sol") {
           // Part comblée : texte du cran (« ½ ») ; absente → la valeur par défaut, dite comme telle.
-          contenu = _escapeHtml(Number.isFinite(v) && v > 0 ? window.ktaTexteComble(v)
+          contenu = _escapeHtml(Number.isFinite(v) && v !== 0 ? window.ktaTexteComble(v)
             : window.I18n.t("tabledit.col.combleDefaut", { part: window.ktaTexteComble(0.5) }));
         } else if (col === "niveaux" && Array.isArray(v)) {
           contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
@@ -1097,12 +1097,12 @@
   }
 
   // Cellule « comble » d'une masse au sol : liste ¼ ½ ¾ / Autre… ; « Autre… » remplace la liste par une saisie libre
-  // (virgule ou point). Une valeur ≤ 0, illisible ou ≥ 1 est refusée (≥ 1 : passer la zone en Comblé par sa colonne
-  // `type`) : la cellule garde son ancienne valeur et le dit.
+  // (virgule ou point, signe moins accepté). Une valeur nulle, illisible, sous −1 ou ≥ 1 est refusée (≥ 1 : passer la
+  // zone en Comblé par sa colonne `type`) : la cellule garde son ancienne valeur et le dit.
   function _editerComble(td, idx) {
     const p = _data[idx];
-    const actuel = Number.isFinite(p.comble) && p.comble > 0 ? p.comble : 0.5;
-    const crans = [0.25, 0.5, 0.75];
+    const actuel = window.ktaCombleZone(p);
+    const crans = [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75];
     const sel = document.createElement("select");
     sel.setAttribute("aria-label", window.I18n.t("masseSol.label"));
     const options = crans.indexOf(actuel) < 0 ? crans.concat([actuel]).sort(function(a, b) { return a - b; }) : crans;
@@ -1125,10 +1125,11 @@
     function ecrire(v) {
       if (fini) return;
       fini = true;
-      if (Number.isFinite(v) && v > 0 && v < 1) {
+      if (window.ktaCombleValide(v)) {
         if (v !== p.comble) { p.comble = v; _toucher(p); _modifie = true; }
       } else if (v !== null && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast(window.I18n.t(v >= 1 ? "tabledit.comble.versComble" : "masseSol.invalide"), "warn");
+        const cle = v >= 1 ? "tabledit.comble.versComble" : v < -1 ? "masseSol.tropBas" : "masseSol.invalide";
+        window.OOMGuard.showToast(window.I18n.t(cle), "warn");
       }
       td.classList.remove("editing");
       _construireCorps();
@@ -1144,7 +1145,7 @@
       td.appendChild(input);
       input.focus();
       input.select();
-      const lire = function() { return Number(String(input.value).trim().replace(",", ".")); };
+      const lire = function() { return Number(String(input.value).trim().replace(",", ".").replace("−", "-")); };
       input.addEventListener("blur", function() { ecrire(lire()); });
       input.addEventListener("keydown", function(e) {
         if (e.key === "Escape") { e.preventDefault(); ecrire(null); }

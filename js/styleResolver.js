@@ -9,7 +9,7 @@
 //   categorie ∈ "traces" | "zones" | "structures" ; types `cust-*` résolus via LegendCustomization.
 //   Sans opts : style de la carte, `inaccessible` hachurée par un CanvasPattern (même canvas que les
 //   autres vecteurs : l'ordre d'empilement zones < structures tient). opts.flat = true → aplat de repli
-//   (export bitmap, KMZ, fond OSM, pastilles). opts.comble (0-1, absent = ½) → densité des grains de `masse-sol`.
+//   (export bitmap, KMZ, fond OSM, pastilles). opts.comble (−1 à 1, absent = ½) → densité des grains de `masse-sol`.
 // · ktaStyleBuiltins(cat) → clés built-in · ktaSwatchColor · ktaTypeSwatchHtml · ktaLabelAvecPastille
 // · ktaCombleZone(zone) → part comblée d'une masse au sol (absent = ½) · KTA_ORDRE_ZONES (empilement des zones)
 // · Couleur liée : zones.pente (zone jonction) prend le trait de traces.jonction (`_couleurDe`).
@@ -50,10 +50,13 @@
       // Masse au sol (remblai partiel) : sable translucide, grains sombres et galets clairs dont le NOMBRE suit la
       // part comblée (`opts.comble` = zone.comble) — `_motif.genre` "grains" (_motifCanvas) ; contour tireté court
       // (jamais les tirets 10 6 de la jonction). Aplat de repli : le sable à 50 %. Décision produit (maquette B).
+      // Part négative (sol abaissé) : même sable et même contour, sans galets, grains CLAIRS en creux (`creux`, ombre
+      // `grain` décalée) dont le nombre suit |comble|.
       "masse-sol": {
         color: "#6b5532", fillColor: "#c9b48c", fillOpacity: 1, weight: 3, opacity: 1, dashArray: "4 3",
         _flatFill: "#c9b48c", _flatFillOpacity: 0.5,
-        _motif: { genre: "grains", fondOpacite: 0.5, grain: "#45361f", galet: "#efe6d0", tuile: 48, cases: [11, 10],
+        _motif: { genre: "grains", fondOpacite: 0.5, grain: "#45361f", galet: "#efe6d0", creux: "#f7f1e3", tuile: 48,
+          cases: [11, 10],
           rGrain: 1.4, rGalet: 2.6, partGalets: 0.3, plafond: 0.85 }
       },
       // Zone jonction (salle dont le sol monte d'un niveau à l'autre). ⚠️ contrat (décision produit) : sa couleur
@@ -144,10 +147,11 @@
   // null (pas de canvas : Node, contexte refusé) → l'appelant retombe sur l'aplat.
   const _motifs = {};
   // Part comblée → part des grains peints, bornée à m.plafond (un cran haut garde une étiquette lisible), arrondie au
-  // vingtième : au plus 18 motifs par type. Absente ou illisible : ½ (data-formats.md, champ `comble`).
+  // vingtième, SIGNÉE (négative = grains en creux) : au plus 36 motifs par type. Absente, nulle ou illisible : ½
+  // (data-formats.md, champ `comble`).
   function _partGrains(m, comble) {
-    const c = Number.isFinite(comble) ? Math.max(0, Math.min(1, comble)) : 0.5;
-    return Math.round(Math.min(c, m.plafond) * 20) / 20;
+    const c = Number.isFinite(comble) && comble !== 0 ? Math.max(-1, Math.min(1, comble)) : 0.5;
+    return Math.sign(c) * Math.round(Math.min(Math.abs(c), m.plafond) * 20) / 20;
   }
   // Tuile de grains (genre "grains") : grille tremblée de cases[0] × cases[1] grains tirés dans un ORDRE FIXE (graine
   // constante) : un cran plus haut garde les grains du cran d'en dessous, sans amas ni répétition visible.
@@ -166,13 +170,24 @@
     g.fillStyle = fond;
     g.fillRect(0, 0, T, T);
     g.globalAlpha = 1;
-    const n = Math.round(part * grains.length);
+    const n = Math.round(Math.abs(part) * grains.length), creux = part < 0;
     for (let i = 0; i < n; i++) {
       const p = grains[i];
       // Copies aux bords : la tuile se raccorde sans couture.
       for (let dx = -T; dx <= T; dx += T) for (let dy = -T; dy <= T; dy += T) {
         g.beginPath();
-        if (p.galet) {
+        if (creux) {
+          // En creux : ombre sombre en haut à gauche, grain clair par-dessus (un petit trou dans le sable).
+          g.globalAlpha = 0.55;
+          g.fillStyle = m.grain;
+          g.arc(p.x + dx - 0.6, p.y + dy - 0.6, m.rGrain * 1.2, 0, 2 * Math.PI);
+          g.fill();
+          g.globalAlpha = 1;
+          g.beginPath();
+          g.fillStyle = m.creux;
+          g.arc(p.x + dx + 0.3, p.y + dy + 0.3, m.rGrain * 1.2, 0, 2 * Math.PI);
+          g.fill();
+        } else if (p.galet) {
           g.fillStyle = m.galet; g.strokeStyle = m.grain; g.lineWidth = 1.1;
           g.ellipse(p.x + dx, p.y + dy, m.rGalet, m.rGalet * 0.75, p.a, 0, 2 * Math.PI);
           g.fill(); g.stroke();
@@ -422,15 +437,21 @@
 
   window.ktaResolveStyle    = ktaResolveStyle;
   window.ktaStyleBuiltins   = ktaStyleBuiltins;
-  // Part comblée d'une masse au sol (0-1) : `comble` s'il est un nombre > 0, sinon ½ (zone dessinée ou importée sans
-  // valeur). Une valeur ≥ 1 reste telle quelle : la fiche propose alors de passer en Comblé.
+  // Part comblée d'une masse au sol : `comble` s'il est un nombre non nul, sinon ½ (zone dessinée ou importée sans
+  // valeur). Négative = sol abaissé de cette part de la hauteur du niveau, bornée à −1. Une valeur ≥ 1 reste telle
+  // quelle : la fiche propose alors de passer en Comblé.
   window.ktaCombleZone = function (zone) {
     const c = zone ? Number(zone.comble) : NaN;
-    return Number.isFinite(c) && c > 0 ? c : 0.5;
+    if (!Number.isFinite(c) || c === 0) return 0.5;
+    return c < -1 ? -1 : c;
   };
-  // Part comblée en texte : « ¼ », « ½ », « ¾ » pour les crans, sinon la valeur (0,9 en décimale locale).
+  // ⚠️ contrat : valeur de `comble` acceptée à la saisie et à l'import (fiche, Tableur, KMZ, SIG) : [−1 ; 1[ sauf 0
+  // (≥ 1 = un Comblé, < −1 = plus d'une hauteur de niveau sous le sol).
+  window.ktaCombleValide = function (v) { return Number.isFinite(v) && v !== 0 && v >= -1 && v < 1; };
+  // Part comblée en texte : « ¼ », « ½ », « ¾ » (« −¼ »… pour un sol abaissé) pour les crans, sinon la valeur (0,9
+  // en décimale locale).
   window.ktaTexteComble = function (v) {
-    const crans = { 0.25: "¼", 0.5: "½", 0.75: "¾" };
+    const crans = { 0.25: "¼", 0.5: "½", 0.75: "¾", "-0.25": "−¼", "-0.5": "−½", "-0.75": "−¾" };
     if (Object.prototype.hasOwnProperty.call(crans, v)) return crans[v];
     const loc = typeof window.ktaLocale === "function" ? window.ktaLocale() : "fr-FR";
     return Number(v).toLocaleString(loc, { maximumFractionDigits: 2 });

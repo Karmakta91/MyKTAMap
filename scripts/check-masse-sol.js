@@ -60,16 +60,23 @@ function charger(win, fichiers) {
     charger(w, ["js/styleResolver.js"]);
     t("type built-in : ktaStyleBuiltins(zones) contient masse-sol", w.ktaStyleBuiltins("zones").indexOf("masse-sol") >= 0);
     const C = w.ktaCombleZone;
-    t("part comblée : absente = ½, nombre gardé, illisible ou ≤ 0 = ½, ≥ 1 gardé (la fiche propose Comblé)",
+    t("part comblée : absente, nulle ou illisible = ½, nombre gardé, ≥ 1 gardé (la fiche propose Comblé)",
       C({}) === 0.5 && C({ comble: 0.75 }) === 0.75 && C({ comble: "x" }) === 0.5 && C({ comble: 0 }) === 0.5 &&
-      C({ comble: -1 }) === 0.5 && C({ comble: 1.2 }) === 1.2 && C(null) === 0.5);
+      C({ comble: 1.2 }) === 1.2 && C(null) === 0.5);
+    t("sol abaissé : part négative gardée (−½), bornée à −1 (−2 → −1)",
+      C({ comble: -0.5 }) === -0.5 && C({ comble: -1 }) === -1 && C({ comble: -2 }) === -1);
+    const V = w.ktaCombleValide;
+    t("saisie et import : [−1 ; 1[ sauf 0 (ktaCombleValide)", V(-1) && V(-0.25) && V(0.9) && !V(0) && !V(1) &&
+      !V(-1.01) && !V(NaN) && !V("0,5"));
     const T = w.ktaTexteComble;
     t("texte : crans ¼ ½ ¾, valeur libre en décimale locale (0,9)",
-      T(0.25) === "¼" && T(0.5) === "½" && T(0.75) === "¾" && T(0.9) === "0,9");
+      T(0.25) === "¼" && T(0.5) === "½" && T(0.75) === "¾" && T(0.9) === "0,9" && T(-0.25) === "−¼" &&
+      T(-0.5) === "−½" && T(-0.75) === "−¾" && T(-0.9) === "-0,9");
     w.getNiveauVertical = (n) => ({ hauteurM: n === -1 ? 10 : 2 });
     const M = w.ktaMetresComble;
     t("mètres : d'après la hauteur du niveau de la zone (½ de 10 m = 5 m ; ¾ de 2 m = 1,5 m)",
-      M({ level: -1 }, 0.5).m === 5 && M({ level: -1 }, 0.5).h === 10 && M({}, 0.75).m === 1.5);
+      M({ level: -1 }, 0.5).m === 5 && M({ level: -1 }, 0.5).h === 10 && M({}, 0.75).m === 1.5 &&
+      M({}, -0.5).m === -1);
     const O = w.KTA_ORDRE_ZONES;
     t("empilement : eau < masse au sol < remblais (Comblé) < effondrement < inaccessible",
       O.eau < O["masse-sol"] && O["masse-sol"] < O.remblais && O.remblais < O.effondrement &&
@@ -116,22 +123,30 @@ function charger(win, fichiers) {
       C.changerComble(zones[0], 0.75) === true && zones[0].comble === 0.75 && zones[0].updatedAt === 1 &&
       notes.length === 1);
     t("fiche : même valeur = rien à annuler (pas d'entrée)", C.changerComble(zones[0], 0.75) === false && notes.length === 1);
-    t("fiche : ≥ 1 refusé ici (la fiche propose d'abord Comblé), ≤ 0 et texte refusés",
+    t("fiche : ≥ 1 refusé ici (la fiche propose d'abord Comblé), 0, sous −1 et texte refusés",
       C.changerComble(zones[0], 1) === false && C.changerComble(zones[0], 0) === false &&
-      C.changerComble(zones[0], "x") === false && zones[0].comble === 0.75);
+      C.changerComble(zones[0], -1.5) === false && C.changerComble(zones[0], "x") === false &&
+      zones[0].comble === 0.75);
+    t("fiche : sol abaissé −½ appliqué (une entrée), puis ¾ remis",
+      C.changerComble(zones[0], -0.5) === true && zones[0].comble === -0.5 && notes.length === 2 &&
+      C.changerComble(zones[0], 0.75) === true && zones[0].comble === 0.75);
     t("fiche : refusé sur une zone qui n'est pas une masse au sol", C.changerComble(zones[1], 0.5) === false);
     t("changement de type : passer en Comblé (remblais) retire la part comblée",
       C.convertir("zones", zones[0], "zones", "remblais") === true &&
       zones.some(z => z.uid === "zn_m" && z.type === "remblais" && !("comble" in z)));
-    // Tableur : seule une part lisible strictement entre 0 et 1 passe ; la première ligne fautive arrête tout.
+    // Tableur : seule une part lisible dans [−1 ; 1[ sauf 0 passe ; la première ligne fautive arrête tout.
     zones = [{ uid: "zn_t", type: "masse-sol", level: 0, points: carre(1, 1, 1) }];
     const orig = JSON.parse(J(zones));
     const ligne = (c) => [Object.assign({}, orig[0], { comble: c })];
     const appliquer = (l) => C.appliquerTableau("zones", l, { origines: new Map([[l[0], orig[0]]]) });
     const r1 = appliquer(ligne(1.5));
     t("Tableur : 1,5 refusé (code comble), rien d'écrit", r1 && r1.erreur && r1.erreur.code === "comble" && !("comble" in zones[0]));
-    const r0 = appliquer(ligne(-0.2));
-    t("Tableur : −0,2 refusé (code comble)", r0 && r0.erreur && r0.erreur.code === "comble");
+    const rb = appliquer(ligne(-1.5));
+    t("Tableur : −1,5 refusé (code comble)", rb && rb.erreur && rb.erreur.code === "comble");
+    const r0 = appliquer(ligne(0));
+    t("Tableur : 0 refusé (code comble)", r0 && r0.erreur && r0.erreur.code === "comble");
+    const rn = appliquer(ligne(-0.25));
+    t("Tableur : −0,25 (sol abaissé) accepté", rn && !rn.erreur && zones[0].comble === -0.25, rn);
   }
 
   // ── 4. KMZ et GeoJSON ──
@@ -147,7 +162,8 @@ function charger(win, fichiers) {
     w.APP_CONFIG.imageHeight = 3000;
     const data = { editorPoints: [], roads: [], structures: [], zones: [
       { type: "masse-sol", comble: 0.75, points: carre(1000, 1000, 50), description: "MasseTroisQuarts" },
-      { type: "masse-sol", points: carre(1500, 1000, 50), description: "MasseSansValeur" }
+      { type: "masse-sol", points: carre(1500, 1000, 50), description: "MasseSansValeur" },
+      { type: "masse-sol", comble: -0.5, points: carre(2000, 1000, 50), description: "MasseCreuse" }
     ] };
     const inc = { points: false, roads: false, zones: true, structures: false, jonctions: false, itineraire: false };
     const kml = KE.genererKml({ transform: tr, planName: "Test", include: inc, levels: null, data: data });
@@ -157,14 +173,17 @@ function charger(win, fichiers) {
     const pmDe = (txt) => pm.find(p => p.indexOf(txt) >= 0) || "";
     t("KMZ : mkm:comble 0.75 sur la zone ¾, absent sur la zone sans valeur (relue à ½)",
       pmDe("MasseTroisQuarts").indexOf('mkm:comble"><value>0.75<') >= 0 && pmDe("MasseSansValeur").indexOf("mkm:comble") < 0);
+    t("KMZ : sol abaissé écrit signé (mkm:comble -0.5)", pmDe("MasseCreuse").indexOf('mkm:comble"><value>-0.5<') >= 0);
     const ki = lire("js/kmzImport.js");
     t("KMZ relu : #zone_masse-sol reconnu, mkm:comble reposé sur la zone (masse au sol seulement)",
       /#zone_\(eau\|masse-sol\|remblais/.test(ki) && /name === "mkm:comble"/.test(ki) &&
-      /zoneType === "masse-sol" && _mkmData\.comble !== null\) _zn\.comble = _mkmData\.comble/.test(ki));
+      /zoneType === "masse-sol" && _mkmData\.comble !== null\) _zn\.comble = _mkmData\.comble/.test(ki) &&
+      /Number\.isFinite\(c\) && c !== 0 && c >= -1\) out\.comble = c/.test(ki));
     const fc = GJ.generer({ transform: tr, epsg: 4326, planName: "Test", include: inc, levels: null, data: data });
     const f = fc.features.filter(x => x.properties.type === "masse-sol");
-    t("GeoJSON : propriété comble (¾, et ½ pour la zone sans valeur)",
-      f.length === 2 && f.some(x => x.properties.comble === 0.75) && f.some(x => x.properties.comble === 0.5));
+    t("GeoJSON : propriété comble (¾, ½ pour la zone sans valeur, −½ signée)",
+      f.length === 3 && f.some(x => x.properties.comble === 0.75) && f.some(x => x.properties.comble === 0.5) &&
+      f.some(x => x.properties.comble === -0.5));
   }
 
   // ── 5. Import SIG (sigImport.js) ──
@@ -185,7 +204,10 @@ function charger(win, fichiers) {
       c("0,5") === 0.5 && c(0.75) === 0.75 && c("50 %") === 0.5 && c(90) === 0.9);
     t("colonne de hauteur : vide, texte, 0, ≥ 1 (100 %) → rien (½ par défaut)",
       c("") === null && c("abc") === null && c(0) === null && c("100%") === null && c(1) === null &&
+      c("-150 %") === null &&
       S.combleDe({}, "h") === null && S.combleDe({ h: 0.5 }, null) === null);
+    t("colonne de hauteur : sol abaissé « -0,5 », « -50 % », « −0,25 », -1 (aller-retour GeoJSON → SIG)",
+      c("-0,5") === -0.5 && c("-50 %") === -0.5 && c("−0,25") === -0.25 && c(-1) === -1 && c(-0.5) === -0.5);
     const poly = (type, h) => ({ props: { type: type, h: h, niv: "-1" },
       coords: [{ lat: 1, lng: 1 }, { lat: 1, lng: 2 }, { lat: 2, lng: 2 }, { lat: 2, lng: 1 }] });
     const normalise = { points: [], lignes: [], polygones: [poly("ms", "0,25"), poly("truc", "0,5"), poly("", "x"),

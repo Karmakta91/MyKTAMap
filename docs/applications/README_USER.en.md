@@ -530,6 +530,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - With the width of a body, you bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures).
 - In all three renderings, **backfill**, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber.
 - If you start inside one of them, you are brought back to its edge and can move on.
+- A **partial fill** does not stop you by itself: you climb onto it up its slope. The view stoops when less than 1.8 m is left under the ceiling, you crawl under 1 m, and you stop where less than 0.5 m is left (you can always turn back).
 - This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
 
 #### 🧭 Follow or 🕹️ Free
@@ -586,7 +587,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **🏛️ Structures**
 
 - Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels, or ⛏️ Mined volume on a single-level map; otherwise 2 m).
-- Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones.
+- Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones, partial fills at their fill level.
 - Traces and route on the floor.
 - Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
 
@@ -999,11 +1000,13 @@ A **partial fill** is rubble that only fills part of the gallery height, and you
 
 - In the zone's bubble, choose the **fill level**: ¼, ½, ¾ or **Other** (a value such as 0.9), then **Apply fill level**. The bubble also shows the equivalent in metres, from the level height (plan settings).
 - Without a value, a partial fill counts as ½.
+- A **negative** level (−¼, −½, −¾ or a value such as −0.4) lowers the floor: the bubble then says how far it drops. On the map, its grains are light, sunken, without pebbles. Below −1, the value is refused.
 - On the map, the higher the level, the more grains.
 - At 1 or more, the gallery is full: the bubble offers to turn the zone into **Backfill**.
 - The **Spreadsheet** has a **comble** column, with the same choices.
 - The value follows the zone in **KMZ** and **GeoJSON** exports. On **GIS import**, “ms”, “masse au sol” and “remblai partiel” give a partial fill; an optional height column gives its level (0.5 or 50 %). A polygon whose type is not recognised becomes a partial fill, and the matching screen says how many.
-- For now, a partial fill changes neither the route nor the 3D view.
+- In the **3D view**, you walk on it: its top rises in a gentle slope from its free edges (not along walls or pillars) up to the fill level. Standing with 1.8 m or more left under the ceiling, stooping between 1 and 1.8 m, crawling between 0.5 and 1 m; under 0.5 m you can no longer pass (you can always turn back). The route ribbon, the signs and the mini-map follow. A lowered floor goes down the same gentle slope, and you walk down into it standing.
+- For now, a partial fill does not change the route.
 
 ### ⛔ "Inaccessible" zone — blocks the route
 

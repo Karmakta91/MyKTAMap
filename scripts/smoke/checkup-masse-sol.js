@@ -12,7 +12,9 @@
 // C. Fiche : bloc « Part comblée » (¼ ½ ¾ Autre, ½ coché, mètres) ; ¾ appliqué (⏪ l'annule) ; « Autre » 1,2 →
 //    confirmation chartée → la zone devient un Remblais, sans `comble`.
 // D. Tableur : colonne `comble` (« ½ (défaut) » pour la zone sans valeur, lecture seule sur l'eau).
-// E. KMZ relu par l'import de l'app (DOMParser) : type masse-sol et comble 0,75 gardés.
+// E. KMZ relu par l'import de l'app (DOMParser) : type masse-sol et comble 0,75 gardés, −½ (sol abaissé) aussi.
+// Sol abaissé (part négative, deuxième rangée −¼ −½ −¾) : motif à grains clairs en creux, distinct de chaque cran
+// positif, densité qui suit |comble| ; fiche : crans −¾ −½ −¼, −½ appliqué, mètres « plus bas ».
 // KTA_CAPTURES=<dossier hors dépôt> : captures de la carte (proche, dézoomée), de la légende, de la fiche, du Tableur.
 // Usage : node scripts/smoke/checkup-masse-sol.js (SMOKE_PORT pour une autre copie de travail)
 // Garde-fou logique associé : scripts/check-masse-sol.js · doc : docs/architecture/data-formats.md (Masse au sol)
@@ -91,9 +93,9 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     const json = await page.evaluate(function () {
       const c = window.map.getCenter(), H = window.APP_CONFIG.imageHeight;
       const x0 = Math.round(c.lng) - 150, y0 = Math.round(H - c.lat) - 20;
-      const r = function (i) {
-        const x = x0 + i * 50;
-        return [{ x: x, y: y0 }, { x: x + 40, y: y0 }, { x: x + 40, y: y0 + 30 }, { x: x, y: y0 + 30 }];
+      const r = function (i, dy) {
+        const x = x0 + i * 50, y = y0 + (dy || 0);
+        return [{ x: x, y: y }, { x: x + 40, y: y }, { x: x + 40, y: y + 30 }, { x: x, y: y + 30 }];
       };
       window.HistoryManager.reset();
       window.setRoads([]); window.setStructures([]); window.setEditorPoints([]);
@@ -103,9 +105,12 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         { uid: "zn_m75", type: "masse-sol", comble: 0.75, points: r(2) },
         { uid: "zn_m00", type: "masse-sol", points: r(3) },
         { uid: "zn_rem", type: "remblais", points: r(4) },
-        { uid: "zn_eau", type: "eau", points: r(5) }
+        { uid: "zn_eau", type: "eau", points: r(5) },
+        { uid: "zn_n25", type: "masse-sol", comble: -0.25, points: r(0, 40) },
+        { uid: "zn_n50", type: "masse-sol", comble: -0.5, points: r(1, 40) },
+        { uid: "zn_n75", type: "masse-sol", comble: -0.75, points: r(2, 40) }
       ]);
-      window.map.fitBounds([[H - y0 - 40, x0 - 10], [H - y0 + 10, x0 + 300]], { animate: false });
+      window.map.fitBounds([[H - y0 - 80, x0 - 10], [H - y0 + 10, x0 + 300]], { animate: false });
       return JSON.stringify({ type: "devmap-session", version: "1.0", editorPoints: [], roads: [],
         zones: window.getZones(), structures: [] });
     });
@@ -124,12 +129,22 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         distincts: par.zn_m25 && par.zn_m50 && par.zn_m75 && par.zn_m25.fillColor !== par.zn_m50.fillColor &&
           par.zn_m50.fillColor !== par.zn_m75.fillColor,
         defautEgalDemi: par.zn_m00 && par.zn_m50 && par.zn_m00.fillColor === par.zn_m50.fillColor,
-        tirets: par.zn_m50 && par.zn_m50.dashArray, rembAplat: par.zn_rem && typeof par.zn_rem.fillColor === "string" };
+        tirets: par.zn_m50 && par.zn_m50.dashArray, rembAplat: par.zn_rem && typeof par.zn_rem.fillColor === "string",
+        creux: ["zn_n25", "zn_n50", "zn_n75"].map(motif),
+        creuxDistincts: ["zn_n25", "zn_n50", "zn_n75"].every(function (n) {
+          return par[n] && ["zn_m25", "zn_m50", "zn_m75", "zn_n25", "zn_n50", "zn_n75"].every(function (m) {
+            return m === n || (par[m] && par[m].fillColor !== par[n].fillColor);
+          });
+        }),
+        creuxTirets: par.zn_n50 && par.zn_n50.dashArray };
     });
     verifier(a.motifs.every(Boolean), "carte : chaque masse au sol peinte par un CanvasPattern", a.motifs);
     verifier(a.distincts, "carte : ¼, ½ et ¾ ont chacun leur motif (densité des grains)");
     verifier(a.defautEgalDemi, "carte : une masse au sol sans valeur a le motif du cran ½");
     verifier(a.tirets === "4 3" && a.rembAplat, "carte : contour en tirets courts « 4 3 », le Remblais reste un aplat", a);
+    verifier(a.creux.every(Boolean) && a.creuxDistincts && a.creuxTirets === "4 3",
+      "carte : sol abaissé −¼ −½ −¾ peint par son propre motif (grains en creux), distinct de chaque cran, " +
+      "mêmes tirets", a);
     await capture(page, "1-carte-crans-proche");
     await page.evaluate(function () { window.map.setZoom(window.map.getZoom() - 2, { animate: false }); });
     await page.waitForTimeout(600);
@@ -172,8 +187,9 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
       return { crans: r.map(function (x) { return x.value; }), coche: (r.find(function (x) { return x.checked; }) || {}).value,
         metres: (bloc.querySelector(".kta-note-popup-comble-metres") || {}).textContent || "" };
     });
-    verifier(!!c0 && JSON.stringify(c0.crans) === JSON.stringify(["0.25", "0.5", "0.75", "autre"]) && c0.coche === "0.5" &&
-      /≈/.test(c0.metres), "fiche : crans ¼ ½ ¾ Autre, ½ coché par défaut, mètres affichés", c0);
+    const crans = ["-0.75", "-0.5", "-0.25", "0.25", "0.5", "0.75", "autre"];
+    verifier(!!c0 && JSON.stringify(c0.crans) === JSON.stringify(crans) && c0.coche === "0.5" && /≈/.test(c0.metres),
+      "fiche : crans −¾ −½ −¼ ¼ ½ ¾ Autre, ½ coché par défaut, mètres affichés", c0);
     await capture(page, "4-fiche-part-comblee");
     await page.evaluate(function () {
       document.querySelector('.leaflet-popup-content .kta-note-popup-comble input[value="0.75"]').click();
@@ -184,6 +200,39 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
       "fiche : ¾ appliqué");
     await page.evaluate(function () { window.HistoryManager.undo(); });
     await page.waitForTimeout(300);
+    // Sol abaissé : −½ coché, mètres « plus bas » en direct, appliqué ; ⏪ le retire.
+    await ouvrirFiche(page, "zn_m00");
+    await page.waitForTimeout(400);
+    const cn = await page.evaluate(function () {
+      const bloc = document.querySelector(".leaflet-popup-content .kta-note-popup-comble");
+      const r = bloc.querySelector('input[value="-0.5"]');
+      r.click();
+      r.dispatchEvent(new Event("change", { bubbles: true }));
+      const m = (bloc.querySelector(".kta-note-popup-comble-metres") || {}).textContent || "";
+      bloc.querySelector(".kta-note-popup-comble-appliquer").click();
+      return { metres: m, libelle: r.parentNode.textContent.trim() };
+    });
+    await capture(page, "4b-fiche-sol-abaisse");
+    await page.waitForTimeout(400);
+    verifier(JSON.stringify(await zoneDe(page, "zn_m00")) === JSON.stringify({ type: "masse-sol", comble: -0.5 }) &&
+      /plus bas/.test(cn.metres) && cn.libelle === "−½", "fiche : −½ appliqué, « sol … plus bas » affiché", cn);
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(300);
+    // Sous −1 : refusé dans la fiche, qui le dit.
+    await ouvrirFiche(page, "zn_m00");
+    await page.waitForTimeout(400);
+    const tb1 = await page.evaluate(function () {
+      const i = document.querySelector(".leaflet-popup-content .kta-note-popup-comble-autre");
+      i.value = "-1,5";
+      i.dispatchEvent(new Event("input", { bubbles: true }));
+      document.querySelector(".leaflet-popup-content .kta-note-popup-comble-appliquer").click();
+      const st = document.querySelector(".leaflet-popup-content .kta-note-popup-status");
+      return st ? st.textContent : "";
+    });
+    const z00 = JSON.stringify(await zoneDe(page, "zn_m00"));
+    verifier(/−1/.test(tb1) && z00 === JSON.stringify({ type: "masse-sol", comble: null }),
+      "fiche : −1,5 refusé (message), la zone ne change pas", tb1);
+    await page.evaluate(function () { if (window.map.closePopup) window.map.closePopup(); });
     verifier(JSON.stringify(await zoneDe(page, "zn_m00")) === JSON.stringify({ type: "masse-sol", comble: null }),
       "⏪ : la part comblée revient à son absence (½)");
     await ouvrirFiche(page, "zn_m75");
@@ -245,16 +294,19 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         pointC: { x: W, y: H, lat: 46.5, lng: 3.02 }
       });
       const kml = window.KmzExport.genererKml({ transform: tr, planName: "Test", include: { zones: true }, levels: null,
-        data: { editorPoints: [], roads: [], zones: window.getZones().filter(function (z) { return z.uid === "zn_m75" || z.uid === "zn_m00"; }),
+        data: { editorPoints: [], roads: [], zones: window.getZones().filter(function (z) {
+          return z.uid === "zn_m75" || z.uid === "zn_m00" || z.uid === "zn_n50";
+        }),
           structures: [] } });
       const doc = new DOMParser().parseFromString(kml, "application/xml");
       const trImp = window.KmzImport.buildTransform({ nw: { lat: 46.51, lng: 3.0 }, ne: { lat: 46.51, lng: 3.02 } }, W, H);
       const lu = window.KmzImport.ingestPlacemarks(doc, trImp, { pointTag: "info", roadType: "chemin", zoneType: "eau" });
       return lu.zones.map(function (z) { return { type: z.type, comble: z.comble === undefined ? null : z.comble }; });
     });
-    verifier(k.length === 2 && k.every(function (z) { return z.type === "masse-sol"; }) &&
-      k.some(function (z) { return z.comble === 0.75; }) && k.some(function (z) { return z.comble === null; }),
-      "KMZ relu : deux masses au sol, ¾ gardé, la zone sans valeur reste sans valeur (½)", k);
+    verifier(k.length === 3 && k.every(function (z) { return z.type === "masse-sol"; }) &&
+      k.some(function (z) { return z.comble === 0.75; }) && k.some(function (z) { return z.comble === null; }) &&
+      k.some(function (z) { return z.comble === -0.5; }),
+      "KMZ relu : trois masses au sol, ¾ et −½ gardés, la zone sans valeur reste sans valeur (½)", k);
 
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 3));
   } catch (e) {

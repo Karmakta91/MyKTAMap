@@ -3057,6 +3057,384 @@ async function sectionPenteLargeur(page) {
 
 // Captures de la galerie inclinée (KTA_V3D_CAPTURES, hors dépôt) : réseau de § 14 octies, sols du lot A, trois
 // rendus ; entrée vue du 0, dedans, passé au −1, bas vue du −1, vue d'édition.
+// ── 24 quinquies. Masse au sol (remblai partiel) : talus, vide restant, règle du pas ─────────────────────────────
+// Tube principal d'ouest en est au niveau 0 (hauteur 2,4 m) et au −1, une jonction 0 → −1 à x = 40. Masses de
+// 12 m de large (z −6 à 6) en travers du tube : ¼ (x −50 à −40), ½ (−30 à −20), ¾ (−10 à 2), 0,9 (15 à 30), ½ sur la
+// jonction (37 à 43) ; au −1, ¾ sous la ¼. Dans les trois rendus : sol = formule (talus 30° depuis les bords ouverts,
+// plafonné à comble × hauteur), œil debout / abaissé / rampant selon le vide, sans saut d'un pas de 0,1 m à l'autre,
+// pas arrêté sous 0,5 m de vide (on en ressort), pas de rigole contre la paroi du tube (bords dans la roche fermés),
+// pilier posé à cheval sur un bord (structures) = bord fermé ; la masse d'un autre niveau ne compte pas ; sur la
+// jonction, la galerie inclinée l'emporte. Triangles par zone ≤ 2 000 (grande masse de 40 × 12 m comprise).
+// Sol abaissé (part négative, −½ et −¾) en galerie et en structures : le sol descend en talus inversé, vide plus grand,
+// on descend debout sans être arrêté ; sans sols réglés, le −¾ est borné par le repli (2 m de roche) ; sols
+// réglés (0 à −25, −1 à −28, 2,4 m chacun) : jamais plus bas que le plafond du −1 + 0,3 m (−0,3 m, m.borne).
+async function sectionMasseSol(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc, PID = "v3d-checkup-masse";
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, smart: C.smartNav,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+    C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setEditorPoints([]);
+    window.setRoads([
+      { uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
+      { uid: "rd_ms_m1", type: "principal", level: -1, points: [P(-60, 12), P(60, 12)] },
+      { uid: "rd_ms_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(40, 0), P(40, 12)] }
+    ]);
+    const MASSES = [
+      { uid: "zn_ms_q", type: "masse-sol", level: 0, comble: 0.25, points: rect(-50, -6, -40, 6) },
+      { uid: "zn_ms_d", type: "masse-sol", level: 0, comble: 0.5, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) },
+      { uid: "zn_ms_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(15, -6, 30, 6) },
+      { uid: "zn_ms_j", type: "masse-sol", level: 0, comble: 0.5, points: rect(37, 2, 43, 10) },
+      { uid: "zn_ms_m1", type: "masse-sol", level: -1, comble: 0.75, points: rect(-50, 6, -40, 18) }
+    ];
+    window.setZones(MASSES.slice());
+    window.setStructures([]);
+    window.effacerReglagesNiveaux(PID);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4, "-1": 2.4 });
+    window.ktaSetActiveLevel(0);
+    const relx = function () { return +(K.etat().pos.x / sc - ox).toFixed(3); };
+    const lire = function () {
+      const e = K.etat();
+      return { x: relx(), z: +(e.pos.y / sc - oz).toFixed(3), cam: e.cameraY, oeil: e.oeil, ramper: e.ramper,
+        sol: e.masses.sol, vide: e.masses.vide, niveau: e.niveau, sur: e.pente ? e.pente.sur : null };
+    };
+    const ici = async function (x, z, cap) {
+      const p = P(x, z);
+      K.placer(p.x, p.y, cap === undefined ? 90 : cap);
+      await pause(30);
+      // Deux images : la caméra est replacée à l'image qui suit (e.sale), plus lente tant que les tuiles se font.
+      await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
+      return lire();
+    };
+    const marcher = async function (x, n, pas) {
+      await ici(x, 0, 90);
+      const rel = [];
+      for (let i = 0; i < n; i++) {
+        const ok = K.avancer(pas || 0.1);
+        await pause(25);
+        const l = lire();
+        l.ok = ok;
+        rel.push(l);
+      }
+      return rel;
+    };
+    const r = { cas: [] };
+    for (const rendu of ["galerie", "mixte", "structures"]) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setStructures(rendu === "structures"
+        ? [{ uid: "st_ms_p", type: "pilier-1", level: 0, points: rect(-6, 5, -4, 7) }] : []);
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-55, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      const e = K.etat(), c = { rendu: e.rendu, hauteur: e.hauteur, masses: e.masses };
+      c.points = {
+        quart: await ici(-45, 0), demi: await ici(-25, 0), troisQuarts: await ici(-4, 0),
+        talus: await ici(-8.5, 0), talusParoi: await ici(-8.5, 1.15), hors: await ici(-35, 0)
+      };
+      if (rendu === "structures") c.points.pilier = await ici(-5, 4.85);
+      c.montee = { quart: await marcher(-52, 70), demi: await marcher(-32, 70), troisQuarts: await marcher(-12, 70) };
+      c.bloque = await marcher(12, 90);
+      // Ressortir : demi-tour, 2 m vers l'ouest.
+      const p0 = K.etat().pos;
+      K.tourner(180);
+      for (let i = 0; i < 20; i++) K.avancer(0.1);
+      await pause(30);
+      c.ressort = { dx: +((p0.x - K.etat().pos.x) / sc).toFixed(2), apres: lire() };
+      // Départ posé sous 0,5 m de vide (x = 26, vide 0,24 m) : ramené là où l'on tient, on repart.
+      await K.fermer();
+      await K.ouvrir({ depart: Object.assign(P(26, 0), { cap: 270, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      c.departDedans = lire();
+      c.departDedans.degage = K.etat().degagements;
+      // Jonction posée sur une masse : la galerie inclinée l'emporte.
+      c.jonction = await ici(40, 5, 180);
+      r.cas.push(c);
+    }
+    // Multi-niveau : au −1, la masse ¾ (sous la ¼ du 0) ; au 0, la ¼ seule.
+    await K.fermer();
+    window.setStructures([]);
+    window.setPlanRenduVue3D(null, "galerie");
+    window.KtaGalerie.invalider();
+    window.ktaSetActiveLevel(-1);
+    await K.ouvrir({ depart: Object.assign(P(-55, 12), { cap: 90, niveau: -1 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.moinsUn = { niveau: K.etat().niveau, masses: K.etat().masses.n, centre: await ici(-45, 12) };
+    await K.fermer();
+    window.ktaSetActiveLevel(0);
+    // Sol abaissé : −½ (x −30 à −20) et −¾ (x −10 à 2) au 0, sans sols réglés (pas de borne), puis sols réglés (borne).
+    window.setZones([
+      { uid: "zn_ms_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_ms_n2", type: "masse-sol", level: 0, comble: -0.75, points: rect(-10, -6, 2, 6) }
+    ]);
+    r.creux = {};
+    for (const rendu of ["galerie", "structures"]) {
+      // Structures : un pilier au milieu du sol abaissé (son pied descend jusqu'au fond).
+      window.setStructures(rendu === "structures"
+        ? [{ uid: "st_ms_creux", type: "pilier-1", level: 0, points: rect(-26, 3, -24, 5) }] : []);
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      r.creux[rendu] = { masses: K.etat().masses, centre: await ici(-25, 0), talus: await ici(-28.5, 0),
+        descente: await marcher(-32, 70) };
+      await K.fermer();
+    }
+    window.setStructures([]);
+    window.setPlanProfondeurs(PID, { "0": -25, "-1": -28 });
+    window.setPlanRenduVue3D(null, "galerie");
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.borne = { masses: K.etat().masses, centre: await ici(-4, 0) };
+    await K.fermer();
+    window.setPlanProfondeurs(PID, { "0": null, "-1": null });
+    // Budget : une masse de 40 × 12 m (480 m²), 🧱 allumé puis coupé.
+    window.setZones([{ uid: "zn_ms_g", type: "masse-sol", level: 0, comble: 0.75, points: rect(-40, -6, 0, 6) }]);
+    window.setPlanRenduVue3D(null, "structures");
+    r.budget = {};
+    for (const tex of [true, false]) {
+      window.setVue3DTextures(tex);
+      await K.ouvrir({ depart: Object.assign(P(-45, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      r.budget[tex ? "textures" : "aplat"] = K.etat().masses;
+      await K.fermer();
+    }
+    window.setVue3DTextures(true);
+
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  const T30 = Math.tan(Math.PI / 6), HN = 2.4;
+  // Œil attendu (m au-dessus du sol) pour un vide v : vue3d.js > _oeilMasse.
+  const lisse = function (t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+  const oeilAtt = function (oeil, v) {
+    if (v === null || v >= 1) return Math.min(oeil, v === null ? Infinity : v - 0.2);
+    const k = lisse((1 - v) / 0.3);
+    return Math.min(oeil, 0.8) * (1 - k) + Math.min(oeil, 0.35) * k;
+  };
+  const camOk = function (q) { return pr(q.cam, q.sol + oeilAtt(q.oeil, q.vide), 0.02); };
+  R.cas.forEach(function (c) {
+    const k = "masse au sol, " + c.rendu, p = c.points;
+    verifier(c.masses.n === 5 && c.hauteur === HN,
+      k + " : 5 masses au niveau 0 (celle du −1 à part), hauteur " + HN + " m", { n: c.masses.n, h: c.hauteur });
+    verifier(pr(p.quart.sol, 0.6) && pr(p.quart.vide, 1.8) && p.quart.ramper === 0 && camOk(p.quart),
+      k + " : sur ¼, sol 0,6 m, debout (vide 1,8 m)", p.quart);
+    verifier(pr(p.demi.sol, 1.2) && pr(p.demi.vide, 1.2) && p.demi.ramper === 0 && camOk(p.demi) &&
+      pr(p.demi.cam - p.demi.sol, 1.0, 0.02),
+      k + " : sur ½, sol 1,2 m, courbé (œil à vide − 0,2 = 1 m)", p.demi);
+    verifier(pr(p.troisQuarts.sol, 1.8) && pr(p.troisQuarts.vide, 0.6) && p.troisQuarts.ramper === 1 &&
+      pr(p.troisQuarts.cam - p.troisQuarts.sol, 0.35, 0.02),
+      k + " : sur ¾, sol 1,8 m, on rampe (œil 0,35 m)", p.troisQuarts);
+    verifier(pr(p.talus.sol, T30 * 1.5) && pr(p.talusParoi.sol, p.talus.sol, 0.005),
+      k + " : talus à 30° depuis le bord ouvert (1,5 m → " + (T30 * 1.5).toFixed(3) + " m), même sol contre la " +
+      "paroi du tube (pas de rigole)", { axe: p.talus, paroi: p.talusParoi });
+    verifier(p.hors.sol === 0 && p.hors.vide === null && camOk(p.hors), k + " : hors masse, sol 0 et vue inchangée",
+      p.hors);
+    if (p.pilier) {
+      verifier(pr(p.pilier.sol, Math.min(1.8, T30 * Math.hypot(1, 1.15)), 0.02),
+        k + " : pilier à cheval sur le bord = bord fermé (talus depuis les bords libres seulement)", p.pilier);
+    }
+    ["quart", "demi", "troisQuarts"].forEach(function (n) {
+      const m = c.montee[n];
+      let saut = 0;
+      for (let i = 1; i < m.length; i++) saut = Math.max(saut, Math.abs(m[i].cam - m[i - 1].cam));
+      const tous = m.every(function (q) { return q.ok && camOk(q); });
+      const haut = m[m.length - 1];
+      verifier(tous && saut < 0.12 && haut.sol > 0,
+        k + " : montée sur " + n + " par le talus au pas de 0,1 m, caméra = sol + œil à chaque pas, plus grand écart " +
+        saut.toFixed(3) + " m (< 0,12)",
+        { saut: saut, fin: haut, ko: m.filter(function (q) { return !q.ok || !camOk(q); }).slice(0, 3) });
+    });
+    const b = c.bloque, fin = b[b.length - 1], arrets = b.filter(function (q) { return !q.ok; }).length;
+    verifier(arrets > 0 && fin.vide !== null && fin.vide >= 0.5 && fin.x > 17 && fin.x < 18.6,
+      k + " : masse 0,9 (vide 0,24 m au sommet) : le pas s'arrête avant 0,5 m de vide (x = " + fin.x + ")",
+      { fin: fin, arrets: arrets });
+    verifier(c.ressort.dx > 1.5, k + " : demi-tour, on ressort de la masse", c.ressort);
+    verifier(c.departDedans.vide === null || c.departDedans.vide >= 0.5,
+      k + " : départ posé sous 0,5 m de vide → ramené où l'on tient", c.departDedans);
+    verifier(c.jonction.sur === true && c.jonction.vide === null && c.jonction.ramper === 0,
+      k + " : jonction posée sur une masse : la galerie inclinée l'emporte", c.jonction);
+  });
+  verifier(R.moinsUn.niveau === -1 && R.moinsUn.masses === 1 && pr(R.moinsUn.centre.sol, 1.8),
+    "masse au sol, multi-niveau : au −1, seule la ¾ du −1 compte (sol 1,8 m) ; au 0, la ¼ (0,6 m)", R.moinsUn);
+  Object.keys(R.creux).forEach(function (rendu) {
+    const c = R.creux[rendu], k = "sol abaissé, " + rendu, d = c.descente;
+    let saut = 0;
+    for (let i = 1; i < d.length; i++) saut = Math.max(saut, Math.abs(d[i].cam - d[i - 1].cam));
+    // Sols non réglés : 2 m de roche entre niveaux par défaut → plafond du −1 à −2 m, borne à −1,7 m.
+    verifier(JSON.stringify(c.masses.fonds) === JSON.stringify([-1.2, -1.7]) &&
+      JSON.stringify(c.masses.bornes) === JSON.stringify([false, true]),
+      k + " : −½ à −1,2 m ; −¾ (−1,8 m) borné à −1,7 m par le plafond du −1 (2 m de roche par défaut) + 0,3 m",
+      c.masses);
+    verifier(pr(c.centre.sol, -1.2) && c.centre.vide === null && c.centre.ramper === 0 && camOk(c.centre),
+      k + " : au milieu de −½, sol 1,2 m plus bas, debout (vide 3,6 m)", c.centre);
+    verifier(pr(c.talus.sol, -T30 * 1.5), k + " : talus inversé à 30° depuis le bord ouvert (1,5 m → −" +
+      (T30 * 1.5).toFixed(3) + " m)", c.talus);
+    verifier(d.every(function (q) { return q.ok && camOk(q); }) && saut < 0.12 && pr(d[d.length - 1].sol, -1.2),
+      k + " : descente au pas de 0,1 m sans arrêt, caméra = sol + œil, plus grand écart " + saut.toFixed(3) + " m",
+      { saut: saut, ko: d.filter(function (q) { return !q.ok || !camOk(q); }).slice(0, 3) });
+  });
+  verifier(R.creux.structures.masses.pieds >= 1 && R.creux.galerie.masses.pieds === 0,
+    "sol abaissé : le pied du pilier posé dedans descend jusqu'au fond (structures)", R.creux.structures.masses);
+  verifier(R.borne.masses.bornes.every(Boolean) && R.borne.masses.fonds.every(function (v) { return pr(v, -0.3); }) &&
+    pr(R.borne.centre.sol, -0.3), "sol abaissé, multi-niveau : sols −25 / −28 (2,4 m) → jamais sous le plafond du −1 " +
+    "+ 0,3 m (−0,3 m), borne signalée", R.borne);
+  ["textures", "aplat"].forEach(function (t) {
+    const m = R.budget[t];
+    verifier(m && m.n === 1 && m.triMax > 0 && m.triMax <= 2000,
+      "masse au sol, 40 × 12 m (" + t + ") : " + (m && m.triMax) + " triangles (≤ 2 000)", m);
+  });
+  console.log("  ℹ️ masse au sol : triangles par zone " + JSON.stringify(R.cas.map(function (c) {
+    return c.rendu + " " + c.masses.triMax; })) + ", grande masse " + R.budget.textures.triMax);
+}
+
+// Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : pied du talus de la ½, son sommet (courbé), sur la ¾ (on rampe),
+// dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord et du fond (pilier en structures).
+async function capturesMasseSol(page) {
+  const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
+    ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
+    ["creux-bord", -33, 0, 90, true, true], ["creux-fond", -27, -2, 60, true, true]];
+  for (const rendu of ["galerie", "mixte", "structures"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-masse";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
+        window._currentLoadedPlanId = PID;
+        window.setStructures(c.q[5] && c.rendu === "structures"
+          ? [{ uid: "st_ms_creux", type: "pilier-1", level: 0, points: rect(-26, 3, -24, 5) }] : []);
+        window.setEditorPoints([]);
+        window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        window.setZones([
+          { uid: "zn_ms_d", type: "masse-sol", level: 0, comble: c.q[5] ? -0.5 : 0.5, points: rect(-30, -6, -20, 6) },
+          { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) }
+        ]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(c.q[4]);
+        window.ktaSetActiveLevel(0);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3], niveau: 0 }, commandes: "pave", tuiles: false });
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.setVue3DTextures(true);
+    window.effacerReglagesNiveaux("v3d-checkup-masse");
+  });
+}
+
+// Mesure (KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse) : téléphone émulé (iPhone 393 × 852 × 3, processeur ralenti × 4,
+// Chromium), réseau de galeries en grille (9 galeries est-ouest de 100 m, 6 nord-sud) en mixte, 🧱 allumé, sans puis
+// avec 18 masses au sol (8 × 6 m, ¼ / ½ / ¾) ; Textures HD coupées puis allumées : ouverture, construction des
+// masses, triangles, images/s en rotation continue 3 s.
+async function perfMasseSol(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-masse-perf", [0], { "0": -25 }, { "0": 2.4 }, function () {
+    const P = window.__fxP, roads = [], masses = [];
+    for (let i = 0; i < 9; i++) {
+      const z = -40 + i * 10;
+      roads.push({ uid: "rd_mp_ew" + i, type: "principal", level: 0, points: [P(-50, z), P(50, z)] });
+      [-25, 15].forEach(function (x, j) {
+        masses.push({ uid: "zn_mp_" + i + "_" + j, type: "masse-sol", level: 0, comble: [0.25, 0.5, 0.75][(i + j) % 3],
+          points: [P(x, z - 3), P(x + 8, z - 3), P(x + 8, z + 3), P(x, z + 3)] });
+      });
+    }
+    for (let k = 0; k < 6; k++) {
+      const x = -50 + k * 20;
+      roads.push({ uid: "rd_mp_ns" + k, type: "secondaire", level: 0, points: [P(x, -40), P(x, 40)] });
+    }
+    window.setRoads(roads);
+    window.__mpMasses = masses;
+  }, chromiumNav ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
+    : undefined);
+  const page = t.page;
+  let cdp = null;
+  try {
+    if (chromiumNav) {
+      cdp = await t.ctx.newCDPSession(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    }
+    const lignes = [];
+    for (const hd of [false, true]) {
+      for (const avec of [false, true]) {
+        const m = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D;
+          window.setZones(a.avec ? window.__mpMasses.slice() : []);
+          window.setVue3DTextures(true);
+          window.setVue3DTexturesHD(a.hd);
+          // Une ouverture de chauffe, puis la médiane de 3 (la dernière reste ouverte pour la rotation).
+          await window.__fxOuvrir(-30, 0, 90, 0, "mixte");
+          const t = [];
+          let e = null;
+          for (let i = 0; i < 3; i++) { e = await window.__fxOuvrir(-30, 0, 90, 0, "mixte"); t.push(e.msOuverture); }
+          t.sort(function (p, q) { return p - q; });
+          return { ms: t[1], masses: e.masses, hd: JSON.stringify(K.textures().hd) };
+        }, { avec: avec, hd: hd });
+        await page.evaluate(function () { window.__v3dImg0 = window.KtaVue3D.etat().images; });
+        await page.keyboard.down("ArrowLeft");
+        await page.waitForTimeout(3000);
+        await page.keyboard.up("ArrowLeft");
+        const n = await page.evaluate(async function () {
+          const k = window.KtaVue3D.etat().images - window.__v3dImg0;
+          await window.KtaVue3D.fermer();
+          return k;
+        });
+        m.ips = Math.round(n / 3);
+        lignes.push(m);
+        console.log("  📏 masse au sol, téléphone × 4, HD " + (hd ? "allumées" : "coupées") + ", " +
+          (avec ? "18 masses" : "sans masse") + " : ouverture " + m.ms + " ms, masses " + m.masses.n + " (" +
+          m.masses.triangles + " triangles, max " + m.masses.triMax + " par zone, construction " + m.masses.ms +
+          " ms), " + m.ips + " images/s (HD effective : " + m.hd + ")");
+      }
+    }
+    verifier(lignes.every(function (l) { return l.ips > 0; }) && lignes[1].masses.n === 18 &&
+      lignes[1].masses.triMax <= 2000, "mesure (info) : masse au sol au téléphone × 4, rotation continue mesurée",
+      lignes);
+  } finally {
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }).catch(function () { /* fermée */ });
+    await page.evaluate(function () { window.setVue3DTexturesHD(false); }).catch(function () { /* fermée */ });
+    await t.ctx.close();
+  }
+}
+
 async function capturesPente(page) {
   const vues = [["pente-entree", 0, -3, 180, 0], ["pente-dedans", 0, 3, 180, 0], ["pente-bas", 0, 9, 180, 0],
     ["pente-du-bas", 0, 15, 0, -1], ["pente-montee", 0, 9, 0, -1], ["pente-edition", 3, -2, 200, 0, true]];
@@ -15455,6 +15833,12 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPente(page);
       await sectionPenteLargeur(page);
       if (CAPTURES) await capturesPente(page);
+    } else if (SEUL === "massesol") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMasseSol(page);
+      if (CAPTURES) await capturesMasseSol(page);
     } else if (SEUL === "pentelargeur") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -19070,6 +19454,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionConePassage(page);
       await sectionPente(page);
       await sectionPenteLargeur(page);
+      await sectionMasseSol(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);
       await sectionFormesStructures(page);
@@ -21843,6 +22228,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPlanSolNiveaux(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
+    if (SEUL === "massesol" && process.env.KTA_V3D_PERF === "masse") await perfMasseSol(nav);
     if (!SEUL || SEUL === "textures") await sectionTexturesSol(nav);
     if (!SEUL || SEUL === "addons") await sectionAddonsVisibles(nav);
     if (!SEUL || SEUL === "colonneedit") await sectionColonneEdition(nav);

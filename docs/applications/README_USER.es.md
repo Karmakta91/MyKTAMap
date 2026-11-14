@@ -530,6 +530,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Con la anchura de un cuerpo, chocas contra pilares, muros y frentes (personalizados incluidos) en modo Estructuras, contra las paredes en modo Galería, contra ambos en modo Mixto (en una cámara, solo las estructuras).
 - En las tres representaciones, un **relleno**, un **derrumbe** o una zona **⛔ inaccesible** también te para, en una galería como en una cámara.
 - Si sales desde dentro de una de ellas, vuelves al borde y puedes seguir.
+- Un **relleno parcial** no te para de por sí: subes encima por su pendiente. La vista se agacha si quedan menos de 1,8 m bajo el techo, te arrastras por debajo de 1 m, y el paso se detiene donde quedan menos de 0,5 m (siempre puedes dar media vuelta).
 - Es solo en 3D: el mapa, la ruta, el guiado y el tracker no los tienen en cuenta (la ruta ya evita las zonas ⛔).
 
 #### 🧭 Seguimiento o 🕹️ Libre
@@ -586,7 +587,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **🏛️ Estructuras**
 
 - Pilares, muros y frentes de explotación levantados a la altura de galería del nivel (⚙️ Ajustes › 📉 Niveles, o ⛏️ Volumen explotado en un plano de un solo nivel; si no 2 m).
-- Rellenos y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles.
+- Rellenos y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles, rellenos parciales a su parte rellena.
 - Trazados e itinerario en el suelo.
 - Puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
 
@@ -999,11 +1000,13 @@ Un **relleno parcial** son escombros que solo llenan una parte de la altura de l
 
 - En la burbuja de la zona, elige la **parte rellena**: ¼, ½, ¾ u **Otra** (un valor como 0,9) y luego **Aplicar la parte rellena**. La burbuja muestra también el equivalente en metros, según la altura del nivel (ajustes del plano).
 - Sin valor, un relleno parcial cuenta como ½.
+- Una parte **negativa** (−¼, −½, −¾ o un valor como −0,4) baja el suelo: la burbuja indica entonces cuánto baja. En el mapa, sus granos son claros, hundidos, sin guijarros. Por debajo de −1, el valor se rechaza.
 - En el mapa, cuanto más alta es la parte, más granos hay.
 - Con 1 o más, la galería está llena: la burbuja propone pasar la zona a **Escombros**.
 - La **Hoja de cálculo** tiene una columna **comble**, con las mismas opciones.
 - El valor sigue a la zona en las exportaciones **KMZ** y **GeoJSON**. En la **importación SIG**, «ms», «masse au sol» y «remblai partiel» dan un relleno parcial; una columna de altura opcional da su parte (0,5 o 50 %). Un polígono cuyo tipo no se reconoce pasa a relleno parcial, y la pantalla de correspondencia dice cuántos.
-- Por ahora, el relleno parcial no cambia ni el itinerario ni la vista 3D.
+- En la **vista 3D**, se camina encima: su parte superior sube en pendiente suave desde sus bordes libres (no a lo largo de las paredes ni de los pilares) hasta la parte rellena. De pie si quedan 1,8 m o más bajo el techo, agachado entre 1 y 1,8 m, arrastrándose entre 0,5 y 1 m; por debajo de 0,5 m ya no se pasa (siempre puedes dar media vuelta). La cinta del itinerario, los paneles y el minimapa siguen. Un suelo rebajado baja con la misma pendiente suave, y bajas a él de pie.
+- Por ahora, el relleno parcial no cambia el itinerario.
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 

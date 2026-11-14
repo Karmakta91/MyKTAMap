@@ -582,16 +582,17 @@
   }
 
   // Part comblée d'une masse au sol lue dans la colonne `cle` (facultative) : « 0,5 » ou 0.5 = part ; « 50 % » ou un
-  // nombre de 1 à 100 = pourcentage. Vide, illisible, ≤ 0 ou ≥ 1 (un Comblé) → null : la zone garde le défaut (½).
+  // nombre de 1 à 100 = pourcentage ; signe moins = sol abaissé (« -0,5 », « -50 % »). Vide, illisible, nulle, sous
+  // −1 ou ≥ 1 (un Comblé) → null : la zone garde le défaut (½).
   function combleDe(props, cle) {
     if (!cle || !props) return null;
     const k = _trouverCle(props, cle);
     if (!k || props[k] == null) return null;
     const brut = String(props[k]).trim();
-    const n = Number(brut.replace("%", "").trim().replace(",", "."));
-    if (!Number.isFinite(n) || n <= 0) return null;
-    const part = (/%$/.test(brut) || n > 1) ? n / 100 : n;
-    return part > 0 && part < 1 ? Math.round(part * 1000) / 1000 : null;
+    const n = Number(brut.replace("%", "").trim().replace(",", ".").replace("−", "-").replace(/^-\s+/, "-"));
+    if (!Number.isFinite(n) || n === 0) return null;
+    const part = (/%$/.test(brut) || Math.abs(n) > 1) ? n / 100 : n;
+    return part !== 0 && part >= -1 && part < 1 ? Math.round(part * 1000) / 1000 : null;
   }
 
   // Polygones qui tombent dans le type par défaut de l'écran de correspondance (masse au sol) : valeur vide, ou sans

@@ -1075,7 +1075,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
            '</div>';
   }
 
-  // Masse au sol : « Part comblée » (champ `comble`, absent = ½) — crans ¼ ½ ¾ ou « Autre » (valeur libre), avec les
+  // Masse au sol : « Part comblée » (champ `comble`, absent = ½) — crans −¾ −½ −¼ (sol abaissé) ¼ ½ ¾ ou « Autre »
+  // (valeur libre, signée), avec les
   // mètres de remblai d'après la hauteur du niveau (styleResolver.js > ktaMetresComble), appliqués par un bouton (un
   // geste, une entrée ⏪ : KtaConvertir.changerComble). Lecture seule (zone embarquée, plan en lecture) : la valeur
   // seule. Une valeur ≥ 1 propose de passer en Comblé (le gestionnaire du bouton, plus bas).
@@ -1089,7 +1090,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
              '</strong>' + metres + '</div>';
     }
-    const crans = [0.25, 0.5, 0.75], autre = crans.indexOf(v) < 0;
+    const crans = [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75], autre = crans.indexOf(v) < 0;
     const radio = function (val, txt, coche) {
       return '<label class="kta-note-popup-comble-cran"><input type="radio" name="kta-comble" value="' + val + '"' +
              (coche ? " checked" : "") + '><span>' + _esc(txt) + '</span></label>';
@@ -1113,6 +1114,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   function _texteMetresComble(o, v) {
     const mh = window.ktaMetresComble(o, v);
     const f = function (x) { return window.formatDistance(x, 1); };
+    if (mh.m < 0) return window.I18n.t("masseSol.metresBas", { m: f(-mh.m), h: f(mh.h) });
     return window.I18n.t("masseSol.metres", { m: f(mh.m), h: f(mh.h) });
   }
 
@@ -1304,8 +1306,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
         });
       }
       // Part comblée d'une masse au sol : mètres mis à jour en direct ; Appliquer écrit la valeur (une entrée ⏪), ou
-      // propose Comblé à partir de 1 (décision produit : un remblai jusqu'au ciel EST un Comblé). Saisie illisible ou
-      // ≤ 0 : refusée DANS la fiche, qui reste ouverte.
+      // propose Comblé à partir de 1 (décision produit : un remblai jusqu'au ciel EST un Comblé). Saisie illisible,
+      // nulle ou sous −1 (sol abaissé de plus d'une hauteur de niveau) : refusée DANS la fiche, qui reste ouverte.
       const cbBtn = popupRoot.querySelector(".kta-note-popup-comble-appliquer");
       if (cbBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerComble) {
         const cbAutre = popupRoot.querySelector(".kta-note-popup-comble-autre");
@@ -1314,11 +1316,13 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           const r = popupRoot.querySelector('.kta-note-popup-comble-crans input[type="radio"]:checked');
           if (!r) return NaN;
           if (r.value !== "autre") return Number(r.value);
-          return Number(String(cbAutre ? cbAutre.value : "").trim().replace(",", "."));
+          return Number(String(cbAutre ? cbAutre.value : "").trim().replace(",", ".").replace("−", "-"));
         };
         const majMetres = function () {
           const v = lireComble();
-          if (cbMetres && Number.isFinite(v) && v > 0) cbMetres.textContent = _texteMetresComble(opts.convertir.obj, v);
+          if (cbMetres && Number.isFinite(v) && v !== 0) {
+            cbMetres.textContent = _texteMetresComble(opts.convertir.obj, v);
+          }
         };
         popupRoot.querySelectorAll('.kta-note-popup-comble-crans input[type="radio"]').forEach(function (r) {
           r.addEventListener("change", function () {
@@ -1336,8 +1340,9 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
         cbBtn.addEventListener("click", function () {
           const v = lireComble();
           const statut = popupRoot.querySelector(".kta-note-popup-status");
-          if (!Number.isFinite(v) || v <= 0) {
-            if (statut) { statut.textContent = window.I18n.t("masseSol.invalide"); statut.style.display = ""; }
+          if (!Number.isFinite(v) || v === 0 || v < -1) {
+            const cle = Number.isFinite(v) && v < -1 ? "masseSol.tropBas" : "masseSol.invalide";
+            if (statut) { statut.textContent = window.I18n.t(cle); statut.style.display = ""; }
             return;
           }
           const obj = opts.convertir.obj;

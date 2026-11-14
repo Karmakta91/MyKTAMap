@@ -1412,6 +1412,30 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   ci-dessous) suivent
   la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
   rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
+- **Masse au sol** (zone `masse-sol`, remblai partiel ; décision produit, `docs/ETUDE_REMBLAIS.md` § 6-7) : hors de
+  `ZONES_BOUCHENT`, règle **par point**. Hauteur H = `ktaCombleZone` × hauteur du niveau. Son dessus monte en **talus
+  à 30°** depuis ses bords **ouverts** : sol = min(|H|, tan 30° × distance au bord ouvert le plus proche), signé comme
+  H (`_solMasseDe`). Un bord est fermé (dans la roche, contre un pilier, une paroi de tube ou une zone qui bouche) si
+  une sonde de 35 cm qui le franchit vers l'extérieur est arrêtée par la règle du pas du rendu (`_bloqueSonde`, bord
+  découpé par 0,5 m, bout dans une structure de la grille du niveau = fermé) : pas de rigole le long des parois.
+  ⚠️ contrat : le sol sous les pieds vient de cette **formule** (`_solMasse`, appelée par `_solPlace` après la galerie
+  inclinée : une jonction posée sur une masse l'emporte), jamais du maillage. Vide = hauteur du niveau − sol :
+  ≥ 1,8 m debout ; 1 à 1,8 m œil abaissé à vide − 0,2 m ; sous 1 m on rampe (œil `CHATIERE.oeil`, transition lissée sur
+  0,3 m de vide, `_oeilMasse`, sans saut) ; sous 0,5 m le pas s'arrête (`_masseBloque` dans `_pas`, au centre et à un
+  corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Plafond
+  inchangé. **Part négative = sol abaissé** : même formule, le sol descend vers l'intérieur, le vide grandit (rien
+  n'arrête, on descend debout) ; le sol du niveau (ou du voisin construit, `e.bitsPlans`) est troué sur son contour par
+  le gabarit, comme la bouche d'un puits (`_masseSol`, lot `trous`) ; pans tournés vers l'intérieur sur les bords
+  fermés ; en galerie, le fond passe sous les parois jusqu'au contour. ⚠️ contrat : jamais plus bas que le plafond du
+  niveau du dessous + `MASSE.margeDessous` (0,3 m) (`_fondMasse`, `m.borne` ; sans niveau dessous, une hauteur de
+  niveau). 🩸 Piliers et murs posés dans un sol abaissé partent du sol du niveau (leur pied n'est pas prolongé).
+  Dessin (`_maillageMasse`) : grille de 0,5 m découpée au contour, pas élargi pour tenir ≤ 2 000 triangles par zone
+  (`MASSE.triMax`, pans compris ; une zone est dessinée dans la tuile de son centre) ; en galerie, une case toute dans
+  la roche n'est pas dessinée ; 🧱 : terre et cailloux du remblais (`REMBLAIS.m`), sinon la couleur de la légende.
+  Suivent : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m inclinés sur la masse, `_rubanIti`),
+  panneaux des POI (sol + œil + 0,4 m, sous le plafond), mini-carte (contour comme une zone qui bouche). L'itinéraire
+  calculé ne change pas. Mesuré (téléphone émulé × 4) : `KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse`. Garde-fou :
+  `scripts/smoke/checkup-vue-3d.js > sectionMasseSol` (`KTA_V3D_SEUL=massesol`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
   (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;

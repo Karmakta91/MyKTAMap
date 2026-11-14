@@ -890,10 +890,308 @@
     return best;
   }
 
-  // Sol sous la place : dénivelé de la galerie inclinée qui la porte (m), 0 ailleurs.
+  // Sol sous la place : dénivelé de la galerie inclinée qui la porte (m) ; sinon le dessus d'une masse au sol
+  // (_solMasse) ; 0 ailleurs. ⚠️ contrat (décision produit) : jonction et masse superposées, la jonction d'abord.
   function _solPlace() {
-    const e = _e, q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
-    return q ? q.dy : 0;
+    const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, q = _surPente(x, z, 0);
+    return q ? q.dy : _solMasse(x, z);
+  }
+
+  // ── Masse au sol (zone `masse-sol`, remblai partiel : docs/ETUDE_REMBLAIS.md § 6-7) ────────────────────────────
+  // ⚠️ contrat (décision produit) : la masse comble `comble` (styleResolver.js > ktaCombleZone, absente = ½) de la
+  // hauteur du niveau. Son dessus monte en TALUS à MASSE.pente (30°) depuis ses bords OUVERTS : sol = min(hauteur
+  // comblée, pente × distance au bord ouvert le plus proche). Part NÉGATIVE (sol abaissé) : la même formule, le sol
+  // DESCEND vers l'intérieur ; le sol du niveau y est troué (gabarit, comme la bouche d'un puits), pans sur les bords
+  // fermés ; jamais plus bas que le plafond du niveau du dessous + MASSE.margeDessous (_fondMasse, m.borne) ; le vide
+  // grandit, on y descend debout, rien n'arrête. Un bord est « fermé » (dans la roche, contre un pilier, une
+  // paroi de tube ou une zone qui bouche) si une courte sonde qui le franchit vers l'extérieur est arrêtée par la règle
+  // du pas du rendu (_bloqueSonde) : pas de rigole le long des parois. Le sol sous les pieds vient de cette formule
+  // (_solMasse), jamais du maillage (_maillageMasse, qui la dessine). Vide restant = hauteur du niveau − sol :
+  // ≥ MASSE.courbe debout (œil abaissé à vide − MASSE.marge s'il le faut : 1 à 1,8 m), sous MASSE.courbe on rampe
+  // (œil CHATIERE.oeil, transition lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête
+  // (_masseBloque ; sortir vers plus de vide reste permis). Plafond inchangé. N'entre pas dans les zones qui bouchent
+  // (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. Sans effet sur l'itinéraire (son lot n'est pas livré).
+  // Garde-fou : scripts/smoke/checkup-vue-3d.js § 24 ter.
+  const MASSE = { pente: Math.tan(30 * Math.PI / 180), pas: 0.5, triMax: 2000, sonde: 0.35, debout: 1.8, courbe: 1,
+    ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3 };
+
+  // Sonde de A à B (m) arrêtée par la règle du pas du rendu, au niveau de la scène (contexte d'un voisin compris) :
+  // structures, parois des tubes (mixte) ou emprise (galerie), zones qui bouchent ; hors de l'image du plan = arrêtée.
+  function _bloqueSonde(ax, az, bx, bz) {
+    const e = _e, sc = e.sc, n = e.niveau === null ? undefined : e.niveau, G = window.KtaGalerie;
+    const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+    if (pc && (bx < 0 || bz < 0 || bx * sc > pc.imageWidth || bz * sc > pc.imageHeight)) return true;
+    const segs = [[ax * sc, az * sc, bx * sc, bz * sc]];
+    if (G && typeof G.zonesBloquent === "function" && G.zonesBloquent(segs, n, undefined, e.rendu)[0]) return true;
+    // 🩸 Un bord posé DANS un pilier (masse dessinée par-dessus) : la sonde ne franchit aucune face, elle passerait
+    // pour ouverte et creuserait une rigole au pied du pilier. Un bout dans une structure (grille du niveau où elle a
+    // été faite, jamais celle d'un autre niveau) = fermé. Galerie : un bout dehors de l'emprise (dans la roche) =
+    // fermé.
+    if (e.volumes && e.volumesNiveau === e.niveau && (_volumeContenant(ax, az) || _volumeContenant(bx, bz))) {
+      return true;
+    }
+    if (e.galerie) return !!(G && (!G.dedans(bx * sc, bz * sc, n) || G.segmentsBloques(segs, n)[0]));
+    if (typeof window.ktaSegmentsBloquesParStructure === "function" &&
+        window.ktaSegmentsBloquesParStructure(segs, n, true)[0]) return true;
+    return !!(e.mixte && G && G.paroisBloquent(segs, n)[0]);
+  }
+
+  // Masse au sol de la zone `z` au niveau de la scène → { z, ring (m, sens positif), H (m), ouverts ([[ax, az, bx, bz]]
+  // m : morceaux de bord ouverts, de MASSE.pas au plus), x0, z0, x1, z1 }, null si son contour est vide. En cache par
+  // contour, niveau, hauteur, rendu et état des données (les voisins le lisent dans leur propre contexte).
+  function _masseDe(z) {
+    const e = _e;
+    if (!z || !Array.isArray(z.points)) return null;
+    const cle = (e.donnees ? e.donnees.empreinte : "") + "|" + e.niveau + "|" + e.hauteur + "|" + e.rendu;
+    if (!e.massesCache || e.massesCache.cle !== cle) e.massesCache = { cle: cle, parPoints: new Map() };
+    const C = e.massesCache.parPoints;
+    if (C.has(z.points)) return C.get(z.points);
+    const ring = _anneau(z.points, e.sc);
+    let m = null;
+    if (ring.length >= 3) {
+      const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;
+      let H = Math.max(-1, Math.min(1, c)) * e.hauteur, borne = false;
+      if (H < 0) {
+        const b = _fondMasse();
+        if (H < b) { H = b; borne = true; }
+      }
+      m = { z: z, ring: ring, H: H, borne: borne, ouverts: [], fermes: 0,
+        x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+      ring.forEach(function (q) {
+        m.x0 = Math.min(m.x0, q[0]); m.x1 = Math.max(m.x1, q[0]);
+        m.z0 = Math.min(m.z0, q[1]); m.z1 = Math.max(m.z1, q[1]);
+      });
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i], q = ring[(i + 1) % ring.length], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+        if (l < 1e-6) continue;
+        const nx = dz / l, nz = -dx / l, k = Math.max(1, Math.ceil(l / MASSE.pas));
+        for (let j = 0; j < k; j++) {
+          const ax = p[0] + dx * j / k, az = p[1] + dz * j / k;
+          const bx = p[0] + dx * (j + 1) / k, bz = p[1] + dz * (j + 1) / k;
+          const cx = (ax + bx) / 2, cz = (az + bz) / 2;
+          if (_bloqueSonde(cx - nx * 0.05, cz - nz * 0.05, cx + nx * MASSE.sonde, cz + nz * MASSE.sonde)) m.fermes++;
+          else m.ouverts.push([ax, az, bx, bz]);
+        }
+      }
+    }
+    C.set(z.points, m);
+    return m;
+  }
+
+  // Plus bas permis (m, ≤ 0) pour un sol abaissé au niveau de la scène (contexte d'un voisin compris) : le plafond du
+  // niveau du dessous (ordre de ▲▼) + MASSE.margeDessous ; sans niveau dessous, une hauteur de niveau.
+  function _fondMasse() {
+    const e = _e, l = _niveauxEdition(), i = l.indexOf(e.niveau);
+    let b = -e.hauteur;
+    if (i < 0) return b;
+    [l[i - 1], l[i + 1]].forEach(function (n) {
+      if (!Number.isInteger(n)) return;
+      const a = _altitudeVoisin(n);
+      if (a.dessus) return;
+      b = Math.max(b, Math.min(0, a.dy + _hauteurDuNiveau(n) + MASSE.margeDessous));
+    });
+    return b;
+  }
+
+  // Masses au sol du niveau de la scène (toutes : un filtre ≡ ne retire que le dessin), refaites à _reindexer.
+  function _massesDuNiveau() {
+    const e = _e, out = [];
+    _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)).forEach(function (z) {
+      if (!z || z.type !== "masse-sol" || !_zoneSurNiveau(z, e.niveau)) return;
+      const m = _masseDe(z);
+      if (m) out.push(m);
+    });
+    return out;
+  }
+
+  // Sol (m, négatif pour un sol abaissé) de la masse `m` en (x, z) m, la place supposée dans son contour.
+  function _solMasseDe(m, x, z) {
+    let d2 = Infinity;
+    for (let i = 0; i < m.ouverts.length; i++) {
+      const s = m.ouverts[i], dx = s[2] - s[0], dz = s[3] - s[1], l2 = dx * dx + dz * dz;
+      const k = l2 > 1e-12 ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (z - s[1]) * dz) / l2)) : 0;
+      const ex = x - s[0] - dx * k, ez = z - s[1] - dz * k;
+      d2 = Math.min(d2, ex * ex + ez * ez);
+    }
+    const a = Math.abs(m.H), v = d2 === Infinity ? a : Math.min(a, MASSE.pente * Math.sqrt(d2));
+    return m.H < 0 ? -v : v;
+  }
+
+  // Sol (m) des masses au sol du niveau sous (x, z) m : le plus haut des remblais s'il y en a, sinon le plus bas des
+  // sols abaissés, 0 hors de toute masse.
+  function _solMasse(x, z) {
+    const l = (_e && _e.masses) || [];
+    let haut = 0, bas = 0;
+    for (let i = 0; i < l.length; i++) {
+      const m = l[i];
+      if (x < m.x0 || x > m.x1 || z < m.z0 || z > m.z1 || !_dansRing(m.ring, x, z)) continue;
+      const s = _solMasseDe(m, x, z);
+      if (s > haut) haut = s;
+      if (s < bas) bas = s;
+    }
+    return haut > 0 ? haut : bas;
+  }
+
+  // Pied d'une structure (contour en m) dans un sol abaissé : prisme sans dessus du sol local le plus bas (sommets et
+  // centre, _solMasse) jusqu'au sol du niveau, même lot, même couleur et même motif. Niveau actif seulement (les
+  // masses de e.masses sont les siennes : un voisin construit n'a pas les siennes ici).
+  function _piedMasse(lot, ring, col, m, u0) {
+    const e = _e;
+    if (!e.masses || !e.masses.length || e.dyContexte || e.massesNiveau !== e.niveau || ring.length < 3) return;
+    let cx = 0, cz = 0, fond = 0;
+    ring.forEach(function (q) {
+      cx += q[0] / ring.length; cz += q[1] / ring.length;
+      fond = Math.min(fond, _solMasse(q[0], q[1]));
+    });
+    fond = Math.min(fond, _solMasse(cx, cz));
+    if (fond > -0.01) return;
+    _prisme(lot, ring, fond, 0, col, false, m, u0);
+    e.piedsMasse = (e.piedsMasse || 0) + 1;
+  }
+
+  // Vide restant (m) au-dessus d'une masse en (x, z) m ; Infinity hors masse, sur un sol abaissé (plus de vide que le
+  // niveau : rien ne change) ou dans une galerie inclinée (sa règle).
+  function _videMasse(x, z) {
+    const e = _e;
+    if (!e.masses || !e.masses.length || _surPente(x, z, 0)) return Infinity;
+    const s = _solMasse(x, z);
+    return s > 0 ? e.hauteur - s : Infinity;
+  }
+
+  // Œil (m au-dessus du sol) pour un vide `v` : debout (e.oeil, abaissé à v − marge), puis ramper sous MASSE.courbe,
+  // sans saut. → { oeil, ramper (0..1) }.
+  function _oeilMasse(v) {
+    const e = _e, haut = Math.min(e.oeil, v - MASSE.marge);
+    if (v >= MASSE.courbe) return { oeil: haut, ramper: 0 };
+    const k = _lisse((MASSE.courbe - v) / MASSE.transition), bas = Math.min(e.oeil, CHATIERE.oeil);
+    return { oeil: Math.min(e.oeil, MASSE.courbe - MASSE.marge) * (1 - k) + bas * k, ramper: k };
+  }
+
+  // Pas de (x0, y0) à (x1, y1) px arrêté par une masse au sol : vide sous MASSE.ramper à l'arrivée (centre ou devant,
+  // à un corps), sauf s'il y a plus de vide qu'au départ (on peut toujours en sortir).
+  function _masseBloque(x0, y0, x1, y1, ux, uy) {
+    const e = _e, sc = e.sc;
+    if (!e.masses || !e.masses.length) return false;
+    const v0 = _videMasse(x0 / sc, y0 / sc);
+    const v1 = Math.min(_videMasse(x1 / sc, y1 / sc),
+      _videMasse((x1 + ux * RAYON_CORPS * sc) / sc, (y1 + uy * RAYON_CORPS * sc) / sc));
+    return v1 < MASSE.ramper && v1 < v0 - 1e-6;
+  }
+
+  // Dessus de la masse `m` dans le lot (grille découpée au contour, MASSE.pas m, plus large si la zone dépasserait
+  // MASSE.triMax triangles) et ses pans verticaux (bords fermés : jusqu'à la hauteur comblée ; bords ouverts : rien,
+  // le talus y part de 0). `tex` : coordonnées de texture en mètres / REMBLAIS.m (lot texturé 🧱). Rend le nombre de
+  // triangles posés.
+  function _maillageMasse(lot, m, col, tex) {
+    const w = m.x1 - m.x0, d = m.z1 - m.z0;
+    // Budget : 2 triangles par case (≈ w × d / pas²) + 2 par pan (≈ périmètre / pas) ≤ 90 % de MASSE.triMax (les cases
+    // découpées au contour en ajoutent un peu) → plus petit pas qui tient, jamais sous MASSE.pas.
+    let per = 0;
+    m.ring.forEach(function (q, i) {
+      const r = m.ring[(i + 1) % m.ring.length];
+      per += Math.hypot(r[0] - q[0], r[1] - q[1]);
+    });
+    const T = MASSE.triMax * 0.9;
+    const pas = Math.max(MASSE.pas, (2 * per + Math.sqrt(4 * per * per + 8 * T * w * d)) / (2 * T));
+    const nx = Math.max(1, Math.ceil(w / pas)), nz = Math.max(1, Math.ceil(d / pas));
+    const mt = REMBLAIS.m, avant = lot.p.length;
+    const H = function (x, z) { return _solMasseDe(m, x, z); };
+    const uv = function (a, b, c) {
+      return tex ? [a[0] / mt, a[2] / mt, b[0] / mt, b[2] / mt, c[0] / mt, c[2] / mt] : undefined;
+    };
+    const tri = function (a, b, c) {
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+      let cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      const l = Math.hypot(cx, cy, cz);
+      if (l < 1e-9) return;
+      if (cy < 0) { cx = -cx; cy = -cy; cz = -cz; }
+      lot.tri(a, b, c, [cx / l, cy / l, cz / l], col, uv(a, b, c));
+    };
+    // Découpe (Sutherland-Hodgman) de l'anneau par la case [x0, x1] × [z0, z1] (convexe : l'anneau peut être concave).
+    const decouper = function (x0, z0, x1, z1) {
+      let p = m.ring;
+      const bords = [[0, x0, 1], [0, x1, -1], [1, z0, 1], [1, z1, -1]];
+      for (let b = 0; b < 4 && p.length; b++) {
+        const ax = bords[b][0], v = bords[b][1], s = bords[b][2], q = [];
+        for (let i = 0; i < p.length; i++) {
+          const A = p[i], B = p[(i + 1) % p.length], ia = (A[ax] - v) * s >= 0, ib = (B[ax] - v) * s >= 0;
+          if (ia) q.push(A);
+          if (ia !== ib) {
+            const t = (v - A[ax]) / (B[ax] - A[ax]);
+            q.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]);
+          }
+        }
+        p = q;
+      }
+      return p;
+    };
+    // Galerie : une case toute dans la roche (aucun coin dans l'emprise) n'est pas dessinée — vue d'en haut, la masse
+    // ne déborde pas du tube de plus d'une case ; ce qui dépasse reste derrière les parois.
+    const G = window.KtaGalerie, sc = _e.sc, niv = _e.niveau === null ? undefined : _e.niveau;
+    // Sol abaissé : rien n'est coupé (il passe sous les parois du tube jusqu'à son contour, fermé par ses pans).
+    const dansRoche = function (x0, z0, x1, z1) {
+      if (!_e.galerie || m.H < 0 || !G || typeof G.dedans !== "function") return false;
+      return !G.dedans(x0 * sc, z0 * sc, niv) && !G.dedans(x1 * sc, z0 * sc, niv) &&
+        !G.dedans(x1 * sc, z1 * sc, niv) && !G.dedans(x0 * sc, z1 * sc, niv) &&
+        !G.dedans((x0 + x1) / 2 * sc, (z0 + z1) / 2 * sc, niv);
+    };
+    for (let i = 0; i < nx; i++) {
+      for (let j = 0; j < nz; j++) {
+        const x0 = m.x0 + i * pas, z0 = m.z0 + j * pas, x1 = Math.min(m.x1, x0 + pas), z1 = Math.min(m.z1, z0 + pas);
+        if (dansRoche(x0, z0, x1, z1)) continue;
+        const poly = decouper(x0, z0, x1, z1);
+        if (poly.length < 3) continue;
+        const v3 = poly.map(function (q) { return [q[0], H(q[0], q[1]), q[1]]; });
+        let tris;
+        if (poly.length === 3 || poly.length === 4) tris = poly.length === 3 ? [[0, 1, 2]] : [[0, 1, 2], [0, 2, 3]];
+        else {
+          try {
+            const v2 = poly.map(function (q) { return new THREE.Vector2(q[0], q[1]); });
+            tris = THREE.ShapeUtils.triangulateShape(v2, []);
+          } catch (err) { continue; }
+        }
+        tris.forEach(function (t3) { tri(v3[t3[0]], v3[t3[1]], v3[t3[2]]); });
+      }
+    }
+    // Pans : le long de chaque bord, du sol (0) au dessus calculé (ou au fond, tournés vers l'intérieur, pour un sol
+    // abaissé) ; nuls (talus) là où le bord est ouvert.
+    for (let i = 0; i < m.ring.length; i++) {
+      const p = m.ring[i], q = m.ring[(i + 1) % m.ring.length];
+      const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const k = Math.max(1, Math.ceil(l / pas)), n = m.H < 0 ? [-dz / l, 0, dx / l] : [dz / l, 0, -dx / l];
+      for (let j = 0; j < k; j++) {
+        const ax = p[0] + dx * j / k, az = p[1] + dz * j / k;
+        const bx = p[0] + dx * (j + 1) / k, bz = p[1] + dz * (j + 1) / k;
+        const ha = H(ax, az), hb = H(bx, bz);
+        if ((Math.abs(ha) < 0.01 && Math.abs(hb) < 0.01) || dansRoche(ax, az, bx, bz)) continue;
+        const A = [ax, 0, az], B = [bx, 0, bz], Bh = [bx, hb, bz], Ah = [ax, ha, az];
+        const su = function (a, b, c) {
+          return tex ? [a[0] / mt + a[2] / mt, a[1] / mt, b[0] / mt + b[2] / mt, b[1] / mt, c[0] / mt + c[2] / mt,
+            c[1] / mt] : undefined;
+        };
+        if (Math.abs(ha) > 0.01) lot.tri(A, B, Ah, n, col, su(A, B, Ah));
+        if (Math.abs(hb) > 0.01) lot.tri(B, Bh, Ah, n, col, su(B, Bh, Ah));
+      }
+    }
+    return (lot.p.length - avant) / 9;
+  }
+
+  // Masse au sol `z` dessinée dans la tuile : texturée (🧱 : lot du remblais, terre et cailloux) ou à la couleur de la
+  // légende (aplat). Compte ses triangles (checkup, mesure de perf : e.trianglesMasses).
+  function _masseSol(lotTex, lotUni, z, trous) {
+    const e = _e, t0 = performance.now(), m = _masseDe(z);
+    if (!m) return;
+    // Sol abaissé : le sol du niveau (ou du voisin construit) est troué sur le contour, comme la bouche d'un puits.
+    if (m.H < 0 && trous) {
+      const bit = (e.bitsPlans || { sol: GABARIT.sol }).sol;
+      _dessus(trous[bit] || (trous[bit] = new Lot()), m.ring, 0, BLANC);
+    }
+    const tex = e.textures === true;
+    const n = _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
+    e.trianglesMasses = (e.trianglesMasses || 0) + n;
+    e.trianglesMasseMax = Math.max(e.trianglesMasseMax || 0, n);
+    e.msMasses = (e.msMasses || 0) + performance.now() - t0;
   }
 
   // Au-delà du milieu d'une galerie inclinée (libre, hauteur d'yeux) : la scène passe au niveau d'en face, à la même
@@ -1288,6 +1586,7 @@
     let parcouru = m && p0 ? ((p0.x / sc * 0.37 + p0.y / sc * 0.61) % m + m) % m : 0;
     _pavesLigne(points, sc, ep).forEach(function (q) {
       _prisme(lot, q.ring, 0, h, col, true, m, m ? parcouru : undefined);
+      _piedMasse(lot, q.ring, col, m, m ? parcouru : undefined);
       parcouru += q.l;
     });
   }
@@ -1328,11 +1627,22 @@
   }
 
   // Bande de `larg` m de large de (ax, az) à (bx, bz) (m), à la hauteur y, sans recouvrement aux bouts.
-  function _bande(lot, ax, az, bx, bz, larg, y, col) {
+  function _bande(lot, ax, az, bx, bz, larg, y, col, yb) {
     const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz);
     if (l < 1e-6) return;
-    const nx = -dz / l * larg / 2, nz = dx / l * larg / 2;
-    lot.quad([ax + nx, y, az + nz], [bx + nx, y, bz + nz], [bx - nx, y, bz - nz], [ax - nx, y, az - nz], [0, 1, 0], col);
+    const nx = -dz / l * larg / 2, nz = dx / l * larg / 2, y1 = yb === undefined ? y : yb;
+    lot.quad([ax + nx, y, az + nz], [bx + nx, y1, bz + nz], [bx - nx, y1, bz - nz], [ax - nx, y, az - nz], [0, 1, 0],
+      col);
+  }
+
+  // Une masse au sol du niveau touche-t-elle le rectangle englobant de A–B (m) ?
+  function _masseSurSegment(ax, az, bx, bz) {
+    const l = _e.masses || [], x0 = Math.min(ax, bx), x1 = Math.max(ax, bx);
+    const z0 = Math.min(az, bz), z1 = Math.max(az, bz);
+    for (let i = 0; i < l.length; i++) {
+      if (l[i].x1 >= x0 && l[i].x0 <= x1 && l[i].z1 >= z0 && l[i].z0 <= z1) return true;
+    }
+    return false;
   }
 
   // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } : bande claire pleine posée sur une bande sombre plus
@@ -1349,9 +1659,22 @@
     for (let i = 0; i < mc.length; i++) {
       const h = mc[i].h, e0 = i === 0 ? w : 0, e1 = i === mc.length - 1 ? w : 0;
       const q0 = mc[i].d0 - e0, q1 = mc[i].d1 + e1, m0 = e0 ? m : 0, m1 = e1 ? m : 0;
-      _bande(lot, ax + ux * (q0 - m0), az + uz * (q0 - m0), ax + ux * (q1 + m1), az + uz * (q1 + m1),
-        LARGEUR_ITI + 2 * m, h + ITI.y - 0.005, cols.lisere);
-      _bande(lot, ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1, LARGEUR_ITI, h + ITI.y, cols.ruban);
+      // Sur une masse au sol, le ruban suit le talus : morceaux de MASSE.pas m au plus, inclinés de bout en bout.
+      const k = _masseSurSegment(ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1)
+        ? Math.max(1, Math.ceil((q1 - q0) / MASSE.pas)) : 1;
+      const y = function (q) {
+        if (k === 1) return h;
+        const sm = _solMasse(ax + ux * q, az + uz * q);
+        return h > 0 ? Math.max(h, sm) : sm;
+      };
+      for (let j = 0; j < k; j++) {
+        const a = q0 + (q1 - q0) * j / k, b = q0 + (q1 - q0) * (j + 1) / k, ya = y(a), yb = y(b);
+        const la = j === 0 ? a - m0 : a, lb = j === k - 1 ? b + m1 : b;
+        _bande(lot, ax + ux * la, az + uz * la, ax + ux * lb, az + uz * lb, LARGEUR_ITI + 2 * m, ya + ITI.y - 0.005,
+          cols.lisere, yb + ITI.y - 0.005);
+        _bande(lot, ax + ux * a, az + uz * a, ax + ux * b, az + uz * b, LARGEUR_ITI, ya + ITI.y, cols.ruban,
+          yb + ITI.y);
+      }
       if (i > 0 && mc[i].h !== mc[i - 1].h) {
         _contremarche(lot, ax + ux * mc[i].d0, az + uz * mc[i].d0, ux, uz, mc[i].face, mc[i - 1].h, mc[i].h, cols);
       }
@@ -1402,7 +1725,7 @@
   // Hauteur (m) du dessus du volume sous (x, z), 0 hors volume.
   function _dessusIti(x, z) {
     const l = _e.volumesIti;
-    if (!l || !l.length) return 0;
+    if (!l || !l.length) return _solMasse(x, z);
     for (let i = 0; i < l.length; i++) {
       const v = l[i], a = v.ring;
       if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1) continue;
@@ -1411,9 +1734,9 @@
         const p = a[j], q = a[k];
         if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
       }
-      if (r) return v.h !== undefined ? v.h : _e.hauteur * HAUTEUR_REMBLAIS;
+      if (r) return Math.max(v.h !== undefined ? v.h : _e.hauteur * HAUTEUR_REMBLAIS, _solMasse(x, z));
     }
-    return 0;
+    return _solMasse(x, z);
   }
 
   // Segment de (ax, az), direction (ux, uz), longueur L (m) coupé aux bords des volumes → [{ d0, d1, h, face }] (d en
@@ -1552,12 +1875,15 @@
         _murLigne(lot, s.points, sc, _epaisseurLigne(s.type), hs, col, m);
       } else {
         _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
+        _piedMasse(lot, _anneau(s.points, sc), col, m);
       }
       if (!pente) _structureSurTremie(lot, s, hs, col, m);
     }
     for (let i = 0; i < t.z.length; i++) {
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
+      // Masse au sol : son dessus en talus (_masseSol), en chambre comme en tube ; ni prisme ni découpe aux parois.
+      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous); continue; }
       const pz = _penteDeLaZone(z);
       if (pz) {
         _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
@@ -1796,7 +2122,8 @@
     }
     // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
     const tx = e.textures === true;
-    const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais,
+    const lots = { trous: trous, opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau,
+      remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
     const arcs = _lotsArc(opaque, h);
@@ -1892,6 +2219,8 @@
   function _zoneGalerie(z, m, lots) {
     const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
     if (ring.length < 3) return;
+    // Masse au sol : entière (les parois du tube cachent ce qui est dans la roche), pas découpée par pièce.
+    if (z.type === "masse-sol") { _masseSol(lots.remblais, lots.opaque, z, lots.trous); return; }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     ring.forEach(function (q) {
       x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
@@ -2146,7 +2475,7 @@
     sp.userData.fond = coul.surface;
     sp.scale.set(PANNEAU.l * sp.userData.part, PANNEAU.l * sp.userData.part * sp.userData.ratio, 1);
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
-    sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
+    sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_solMasse(x, z) + _e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
     const jonction = passage ? (p._v3dJonction || p) : null;
     // `point` : le POI d'origine (celui de la carte), dont la fiche s'ouvre au toucher (_toucher).
@@ -3953,6 +4282,12 @@
     if (!e.galerie) d.structures = d.structures.concat(_structuresEmpruntees(e.niveau, e.pentes));
     e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
     if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
+    e.volumesNiveau = e.niveau;
+    // Masses au sol du niveau (sol, talus, seuils) : après le modèle du rendu et la grille des structures (bords
+    // fermés).
+    e.massesCache = null; e.trianglesMasses = 0; e.trianglesMasseMax = 0; e.msMasses = 0; e.piedsMasse = 0;
+    e.masses = _massesDuNiveau();
+    e.massesNiveau = e.niveau;
     e.volumesIti = _volumesIti(d.zones);
     e.passages = _passages(e.niveau);
     e.passageSig = null;
@@ -7985,7 +8320,16 @@
     const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, cap = e.cap * Math.PI / 180, c = _centreScene();
     // Chatière (_baisseChatiere) : l'œil descend vers CHATIERE.oeil, jamais plus haut qu'il n'est.
     e.ramper = e.vue === "plongee" ? 0 : _baisseChatiere(x, z);
-    const baisse = e.ramper * Math.max(0, e.oeil - CHATIERE.oeil);
+    let baisse = e.ramper * Math.max(0, e.oeil - CHATIERE.oeil);
+    // Masse au sol (_oeilMasse) : sous 1,8 m de vide l'œil s'abaisse, sous 1 m on rampe ; la plus basse des deux
+    // règles.
+    const vide = e.vue === "plongee" ? Infinity : _videMasse(x, z);
+    e.vide = vide;
+    if (vide !== Infinity) {
+      const om = _oeilMasse(vide);
+      baisse = Math.max(baisse, e.oeil - om.oeil);
+      e.ramper = Math.max(e.ramper, om.ramper);
+    }
     // Geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume ; galerie inclinée : sur sa pente.
     const sol = _solPlace(), dy = (e.dy || 0) - baisse + sol;
     e.tete.position.set(x, e.oeil + dy, z);
@@ -8573,6 +8917,8 @@
         const qa = _surPente(x1 / e.sc, y1 / e.sc, 0);
         if (qa && qa.zone && Math.abs(qa.dy) >= PENTE.sortie) continue;
       }
+      // Masse au sol : moins de MASSE.ramper de vide à l'arrivée arrête le pas (en sortir reste permis).
+      if (_masseBloque(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l)) continue;
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
       if (n < 0 || (n > 0 && n > depart())) continue;
       _poser(x1, y1);
@@ -8631,6 +8977,7 @@
     if (volumes && (_volumeContenant(x / e.sc, y / e.sc) || _rayonsBloques(x, y) > 0)) return true;
     if (G.dansZone(x, y, n, e.rendu) ||
         G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n, undefined, e.rendu).some(Boolean)) return true;
+    if (_videMasse(x / e.sc, y / e.sc) < MASSE.ramper) return true;   // masse au sol : trop peu de vide pour y être
     if (e.galerie) return !G.dedans(x, y, n);
     const m = e.mixte;
     if (m && m.pieces.length && !m.dedans(x, y) && !m.enChambre(x, y)) {
@@ -12202,7 +12549,7 @@
         });
       });
     }
-    d.zones.forEach(function (z) { if (B[z.type]) forme(z, "zones", true); });
+    d.zones.forEach(function (z) { if (B[z.type] || z.type === "masse-sol") forme(z, "zones", true); });
     d.structures.forEach(function (s) { forme(s, "structures", !_estLigne(s.type)); });
     d.roads.forEach(function (r) { if (r.type !== "itinerary" && r.type !== "jonction") forme(r, "traces", false); });
     d.points.forEach(function (p) {
@@ -14205,6 +14552,14 @@
       })(),
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
       cameraY: +e.camera.position.y.toFixed(3), ramper: +(e.ramper || 0).toFixed(3),
+      masses: { n: (e.masses || []).length, triangles: e.trianglesMasses || 0, triMax: e.trianglesMasseMax || 0,
+        ms: +(e.msMasses || 0).toFixed(1),
+        sol: +_solMasse(e.pos.x / e.sc, e.pos.y / e.sc).toFixed(3),
+        vide: Number.isFinite(e.vide) ? +e.vide.toFixed(3) : null,
+        ouverts: (e.masses || []).map(function (m) { return m.ouverts.length; }),
+        fermes: (e.masses || []).map(function (m) { return m.fermes; }),
+        fonds: (e.masses || []).map(function (m) { return +m.H.toFixed(3); }),
+        bornes: (e.masses || []).map(function (m) { return !!m.borne; }), pieds: e.piedsMasse || 0 },
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {
         return s + t.octets;
       }, 0), noms: Array.from(e.plaques.values()).map(function (t) { return t.nom; }),

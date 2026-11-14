@@ -115,13 +115,16 @@ unique avec les passages : `poiJonction.js > ktaNiveauxObjet`. Gardé par la ses
 `mkm:copie`) et GeoJSON (propriété `niveaux`, une entité). Retiré quand la zone devient une structure. Voir
 `multilevel-pathfinding.md` §26.12.
 → **Masse au sol** : `"type": "masse-sol"` (remblai partiel), `"comble": 0.75` = part de la hauteur de galerie
-comblée, nombre strictement entre 0 et 1 ; **absent = ½** (`styleResolver.js > ktaCombleZone`, seule règle de lecture).
-Une valeur pour tous les niveaux d'une zone multi-niveau. Crans de saisie ¼ ½ ¾ ou valeur libre (fiche :
+comblée, nombre dans **[−1 ; 1[ sauf 0** (`ktaCombleValide`) ; **négatif = sol abaissé** de cette part de la hauteur
+(−1 = une hauteur de niveau plus bas) ; **absent = ½** (`styleResolver.js > ktaCombleZone`, seule règle de lecture).
+Une valeur pour tous les niveaux d'une zone multi-niveau. Crans de saisie −¾ −½ −¼ ¼ ½ ¾ ou valeur libre (fiche :
 `KtaConvertir.changerComble`, une entrée ⏪ ; Tableur : colonne `comble`, code d'erreur `comble`) ; ≥ 1 n'est jamais
-écrit : c'est un Comblé (`remblais`), proposé à la place. Retiré quand la zone change de type. Gardé par la session,
+écrit : c'est un Comblé (`remblais`), proposé à la place ; sous −1, refusé avec un message. Retiré quand la zone
+change de type. Gardé par la session,
 les calques (registre `_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:comble`, style `#zone_masse-sol`), GeoJSON
 (propriété `comble`, toujours écrite, ½ par défaut) ; import SIG : synonymes `ms`, `masse au sol`, `remblai partiel`,
-colonne de hauteur facultative (`sigImport.js > combleDe` : 0,5 = part, 50 % ou 1-100 = pourcentage) ; **défaut d'un
+colonne de hauteur facultative (`sigImport.js > combleDe` : 0,5 = part, 50 % ou 1-100 = pourcentage, signe moins =
+sol abaissé : « -0,5 », « -50 % ») ; KMZ et GeoJSON écrivent la valeur signée ; **défaut d'un
 polygone SIG non reconnu = `masse-sol`** (Générateur compris). Garde-fou : `scripts/check-masse-sol.js`.
 → **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
 `niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction

@@ -668,7 +668,7 @@
     // 🔒 lecture seule
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
     const v = Number(valeur);
-    if (!obj || obj.type !== "masse-sol" || !Number.isFinite(v) || v <= 0 || v >= 1) return false;
+    if (!obj || obj.type !== "masse-sol" || !_combleValide(v)) return false;
     const ecrire = _ecrivain("zones");
     if (typeof ecrire !== "function") {
       console.warn("[Convertir] setteur manquant pour la part comblée d'une zone");
@@ -863,9 +863,13 @@
     return out;
   }
 
-  // `comble` d'une masse au sol : absent, ou part de la hauteur strictement entre 0 et 1 (≥ 1 = un Comblé : la colonne
-  // `type` le dit, pas cette valeur).
-  function _combleLisible(v) { return v === undefined || v === null || (Number.isFinite(v) && v > 0 && v < 1); }
+  // `comble` d'une masse au sol : absent, ou part de la hauteur dans [−1 ; 1[ sauf 0 (négative = sol abaissé ; ≥ 1 =
+  // un Comblé : la colonne `type` le dit, pas cette valeur). Règle unique : styleResolver.js > ktaCombleValide.
+  function _combleValide(v) {
+    return typeof window.ktaCombleValide === "function" ? window.ktaCombleValide(v)
+      : Number.isFinite(v) && v !== 0 && v >= -1 && v < 1;
+  }
+  function _combleLisible(v) { return v === undefined || v === null || _combleValide(v); }
   // `niveaux` d'un passage entre niveaux (poiJonction.js) : absent, ou liste d'entiers.
   function _niveauxLisibles(v) {
     return v == null || (Array.isArray(v) && v.every(Number.isInteger));
