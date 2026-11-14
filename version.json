@@ -3,6 +3,7 @@
   "released": "2026-11-14",
   "notes": [
     "🗺️ Le fond OpenStreetMap d'un plan s'affiche désormais directement sous le plan, depuis le bouton carte : transparence, ma position, enregistrement hors ligne.",
-    "🧊 En 3D, le plan au sol reste net même sans limite de portée ; ✏️ noms plus justes : Plaque/indication, Épure/graffiti."
+    "🧊 En 3D, le plan au sol reste net même sans limite de portée ; ✏️ noms plus justes : Plaque/indication, Épure/graffiti.",
+    "📍 Un calage corrigé dans les Réglages s'applique partout et se garde quand on met le plan à jour."
   ]
 }
