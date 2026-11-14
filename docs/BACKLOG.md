@@ -51,6 +51,10 @@
 
 ## Ensuite
 
+- **Masse au sol : pente réglable par zone (rampe)** — décidé 14/11 après « talus honnête » : pente du talus par zone
+  (option b de `ETUDE_REMBLAIS.md` § 6), pour les galeries hautes où 30° ne suffit pas ou gêne.
+  `qui: Claude · action: QCM (saisie, sens de la rampe, 2D) puis lot · fini: pente par zone en 2D et 3D, checkup
+  · depuis: 14/11/2026 · taille: M`
 - **Sol abaissé qui débouche sur le niveau du dessous** — décidé 14/11 (après le lot 4 de la masse au sol) : en 3D, le
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
