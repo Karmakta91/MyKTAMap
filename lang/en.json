@@ -5769,7 +5769,7 @@
   "ui.struct.front2": "2nd-mass quarry face — auto level -1",
   "ui.struct.mur": "Wall",
   "ui.struct.murLigne": "Wall (line) — cuts the route",
-  "ui.struct.arc": "Support arch — you walk under it",
+  "ui.struct.arc": "Support arch",
   "ui.struct.noneBody": "First select a type (1st/2nd-mass pillar, wall, wall (line), or 1st/2nd-mass quarry face) before trying to close it.",
   "ui.struct.noneTitle": "No structure in progress",
   "ui.struct.pilier1": "1st-mass pillar",

@@ -5769,7 +5769,7 @@
   "ui.struct.front2": "Frente de cantera 2ª masa — nivel -1 auto",
   "ui.struct.mur": "Muro",
   "ui.struct.murLigne": "Muro (línea) — corta el itinerario",
-  "ui.struct.arc": "Arco de sostenimiento — se pasa por debajo",
+  "ui.struct.arc": "Arco de sostenimiento",
   "ui.struct.noneBody": "Activa primero un tipo (pilar 1ª/2ª masa, muro, muro en línea, o frente de cantera 1ª/2ª masa) antes de intentar cerrarla.",
   "ui.struct.noneTitle": "Ninguna estructura en curso",
   "ui.struct.pilier1": "Pilar 1ª masa",

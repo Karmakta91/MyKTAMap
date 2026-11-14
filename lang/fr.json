@@ -5769,7 +5769,7 @@
   "ui.struct.front2": "Front de taille 2e masse — niveau -1 auto",
   "ui.struct.mur": "Mur",
   "ui.struct.murLigne": "Mur (ligne) — coupe l'itinéraire",
-  "ui.struct.arc": "Arc de soutènement — on passe dessous",
+  "ui.struct.arc": "Arc de soutènement",
   "ui.struct.noneBody": "Active d'abord un type (pilier 1ère/2e masse, mur, mur en ligne, ou front de taille 1ère/2e masse) avant de tenter de la fermer.",
   "ui.struct.noneTitle": "Aucune structure en cours",
   "ui.struct.pilier1": "Pilier 1ère masse",
