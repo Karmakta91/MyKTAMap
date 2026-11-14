@@ -26,6 +26,10 @@ effondrée ni inaccessible, considère que ça passe.
 - **Vue 3D** : Comblé monte jusqu'au ciel et arrête le pas, **sauf le long d'un tracé qui le traverse** : là, la galerie
   reste praticable (le tracé « débloque » l'obstacle), comme une galerie creusée dans le remblai.
 - **Vérifier le plan** signale chaque tracé qui traverse un Comblé (à vérifier, pas une erreur).
+- **Effondrement : même règle que Comblé** (révision du 14/11) : évité s'il existe un autre chemin, sinon l'itinéraire
+  passe et le dit ; obstacle 3D sauf le long d'un tracé qui le traverse ; signalé par Vérifier le plan.
+- **Seule la zone « Inaccessible » bloque tout passage, même avec un tracé** : itinéraire coupé et obstacle 3D, sans
+  exception (posée exprès pour dire « interdit »).
 - **Ordre** : la masse au sol (lots 2 → 4) passe avant Comblé.
 
 ## Décision de KARMA (11/11/2026)
