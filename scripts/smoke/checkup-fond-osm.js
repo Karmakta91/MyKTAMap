@@ -13,7 +13,9 @@
 //   détecté) · F5 plan orienté : pane dans la rotation, point toujours juste, coins couverts · F6 éteint : canvas et
 //   images libérés, opacité rendue · F7 hors ligne : tuiles enregistrées seulement, aucune requête · F8 OSM refusé
 //   et incognito : fond refusé, aucune requête · F9 « Ma position » : hors emprise refusée, dedans au bon endroit,
-//   jamais watchPosition · F10 plan rouvert : fond éteint, transparence par défaut.
+//   jamais watchPosition · F10 plan rouvert : fond éteint, transparence retenue · F11 transparence par plan (second
+//   plan d'essai servi par l'index, en mémoire), purge à la suppression · F12 « Enregistrer hors ligne » : emprise
+//   du plan seulement, progression et fin visibles ; grisée hors ligne, OSM refusé et incognito, sans requête.
 // ⚠️ Sous WebKit (KTA_MOTEURS=webkit), deux contrôles ne se jouent pas, et le harnais le dit : le contexte éphémère
 // refuse un Blob dans IndexedDB (F7 : tuiles enregistrées) et rend le fix précédent malgré setGeolocation (F9 dedans).
 // Usage : node scripts/smoke/checkup-fond-osm.js   (SMOKE_PORT pour une copie de travail)
@@ -35,6 +37,7 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1",
   "myktamap_osm_view_opt_in": "1"
 };
+const PLAN_B = "Plan d'essai B";
 const RE_OSM = /^https:\/\/tile\.openstreetmap\.org\/(\d+)\/(\d+)\/(\d+)\.png/;
 
 function planFictif() {
@@ -101,6 +104,17 @@ async function ouvrir(nav, nom, opts) {
       }
     } catch (e) {}
   }, Object.assign({}, LS_PREGATES, o.ls || {}));
+  // Second plan d'essai (F11) : l'index servi gagne une entrée qui pointe sur les fichiers du relevé fictif, avec
+  // son propre id et son propre nom. Rien n'est écrit dans data/.
+  if (o.planB) {
+    await page.route(/\/data\/index\.json/, async function (route) {
+      const res = await route.fetch();
+      const j = await res.json();
+      const a = (j.plans || []).find(function (p) { return /fictif/i.test(p.name || ""); });
+      if (a) j.plans.push(Object.assign({}, a, { id: a.id + "-essai-b", name: PLAN_B }));
+      route.fulfill({ response: res, json: j });
+    });
+  }
   // Tuiles OSM synthétiques : damier, ou noir avec UN pixel blanc (etat.cible = { z, x, y, px, py })
   await page.route(RE_OSM, function (route) {
     const m = RE_OSM.exec(route.request().url());
@@ -160,6 +174,54 @@ function lireFond() {
     etat: window.FondOsmPlan.etat()
   };
 }
+// Commande « Enregistrer hors ligne » du panneau : { desactivee, texte }.
+function lireHorsLigne() {
+  const b = document.querySelector("[data-fond-osm='hors-ligne']");
+  if (!b) return null;
+  return { desactivee: b.disabled, texte: (b.querySelector("[data-fond-osm='hors-ligne-etat']") || {}).textContent || "" };
+}
+// Rouvre un plan depuis l'accueil par l'id de sa ligne (le fond y est repris de zéro), calage prêté.
+// 🩸 Pas par son nom : une fois ouvert, un plan s'affiche sous le nom de son plan-config, le même pour les deux.
+async function rouvrir(page, id) {
+  await page.evaluate(function () { if (typeof window.afficherLoader === "function") window.afficherLoader(); });
+  await page.waitForTimeout(1500);
+  await page.locator('.plan-row[data-id="' + id + '"] .plan-row-name-text').first().click();
+  await attendre(page, function () { return !!window.map && !!window.PLAN_CONFIG && !!window.PLAN_CONFIG.plan; }, 90000);
+  await page.waitForTimeout(2500);
+  await page.evaluate(preterCalage);
+}
+// Pose des tuiles magenta dans le cache « Save Offline » (même base, même clé).
+async function poserMagenta(page, liste) {
+  await page.evaluate(async function (cles) {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+    const x = c.getContext("2d"); x.fillStyle = "rgb(255,0,255)"; x.fillRect(0, 0, 256, 256);
+    const blob = await new Promise(function (r) { c.toBlob(r, "image/png"); });
+    const db = await new Promise(function (res, rej) {
+      const q = indexedDB.open("myktamap_osm_tiles");
+      q.onsuccess = function () { res(q.result); }; q.onerror = function () { rej(q.error); };
+    });
+    await new Promise(function (res, rej) {
+      const tx = db.transaction("tiles", "readwrite");
+      cles.forEach(function (k) { tx.objectStore("tiles").put({ key: k, blob: blob, addedAt: new Date().toISOString() }); });
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  }, liste);
+}
+// Pixel du fond au centre de la carte : magenta = tuile enregistrée.
+function pixelCentre() {
+  const p = window.map.getPane("ktaFondOsm"), c = window.map.getContainer().getBoundingClientRect();
+  // 🩸 elementsFromPoint ignore les éléments sans pointer-events (tuiles Leaflet) : recherche par géométrie
+  const hit = Array.from(p.querySelectorAll("canvas")).find(function (e) {
+    const b = e.getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+    return b.left <= cx && cx < b.right && b.top <= cy && cy < b.bottom;
+  });
+  if (!hit) return { magenta: false };
+  const r = hit.getBoundingClientRect(), k = hit.width / r.width;
+  const d = hit.getContext("2d").getImageData(Math.floor((c.left + c.width / 2 - r.left) * k),
+    Math.floor((c.top + c.height / 2 - r.top) * k), 1, 1).data;
+  return { magenta: d[0] > 200 && d[1] < 60 && d[2] > 200, px: Array.from(d) };
+}
+
 async function texteVisible(page, texte) {
   return page.evaluate(function (t) { return document.documentElement.innerText.indexOf(t) >= 0; }, texte);
 }
@@ -419,8 +481,9 @@ async function mesurerCalage(page, etat, decalage, lib) {
     await page.evaluate(preterCalage);
     const f10 = await page.evaluate(lireFond);
     const b10 = await page.evaluate(lireBouton);
-    verifier(!f10.etat.allume && f10.etat.transparence === 50 && f10.canvas === 0 && !f10.attribution && !b10.actif
-      && f10.etat.position === null, "plan rouvert : fond éteint, transparence par défaut, aucun point", { etat: f10.etat, canvas: f10.canvas });
+    verifier(!f10.etat.allume && f10.canvas === 0 && !f10.attribution && !b10.actif && f10.etat.position === null,
+      "plan rouvert : interrupteur éteint, aucun point", { etat: f10.etat, canvas: f10.canvas });
+    verifier(f10.etat.transparence === 80, "plan rouvert : transparence retenue (80 %)", f10.etat.transparence);
     toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
     await s.ctx.close();
 
@@ -476,6 +539,13 @@ async function mesurerCalage(page, etat, decalage, lib) {
     }, cles);
     await s.ctx.setOffline(true);
     const n7 = s.etat.requetes.length;
+    await page.evaluate(function () { window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm")); });
+    await page.waitForTimeout(300);
+    const hl7 = await page.evaluate(lireHorsLigne);
+    const raisonHL = await cle(page, "fondosm.cache.indispo.horsLigne");
+    verifier(hl7 && hl7.desactivee && hl7.texte === raisonHL, "hors ligne : « Enregistrer hors ligne » grisée, raison affichée", hl7);
+    await page.click("[data-fond-osm='hors-ligne']", { force: true }).catch(function () {});
+    await page.keyboard.press("Escape");
     await page.evaluate(function () { window.FondOsmPlan.allumer(); window.FondOsmPlan.regler(100); });
     await tuilesChargees(page);
     const f7 = await page.evaluate(function () {
@@ -494,6 +564,19 @@ async function mesurerCalage(page, etat, decalage, lib) {
     verifier(f7.magenta, "hors ligne : les tuiles enregistrées s'affichent", f7);
     const msgHL = await cle(page, "fondosm.horsLigne");
     verifier(await texteVisible(page, msgHL), "hors ligne : message affiché à l'allumage", msgHL);
+    // Tuile absente à son zoom : la tuile enregistrée deux zooms plus large est agrandie
+    await page.evaluate(async function () { window.FondOsmPlan.eteindre(); await window.OsmTilesCache.clear(); });
+    const parents = Array.from(new Set(cles.map(function (k) {
+      const t = k.split("/").map(Number);
+      return (t[0] - 2) + "/" + (t[1] >> 2) + "/" + (t[2] >> 2);
+    })));
+    await poserMagenta(page, parents);
+    const n7b = s.etat.requetes.length;
+    await page.evaluate(function () { window.FondOsmPlan.allumer(); window.FondOsmPlan.regler(100); });
+    await tuilesChargees(page);
+    const f7b = await page.evaluate(pixelCentre);
+    verifier(f7b.magenta && s.etat.requetes.length === n7b,
+      "hors ligne : sans la tuile de son zoom, la tuile enregistrée plus large est agrandie, aucune requête", f7b);
     await page.evaluate(async function () { window.FondOsmPlan.eteindre(); await window.OsmTilesCache.clear(); });
     toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
     await s.ctx.close();
@@ -513,6 +596,11 @@ async function mesurerCalage(page, etat, decalage, lib) {
     const msgOpt = (await cle(page, "fondosm.refus.optin")).slice(0, 30);
     verifier(!f8.etat.allume && f8.canvas === 0 && s.etat.requetes.length === 0 && await texteVisible(page, msgOpt),
       "OSM refusé : fond refusé avec un message, aucune requête", { allume: f8.etat.allume, requetes: s.etat.requetes.length });
+    const hl8 = await page.evaluate(lireHorsLigne);
+    await page.click("[data-fond-osm='hors-ligne']", { force: true }).catch(function () {});
+    await page.waitForTimeout(800);
+    verifier(hl8 && hl8.desactivee && hl8.texte === await cle(page, "fondosm.cache.indispo.optin") && s.etat.requetes.length === 0,
+      "OSM refusé : « Enregistrer hors ligne » grisée avec sa raison, aucune requête", { hl8: hl8, requetes: s.etat.requetes.length });
     toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
     await s.ctx.close();
 
@@ -533,7 +621,88 @@ async function mesurerCalage(page, etat, decalage, lib) {
       verifier(!f9.etat.allume && f9.canvas === 0 && s.etat.requetes.length === 0 && await texteVisible(page, msgInc),
         "incognito : fond refusé avec un message, aucune requête", { allume: f9.etat.allume, requetes: s.etat.requetes.length });
       verifier(moiBloque, "incognito : « Ma position » désactivée", moiBloque);
+      const hl9 = await page.evaluate(lireHorsLigne);
+      await page.click("[data-fond-osm='hors-ligne']", { force: true }).catch(function () {});
+      await page.waitForTimeout(800);
+      verifier(hl9 && hl9.desactivee && hl9.texte === await cle(page, "fondosm.cache.indispo.incognito") && s.etat.requetes.length === 0,
+        "incognito : « Enregistrer hors ligne » grisée avec sa raison, aucune requête", { hl9: hl9, requetes: s.etat.requetes.length });
     }
+    toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
+    await s.ctx.close();
+
+    console.log("— F11 : transparence retenue par plan (second plan d'essai) —");
+    s = await ouvrir(nav, nom, { planB: true });
+    page = s.page;
+    await page.evaluate(preterCalage);
+    const idA = await page.evaluate(function () { return window._currentLoadedPlanId; });
+    await page.evaluate(function () { window.FondOsmPlan.allumer(); window.FondOsmPlan.regler(30); });
+    const idB = idA + "-essai-b";
+    await rouvrir(page, idB);
+    const b11 = await page.evaluate(function () {
+      return { id: window._currentLoadedPlanId, etat: window.FondOsmPlan.etat() };
+    });
+    verifier(b11.id && b11.id !== idA, "second plan d'essai ouvert (autre id)", { idA: idA, idB: b11.id });
+    verifier(b11.etat.transparence === 50 && !b11.etat.allume, "plan B au premier usage : 50 %, éteint", b11.etat);
+    await page.evaluate(function () { window.FondOsmPlan.allumer(); window.FondOsmPlan.regler(70); });
+    await rouvrir(page, idA);
+    const a11 = await page.evaluate(function () {
+      window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm"));
+      const v = document.querySelector("[data-fond-osm='valeur']").textContent;
+      window.FondOsmPlan.fermerPanneau();
+      return { id: window._currentLoadedPlanId, etat: window.FondOsmPlan.etat(), affiche: v };
+    });
+    verifier(a11.id === idA && a11.etat.transparence === 30 && /30/.test(a11.affiche) && !a11.etat.allume,
+      "retour sur A : 30 % retenus (panneau compris), interrupteur éteint", a11);
+    await page.evaluate(function () { window.FondOsmPlan.allumer(); });
+    const opA = await page.evaluate(lireFond);
+    verifier(Math.abs(opA.opaciteImage - 0.7) < 0.01, "retour sur A, fond allumé : image du plan à 0,7", opA.opaciteImage);
+    await rouvrir(page, idB);
+    const b11b = await page.evaluate(function () { return window.FondOsmPlan.etat(); });
+    verifier(b11b.transparence === 70 && !b11b.allume, "retour sur B : 70 % retenus, interrupteur éteint", b11b);
+    // suppression d'un plan : sa clé part avec ses données
+    const purge = await page.evaluate(async function (id) {
+      const avant = localStorage.getItem(window.FondOsmPlan.PREFIXE + id);
+      await window.PlanRegistry.purgeAssociatedData(id);
+      return { avant: avant, apres: localStorage.getItem(window.FondOsmPlan.PREFIXE + id) };
+    }, idA);
+    verifier(purge.avant === "30" && purge.apres === null, "plan purgé : sa transparence retenue est effacée", purge);
+
+    console.log("— F12 : « Enregistrer hors ligne » —");
+    await page.evaluate(function () { window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm")); });
+    await page.waitForTimeout(300);
+    const hl12 = await page.evaluate(lireHorsLigne);
+    verifier(hl12 && !hl12.desactivee && hl12.texte === "", "en ligne : commande active", hl12);
+    const n12 = s.etat.requetes.length;
+    await page.click("[data-fond-osm='hors-ligne']");
+    let progression = null;
+    for (let i = 0; i < 40 && !progression; i++) {
+      progression = await page.evaluate(function () {
+        const h = document.querySelector("[data-fond-osm='hors-ligne']");
+        return h && h.disabled && /\d+ \/ \d+/.test(h.textContent) ? h.textContent.trim() : null;
+      });
+      if (!progression) await page.waitForTimeout(50);
+    }
+    verifier(!!progression, "progression visible dans la commande", progression);
+    await attendre(page, function () { return !!window.FondOsmPlan.etat().dernierEnregistrement; }, 60000);
+    const r12 = await page.evaluate(async function () {
+      const e = window.FondOsmPlan.etat().dernierEnregistrement, bbox = window.OsmView.getPlanGpsBbox();
+      const attendues = {};
+      [e.zoom - 1, e.zoom, e.zoom + 1].forEach(function (z) {
+        window.OsmTilesCache.enumerateTilesForBbox(bbox, z).forEach(function (t) { attendues[t.z + "/" + t.x + "/" + t.y] = 1; });
+      });
+      const st = await window.OsmTilesCache.getStats();
+      return { res: e, attendues: Object.keys(attendues), stockees: st.count };
+    });
+    const demandees = s.etat.requetes.slice(n12).map(function (u) { const m = RE_OSM.exec(u); return m[1] + "/" + m[2] + "/" + m[3]; });
+    const horsEmprise = demandees.filter(function (k) { return r12.attendues.indexOf(k) < 0; });
+    verifier(r12.res.cached > 0 && r12.stockees >= r12.res.cached && horsEmprise.length === 0,
+      "tuiles de l'emprise du plan enregistrées (zoom " + r12.res.zoom + " ± 1), aucune hors emprise",
+      { res: r12.res, stockees: r12.stockees, horsEmprise: horsEmprise.length });
+    const fin = (await cle(page, "osm_home.cache.cached")).split("{")[1].split("}")[1].trim();
+    verifier(await texteVisible(page, fin), "fin annoncée par un toast", fin);
+    const hl12b = await page.evaluate(lireHorsLigne);
+    verifier(hl12b && !hl12b.desactivee, "commande rendue après l'enregistrement", hl12b);
+    await page.evaluate(async function () { await window.OsmTilesCache.clear(); });
     toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
     await s.ctx.close();
 

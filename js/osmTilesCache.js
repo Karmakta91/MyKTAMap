@@ -15,6 +15,7 @@
 // ⚠️ Politique d'usage OSM (https://operations.osmfoundation.org/policies/tiles/) : 200 tuiles max par
 // opération (MAX_TILES_PER_CACHE).
 // Expose window.OsmTilesCache : init, cacheVisibleTiles(map, opts) (tuiles visibles, zoom ±1),
+//   cacheTilesForBbox(bbox, zoom, opts) et zoomPourBbox(bbox, zMax) (emprise d'un plan),
 //   getCachedTile / hasCachedTile(z, x, y), getStats() → { count, sizeBytes }, hasCacheForBbox(bbox, zoom?),
 //   clear, enumerateTilesForBbox(bbox, zoom), formatBytes.
 // Doc : docs/architecture/vue-osm.md
@@ -170,12 +171,30 @@
   // bbox actuelle sur [zoom-1, zoom, zoom+1], plafonnée à MAX_TILES_PER_CACHE : fetch → blob → IDB.
   // opts.onProgress(done, total) ; → { cached, skipped, failed, totalRequested }.
   async function cacheVisibleTiles(map, opts) {
-    opts = opts || {};
     if (!map || typeof map.getBounds !== "function") {
       throw new Error("cacheVisibleTiles: map Leaflet invalide");
     }
-    const bbox = map.getBounds();
-    const curZ = Math.round(map.getZoom() || 14);
+    return cacheTilesForBbox(map.getBounds(), Math.round(map.getZoom() || 14), opts);
+  }
+
+  // Zoom le plus fin (≤ zMax) où la bbox tient sur [z-1, z, z+1] sous MAX_TILES_PER_CACHE : sert à cacher
+  // l'emprise d'un plan entier sans carte OSM (fond OSM sous le plan, fondOsmPlan.js).
+  function zoomPourBbox(bbox, zMax) {
+    let meilleur = 0;
+    for (let z = 1; z <= Math.min(18, zMax == null ? 18 : zMax); z++) {
+      const n = enumerateTilesForBbox(bbox, z - 1).length + enumerateTilesForBbox(bbox, z).length +
+                enumerateTilesForBbox(bbox, z + 1).length;
+      if (n > MAX_TILES_PER_CACHE) break;
+      meilleur = z;
+    }
+    return meilleur;
+  }
+
+  // Même chose pour une bbox et un zoom donnés (seule implémentation : le bouton 💾 de la Vue OSM, du widget de
+  // l'accueil et « Enregistrer hors ligne » du fond sous le plan passent tous ici).
+  async function cacheTilesForBbox(bbox, curZ, opts) {
+    opts = opts || {};
+    if (!bbox || typeof bbox.getNorth !== "function") throw new Error("cacheTilesForBbox: bbox invalide");
 
     const zooms = [curZ - 1, curZ, curZ + 1].filter(function(z) { return z >= 0 && z <= 19; });
 
@@ -270,6 +289,8 @@
   window.OsmTilesCache = {
     init:                  init,
     cacheVisibleTiles:     cacheVisibleTiles,
+    cacheTilesForBbox:     cacheTilesForBbox,
+    zoomPourBbox:          zoomPourBbox,
     getCachedTile:         getCachedTile,
     hasCachedTile:         hasCachedTile,
     getStats:              getStats,

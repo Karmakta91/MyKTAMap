@@ -182,7 +182,8 @@ sous 3 conditions strictes simultanément réunies** :
      (au-delà, la tuile 19 est agrandie). Hors ligne : **aucune requête**,
      seules les tuiles déjà enregistrées (« Save Offline ») sont lues.
      Refusé avec un message si la Vue OSM est coupée ou en incognito ;
-     couper la Vue OSM pendant qu'il est affiché l'éteint.
+     couper la Vue OSM pendant qu'il est affiché l'éteint. Son panneau
+     porte aussi « Enregistrer hors ligne » (voir « Cache offline OSM »).
    - **Modale Vue OSM full-screen** (Mode Secours : bouton 🌍 du scénario,
      capture du briefing PDF). Couvre les tuiles plan V2 projetées + POI +
      Tracker + Roads + Iti + Zones + Structures.
@@ -294,8 +295,12 @@ apparaît dans **3 contextes** (tous opt-in user, tous soumis à la case
 3. **Mode Secours** — accessible indirectement via les boutons 🌍 Vue OSM
    du Mode Secours qui rouvrent la modale Vue OSM standard (pas de chemin
    indépendant).
+4. **Fond OSM sous le plan** (`fondOsmPlan.js`) — « Enregistrer hors
+   ligne » dans le panneau du bouton 🌍 du mode plan : les tuiles de
+   l'**emprise du plan** sur 3 zooms, 200 au plus, par le même code que
+   le bouton 💾. Grisé hors ligne, en incognito ou Vue OSM coupée.
 
-Le cache est **GLOBAL** (partagé entre les 3 contextes) : si l'user a déjà
+Le cache est **GLOBAL** (partagé entre ces contextes) : si l'user a déjà
 caché une tuile depuis le widget HOME, elle est instantanément réutilisée
 dans la modale Vue OSM et inversement (même clé `z/x/y`, pas de
 duplication).

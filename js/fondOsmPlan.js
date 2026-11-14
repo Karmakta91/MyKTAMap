@@ -11,9 +11,11 @@
 // les tuiles OSM qui la couvrent, posées par setTransform (affine des 3 coins de la tuile, calage
 // KmzExport.buildTransformCalib → Web Mercator). Pas de seconde carte. La transparence est celle de l'image du plan
 // (tilePane + overlays du fond), le fond OSM reste opaque. Panneau : interrupteur, transparence, « Ma position ».
+// Quatrième commande : « Enregistrer hors ligne » (emprise du plan dans OsmTilesCache, même code que l'accueil).
 // Expose : window.FondOsmPlan = { basculerPanneau, fermerPanneau, allumer, eteindre, maPosition, majBouton, regler,
-//   etat }.
-// ⚠️ Éteint à chaque plan ouvert, aucune mémoire (décision produit) ; la fenêtre Vue OSM ne s'ouvre plus du bouton.
+//   enregistrerHorsLigne, retirer, transferer, PREFIXE, etat }.
+// ⚠️ Interrupteur éteint à chaque plan ouvert ; transparence retenue PAR PLAN (décision produit) ; la fenêtre Vue
+//   OSM ne s'ouvre plus du bouton.
 // 🔒 Réseau : seulement tile.openstreetmap.org, OSM autorisé (OsmView.isOptedIn), hors incognito ; hors ligne, les
 //   tuiles enregistrées (OsmTilesCache) et aucune requête. Au-delà du zoom 19 : la tuile 19 agrandie, rien de plus.
 // 🔒 « Ma position » : un getCurrentPosition, refusé hors de l'emprise du plan (pad 0,5) et en incognito ; rien
@@ -35,6 +37,9 @@
   // anticrénelé de deux canvas voisins laissait voir le fond de la carte (liseré sombre en diagonale).
   const COTE         = TUILE + 1;
   const CACHE_RAM    = 48;             // images OSM décodées gardées (≈ 12 Mo)
+  const CACHE_ANCETRES = 16;           // tuiles enregistrées d'un zoom plus large, agrandies hors ligne
+  const REPLI_ZOOMS  = 6;              // hors ligne : jusqu'à 6 zooms plus larges (morceau ×64)
+  const CLE_TRANSPARENCE = "myktamap_fond_osm_v1_";   // + planId : transparence retenue par plan
   const TRANSPARENCE_DEFAUT = 50;      // % de transparence de l'image du plan, fond allumé
 
   let _allume       = false;
@@ -48,7 +53,10 @@
   let _attrib       = null;
   let _moi          = null;            // { marqueur, cercle } du dernier fix
   let _horsLigneDit = false;
-  const _images     = new Map();       // "z/x/y" → Promise<HTMLImageElement|null> (ordre = LRU)
+  const _images     = new Map();       // "z/x/y" → Promise<{ img, sx, sy, cote }|null> (ordre = LRU)
+  const _ancetres   = new Map();       // "z/x/y" → Promise<HTMLImageElement|null>, tuiles enregistrées seulement
+  let _enregistrement = null;          // { fait, total } pendant « Enregistrer hors ligne », sinon null
+  let _dernierEnregistrement = null;   // résultat du dernier enregistrement (diagnostic, lu par etat())
   const _enVol      = new Set();       // images réseau en cours (coupées à l'extinction)
   let _requetes     = 0;               // requêtes réseau lancées (diagnostic, lu par etat())
 
@@ -144,21 +152,48 @@
     });
   }
   function _reseauPermis() { return _enLigne() && _osmAutorise() && !_incognito(); }
-  async function _imageOsm(z, x, y, gen) {
+  // Tuile enregistrée (« Enregistrer hors ligne »), décodée ; null si absente.
+  async function _imageEnregistree(z, x, y) {
     let blob = null;
     if (window.OsmTilesCache && typeof window.OsmTilesCache.getCachedTile === "function") {
       try { blob = await window.OsmTilesCache.getCachedTile(z, x, y); } catch(e) { blob = null; }
     }
-    if (gen !== _generation) return null;
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      const img = await _chargerImg(url, false);
-      URL.revokeObjectURL(url);
-      if (img) return img;
+    if (!blob) return null;
+    const url = URL.createObjectURL(blob);
+    const img = await _chargerImg(url, false);
+    URL.revokeObjectURL(url);
+    return img;
+  }
+  function _ancetre(z, x, y) {
+    const cle = z + "/" + x + "/" + y;
+    if (!_ancetres.has(cle)) {
+      const p = _imageEnregistree(z, x, y);
+      _ancetres.set(cle, p);
+      while (_ancetres.size > CACHE_ANCETRES) _ancetres.delete(_ancetres.keys().next().value);
     }
-    if (gen !== _generation || !_reseauPermis()) return null;
-    _requetes++;
-    return _chargerImg(OSM_URL.replace("{z}", z).replace("{x}", x).replace("{y}", y), true);
+    return _ancetres.get(cle);
+  }
+  // → { img, sx, sy, cote } : la tuile elle-même (cote 256), ou, sans réseau permis, le morceau d'une tuile
+  // enregistrée d'un zoom plus large, agrandi. 🩸 « Enregistrer hors ligne » ne garde que 3 zooms autour de
+  // l'emprise : sans ce repli, le fond hors ligne serait vide à tous les autres zooms.
+  async function _imageOsm(z, x, y, gen) {
+    const img = await _imageEnregistree(z, x, y);
+    if (gen !== _generation) return null;
+    if (img) return { img: img, sx: 0, sy: 0, cote: TUILE };
+    if (_reseauPermis()) {
+      _requetes++;
+      const net = await _chargerImg(OSM_URL.replace("{z}", z).replace("{x}", x).replace("{y}", y), true);
+      return net ? { img: net, sx: 0, sy: 0, cote: TUILE } : null;
+    }
+    for (let k = 1; k <= REPLI_ZOOMS && z - k >= 0; k++) {
+      const a = await _ancetre(z - k, x >> k, y >> k);
+      if (gen !== _generation) return null;
+      if (a) {
+        const cote = TUILE / Math.pow(2, k);
+        return { img: a, sx: (x - ((x >> k) << k)) * cote, sy: (y - ((y >> k) << k)) * cote, cote: cote };
+      }
+    }
+    return null;
   }
   function _image(z, x, y) {
     const cle = z + "/" + x + "/" + y;
@@ -182,12 +217,12 @@
   // Tuile OSM à sa place exacte, puis sa dernière colonne et sa dernière ligne étirées d'un demi-pixel du canvas.
   // 🩸 Sans ces bandes, l'anticrénelage des bords laisse un liseré entre deux tuiles OSM voisines quand le plan est
   // tourné par rapport au nord ; étirer la tuile entière l'aurait déplacée (jusqu'à un demi-pixel au bord opposé).
-  function _poserTuile(ctx, img, t, plan) {
-    const e = plan.recouvrement;
+  function _poserTuile(ctx, src, t, plan) {
+    const e = plan.recouvrement, c = src.cote, u = c / TUILE;   // u : un pixel de destination dans la source
     ctx.setTransform(plan.matrice[0], plan.matrice[1], plan.matrice[2], plan.matrice[3], 0, 0);
-    ctx.drawImage(img, t.dx, t.dy, TUILE, TUILE);
-    ctx.drawImage(img, TUILE - 1, 0, 1, TUILE, t.dx + TUILE - 1, t.dy, 1 + e, TUILE + e);
-    ctx.drawImage(img, 0, TUILE - 1, TUILE, 1, t.dx, t.dy + TUILE - 1, TUILE + e, 1 + e);
+    ctx.drawImage(src.img, src.sx, src.sy, c, c, t.dx, t.dy, TUILE, TUILE);
+    ctx.drawImage(src.img, src.sx + c - u, src.sy, u, c, t.dx + TUILE - 1, t.dy, 1 + e, TUILE + e);
+    ctx.drawImage(src.img, src.sx, src.sy + c - u, c, u, t.dx, t.dy + TUILE - 1, TUILE + e, 1 + e);
   }
 
   const CoucheFondOsm = (typeof L !== "undefined" && L.GridLayer) ? L.GridLayer.extend({
@@ -289,6 +324,7 @@
     _couche.addTo(map);
     _carte = map;
     _allume = true;
+    _transparence = _lireTransparence();
     _opacitePlan(1 - _transparence / 100);
     _attribution(map, true);
     if (!_enLigne() && !_horsLigneDit) { _horsLigneDit = true; _toast(_t("fondosm.horsLigne")); }
@@ -308,6 +344,7 @@
     _enVol.forEach(function(img) { img.onload = img.onerror = null; img.src = ""; });
     _enVol.clear();
     _images.clear();
+    _ancetres.clear();
     if (_carte && _carte === window.map) _opacitePlan(1);
     _attribution(null, false);
     _carte = null;
@@ -319,7 +356,7 @@
   // Changement de plan : tout repart à zéro (fond éteint, transparence par défaut, point effacé).
   function _remiseAZero() {
     eteindre();
-    _transparence = TRANSPARENCE_DEFAUT;
+    _transparence = _lireTransparence();
     _horsLigneDit = false;
     _effacerMoi();
     fermerPanneau();
@@ -419,6 +456,12 @@
         window.ktaEsc(_t("fondosm.moi.title")) + '">' +
         '<span class="kta-group-flyout-btn-icon">' + window.ktaIcone("locate-fixed") + '</span>' +
         '<span class="kta-group-flyout-btn-label">' + window.ktaEsc(_t("fondosm.moi")) + '</span>' +
+      '</button>' +
+      '<button type="button" class="kta-group-flyout-btn" data-fond-osm="hors-ligne" title="' +
+        window.ktaEsc(_t("fondosm.cache.title")) + '">' +
+        '<span class="kta-group-flyout-btn-icon">' + window.ktaIcone("cloud-download") + '</span>' +
+        '<span class="kta-group-flyout-btn-label">' + window.ktaEsc(_t("fondosm.cache")) + '</span>' +
+        '<span class="kta-fond-osm-etat" data-fond-osm="hors-ligne-etat"></span>' +
       '</button>';
     p.addEventListener("click", function(e) {
       const cible = e.target.closest("[data-fond-osm]");
@@ -427,6 +470,7 @@
       if (role === "fermer") fermerPanneau();
       else if (role === "interrupteur") { if (_allume) eteindre(); else allumer(); }
       else if (role === "moi") maPosition();
+      else if (role === "hors-ligne") enregistrerHorsLigne();
     });
     p.querySelector("[data-fond-osm='transparence']").addEventListener("input", function(e) {
       regler(parseInt(e.target.value, 10));
@@ -446,6 +490,13 @@
     _panneau.querySelector("[data-fond-osm='valeur']").textContent = _transparence + " %";
     const moi = _panneau.querySelector("[data-fond-osm='moi']");
     moi.disabled = _incognito();
+    const hl = _panneau.querySelector("[data-fond-osm='hors-ligne']");
+    const raison = _raisonEnregistrement();
+    hl.disabled = !!(raison || _enregistrement);
+    hl.setAttribute("aria-busy", _enregistrement ? "true" : "false");
+    _panneau.querySelector("[data-fond-osm='hors-ligne-etat']").textContent = _enregistrement
+      ? _t("fondosm.cache.enCours", { fait: _enregistrement.fait, total: _enregistrement.total })
+      : (raison ? _t("fondosm.cache.indispo." + raison) : "");
   }
 
   function _placerPanneau() {
@@ -471,6 +522,7 @@
     _bouton = bouton || _bouton;
     const raison = _raisonIndispo();
     if (raison) { _toast(_t("fondosm.indispo." + raison)); return; }
+    if (!_allume) _transparence = _lireTransparence();
     _panneau = _construirePanneau();
     document.body.appendChild(_panneau);
     _majPanneau();
@@ -511,15 +563,102 @@
   function regler(pourcent) {
     const v = Math.max(0, Math.min(100, Math.round(Number(pourcent) || 0)));
     _transparence = v;
+    _ecrireTransparence(v);
     if (_allume) _opacitePlan(1 - v / 100);
     _majPanneau();
+  }
+
+  // ── Transparence retenue par plan (décision produit : l'interrupteur, lui, repart éteint) ──────────
+  // localStorage `myktamap_fond_osm_v1_<planId>` = "0" à "100" ; absent ou illisible → 50.
+  // ⚠️ Purgée et transférée avec les autres données du plan (planRegistry.js > purgeAssociatedData,
+  // transferAssociatedData), exportée avec le profil (profileExportImport.js > PER_PLAN_PREFIXES).
+  function _planCourant() { return window._currentLoadedPlanId || null; }
+  function _lireTransparence() {
+    const id = _planCourant();
+    if (!id) return TRANSPARENCE_DEFAUT;
+    try {
+      const v = parseInt(localStorage.getItem(CLE_TRANSPARENCE + id), 10);
+      return (v >= 0 && v <= 100) ? v : TRANSPARENCE_DEFAUT;
+    } catch(e) { return TRANSPARENCE_DEFAUT; }
+  }
+  function _ecrireTransparence(v) {
+    const id = _planCourant();
+    if (!id) return;
+    try { localStorage.setItem(CLE_TRANSPARENCE + id, String(v)); } catch(e) { /* stockage plein ou bloqué */ }
+  }
+  function retirer(planId) {
+    if (!planId) return;
+    try { localStorage.removeItem(CLE_TRANSPARENCE + planId); } catch(e) { /* rien */ }
+  }
+  function transferer(ancienId, nouveauId) {
+    if (!ancienId || !nouveauId || ancienId === nouveauId) return;
+    try {
+      const v = localStorage.getItem(CLE_TRANSPARENCE + ancienId);
+      if (v != null && localStorage.getItem(CLE_TRANSPARENCE + nouveauId) == null) {
+        localStorage.setItem(CLE_TRANSPARENCE + nouveauId, v);
+      }
+      localStorage.removeItem(CLE_TRANSPARENCE + ancienId);
+    } catch(e) { /* rien */ }
+  }
+
+  // ── « Enregistrer hors ligne » : l'emprise du plan dans le cache OSM partagé (OsmTilesCache) ──────────
+  // Même garde que le bouton de la carte de l'accueil, plus OSM coupé et incognito : la commande est grisée
+  // avec sa raison. Zoom : le plus fin où l'emprise tient sur 3 zooms sous le plafond de 200 tuiles.
+  function _raisonEnregistrement() {
+    if (!_osmAutorise()) return "optin";
+    if (_incognito()) return "incognito";
+    if (!_enLigne()) return "horsLigne";
+    const bbox = (window.OsmView && typeof window.OsmView.getPlanGpsBbox === "function")
+      ? window.OsmView.getPlanGpsBbox() : null;
+    if (!bbox || !window.OsmTilesCache || typeof window.OsmTilesCache.cacheTilesForBbox !== "function") {
+      return "georef";
+    }
+    return null;
+  }
+  function _recheckVueOsm() {
+    try {
+      if (window.OsmView && typeof window.OsmView.recheckOfflineCache === "function") {
+        window.OsmView.recheckOfflineCache();
+      }
+    } catch(e) { /* rien */ }
+  }
+  async function enregistrerHorsLigne() {
+    if (_enregistrement) return null;
+    const raison = _raisonEnregistrement();
+    if (raison) { _toast(_t("fondosm.cache.indispo." + raison)); return null; }
+    const bbox = window.OsmView.getPlanGpsBbox();
+    const z = window.OsmTilesCache.zoomPourBbox(bbox, 18);
+    _enregistrement = { fait: 0, total: 0 };
+    _majPanneau();
+    let res = null;
+    try {
+      res = await window.OsmTilesCache.cacheTilesForBbox(bbox, z, {
+        onProgress: function(fait, total) { _enregistrement = { fait: fait, total: total }; _majPanneau(); }
+      });
+      let msg = _t("osm_home.cache.cached", { cached: res.cached });
+      if (res.skipped) msg += _t("osm_home.cache.skipped", { skipped: res.skipped });
+      if (res.failed) msg += _t("osm_home.cache.failed", { failed: res.failed });
+      if (res.capped) msg += _t("osm_home.cache.capped");
+      _toast(msg, res.failed && !res.cached && !res.skipped ? "error" : "success");
+      res.zoom = z;
+    } catch(e) {
+      _toast(_t("osm_home.cache.error", { err: (e && e.message) || String(e) }), "error");
+    } finally {
+      _enregistrement = null;
+      _dernierEnregistrement = res;
+      _majPanneau();
+      _recheckVueOsm();
+    }
+    return res;
   }
 
   function etat() {
     return {
       disponible: !_raisonIndispo(), raison: _raisonIndispo(), allume: _allume, transparence: _transparence,
       imagesEnMemoire: _images.size, requetesReseau: _requetes, panneauOuvert: !!_panneau,
-      position: _moi ? _moi.marqueur.getLatLng() : null
+      position: _moi ? _moi.marqueur.getLatLng() : null,
+      enregistrement: _enregistrement, dernierEnregistrement: _dernierEnregistrement,
+      raisonEnregistrement: _raisonEnregistrement()
     };
   }
 
@@ -529,6 +668,8 @@
     _majTout();
   }
   window.addEventListener("kta:osmOptInChange", _surRefus);
+  window.addEventListener("online", _majPanneau);
+  window.addEventListener("offline", _majPanneau);
   window.addEventListener("mktm:plan-ferme", _remiseAZero);
   window.addEventListener("mktm:plan-pret", function() { if (_carte !== window.map) _remiseAZero(); majBouton(); });
 
@@ -540,6 +681,10 @@
     maPosition:      maPosition,
     majBouton:       majBouton,
     regler:          regler,
+    enregistrerHorsLigne: enregistrerHorsLigne,
+    retirer:         retirer,
+    transferer:      transferer,
+    PREFIXE:         CLE_TRANSPARENCE,
     etat:            etat
   };
 })();

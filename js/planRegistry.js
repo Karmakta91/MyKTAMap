@@ -174,6 +174,7 @@
     // 🔒 Un plan ☁️ retiré à la déconnexion ne laisse rien de son contenu, pas même ses décomptes.
     try { localStorage.removeItem("myktamap_plan_stats_v1_" + id); } catch(e) {}
     if (window.KtaVuePlan) window.KtaVuePlan.retirer(id);
+    if (window.FondOsmPlan) window.FondOsmPlan.retirer(id);   // transparence du fond OSM sous le plan
     try {
       if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {
         localStorage.removeItem("myktamap_kmz_calib_" + id);
@@ -215,6 +216,7 @@
         bilan.calib = true;
       }
       if (window.KtaVuePlan) window.KtaVuePlan.transferer(ancienId, nouveauId);
+      if (window.FondOsmPlan) window.FondOsmPlan.transferer(ancienId, nouveauId);
     } catch (e) { bilan.raison = "stockage"; return bilan; }
     if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.changerPlan === "function") {
       try { bilan.photos = (await window.MyKTAMapPhotos.changerPlan(ancienId, nouveauId)) || 0; } catch (e) {}

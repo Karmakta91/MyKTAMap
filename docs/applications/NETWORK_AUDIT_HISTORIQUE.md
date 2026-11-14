@@ -10,7 +10,7 @@
 
 ### Pas encore publié (après v2.26.0) — fond OpenStreetMap sous le plan
 
-**Aucun domaine nouveau, un nouveau point d'appel du même domaine.** En mode plan, le bouton 🌍 n'ouvre plus la fenêtre Vue OSM : il propose un fond OpenStreetMap posé sous le plan (`js/fondOsmPlan.js`). Il demande les mêmes tuiles `tile.openstreetmap.org/{z}/{x}/{y}.png`, seulement quand on l'allume à la main (éteint à chaque ouverture de plan), seulement celles de la vue, jamais au-delà du zoom 19. Refusé si la Vue OSM est coupée dans ⚙️ Configuration ou en incognito ; hors ligne, aucune requête : il ne lit que les tuiles déjà enregistrées sur l'appareil. « Ma position » fait un seul relevé GPS, sans suivi, gardé en mémoire et jamais envoyé. Aucune donnée de plan ne part.
+**Aucun domaine nouveau, un nouveau point d'appel du même domaine.** En mode plan, le bouton 🌍 n'ouvre plus la fenêtre Vue OSM : il propose un fond OpenStreetMap posé sous le plan (`js/fondOsmPlan.js`). Il demande les mêmes tuiles `tile.openstreetmap.org/{z}/{x}/{y}.png`, seulement quand on l'allume à la main (éteint à chaque ouverture de plan), seulement celles de la vue, jamais au-delà du zoom 19. Refusé si la Vue OSM est coupée dans ⚙️ Configuration ou en incognito ; hors ligne, aucune requête : il ne lit que les tuiles déjà enregistrées sur l'appareil. « Ma position » fait un seul relevé GPS, sans suivi, gardé en mémoire et jamais envoyé. « Enregistrer hors ligne » télécharge, sur action, les tuiles de l'emprise du plan (200 au plus, même règle que le bouton 💾). La transparence choisie est retenue pour chaque plan, sur l'appareil seulement. Aucune donnée de plan ne part.
 
 ### v2.26.0 (vue 3D texturée, niveaux en transparence)
 

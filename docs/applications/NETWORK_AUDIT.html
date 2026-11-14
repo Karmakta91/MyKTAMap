@@ -124,7 +124,8 @@ tuiles qui couvrent la vue sont demandées, jamais au-delà du zoom 19
 (au-delà, la tuile 19 est agrandie). Hors ligne : <strong>aucune requête</strong>,
 seules les tuiles déjà enregistrées (« Save Offline ») sont lues.
 Refusé avec un message si la Vue OSM est coupée ou en incognito ;
-couper la Vue OSM pendant qu&#39;il est affiché l&#39;éteint.</li><li><strong>Modale Vue OSM full-screen</strong> (Mode Secours : bouton 🌍 du scénario,
+couper la Vue OSM pendant qu&#39;il est affiché l&#39;éteint. Son panneau
+porte aussi « Enregistrer hors ligne » (voir « Cache offline OSM »).</li><li><strong>Modale Vue OSM full-screen</strong> (Mode Secours : bouton 🌍 du scénario,
 capture du briefing PDF). Couvre les tuiles plan V2 projetées + POI +
 Tracker + Roads + Iti + Zones + Structures.</li><li><strong>Widget mini-preview HOME</strong> (page d&#39;accueil) : si l&#39;opt-in est ON,
 la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
@@ -212,8 +213,11 @@ apparaît dans <strong>3 contextes</strong> (tous opt-in user, tous soumis à la
 full-screen.</li><li><strong>Widget OSM accueil</strong> (<code>osmHomePreview.js</code>) — clic depuis la
 mini-preview HOME.</li><li><strong>Mode Secours</strong> — accessible indirectement via les boutons 🌍 Vue OSM
 du Mode Secours qui rouvrent la modale Vue OSM standard (pas de chemin
-indépendant).</li></ol>
-<p>Le cache est <strong>GLOBAL</strong> (partagé entre les 3 contextes) : si l&#39;user a déjà
+indépendant).</li><li><strong>Fond OSM sous le plan</strong> (<code>fondOsmPlan.js</code>) — « Enregistrer hors
+ligne » dans le panneau du bouton 🌍 du mode plan : les tuiles de
+l&#39;<strong>emprise du plan</strong> sur 3 zooms, 200 au plus, par le même code que
+le bouton 💾. Grisé hors ligne, en incognito ou Vue OSM coupée.</li></ol>
+<p>Le cache est <strong>GLOBAL</strong> (partagé entre ces contextes) : si l&#39;user a déjà
 caché une tuile depuis le widget HOME, elle est instantanément réutilisée
 dans la modale Vue OSM et inversement (même clé <code>z/x/y</code>, pas de
 duplication).</p>

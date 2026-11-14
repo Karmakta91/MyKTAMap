@@ -872,13 +872,14 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
 
-**OpenStreetMap background under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel.
+**OpenStreetMap background under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel with four commands.
 
 - **OSM background under the map** turns it on or off. When it is on, the 🌍 button stays highlighted and the OpenStreetMap credit shows at the bottom left. Closing the panel does not turn it off.
-- **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque.
+- **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque. Each map remembers its own (50 % the first time).
 - **My location**: your GPS position, once, without tracking. Refused when you are far from the map, and in incognito mode. Nothing is saved or sent.
+- **Save offline**: downloads the OpenStreetMap tiles of the whole map in advance (200 tiles at most), to have the background without a network. Progress shows in the command, then a message gives the count. Greyed out, with the reason, when offline, in incognito mode, or if the OSM View is turned off.
 
-The background turns with the oriented map and is off every time a map opens. Without georeferencing, the button is greyed out (hover over it to read why). If the OSM View is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, only tiles saved beforehand are shown (💾 on the home screen map). Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
+The background turns with the oriented map and is off every time a map opens (the transparency is remembered). Without georeferencing, the button is greyed out (hover over it to read why). If the OSM View is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, only saved tiles are shown; at a zoom that was not saved, the closest saved tile is enlarged. Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
 
 **Search**: the bar in the title row looks for a map or a point among your georeferenced maps; the map flies to it. It reads your maps, without asking the Internet anything.
 
@@ -1821,7 +1822,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 - **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚑 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
-- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, open the home screen **🌍 OSM view** while you still have a network and tap **💾 Save Offline** (details in the OSM view section): the OpenStreetMap background under the map uses it offline.
+- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, while you still have a network, tap **🌍** on the map, then **Save offline** (details in the OSM view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone (at the map's full resolution: gallery names stay readable even on a large map), steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
 - **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (📡 External export tab of the session export).
 

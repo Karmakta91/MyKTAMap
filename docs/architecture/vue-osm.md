@@ -47,13 +47,14 @@
 
 En mode plan, le bouton carte de la barre du haut (`#kta-refonte-counter-osm`, `refonteInterface.js`) n'ouvre **plus**
 la fenêtre Vue OSM (décision produit) : il ouvre un petit panneau ancré sous lui (classes `.kta-group-flyout`, mode
-ancré, sans fond assombri) avec trois commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
+ancré, sans fond assombri) avec quatre commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
 
 | Commande | Effet |
 |---|---|
 | Interrupteur « Fond OSM sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche OSM dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), attribution « © OpenStreetMap » fixée au-dessus de la barre d'état |
-| Transparence du plan (0 → 100 %, défaut 50 %) | opacité de l'**image du plan** seulement : `tilePane` (tuiles V2) et overlays du fond (`_ktaBaseLayers` : rendu direct et repli V2 ; `_baseTiles` : tuiles V1). Le fond OSM reste opaque. Éteint : opacité rendue à 1 |
+| Transparence du plan (0 → 100 %, 50 % au premier usage) | opacité de l'**image du plan** seulement : `tilePane` (tuiles V2) et overlays du fond (`_ktaBaseLayers` : rendu direct et repli V2 ; `_baseTiles` : tuiles V1). Le fond OSM reste opaque. Éteint : opacité rendue à 1. **Retenue par plan** (décision produit) : localStorage `myktamap_fond_osm_v1_<planId>` ("0" à "100", lecture et écriture en try/catch), purgée et transférée avec les données du plan (`planRegistry.js > purgeAssociatedData`, `transferAssociatedData` → `FondOsmPlan.retirer` / `transferer`), exportée avec le profil (`profileExportImport.js > PER_PLAN_PREFIXES`) |
 | Ma position | un `getCurrentPosition` (jamais `watchPosition`, fix de moins de 10 s accepté), mêmes garde-fous que la fenêtre (§4) : refus hors de `OsmView.getPlanGpsBbox().pad(0.5)`, bloqué en incognito, rien de persisté ni d'envoyé. Point (`.kta-fond-osm-moi`) et cercle de précision posés sur le plan par `KmzExport.gpsToPlan`, en mémoire jusqu'au plan suivant |
+| Enregistrer hors ligne | l'emprise du plan (`OsmView.getPlanGpsBbox`) dans le cache « Save Offline » partagé, par le code du bouton 💾 : `OsmTilesCache.cacheTilesForBbox(bbox, z)` (seule implémentation, `cacheVisibleTiles` y passe aussi), `z = OsmTilesCache.zoomPourBbox(bbox, 18)` = le zoom le plus fin où l'emprise tient sur z − 1, z, z + 1 sous le plafond de 200 tuiles. Grisée, raison écrite dans la commande, si OSM est coupé, en incognito ou hors ligne (relu aux événements `online` / `offline`). Progression « fait / total » dans la commande, fin par un toast (compte des tuiles, déjà là, échecs, plafond) ; prévient la fenêtre Vue OSM (`recheckOfflineCache`) |
 
 **Rendu.** Une `L.GridLayer` en canvas (`CoucheFondOsm`), pane `ktaFondOsm` z-index 150, sous `tilePane` (200). Pour
 chaque tuile de la carte du plan : les 3 coins (pixel projeté → `map.unproject` → pixel image → `KmzExport.planToGps`
@@ -80,7 +81,9 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
   au rectangle tourné.
 - **Images OSM** : d'abord le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
   décodage), puis le réseau seulement si en ligne, OSM autorisé et hors incognito ; 48 images décodées gardées (LRU),
-  un échec n'est pas gardé. Éteindre coupe les images en vol (`src = ""`), vide le cache, remet chaque canvas à 0 × 0
+  un échec n'est pas gardé. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
+  jusqu'à 6 zooms plus large (morceau agrandi, `drawImage` sur un rectangle source) : « Enregistrer hors ligne » ne
+  garde que 3 zooms, le fond serait vide à tous les autres. Éteindre coupe les images en vol (`src = ""`), vide le cache, remet chaque canvas à 0 × 0
   (`tileunload` : iOS ne rend sa mémoire qu'ainsi).
 
 **Gates.** Bouton grisé (`.kta-fond-osm-indispo`, bordure pointillée, raison en `title` et en toast au toucher) sans
@@ -88,8 +91,9 @@ géoréf effectif (`OsmView.getGeorefEffectif`, même cascade que la fenêtre, �
 si OSM est coupé (`OsmView.isOptedIn`, `ktaAlerte`) ou en incognito (toast) ; couper OSM pendant que le fond est
 affiché l'éteint (`kta:osmOptInChange`). Hors ligne : un toast à l'allumage, tuiles enregistrées seulement.
 
-**Sans mémoire** (décision produit) : éteint à chaque plan ouvert (`mktm:plan-ferme`, `mktm:plan-pret`, et le
-polling 2 s du bouton détecte une carte remplacée), transparence remise à 50 %, point « Ma position » effacé.
+**À chaque plan ouvert** (décision produit) : interrupteur éteint (`mktm:plan-ferme`, `mktm:plan-pret`, et le polling
+2 s du bouton détecte une carte remplacée), point « Ma position » effacé ; la transparence, elle, reprend la valeur
+retenue pour ce plan.
 
 **Hors périmètre** : les exports PNG / PDF / KMZ redessinent depuis les données (`exporter.js`, `kmzExport.js`), le
 fond n'y entre pas ; la vue 3D ne le montre pas. Le Mode Secours ouvre toujours la fenêtre Vue OSM (bouton 🌍 du
@@ -596,7 +600,7 @@ Permet à l'utilisateur de **précharger les tuiles `tile.openstreetmap.org`** c
 | Modale Vue OSM (plan georef, ouverte par le Mode Secours) | Bandeau « 💾 Cacher offline » | `osmView.js` |
 | Widget Vue OSM HOME | Bandeau compact « 💾 » | `osmHomePreview.js` |
 | Mode Secours (icône 🌍) | Hérite modale Vue OSM (même bouton) | `secoursMode.js` → `OsmView.open` |
-| Fond OSM sous le plan (mode plan) | aucun : il **lit** ce cache, et hors ligne ne lit que lui | `fondOsmPlan.js` |
+| Fond OSM sous le plan (mode plan) | « Enregistrer hors ligne » du panneau (emprise du plan) ; il **lit** ce cache, et hors ligne ne lit que lui | `fondOsmPlan.js` |
 
 ### 8.2 Architecture modules
 
@@ -638,6 +642,8 @@ sw.js > ASSETS_TO_CACHE : ./js/osmTilesCache.js
 window.OsmTilesCache = {
   init,                    // Promise<IDBDatabase> — idempotent
   cacheVisibleTiles,       // (map, {onProgress, zoomDelta=1}) → Promise<{cached, skipped, total}>
+  cacheTilesForBbox,       // (bbox, zoom, {onProgress}) : même chose sur une bbox (seule implémentation)
+  zoomPourBbox,            // (bbox, zMax) → zoom le plus fin où la bbox tient sur 3 zooms sous 200 tuiles
   getCachedTile,           // (z, x, y) → Promise<Blob|null>
   hasCachedTile,           // (z, x, y) → Promise<boolean>
   getStats,                // () → Promise<{count, sizeBytes, oldest, newest}>
