@@ -442,6 +442,7 @@
         '<button type="button" class="kta-group-flyout-close" data-fond-osm="fermer" aria-label="' +
           window.ktaEsc(_t("fondosm.fermer")) + '">' + window.ktaIcone("x") + '</button>' +
       '</div>' +
+      '<p class="kta-fond-osm-horsligne kta-tx-warn" data-fond-osm="hors-ligne-msg" role="status" hidden></p>' +
       '<button type="button" class="kta-group-flyout-btn" data-fond-osm="interrupteur" aria-pressed="false">' +
         '<span class="kta-group-flyout-btn-icon">' + window.ktaIcone("toggle-right") + '</span>' +
         '<span class="kta-group-flyout-btn-label">' + window.ktaEsc(_t("fondosm.interrupteur")) + '</span>' +
@@ -483,6 +484,10 @@
     const inter = _panneau.querySelector("[data-fond-osm='interrupteur']");
     inter.classList.toggle("kta-actif", _allume);
     inter.setAttribute("aria-pressed", _allume ? "true" : "false");
+    // Hors ligne : dit dans le panneau, tenu à jour par les événements online / offline (fin de fichier).
+    const msg = _panneau.querySelector("[data-fond-osm='hors-ligne-msg']");
+    msg.hidden = _enLigne();
+    msg.textContent = msg.hidden ? "" : _t("fondosm.horsLigne");
     const etat = _panneau.querySelector("[data-fond-osm='etat']");
     const on = _t("fondosm.etat.on"), off = _t("fondosm.etat.off");
     etat.textContent = _allume ? on : off;

@@ -161,8 +161,8 @@
   }
 
   // Purge les données d'un plan (🗑️ de ℹ️ Infos, nettoyeur d'orphelins) : session, stats du profil,
-  // calage KMZ, photos, sauvegardes. PRÉSERVE le Carnet, les récits du Mode Histoire et les liaisons
-  // inter-plans, qui survivent au plan (décision produit). Chaque module externe est optionnel.
+  // calage KMZ, réglages par plan, photos, sauvegardes. PRÉSERVE le Carnet, les récits du Mode Histoire et les
+  // liaisons inter-plans, qui survivent au plan (décision produit). Chaque module externe est optionnel.
   async function purgeAssociatedData(id) {
     const bilan = { session: false, calib: false, photos: 0, backups: 0 };
     if (!id) return bilan;
@@ -175,6 +175,7 @@
     try { localStorage.removeItem("myktamap_plan_stats_v1_" + id); } catch(e) {}
     if (window.KtaVuePlan) window.KtaVuePlan.retirer(id);
     if (window.FondOsmPlan) window.FondOsmPlan.retirer(id);   // transparence du fond OSM sous le plan
+    try { localStorage.removeItem("myktamap_plan_prefs_" + id); } catch(e) {}   // réglages par plan (config.js)
     try {
       if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {
         localStorage.removeItem("myktamap_kmz_calib_" + id);
@@ -190,7 +191,7 @@
     return bilan;
   }
 
-  // Transfère session (planId réécrit), calage, photos, favoris et liaisons vers un autre id (copie
+  // Transfère session (planId réécrit), calage, réglages, photos, favoris et liaisons vers un autre id (copie
   // locale remplacée par sa version ☁️). Refusé si la cible a déjà une session : jamais d'écrasement.
   // Les sauvegardes restent à l'ancien id (purgées avec lui).
   async function transferAssociatedData(ancienId, nouveauId) {
@@ -214,6 +215,12 @@
         localStorage.setItem("myktamap_kmz_calib_" + nouveauId, cal);
         localStorage.removeItem("myktamap_kmz_calib_" + ancienId);
         bilan.calib = true;
+      }
+      // Réglages par plan (config.js > _readPlanPrefs), comme le calage : jamais d'écrasement de la cible.
+      const prefs = localStorage.getItem("myktamap_plan_prefs_" + ancienId);
+      if (prefs != null && localStorage.getItem("myktamap_plan_prefs_" + nouveauId) == null) {
+        localStorage.setItem("myktamap_plan_prefs_" + nouveauId, prefs);
+        localStorage.removeItem("myktamap_plan_prefs_" + ancienId);
       }
       if (window.KtaVuePlan) window.KtaVuePlan.transferer(ancienId, nouveauId);
       if (window.FondOsmPlan) window.FondOsmPlan.transferer(ancienId, nouveauId);

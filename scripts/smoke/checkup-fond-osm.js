@@ -11,10 +11,10 @@
 // F3 transparence sur l'image du plan, fond opaque ·
 // F4 calage : un point du plan tombe sur son pixel OSM à moins de 1 px au zoom max (contre-essai : pixel voisin
 //   détecté) · F5 plan orienté : pane dans la rotation, point toujours juste, coins couverts · F6 éteint : canvas et
-//   images libérés, opacité rendue · F7 hors ligne : tuiles enregistrées seulement, aucune requête · F8 OSM refusé
+//   images libérés, opacité rendue · F7 hors ligne : tuiles enregistrées seulement, aucune requête, phrase d'état qui suit online / offline · F8 OSM refusé
 //   et incognito : fond refusé, aucune requête · F9 « Ma position » : hors emprise refusée, dedans au bon endroit,
 //   jamais watchPosition · F10 plan rouvert : fond éteint, transparence retenue · F11 transparence par plan (second
-//   plan d'essai servi par l'index, en mémoire), purge à la suppression · F12 « Enregistrer hors ligne » : emprise
+//   plan d'essai servi par l'index, en mémoire), purge à la suppression ; réglages par plan purgés et transférés sans écraser · F12 « Enregistrer hors ligne » : emprise
 //   du plan seulement, progression et fin visibles ; grisée hors ligne, OSM refusé et incognito, sans requête.
 // ⚠️ Sous WebKit (KTA_MOTEURS=webkit), deux contrôles ne se jouent pas, et le harnais le dit : le contexte éphémère
 // refuse un Blob dans IndexedDB (F7 : tuiles enregistrées) et rend le fix précédent malgré setGeolocation (F9 dedans).
@@ -179,6 +179,12 @@ function lireHorsLigne() {
   const b = document.querySelector("[data-fond-osm='hors-ligne']");
   if (!b) return null;
   return { desactivee: b.disabled, texte: (b.querySelector("[data-fond-osm='hors-ligne-etat']") || {}).textContent || "" };
+}
+// Phrase d'état hors ligne du panneau : { visible, texte }.
+function lirePhraseHorsLigne() {
+  const m = document.querySelector("[data-fond-osm='hors-ligne-msg']");
+  if (!m) return null;
+  return { visible: !m.hidden && m.getBoundingClientRect().height > 0, texte: m.textContent };
 }
 // Rouvre un plan depuis l'accueil par l'id de sa ligne (le fond y est repris de zéro), calage prêté.
 // 🩸 Pas par son nom : une fois ouvert, un plan s'affiche sous le nom de son plan-config, le même pour les deux.
@@ -544,6 +550,21 @@ async function mesurerCalage(page, etat, decalage, lib) {
     const hl7 = await page.evaluate(lireHorsLigne);
     const raisonHL = await cle(page, "fondosm.cache.indispo.horsLigne");
     verifier(hl7 && hl7.desactivee && hl7.texte === raisonHL, "hors ligne : « Enregistrer hors ligne » grisée, raison affichée", hl7);
+    // Phrase d'état hors ligne : suit online / offline sans rouvrir le panneau
+    const phraseHL = await cle(page, "fondosm.horsLigne");
+    const m7a = await page.evaluate(lirePhraseHorsLigne);
+    verifier(m7a && m7a.visible && m7a.texte === phraseHL, "hors ligne : phrase d'état visible dans le panneau", m7a);
+    await s.ctx.setOffline(false);
+    await page.waitForTimeout(300);
+    const m7b = await page.evaluate(lirePhraseHorsLigne);
+    verifier(m7b && !m7b.visible, "réseau revenu, panneau ouvert : phrase retirée sans rouvrir", m7b);
+    await s.ctx.setOffline(true);
+    await page.waitForTimeout(300);
+    const m7c = await page.evaluate(lirePhraseHorsLigne);
+    verifier(m7c && m7c.visible && m7c.texte === phraseHL, "réseau recoupé : phrase de retour sans rouvrir", m7c);
+    if (process.env.KTA_CAPTURE_DIR) {
+      await (await page.$(".kta-fond-osm-panneau")).screenshot({ path: path.join(process.env.KTA_CAPTURE_DIR, "panneau-hors-ligne.png") });
+    }
     await page.click("[data-fond-osm='hors-ligne']", { force: true }).catch(function () {});
     await page.keyboard.press("Escape");
     await page.evaluate(function () { window.FondOsmPlan.allumer(); window.FondOsmPlan.regler(100); });
@@ -666,12 +687,33 @@ async function mesurerCalage(page, etat, decalage, lib) {
       return { avant: avant, apres: localStorage.getItem(window.FondOsmPlan.PREFIXE + id) };
     }, idA);
     verifier(purge.avant === "30" && purge.apres === null, "plan purgé : sa transparence retenue est effacée", purge);
+    // Réglages par plan (myktamap_plan_prefs_) : purgés avec le plan, transférés sans écraser la cible
+    const prefs = await page.evaluate(async function () {
+      const P = "myktamap_plan_prefs_", lire = function (id) { return localStorage.getItem(P + id); };
+      const R = window.PlanRegistry;
+      localStorage.setItem(P + "essai-prefs-a", '{"northOffsetDeg":12}');
+      await R.transferAssociatedData("essai-prefs-a", "essai-prefs-b");
+      const transfert = { a: lire("essai-prefs-a"), b: lire("essai-prefs-b") };
+      localStorage.setItem(P + "essai-prefs-c", '{"northOffsetDeg":40}');
+      await R.transferAssociatedData("essai-prefs-c", "essai-prefs-b");
+      const cibleGardee = { c: lire("essai-prefs-c"), b: lire("essai-prefs-b") };
+      await R.purgeAssociatedData("essai-prefs-b");
+      await R.purgeAssociatedData("essai-prefs-c");
+      return { transfert: transfert, cibleGardee: cibleGardee, purge: [lire("essai-prefs-b"), lire("essai-prefs-c")] };
+    });
+    verifier(prefs.transfert.a === null && prefs.transfert.b === '{"northOffsetDeg":12}',
+      "réglages par plan transférés à la version serveur (ancienne clé retirée)", prefs.transfert);
+    verifier(prefs.cibleGardee.b === '{"northOffsetDeg":12}' && prefs.cibleGardee.c === '{"northOffsetDeg":40}',
+      "transfert vers une cible qui a déjà ses réglages : rien d'écrasé", prefs.cibleGardee);
+    verifier(prefs.purge[0] === null && prefs.purge[1] === null, "plan purgé : ses réglages par plan effacés", prefs.purge);
 
     console.log("— F12 : « Enregistrer hors ligne » —");
     await page.evaluate(function () { window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm")); });
     await page.waitForTimeout(300);
     const hl12 = await page.evaluate(lireHorsLigne);
     verifier(hl12 && !hl12.desactivee && hl12.texte === "", "en ligne : commande active", hl12);
+    const m12 = await page.evaluate(lirePhraseHorsLigne);
+    verifier(m12 && !m12.visible, "en ligne : pas de phrase d'état hors ligne", m12);
     const n12 = s.etat.requetes.length;
     await page.click("[data-fond-osm='hors-ligne']");
     let progression = null;

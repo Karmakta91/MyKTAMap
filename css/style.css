@@ -15078,6 +15078,7 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
   flex: 1 1 72px; min-width: 0; max-width: 100%; margin: 0; accent-color: var(--kta-accent);
 }
 .kta-fond-osm-curseur input[type="range"]:disabled { cursor: not-allowed; }
+.kta-fond-osm-horsligne { margin: 0 4px 6px; font-size: 12px; line-height: 1.35; }
 .kta-fond-osm-valeur {
   flex: 0 0 auto; min-width: 5.5ch; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums;
 }

@@ -89,7 +89,9 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
 **Gates.** Bouton grisé (`.kta-fond-osm-indispo`, bordure pointillée, raison en `title` et en toast au toucher) sans
 géoréf effectif (`OsmView.getGeorefEffectif`, même cascade que la fenêtre, §2.2). Allumer est refusé avec un message
 si OSM est coupé (`OsmView.isOptedIn`, `ktaAlerte`) ou en incognito (toast) ; couper OSM pendant que le fond est
-affiché l'éteint (`kta:osmOptInChange`). Hors ligne : un toast à l'allumage, tuiles enregistrées seulement.
+affiché l'éteint (`kta:osmOptInChange`). Hors ligne : un toast à l'allumage, une phrase d'état en tête du panneau
+(`fondosm.horsLigne`, `.kta-tx-warn`, relue aux événements `online` / `offline` sans rouvrir), tuiles enregistrées
+seulement.
 
 **À chaque plan ouvert** (décision produit) : interrupteur éteint (`mktm:plan-ferme`, `mktm:plan-pret`, et le polling
 2 s du bouton détecte une carte remplacée), point « Ma position » effacé ; la transparence, elle, reprend la valeur

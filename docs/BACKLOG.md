@@ -150,9 +150,6 @@
 
 ## Entrant
 
-- **`myktamap_plan_prefs_<planId>` jamais purgée** — la suppression d'un plan ne l'efface pas
-  (`planRegistry > purgeAssociatedData`), vu au lot du fond OSM (14/11).
-  `qui: Claude · action: l'ajouter à la purge et au transfert, test · depuis: 14/11/2026 · taille: XS`
 - **Deux checkups rouges hérités** — `checkup-ouvertures-enchainees` : erreur Leaflet `_clear` / `_redraw`, reproduite
   à l'identique sur `938dda8e` (14/11) ; `checkup-tuiles-hors-ecran` : attend un plan V2 absent d'une copie séparée.
   `qui: Claude · action: corriger l'erreur Leaflet ou le test ; plan V2 fictif fourni au second · depuis: 14/11/2026
