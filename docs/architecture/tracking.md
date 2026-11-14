@@ -1422,7 +1422,15 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   inclinée : une jonction posée sur une masse l'emporte), jamais du maillage. Vide = hauteur du niveau − sol :
   ≥ 1,8 m debout ; 1 à 1,8 m œil abaissé à vide − 0,2 m ; sous 1 m on rampe (œil `CHATIERE.oeil`, transition lissée sur
   0,3 m de vide, `_oeilMasse`, sans saut) ; sous 0,5 m le pas s'arrête (`_masseBloque` dans `_pas`, au centre et à un
-  corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Plafond
+  corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Sur le
+  talus, la **marche ralentit** au-delà de 15° de pente du sol sous les pieds dans le sens du pas (`_ralentiMasse` dans
+  `_pas` : 1 jusqu'à `MASSE.lent`, puis jusqu'à `MASSE.lentPlancher` = ½ à 30°, montée comme descente, sol abaissé
+  compris ; 1 dans une galerie inclinée ou une zone jonction, et en vue plongeante). ⚠️ contrat : formule, découpe et
+  sonde des bords vivent dans **`js/masseSol.js`** (`KtaMasseSol.sol`, `bords`, `atteinte` ; `m.pente` y est le point
+  d'entrée d'une pente par zone) : la vue 3D (sa sonde `_bloqueSonde`) et la fiche de la carte (`atteinteZone`, sonde
+  `bloqueCarte` : mêmes appels, structures du niveau par contour) lisent la même règle. La fiche dit « Hauteur atteinte
+  : … sur … » (« Profondeur » pour un sol abaissé) quand la zone est trop courte pour que le talus atteigne son cran
+  (`utils.js > _texteAtteinteComble`). Plafond
   inchangé. **Part négative = sol abaissé** : même formule, le sol descend vers l'intérieur, le vide grandit (rien
   n'arrête, on descend debout) ; le sol du niveau (ou du voisin construit, `e.bitsPlans`) est troué sur son contour par
   le gabarit, comme la bouche d'un puits (`_masseSol`, lot `trous`) ; pans tournés vers l'intérieur sur les bords

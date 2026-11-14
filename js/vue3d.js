@@ -911,9 +911,12 @@
   // (œil CHATIERE.oeil, transition lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête
   // (_masseBloque ; sortir vers plus de vide reste permis). Plafond inchangé. N'entre pas dans les zones qui bouchent
   // (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. Sans effet sur l'itinéraire (son lot n'est pas livré).
-  // Garde-fou : scripts/smoke/checkup-vue-3d.js § 24 ter.
-  const MASSE = { pente: Math.tan(30 * Math.PI / 180), pas: 0.5, triMax: 2000, sonde: 0.35, debout: 1.8, courbe: 1,
-    ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4 };
+  // Sur le talus, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°). Formule et bords : masseSol.js.
+  // Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
+  // pente, pas des bords et sonde : masseSol.js (KtaMasseSol), la règle partagée avec la fiche de la carte.
+  const MASSE = { pente: window.KtaMasseSol.PENTE, pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
+    ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
+    lent: 15, lentPlancher: 0.5 };
 
   // Sonde de A à B (m) arrêtée par la règle du pas du rendu, au niveau de la scène (contexte d'un voisin compris) :
   // structures, parois des tubes (mixte) ou emprise (galerie), zones qui bouchent ; hors de l'image du plan = arrêtée.
@@ -961,18 +964,10 @@
         m.x0 = Math.min(m.x0, q[0]); m.x1 = Math.max(m.x1, q[0]);
         m.z0 = Math.min(m.z0, q[1]); m.z1 = Math.max(m.z1, q[1]);
       });
-      for (let i = 0; i < ring.length; i++) {
-        const p = ring[i], q = ring[(i + 1) % ring.length], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
-        if (l < 1e-6) continue;
-        const nx = dz / l, nz = -dx / l, k = Math.max(1, Math.ceil(l / MASSE.pas));
-        for (let j = 0; j < k; j++) {
-          const ax = p[0] + dx * j / k, az = p[1] + dz * j / k;
-          const bx = p[0] + dx * (j + 1) / k, bz = p[1] + dz * (j + 1) / k;
-          const cx = (ax + bx) / 2, cz = (az + bz) / 2;
-          if (_bloqueSonde(cx - nx * 0.05, cz - nz * 0.05, cx + nx * MASSE.sonde, cz + nz * MASSE.sonde)) m.fermes++;
-          else m.ouverts.push([ax, az, bx, bz]);
-        }
-      }
+      // Bords découpés et sondés par la règle partagée (masseSol.js > bords), la sonde étant celle de la 3D.
+      const b = window.KtaMasseSol.bords(ring, _bloqueSonde);
+      m.ouverts = b.ouverts;
+      m.fermes = b.fermes;
     }
     C.set(z.points, m);
     return m;
@@ -1005,17 +1000,7 @@
   }
 
   // Sol (m, négatif pour un sol abaissé) de la masse `m` en (x, z) m, la place supposée dans son contour.
-  function _solMasseDe(m, x, z) {
-    let d2 = Infinity;
-    for (let i = 0; i < m.ouverts.length; i++) {
-      const s = m.ouverts[i], dx = s[2] - s[0], dz = s[3] - s[1], l2 = dx * dx + dz * dz;
-      const k = l2 > 1e-12 ? Math.max(0, Math.min(1, ((x - s[0]) * dx + (z - s[1]) * dz) / l2)) : 0;
-      const ex = x - s[0] - dx * k, ez = z - s[1] - dz * k;
-      d2 = Math.min(d2, ex * ex + ez * ez);
-    }
-    const a = Math.abs(m.H), v = d2 === Infinity ? a : Math.min(a, MASSE.pente * Math.sqrt(d2));
-    return m.H < 0 ? -v : v;
-  }
+  function _solMasseDe(m, x, z) { return window.KtaMasseSol.sol(m, x, z); }
 
   // Sol (m) des masses au sol du niveau sous (x, z) m : le plus haut des remblais s'il y en a, sinon le plus bas des
   // sols abaissés, 0 hors de toute masse.
@@ -1065,6 +1050,22 @@
     if (v >= MASSE.courbe) return { oeil: haut, ramper: 0 };
     const k = _lisse((MASSE.courbe - v) / MASSE.transition), bas = Math.min(e.oeil, CHATIERE.oeil);
     return { oeil: Math.min(e.oeil, MASSE.courbe - MASSE.marge) * (1 - k) + bas * k, ramper: k };
+  }
+
+  // Facteur de vitesse (0..1) sur une masse au sol, dans le sens (ux, uz) : pente du sol sous les pieds (différence
+  // centrée sur ±0,1 m, montée comme descente) ; 1 jusqu'à MASSE.lent degrés, puis décroît jusqu'à MASSE.lentPlancher
+  // à 30° (la pente du talus), sans descendre plus bas. ⚠️ contrat : 1 dans une galerie inclinée ou une zone jonction
+  // (leur règle, _surPente) et hors masse.
+  function _ralentiMasse(ux, uz) {
+    const e = _e;
+    if (!e.masses || !e.masses.length) return 1;
+    const x = e.pos.x / e.sc, z = e.pos.y / e.sc;
+    if (_surPente(x, z, 0)) return 1;
+    const h = 0.1, ds = _solMasse(x + ux * h, z + uz * h) - _solMasse(x - ux * h, z - uz * h);
+    const deg = Math.atan(Math.abs(ds) / (2 * h)) * 180 / Math.PI;
+    if (deg <= MASSE.lent) return 1;
+    const t = Math.min(1, (deg - MASSE.lent) / (30 - MASSE.lent));
+    return 1 - (1 - MASSE.lentPlancher) * t;
   }
 
   // Pas de (x0, y0) à (x1, y1) px arrêté par une masse au sol : vide sous MASSE.ramper à l'arrivée (centre ou devant,
@@ -8882,6 +8883,9 @@
   // n'arrêtaient rien.
   function _pas(m, angle) {
     const e = _e, a = angle * Math.PI / 180;
+    // Masse au sol : la marche ralentit sur un talus de plus de 15° (_ralentiMasse) ; jamais en vue plongeante.
+    e.ralenti = e.vue === "plongee" ? 1 : _ralentiMasse(Math.sin(a), -Math.cos(a));
+    m *= e.ralenti;
     const dx = Math.sin(a) * m * e.sc, dy = -Math.cos(a) * m * e.sc;
     // ⚠️ contrat (décision produit) : en vue plongeante, rien ne bloque, comme un survol (piliers, murs, fronts, zones,
     // portes, parois) ; seule l'image du plan borne la place. Une greffe qui en ferait tricher interdit la plongée
@@ -14561,7 +14565,7 @@
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
       cameraY: +e.camera.position.y.toFixed(3), ramper: +(e.ramper || 0).toFixed(3),
       masses: { n: (e.masses || []).length, triangles: e.trianglesMasses || 0, triMax: e.trianglesMasseMax || 0,
-        ms: +(e.msMasses || 0).toFixed(1),
+        ms: +(e.msMasses || 0).toFixed(1), ralenti: +(e.ralenti === undefined ? 1 : e.ralenti).toFixed(3),
         sol: +_solMasse(e.pos.x / e.sc, e.pos.y / e.sc).toFixed(3),
         vide: Number.isFinite(e.vide) ? +e.vide.toFixed(3) : null,
         ouverts: (e.masses || []).map(function (m) { return m.ouverts.length; }),

@@ -472,6 +472,7 @@ const ASSETS_TO_CACHE = [
   "./js/pathfinder.js",
   "./js/roadGraph.js",
   "./js/galerieEmprise.js",
+  "./js/masseSol.js",
   "./js/updateChecker.js",
   "./js/alertChecker.js",
   "./js/lostMode.js",

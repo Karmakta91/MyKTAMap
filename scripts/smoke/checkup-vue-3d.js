@@ -3150,11 +3150,23 @@ async function sectionMasseSol(page) {
       };
       if (rendu === "structures") c.points.pilier = await ici(-5, 4.85);
       c.montee = { quart: await marcher(-52, 70), demi: await marcher(-32, 70), troisQuarts: await marcher(-12, 70) };
-      c.bloque = await marcher(12, 90);
-      // Ressortir : demi-tour, 2 m vers l'ouest.
+      // Marche ralentie sur le talus (> 15°) : un pas de 0,1 m demandé, distance parcourue et facteur ; à plat, sur le
+      // plateau, sur la jonction : la vitesse normale.
+      const unPas = async function (x, z, cap) {
+        await ici(x, z, cap);
+        const a = K.etat().pos;
+        K.avancer(0.1);
+        await pause(25);
+        const b = K.etat();
+        return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
+      };
+      c.vitesse = { plat: await unPas(-35, 0, 90), talus: await unPas(-29, 0, 90), descente: await unPas(-21, 0, 90),
+        plateau: await unPas(-25, 0, 90), jonction: await unPas(40, 5, 180) };
+      c.bloque = await marcher(12, 140);
+      // Ressortir : demi-tour, 2 m vers l'ouest (au plus 4 m demandés : le talus ralentit).
       const p0 = K.etat().pos;
       K.tourner(180);
-      for (let i = 0; i < 20; i++) K.avancer(0.1);
+      for (let i = 0; i < 40; i++) K.avancer(0.1);
       await pause(30);
       c.ressort = { dx: +((p0.x - K.etat().pos.x) / sc).toFixed(2), apres: lire() };
       // Départ posé sous 0,5 m de vide (x = 26, vide 0,24 m) : ramené là où l'on tient, on repart.
@@ -3193,7 +3205,14 @@ async function sectionMasseSol(page) {
       await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
       await pause(300);
       r.creux[rendu] = { masses: K.etat().masses, centre: await ici(-25, 0), talus: await ici(-28.5, 0),
-        descente: await marcher(-32, 70) };
+        descente: await marcher(-32, 90), vitesse: await (async function () {
+          await ici(-29, 0, 90);
+          const a = K.etat().pos;
+          K.avancer(0.1);
+          await pause(25);
+          const b = K.etat();
+          return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
+        })() };
       await K.fermer();
     }
     window.setStructures([]);
@@ -3277,6 +3296,12 @@ async function sectionMasseSol(page) {
       k + " : masse 0,9 (vide 0,24 m au sommet) : le pas s'arrête avant 0,5 m de vide (x = " + fin.x + ")",
       { fin: fin, arrets: arrets });
     verifier(c.ressort.dx > 1.5, k + " : demi-tour, on ressort de la masse", c.ressort);
+    const v = c.vitesse;
+    verifier(pr(v.plat.d, 0.1, 0.002) && v.plat.ralenti === 1 && pr(v.plateau.d, 0.1, 0.002) &&
+      pr(v.talus.ralenti, 0.5, 0.02) && pr(v.talus.d, 0.05, 0.003) && pr(v.descente.ralenti, 0.5, 0.02) &&
+      v.jonction.ralenti === 1,
+      k + " : marche ralentie de moitié sur le talus à 30° (montée et descente), normale à plat, sur le plateau et " +
+      "sur la jonction", v);
     verifier(c.departDedans.vide === null || c.departDedans.vide >= 0.5,
       k + " : départ posé sous 0,5 m de vide → ramené où l'on tient", c.departDedans);
     verifier(c.jonction.sur === true && c.jonction.vide === null && c.jonction.ramper === 0,
@@ -3286,6 +3311,8 @@ async function sectionMasseSol(page) {
     "masse au sol, multi-niveau : au −1, seule la ¾ du −1 compte (sol 1,8 m) ; au 0, la ¼ (0,6 m)", R.moinsUn);
   Object.keys(R.creux).forEach(function (rendu) {
     const c = R.creux[rendu], k = "sol abaissé, " + rendu, d = c.descente;
+    verifier(pr(c.vitesse.ralenti, 0.5, 0.02) && pr(c.vitesse.d, 0.05, 0.003),
+      k + " : la descente dans le talus à 30° ralentit de moitié", c.vitesse);
     let saut = 0;
     for (let i = 1; i < d.length; i++) saut = Math.max(saut, Math.abs(d[i].cam - d[i - 1].cam));
     // Sols non réglés : 2 m de roche entre niveaux par défaut → plafond du −1 à −2 m, borne à −1,7 m.

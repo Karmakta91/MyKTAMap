@@ -1008,7 +1008,7 @@ A **partial fill** is rubble that only fills part of the gallery height, and you
 - At 1 or more, the gallery is full: the bubble offers to turn the zone into **Filled to roof**.
 - The **Spreadsheet** has a **comble** column, with the same choices.
 - The value follows the zone in **KMZ** and **GeoJSON** exports. On **GIS import**, “ms”, “masse au sol” and “remblai partiel” give a partial fill; an optional height column gives its level (0.5 or 50 %). A polygon whose type is not recognised becomes a partial fill, and the matching screen says how many.
-- In the **3D view**, you walk on it: its top rises in a gentle slope from its free edges (not along walls or pillars) up to the fill level. Standing with 1.8 m or more left under the ceiling, stooping between 1 and 1.8 m, crawling between 0.5 and 1 m; under 0.5 m you can no longer pass (you can always turn back). The route ribbon, the signs and the mini-map follow. A lowered floor goes down the same gentle slope, and you walk down into it standing.
+- In the **3D view**, you walk on it: its top rises in a gentle slope from its free edges (not along walls or pillars) up to the fill level. Standing with 1.8 m or more left under the ceiling, stooping between 1 and 1.8 m, crawling between 0.5 and 1 m; under 0.5 m you can no longer pass (you can always turn back). The route ribbon, the signs and the mini-map follow. A lowered floor goes down the same gentle slope, and you walk down into it standing. On the slope, walking slows down (down to half speed). If the area is too short for the slope to reach its level, the bubble shows the height actually reached (e.g. "Height reached: 2.9 m of 7.5 m").
 - For now, a partial fill does not change the route.
 
 ### ⛔ "Inaccessible" zone — blocks the route

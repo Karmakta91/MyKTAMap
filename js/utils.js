@@ -1085,7 +1085,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     if (!o || o.type !== "masse-sol" || typeof window.ktaCombleZone !== "function") return "";
     const v = window.ktaCombleZone(o);
     const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.label")) + '</span>';
-    const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>';
+    const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>' +
+      '<div class="kta-note-popup-comble-atteinte kta-tx-warn">' + _esc(_texteAtteinteComble(o, v)) + '</div>';
     if (!opts.convertir || mode === "readonly") {
       return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
              '</strong>' + metres + '</div>';
@@ -1110,6 +1111,15 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                '</button>' +
              '</div>' +
            '</div>';
+  }
+  // Zone trop courte pour que le talus atteigne son cran : « hauteur atteinte : 2,9 m sur 7,5 m » (profondeur pour un
+  // sol abaissé), même calcul que la 3D (masseSol.js > atteinteZone) ; vide sinon.
+  function _texteAtteinteComble(o, v) {
+    if (!window.KtaMasseSol || !Number.isFinite(v) || v === 0) return "";
+    const r = window.KtaMasseSol.atteinteZone(Object.assign({}, o, { comble: v }));
+    if (!r || Math.abs(r.atteinte) >= Math.abs(r.H) - 0.05) return "";
+    const f = function (x) { return window.formatDistance(Math.abs(x), 1); };
+    return window.I18n.t(r.H < 0 ? "masseSol.atteinteBas" : "masseSol.atteinte", { a: f(r.atteinte), h: f(r.H) });
   }
   function _texteMetresComble(o, v) {
     const mh = window.ktaMetresComble(o, v);
@@ -1323,6 +1333,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (cbMetres && Number.isFinite(v) && v !== 0) {
             cbMetres.textContent = _texteMetresComble(opts.convertir.obj, v);
           }
+          const cbAtt = popupRoot.querySelector(".kta-note-popup-comble-atteinte");
+          if (cbAtt) cbAtt.textContent = _texteAtteinteComble(opts.convertir.obj, v);
         };
         popupRoot.querySelectorAll('.kta-note-popup-comble-crans input[type="radio"]').forEach(function (r) {
           r.addEventListener("change", function () {

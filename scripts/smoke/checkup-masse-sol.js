@@ -93,6 +93,12 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     const json = await page.evaluate(function () {
       const c = window.map.getCenter(), H = window.APP_CONFIG.imageHeight;
       const x0 = Math.round(c.lng) - 150, y0 = Math.round(H - c.lat) - 20;
+      const sc = window.APP_CONFIG.scale;
+      // Rectangle de w × h m, son coin à (dx, dy) px de (x0, y0).
+      const m = function (dx, dy, w, h) {
+        const x = x0 + dx, y = y0 + dy;
+        return [{ x: x, y: y }, { x: x + w * sc, y: y }, { x: x + w * sc, y: y + h * sc }, { x: x, y: y + h * sc }];
+      };
       const r = function (i, dy) {
         const x = x0 + i * 50, y = y0 + (dy || 0);
         return [{ x: x, y: y }, { x: x + 40, y: y }, { x: x + 40, y: y + 30 }, { x: x, y: y + 30 }];
@@ -108,7 +114,10 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         { uid: "zn_eau", type: "eau", points: r(5) },
         { uid: "zn_n25", type: "masse-sol", comble: -0.25, points: r(0, 40) },
         { uid: "zn_n50", type: "masse-sol", comble: -0.5, points: r(1, 40) },
-        { uid: "zn_n75", type: "masse-sol", comble: -0.75, points: r(2, 40) }
+        { uid: "zn_n75", type: "masse-sol", comble: -0.75, points: r(2, 40) },
+        // Hauteur atteinte : bande de 2 m de large à ¾ (le talus n'atteint pas le cran), carré de 30 m à ¼ (atteint).
+        { uid: "zn_court", type: "masse-sol", comble: 0.75, points: m(0, 80, 20, 2) },
+        { uid: "zn_long", type: "masse-sol", comble: 0.25, points: m(0, 80 + 4 * sc, 30, 30) }
       ]);
       window.map.fitBounds([[H - y0 - 80, x0 - 10], [H - y0 + 10, x0 + 300]], { animate: false });
       return JSON.stringify({ type: "devmap-session", version: "1.0", editorPoints: [], roads: [],
@@ -256,6 +265,23 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
       "fiche : « Autre » 1,2 → confirmation → la zone devient un Remblais, sans part comblée", z75);
     await page.evaluate(function () { window.HistoryManager.undo(); });
     await page.waitForTimeout(300);
+
+    // Hauteur atteinte : affichée sur la bande trop courte, rien sur le grand carré (même calcul que la 3D).
+    const att = async function (uid) {
+      await ouvrirFiche(page, uid);
+      await page.waitForTimeout(400);
+      return page.evaluate(function () {
+        const a = document.querySelector(".leaflet-popup-content .kta-note-popup-comble-atteinte");
+        return a ? { texte: a.textContent, classe: a.className, vu: a.offsetHeight > 0 } : null;
+      });
+    };
+    const aCourt = await att("zn_court");
+    await capture(page, "4c-fiche-hauteur-atteinte");
+    const aLong = await att("zn_long");
+    verifier(!!aCourt && /Hauteur atteinte/.test(aCourt.texte) && aCourt.vu && /kta-tx-warn/.test(aCourt.classe) &&
+      !!aLong && aLong.texte === "" && !aLong.vu,
+      "fiche : « Hauteur atteinte … sur … » sur une zone trop courte, rien sur une zone assez longue", { aCourt, aLong });
+    await page.evaluate(function () { if (window.map.closePopup) window.map.closePopup(); });
 
     // ── D. Tableur ──
     await page.evaluate(function () { window.ouvrirTableEditor(); });
