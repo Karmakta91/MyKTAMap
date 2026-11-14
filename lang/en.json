@@ -5875,7 +5875,7 @@
   "ui.zone.fermer": "Close the current zone",
   "ui.zone.inaccessible": "Inaccessible",
   "ui.zone.inaccessibleAide": "Blocks the route: the calculation does not cross it",
-  "ui.zone.pente": "Junction zone (sloping room between two levels)",
+  "ui.zone.pente": "Junction zone",
   "ui.zone.noneBody": "First select a zone type (backfill, collapse, water, or inaccessible) before trying to close it.",
   "ui.zone.noneTitle": "No zone in progress",
   "ui.zone.remblais": "Backfill",

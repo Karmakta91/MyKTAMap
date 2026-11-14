@@ -5875,7 +5875,7 @@
   "ui.zone.fermer": "Cerrar la zona en curso",
   "ui.zone.inaccessible": "Inaccesible",
   "ui.zone.inaccessibleAide": "Bloquea la ruta: el cálculo no la atraviesa",
-  "ui.zone.pente": "Zona de unión (sala en pendiente entre dos niveles)",
+  "ui.zone.pente": "Zona de unión",
   "ui.zone.noneBody": "Activa primero un tipo de zona (escombros, derrumbe, agua, o inaccesible) antes de intentar cerrarla.",
   "ui.zone.noneTitle": "Ninguna zona en curso",
   "ui.zone.remblais": "Escombros",

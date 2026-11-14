@@ -5875,7 +5875,7 @@
   "ui.zone.fermer": "Fermer la zone en cours",
   "ui.zone.inaccessible": "Inaccessible",
   "ui.zone.inaccessibleAide": "Bloque l'itinéraire : le calcul ne la traverse pas",
-  "ui.zone.pente": "Zone jonction (salle en pente entre deux niveaux)",
+  "ui.zone.pente": "Zone jonction",
   "ui.zone.noneBody": "Active d'abord un type de zone (remblais, effondrement, eau, ou inaccessible) avant de tenter de la fermer.",
   "ui.zone.noneTitle": "Aucune zone en cours",
   "ui.zone.remblais": "Remblais",
