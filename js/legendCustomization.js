@@ -40,7 +40,7 @@ window.LegendCustomization = (function() {
       jes: "Escalier entre niveaux", jpe: "Puits à échelons entre niveaux",
       jps: "Puits sans échelon entre niveaux",
       passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
-      danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
+      danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure/graffiti",
       plaque: "Plaque/indication",
       ossuaire: "Ossuaire", outil: "Outil de carrier", fontis: "Fontis (effondrement)",
       portail: "Portail (liaison inter-plan)",

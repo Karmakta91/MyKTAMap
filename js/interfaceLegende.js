@@ -37,7 +37,7 @@ const LEGENDE_LABELS = {
   jps:      "Puits sans échelon entre niveaux",
   vehicule: "Véhicule",
   elec:     "Électricité",
-  epure:    "Épure",
+  epure:    "Épure/graffiti",
   info:     "Information",
   chatiere: "Chatière",
   passage:  "Passage",

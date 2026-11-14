@@ -52,7 +52,7 @@ const EDITOR_TAG_LABELS = {
   danger:   "Danger",
   info:     "Information",
   elec:     "Électricité",
-  epure:    "Épure",
+  epure:    "Épure/graffiti",
   plaque:   "Plaque/indication",
   portail:  "Portail (liaison inter-plan)",
   ossuaire: "Ossuaire",
