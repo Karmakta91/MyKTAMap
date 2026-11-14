@@ -913,7 +913,7 @@
   // (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. Sans effet sur l'itinéraire (son lot n'est pas livré).
   // Garde-fou : scripts/smoke/checkup-vue-3d.js § 24 ter.
   const MASSE = { pente: Math.tan(30 * Math.PI / 180), pas: 0.5, triMax: 2000, sonde: 0.35, debout: 1.8, courbe: 1,
-    ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3 };
+    ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4 };
 
   // Sonde de A à B (m) arrêtée par la règle du pas du rendu, au niveau de la scène (contexte d'un voisin compris) :
   // structures, parois des tubes (mixte) ou emprise (galerie), zones qui bouchent ; hors de l'image du plan = arrêtée.
@@ -1099,13 +1099,21 @@
     const uv = function (a, b, c) {
       return tex ? [a[0] / mt, a[2] / mt, b[0] / mt, b[2] / mt, c[0] / mt, c[2] / mt] : undefined;
     };
+    // ⚠️ contrat (décision produit) : 🧱 coupé (aplat), la couleur du canon est assombrie selon la pente de la face
+    // (ny = composante verticale de sa normale tournée vers le haut) : plateau et fond à la couleur, talus à 30° ≈ 0,4,
+    // pans à MASSE.ombreMin — la pente se lit sans texture, dans le même sens pour un sol abaissé. 🧱 : la texture.
+    const ombre = function (ny) {
+      if (tex) return col;
+      const k = Math.max(MASSE.ombreMin, 1 - MASSE.ombre * (1 - ny));
+      return { r: col.r * k, g: col.g * k, b: col.b * k };
+    };
     const tri = function (a, b, c) {
       const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
       let cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
       const l = Math.hypot(cx, cy, cz);
       if (l < 1e-9) return;
       if (cy < 0) { cx = -cx; cy = -cy; cz = -cz; }
-      lot.tri(a, b, c, [cx / l, cy / l, cz / l], col, uv(a, b, c));
+      lot.tri(a, b, c, [cx / l, cy / l, cz / l], ombre(cy / l), uv(a, b, c));
     };
     // Découpe (Sutherland-Hodgman) de l'anneau par la case [x0, x1] × [z0, z1] (convexe : l'anneau peut être concave).
     const decouper = function (x0, z0, x1, z1) {
@@ -1170,8 +1178,8 @@
           return tex ? [a[0] / mt + a[2] / mt, a[1] / mt, b[0] / mt + b[2] / mt, b[1] / mt, c[0] / mt + c[2] / mt,
             c[1] / mt] : undefined;
         };
-        if (Math.abs(ha) > 0.01) lot.tri(A, B, Ah, n, col, su(A, B, Ah));
-        if (Math.abs(hb) > 0.01) lot.tri(B, Bh, Ah, n, col, su(B, Bh, Ah));
+        if (Math.abs(ha) > 0.01) lot.tri(A, B, Ah, n, ombre(0), su(A, B, Ah));
+        if (Math.abs(hb) > 0.01) lot.tri(B, Bh, Ah, n, ombre(0), su(B, Bh, Ah));
       }
     }
     return (lot.p.length - avant) / 9;

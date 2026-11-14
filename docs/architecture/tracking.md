@@ -1431,7 +1431,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   niveau). 🩸 Piliers et murs posés dans un sol abaissé partent du sol du niveau (leur pied n'est pas prolongé).
   Dessin (`_maillageMasse`) : grille de 0,5 m découpée au contour, pas élargi pour tenir ≤ 2 000 triangles par zone
   (`MASSE.triMax`, pans compris ; une zone est dessinée dans la tuile de son centre) ; en galerie, une case toute dans
-  la roche n'est pas dessinée ; 🧱 : terre et cailloux du remblais (`REMBLAIS.m`), sinon la couleur de la légende.
+  la roche n'est pas dessinée ; 🧱 : terre et cailloux du remblais (`REMBLAIS.m`), sinon la couleur de la légende assombrie selon la pente de la
+  face (`MASSE.ombre` / `ombreMin` : plateau et fond à la couleur, talus à 30° et pans à 0,4) pour que la pente se lise.
   Suivent : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m inclinés sur la masse, `_rubanIti`),
   panneaux des POI (sol + œil + 0,4 m, sous le plafond), mini-carte (contour comme une zone qui bouche). L'itinéraire
   calculé ne change pas. Mesuré (téléphone émulé × 4) : `KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse`. Garde-fou :

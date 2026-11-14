@@ -3316,11 +3316,13 @@ async function sectionMasseSol(page) {
 }
 
 // Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : pied du talus de la ½, son sommet (courbé), sur la ¾ (on rampe),
-// dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord et du fond (pilier en structures).
+// dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord (aussi 🧱 coupé) et du fond
+// (pilier en structures).
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
-    ["creux-bord", -33, 0, 90, true, true], ["creux-fond", -27, -2, 60, true, true]];
+    ["creux-bord", -33, 0, 90, true, true], ["creux-fond", -27, -2, 60, true, true],
+    ["creux-bord-aplat", -33, 0, 90, false, true], ["masse-sommet-aplat", -25, 0, 90, false]];
   for (const rendu of ["galerie", "mixte", "structures"]) {
     for (const q of vues) {
       await page.evaluate(async function (c) {
