@@ -152,6 +152,10 @@
 
 ## Entrant
 
+- **Deux checkups rouges hérités** — `checkup-ouvertures-enchainees` : erreur Leaflet `_clear` / `_redraw`, reproduite
+  à l'identique sur `938dda8e` (14/11) ; `checkup-tuiles-hors-ecran` : attend un plan V2 absent d'une copie séparée.
+  `qui: Claude · action: corriger l'erreur Leaflet ou le test ; plan V2 fictif fourni au second · depuis: 14/11/2026
+  · taille: S`
 - **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
   `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
   `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
