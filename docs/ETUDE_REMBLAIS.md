@@ -362,7 +362,7 @@ question 4, la préférence proposée est retenue.
 | 3 | **Masse au sol, donnée et 2D** : type ajouté partout (21 fichiers, skill mis à jour), champ `comble`, fiche, Tableur, copies, KMZ / GeoJSON / SIG, légende, exports ; garde-fou d'aller-retour ; `data-formats.md` | L |
 | 4 | Masse au sol en 3D : sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ; checkup § 24 bis ; mesure de perf | L |
 | 5 | ✅ **Volume exploité par paliers** (fait) : `volumeExploite.js > _masses`, Comblé entier, masse au sol par sa part en paliers exacts (le Comblé l'emporte), sol abaissé ajouté, talus négligé et dit ; `check-api-surface.js`, `session-data.md` § 49.3 bis | S |
-| 6 | Itinéraire (coût séparé de la distance) et temps du guidage | M |
+| 6 | ✅ **Itinéraire et temps du guidage** (fait) : `pathfinder.js > _coutMasseSegment` (vide point par point par `masseSol.js > masseCarte` / `sol` : ×1 / ×1,5 / ×3, coupé sous 0,5 m, sol abaissé ×1), distance vraie, sortie d'urgence et inter-plans, brancard sous 1,8 m, temps du guidage ralenti (`surcoutMasseTrajet`) ; consigne « ramper » plus tard (8 b) ; `check-zones-cout.js` § 10, `multilevel-pathfinding.md` | M |
 
 Ordre : 0 → 1 → 2 → 3 → 4, puis 5 et 6. Le lot 0 sert seul dès aujourd'hui ; le lot 1 se suffit (le total devient vrai partout) ; le lot 3 donne un sens à la
 masse au sol avant la 3D.

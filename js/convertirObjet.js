@@ -665,8 +665,8 @@
   // ── Part comblée d'une masse au sol (fiche de la zone, crans ¼ ½ ¾ ou « Autre ») ──────────
   // `valeur` = part de la hauteur de galerie (> 0) ; une valeur ≥ 1 est refusée ici : la fiche propose d'abord de
   // passer en Comblé (convertir vers `remblais`). Une valeur pour tous les niveaux d'une zone multi-niveau.
-  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro), comme changerNiveauxZone ; graphe non touché (la
-  // masse au sol est sans effet sur l'itinéraire tant que son lot n'est pas livré).
+  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro), comme changerNiveauxZone ; rien à invalider côté
+  // itinéraire : pathfinder.js refait son graphe (et le coût des masses) à chaque calcul.
   function changerComble(obj, valeur) {
     // 🔒 lecture seule
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;

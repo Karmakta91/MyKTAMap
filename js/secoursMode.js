@@ -2510,8 +2510,9 @@
   // l'eau cochée d'office. Comblé et effondrement n'y figurent pas : le moteur les évite toujours dès qu'un autre
   // chemin existe, sans jamais bloquer (pathfinder.js > TYPES_ZONES_COUT). Les zones inaccessibles restent
   // infranchissables sauf case cochée (dernier recours, décochée). ⚠️ Évitements SOUPLES : sans chemin qui les
-  // respecte, le moteur les traverse et la fenêtre de la sortie le dit. Rappel : onChoix({ avoidZones,
-  // respecterInaccessibles }).
+  // respecte, le moteur les traverse et la fenêtre de la sortie le dit. `brancard: true` : le moteur évite d'office
+  // une masse au sol qui laisse moins de 1,8 m de vide (pathfinder.js > _coutMasseSegment). Rappel :
+  // onChoix({ avoidZones, respecterInaccessibles, brancard }).
   const BRANCARD_COCHES = ["eau"];
   // « POI de la zone » : types (tags) à exclure des étapes, avec leur nombre. Un POI reste s'il a au moins un
   // type gardé ; sans type = « Sans type ». Choix gardé dans le scénario (s.tagsExclusPoiZone) pour toutes
@@ -2610,7 +2611,7 @@
         .map(function(i) { return i.getAttribute("data-ztype"); });
       const inacc = overlay.querySelector("input[data-inacc]");
       _close();
-      onChoix({ avoidZones: zones, respecterInaccessibles: !(inacc && inacc.checked) });
+      onChoix({ avoidZones: zones, respecterInaccessibles: !(inacc && inacc.checked), brancard: true });
     });
   }
 

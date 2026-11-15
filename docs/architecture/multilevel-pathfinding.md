@@ -580,8 +580,8 @@ Types actuels : `eau`, `masse-sol` (masse au sol, part comblée `comble`), `remb
 `pente`. La liste des ~25 sites (style du canon, saisie, icône, légende, filtres, zones embarquées, exports, échanges
 KMZ / GeoJSON / SIG / Générateur, champ propre au type, palettes délibérées, effets 3D / itinéraire, garde-fous, doc)
 vit dans la skill `.claude/skills/add-zone-type` (relevée sur l'ajout de `masse-sol`). Un grep large sur
-`"effondrement"` et `remblais` reste le meilleur filet. La masse au sol n'a **aucun effet** sur l'itinéraire tant que
-le lot 6 de `docs/ETUDE_REMBLAIS.md` n'est pas livré : ni contrainte dure, ni coût.
+`"effondrement"` et `remblais` reste le meilleur filet. La masse au sol a sa propre règle d'itinéraire (coût selon le
+vide, § Masse au sol : coût selon le vide).
 
 ---
 
@@ -685,6 +685,7 @@ code disait le contraire de ses propres commentaires.
 | Zones d'un type dur (`Pathfinder.TYPES_ZONES_DURS` : `inaccessible`) | session + `_ktaDataPolygons` | **dure**, jamais relâchée | ✅ case « Respecter… » |
 | Structures `mur-ligne` (Mur (ligne)) | session + `_ktaDataStructurePolygons` | **dure**, même niveau | ✅ même case |
 | Zones à coût (`Pathfinder.TYPES_ZONES_COUT` : `remblais` « Comblé », `effondrement`) | session + `_ktaDataPolygons` | **coût**, jamais bloquantes, jamais levées | sans objet (toujours actif, ni case ni passe 2) |
+| Masse au sol (`masse-sol`) | session + `_ktaDataPolygons` | **coût selon le vide**, **coupée** sous 0,5 m, jamais levée | sans objet ; brancard : sous 1,8 m évitée |
 | Autres types de zones | idem | souple (relâchée en passe 2) | ✅ cases « 🚫 Préférences d'évitement » |
 | Points / tags à éviter | `SearchPoints` | souple | ✅ |
 | **Autres structures** (piliers, mur polygone, fronts, arc de soutènement `arc`) | — | **aucune** | sans objet |
@@ -716,7 +717,8 @@ Perdu) garde les zones inaccessibles et les murs en toutes circonstances : une p
 confort n'a pas à élargir un périmètre de secours. `interPlanRoute` et la Sortie
 d'urgence lancée par 🚨 ne passent pas l'option — ils héritent du comportement sûr.
 **Seule exception : « 🚑 Évacuer » du Mode Secours** (options brancard) — l'opérateur
-choisit les types de zones à éviter (eau cochée d'office ; Comblé et effondrement n'y sont pas, toujours évités par leur coût) et peut lever les
+choisit les types de zones à éviter (eau cochée d'office ; Comblé et effondrement n'y sont pas, toujours évités par leur coût ;
+`brancard: true` évite d'office la masse au sol qui laisse moins de 1,8 m de vide) et peut lever les
 inaccessibles et les murs par une case **décochée par défaut** (dernier recours, nommé comme
 tel ; son compte = `Pathfinder.nbObstaclesDurs()`).
 Les contraintes vont `SortieUrgence.declencherDepuis(…, { contraintes })` → classement des
@@ -761,6 +763,45 @@ jamais casser un itinéraire, et un tracé posé exprès à travers dit que ça 
   brancard ; elles ne sont pas des « Zones à éviter ». Inter-plans : `computeRouteOnRoads(…, { zones })` applique la
   même règle, et le choix du portail se fait au coût.
 - Garde-fous : `scripts/check-zones-cout.js` (Node), `scripts/smoke/checkup-comble-itineraire.js` (relevé fictif).
+
+### Masse au sol : coût selon le vide
+
+Décision de KARMA (QCM du 11/11/2026, `docs/ETUDE_REMBLAIS.md` § 8 et 11, lot 6). `pathfinder.js > _coutMasseSegment`.
+
+- **Règle** : la longueur parcourue dans une masse au sol coûte selon le **vide** = hauteur du niveau − sol local.
+  Vide ≥ 1,8 m : ×1 (debout) ; 1 à 1,8 m : ×1,5 (courbé) ; 0,5 à 1 m : ×3 (ramper) ; **sous 0,5 m : passage coupé**,
+  pour tous (ni la case « Respecter… » ni la passe 2 ne le lèvent). Sol abaissé (part < 0) : ×1. Mêmes seuils que la
+  vue 3D (`vue3d.js > MASSE`) ; `Pathfinder.MASSE_VIDE`, `Pathfinder.facteurVide(v)`.
+- **Sol local** : `masseSol.js > masseCarte(zone)` construit la masse par `masse(…)` (hauteur du niveau via
+  `ktaMetresComble`, rendu choisi du plan, sonde de la carte `bloqueCarte`, masses voisines jointives), puis
+  `sol(m, x / sc, y / sc)` — la fonction de hauteur de la 3D et de la fiche, jamais une copie (les rampes y vivront).
+  Plusieurs masses sous un point : le plus haut des remblais compte (comme `vue3d.js > _solMasse`). Construite à la
+  première arête qui touche la zone, puis gardée en cache par contour (`_cacheMasses`, clé part / niveau / hauteur /
+  rendu / échelle, vidé à chaque `kta:donneesPlanChange`) : ~4 ms par masse, et la sortie d'urgence enchaîne jusqu'à
+  15 calculs. Sans échelle du plan : aucune masse ne compte.
+- **Point par point** : chaque arête est coupée aux contours des masses de son niveau, puis chaque morceau intérieur
+  est échantillonné tous les `PAS_MASSE_M` (0,1 m) ; le talus des bords ouverts est donc suivi, jamais une moyenne de
+  la zone. Une arête qui touche un passage sous 0,5 m n'est pas posée (`_addEdge`) ; un morceau découpé hors du
+  passage bas (croisement, calage) garde la sienne : on avance jusqu'au bord, pas au travers.
+- **Coût, pas distance** : le surcoût s'ajoute à `weight`, jamais à `len` — `totalDistance` reste la vraie longueur,
+  `cout` la compte. Un détour gagne quand il coûte moins (ex. ¾ d'une galerie de 2 m sur 10 m : 10 m × 3 = 30 m).
+  Sortie d'urgence et itinéraire d'un plan ouvert (`computeRoute`) suivent ; la sortie d'urgence classe toujours par
+  distance. `computeReachable` (Secours / Perdu) ne les compte pas (même raison que les zones à coût).
+- **Brancard** (`computeRoute(…, { brancard: true })`, posé par « 🚑 Évacuer » : `secoursMode.js >
+  _demanderOptionsBrancard` → `contraintes.brancard`, relu par `sortieUrgence.js` et `interfaceItineraire.js >
+  _optsEvitement`) : la longueur sous 1,8 m de vide pèse aussi `PENALITE_ZONE_COUT` par pixel (évitée dès qu'un autre
+  chemin existe, jamais bloquante, sauf la coupure sous 0,5 m) ; à 1,8 m ou plus, elle passe normalement.
+- **Inter-plans** (`computeRouteOnRoads(…, { zones, echelle })`) : le plan distant n'est pas chargé (ni ses
+  structures, ni ses hauteurs). Estimation prudente : bords tous fermés (sol = part × hauteur partout) et hauteur de
+  2 m (`_massesReseau`). Le plan ouvert passe par `computeRoute`, donc par la vraie sonde.
+- **Guidage** : le temps restant compte le ralentissement (`Pathfinder.surcoutMasseTrajet(points)` → cumul en px par
+  point, sans le brancard ; `itiGuidage.js > _surcoutApres`, ajouté à la distance avant `getItiTempsMinutes`) ; la
+  distance affichée ne change pas. La consigne « ramper sur ~X m » n'est pas faite (décision 8 b, plus tard).
+- Limites : la sortie d'urgence et la fenêtre Itinéraire ne disent pas qu'une masse ralentit (pas de phrase dédiée) ;
+  le temps de la fenêtre Itinéraire reste celui de la distance.
+- Garde-fous : `scripts/check-zones-cout.js` § 10 (¼ ½ ¾ à la main, coupure, détour, brancard, sortie d'urgence, sol
+  abaissé, talus, inter-plans, guidage, zones à coût inchangées), `scripts/smoke/checkup-comble-itineraire.js`
+  (masse-sol, vrais registres).
 
 ### Table unique des types de zone durs
 

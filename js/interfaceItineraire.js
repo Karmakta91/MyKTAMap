@@ -167,7 +167,7 @@ function _optsEvitement(avoidPrefs, evC) {
   if (evC) {
     return { avoidPoints: [], avoidTags: [], avoidRadius: 0,
              avoidZones: Array.isArray(evC.avoidZones) ? evC.avoidZones : [],
-             respecterInaccessibles: evC.respecterInaccessibles !== false };
+             respecterInaccessibles: evC.respecterInaccessibles !== false, brancard: evC.brancard === true };
   }
   return {
     avoidPoints: avoidPrefs.points || [],

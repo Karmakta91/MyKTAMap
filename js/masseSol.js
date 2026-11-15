@@ -14,8 +14,9 @@
 //   bloqueCarte(niveau, rendu, sc) → la sonde de la règle du pas, sans la vue 3D (fiche de la carte) ;
 //   anneau(points, sc) → contour en m, sens positif (celui de vue3d.js > _anneau) ;
 //   masse(zone, sc, H, bloque, autres) → { ring, H, ouverts, fermes, rampes } | null ;
-//   atteinteZone(zone) → { atteinte, H } (m, signés) d'après la hauteur du niveau, le rendu choisi du plan et la
-//     sonde de la carte ; null sans contour ;
+//   masseCarte(zone) → { m, h, sc } : m construit par masse(…) (rampes comprises) d'après la hauteur du niveau, le
+//     rendu choisi du plan et la sonde de la carte (fiche, itinéraire : pathfinder.js > _masseDuPlan) ; null sans
+//     contour ou sans échelle ; atteinteZone(zone) → { atteinte, H } (m, signés), par masseCarte ;
 //   rampesValides(zone) → indices des bords bas (`zone.rampes` = [{ bord }], un bord au plus une fois) ;
 //   rampes(zone, sc) → [{ bord, ax, az, bx, bz, nx, nz, L }] (m) ; chevrons(zone, sc) → [[{ x, y }…]] (px du plan).
 // ⚠️ contrat (décision produit, docs/ETUDE_REMBLAIS.md § 6-7) : sans rampe, sol = min(|H|, pente × distance au bord
@@ -280,13 +281,13 @@
     return { ring: ring, H: H, ouverts: b.ouverts, fermes: b.fermes, rampes: rampes(zone, sc) };
   }
 
-  // Hauteur atteinte d'une zone de la carte (fiche) : hauteur du niveau (styleResolver.js > ktaMetresComble), rendu
-  // choisi du plan (mixte sans choix, comme la 3D), sonde de la carte.
-  function atteinteZone(zone) {
+  // Masse d'une zone de la carte (fiche, itinéraire) : hauteur du niveau (styleResolver.js > ktaMetresComble), rendu
+  // choisi du plan (mixte sans choix, comme la 3D), sonde de la carte → { m, h (hauteur du niveau, m), sc } | null.
+  function masseCarte(zone) {
     const sc = (window.APP_CONFIG || {}).scale;
     if (!zone || !(sc > 0) || typeof window.ktaMetresComble !== "function") return null;
     const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(zone) : 0.5;
-    const H = window.ktaMetresComble(zone, Math.max(-1, Math.min(1, c))).m;
+    const mc = window.ktaMetresComble(zone, Math.max(-1, Math.min(1, c))), H = mc.m;
     const rendu = (typeof window.getPlanRenduVue3D === "function" && window.getPlanRenduVue3D()) || "mixte";
     const nv = Number.isInteger(zone.level) ? zone.level : 0;
     const tab = function (f) { try { return typeof f === "function" ? (f() || []) : []; } catch (e) { return []; } };
@@ -295,10 +296,16 @@
         (Number.isInteger(z.level) ? z.level : 0) === nv;
     }).map(function (z) { return anneau(z.points, sc); }).filter(function (r) { return r.length >= 3; });
     const m = masse(zone, sc, H, bloqueCarte(zone.level, rendu, sc), autres);
-    return m ? { atteinte: atteinte(m), H: H } : null;
+    return m ? { m: m, h: mc.h, sc: sc } : null;
+  }
+
+  // Hauteur atteinte d'une zone de la carte (fiche).
+  function atteinteZone(zone) {
+    const c = masseCarte(zone);
+    return c ? { atteinte: atteinte(c.m), H: c.m.H } : null;
   }
 
   window.KtaMasseSol = { PENTE: PENTE, PAS: PAS, SONDE: SONDE, LOIN: LOIN, bords: bords, sol: sol, atteinte: atteinte,
-    bloqueCarte: bloqueCarte, anneau: anneau, masse: masse, atteinteZone: atteinteZone, rampesValides: rampesValides,
-    rampes: rampes, chevrons: chevrons };
+    bloqueCarte: bloqueCarte, anneau: anneau, masse: masse, masseCarte: masseCarte, atteinteZone: atteinteZone,
+    rampesValides: rampesValides, rampes: rampes, chevrons: chevrons };
 })();

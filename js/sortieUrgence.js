@@ -92,7 +92,8 @@
   // ── Pathfinder ──────────────
   // Distance navigable via window.Pathfinder.computeRoute → Promise<{ distPx, path } | null> (null = échec, la
   // sortie est classée en fin avec sa distance à vol d'oiseau).
-  // `contraintes` (facultatif, Mode Secours « Évacuer », brancard) : { avoidZones: [types], respecterInaccessibles }.
+  // `contraintes` (facultatif, Mode Secours « Évacuer », brancard) : { avoidZones: [types], respecterInaccessibles,
+  // brancard }.
   function _calculerDistPathfinder(origine, cible, contraintes) {
     if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
       return Promise.resolve(null);
@@ -110,7 +111,8 @@
       avoidTags:   [],
       avoidRadius: 0,
       avoidZones:  c && Array.isArray(c.avoidZones) ? c.avoidZones : [],
-      respecterInaccessibles: !(c && c.respecterInaccessibles === false)
+      respecterInaccessibles: !(c && c.respecterInaccessibles === false),
+      brancard: !!(c && c.brancard === true)
     }).then(function(res) {
       if (!res || !Array.isArray(res.path) || res.path.length < 2) return null;
       // Longueur cumulée du path (px plan)

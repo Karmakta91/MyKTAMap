@@ -15,7 +15,10 @@
  *   • « Vérifier le plan » : C12 range le tracé qui en traverse une en « revoir », jamais en bloquant ni en C1 ;
  *   • tables uniques (TYPES_ZONES_COUT), brancard sans Comblé coché ;
  *   • tolérance d'1 m : traversée continue de 0,5 m ignorée (itinéraire et C12), 1,5 m pénalisée et dite, tracé dense
- *     toujours évité (mesure par traversée, pas par arête), deux passages courts ignorés, sans échelle : strict.
+ *     toujours évité (mesure par traversée, pas par arête), deux passages courts ignorés, sans échelle : strict ;
+ *   • masse au sol (§ 10, charge aussi styleResolver.js et masseSol.js) : coût selon le vide (¼ ½ ¾ calculés à la
+ *     main), coupé sous 0,5 m, détour préféré s'il coûte moins, brancard, sortie d'urgence, sol abaissé ×1, talus pris
+ *     point par point, inter-plans, guidage (ralentissement cumulé), zones à coût et inaccessible inchangées.
  *
  * Usage : node scripts/check-zones-cout.js   (exit 1 si un contrôle échoue)
  */
@@ -39,7 +42,8 @@ const P = (x, y) => ({ x: x, y: y });
 const R = (uid, type, pts, extra) => Object.assign({ uid: uid, type: type, points: pts.map(p => P(p[0], p[1])) },
   extra || {});
 
-function bac(d, cfg) {
+// `extra` (facultatif) : { fichiers: modules chargés AVANT pathfinder.js, win: globales en plus }.
+function bac(d, cfg, extra) {
   const win = {
     console: { log() {}, warn() {}, error() {} },
     APP_CONFIG: Object.assign({ scale: ECHELLE, multiLevel: false, imageHeight: 1000 }, cfg || {}),
@@ -60,9 +64,12 @@ function bac(d, cfg) {
     ktaEsc: s => String(s),
     ktaIcone: () => ""
   };
+  Object.assign(win, (extra && extra.win) || {});
   win.window = win;
   const ctx = vm.createContext(win);
-  ["js/poiJonction.js", "js/pathfinder.js", "js/verifierPlan.js"].forEach(function (f) {
+  win.__ctx = ctx;
+  ((extra && extra.fichiers) || []).concat(["js/poiJonction.js", "js/pathfinder.js", "js/verifierPlan.js"])
+    .forEach(function (f) {
     vm.runInContext("var window = this;" + lire(f), ctx);
   });
   return win;
@@ -280,6 +287,188 @@ async function route(w, opts) {
     r = await route(w);
     t("sans échelle : aucune tolérance, la bande de 2 px est évitée (repli strict)", !r.erreur &&
       Math.round(r.totalDistance) === 400, r.erreur || r.totalDistance);
+  }
+
+  // ── 10. Masse au sol : coût selon le vide (docs/ETUDE_REMBLAIS.md § 8) ──
+  // Hauteur du niveau 2 m (ktaMetresComble sans réglage), 4 px/m. Droite A → B = 200 px (50 m) ; masse x 80-120 (40 px
+  // = 10 m traversés). Bords FERMÉS (sonde de la 3D simulée bloquée partout : KtaGalerie.zonesBloquent) → sol =
+  // part × 2 m sur toute la traversée. Coût attendu = 200 px + 40 px × (facteur − 1) :
+  //   ¼ : sol 0,5 → vide 1,5 m → courbé ×1,5 → 200 + 20 = 220 px (55 m) ;
+  //   ½ : sol 1   → vide 1 m   → courbé ×1,5 → 220 px ;
+  //   ¾ : sol 1,5 → vide 0,5 m → ramper ×3   → 200 + 80 = 280 px (70 m) ;
+  //   0,8 : vide 0,4 m → coupé. Distance toujours 200 px.
+  {
+    const MASSE_FICHIERS = ["js/styleResolver.js", "js/masseSol.js"];
+    const ferme = { KtaGalerie: { zonesBloquent: s2 => s2.map(() => true) } };
+    const masse = (c, extra) => R("zn_ms", "masse-sol", [[80, -20], [120, -20], [120, 20], [80, 20]],
+      Object.assign({ comble: c }, extra || {}));
+    const bacM = (d, cfg, ouvert) => bac(d, cfg, { fichiers: MASSE_FICHIERS, win: ouvert ? {} : ferme });
+    const proche = (a, b, tol) => Math.abs(a - b) <= (tol || 1e-6);
+
+    const PF0 = bacM({}).Pathfinder;
+    t("masse : facteurs 1 / 1,5 / 3 / coupé aux seuils 1,8 / 1 / 0,5 m",
+      PF0.facteurVide(1.8) === 1 && PF0.facteurVide(1.79) === 1.5 && PF0.facteurVide(1) === 1.5 &&
+      PF0.facteurVide(0.99) === 3 && PF0.facteurVide(0.5) === 3 && PF0.facteurVide(0.49) === Infinity);
+    for (const cas of [[0.25, 220], [0.5, 220], [0.75, 280]]) {
+      const w = bacM({ roads: [droite], zones: [masse(cas[0])] });
+      const r = await route(w);
+      t("masse " + cas[0] + " : coût " + cas[1] + " px (calcul à la main), distance 200 px inchangée",
+        !r.erreur && proche(r.cout, cas[1], 1e-6) && proche(r.totalDistance, 200, 1e-9),
+        r.erreur || [r.cout, r.totalDistance]);
+    }
+    {
+      // Rampe (zone.rampes, posée par le bord bas : ici le bord gauche x = 80, indice 3 du contour) : le sol monte de 0 à
+      // 1,5 m sur la traversée au lieu d'être à 1,5 m partout → le vide, donc le coût, change sans rien d'autre (la
+      // masse est construite par KtaMasseSol.masse, qui lit les rampes : aucune copie dans le pathfinder).
+      const w = bacM({ roads: [droite], zones: [masse(0.75, { rampes: [{ bord: 3 }] })] });
+      const r = await route(w);
+      t("masse ¾ avec une rampe : coût entre 200 et 280 px (vide plus grand au pied de la pente), distance 200 px",
+        !r.erreur && r.cout > 200 + 1e-6 && r.cout < 280 - 1e-6 && proche(r.totalDistance, 200, 1e-9),
+        r.erreur || [r.cout, r.totalDistance]);
+    }
+    {
+      // Cache des masses (par contour) : une part changée sur le même objet est relue au calcul suivant.
+      const z = masse(0.5);
+      const w = bacM({ roads: [droite], zones: [z] });
+      const r1 = await route(w);
+      z.comble = 0.75;
+      const r2 = await route(w);
+      t("cache des masses : part ½ → ¾ sur le même objet, coût 220 puis 280 px", !r1.erreur && !r2.erreur &&
+        proche(r1.cout, 220) && proche(r2.cout, 280), [r1.cout, r2.cout]);
+    }
+    {
+      const w = bacM({ roads: [droite], zones: [masse(0.8)] });
+      const r = await route(w);
+      t("masse 0,8 (vide 0,4 m < 0,5) : passage coupé, aucun chemin (NO_PATH)", r.erreur === "NO_PATH",
+        r.erreur || r.cout);
+      const r2 = await route(w, { respecterInaccessibles: false });
+      t("masse coupée : la case « Respecter… » ne la lève pas", r2.erreur === "NO_PATH", r2.erreur || r2.cout);
+      const w2 = bacM({ roads: [droite, detour], zones: [masse(0.8)] });
+      const r3 = await route(w2);
+      t("masse coupée + détour : le détour est pris (400 px)", !r3.erreur && proche(r3.totalDistance, 400),
+        r3.erreur || r3.totalDistance);
+    }
+    {
+      // Détour de 260 px (65 m) : plus court en coût que ¾ (280 px), plus long que ½ (220 px).
+      const court = R("rd_court", "principal", [[0, 0], [0, 30], [200, 30], [200, 0]]);
+      let w = bacM({ roads: [droite, court], zones: [masse(0.75)] });
+      let r = await route(w);
+      t("masse ¾ (coût 280 px) + détour de 260 px : le détour l'emporte", !r.erreur && proche(r.totalDistance, 260) &&
+        proche(r.cout, 260), r.erreur || [r.totalDistance, r.cout]);
+      w = bacM({ roads: [droite, court], zones: [masse(0.5)] });
+      r = await route(w);
+      t("masse ½ (coût 220 px) + détour de 260 px : la droite reste prise", !r.erreur &&
+        proche(r.totalDistance, 200) && proche(r.cout, 220), r.erreur || [r.totalDistance, r.cout]);
+    }
+    {
+      // Brancard : ¼ laisse 1,5 m (< 1,8) → évité d'office ; 0,1 laisse 1,8 m → passe normalement.
+      let w = bacM({ roads: [droite, detour], zones: [masse(0.25)] });
+      let r = await route(w, { brancard: true });
+      t("brancard : masse ¼ (vide 1,5 m) évitée, détour pris (400 px)", !r.erreur && proche(r.totalDistance, 400),
+        r.erreur || r.totalDistance);
+      r = await route(w);
+      t("sans brancard : la même masse ¼ est traversée (coût 220 < 400)", !r.erreur && proche(r.totalDistance, 200));
+      w = bacM({ roads: [droite, detour], zones: [masse(0.1)] });
+      r = await route(w, { brancard: true });
+      t("brancard : masse 0,1 (vide 1,8 m) passe normalement (200 px, coût = distance)", !r.erreur &&
+        proche(r.totalDistance, 200) && proche(r.cout, 200), r.erreur || [r.totalDistance, r.cout]);
+      w = bacM({ roads: [droite], zones: [masse(0.25)] });
+      r = await route(w, { brancard: true });
+      t("brancard : seul chemin par une masse ¼ → l'itinéraire passe (jamais bloquant)", !r.erreur &&
+        proche(r.totalDistance, 200), r.erreur);
+      w = bacM({ roads: [droite], zones: [masse(0.8)] });
+      r = await route(w, { brancard: true });
+      t("brancard : sous 0,5 m de vide, coupé pour tous", r.erreur === "NO_PATH", r.erreur);
+    }
+    {
+      // Sortie d'urgence réelle (DOM simulé) : la sortie en B, contraintes brancard transmises au moteur.
+      const lancer = async function (contraintes) {
+        const w = bacM({ roads: [droite, detour], zones: [masse(0.25)] });
+        w.getEditorPoints = () => [{ nom: "SortieB", x: 200, y: 0, tags: ["peo"] }];
+        const vus = [];
+        const orig = w.Pathfinder.computeRoute;
+        w.Pathfinder.computeRoute = function (wps, o) {
+          return orig(wps, o).then(function (r) { vus.push({ o: o, r: r }); return r; });
+        };
+        const corps = { innerHTML: "" };
+        const modal = { id: "", className: "", innerHTML: "", parentNode: null, addEventListener() {},
+          querySelector: () => corps };
+        w.document = { createElement: () => modal, getElementById: () => ({ addEventListener() {} }),
+          documentElement: { appendChild(el) { el.parentNode = { removeChild() {} }; } },
+          addEventListener() {}, removeEventListener() {} };
+        w.requestAnimationFrame = f => f();
+        w.setTimeout = setTimeout;
+        w.itineraireYAller = () => {};
+        vm.runInContext("var window = this;" + lire("js/sortieUrgence.js"), w.__ctx);
+        w.SortieUrgence.declencherDepuis(0, 0, undefined, { contraintes: contraintes });
+        for (let i = 0; i < 200 && !vus.length; i++) await new Promise(res => setTimeout(res, 5));
+        return vus[0] || null;
+      };
+      let v = await lancer({ avoidZones: [], respecterInaccessibles: true, brancard: true });
+      t("sortie d'urgence (évacuation brancard) : `brancard` transmis, masse ¼ évitée (400 px)",
+        !!v && v.o.brancard === true && proche(v.r.totalDistance, 400), v && [v.o.brancard, v.r.totalDistance]);
+      v = await lancer(null);
+      t("sortie d'urgence ordinaire : masse ¼ traversée, coût 220 px, distance 200 px",
+        !!v && v.o.brancard === false && proche(v.r.totalDistance, 200) && proche(v.r.cout, 220),
+        v && [v.o.brancard, v.r.totalDistance, v.r.cout]);
+    }
+    {
+      const w = bacM({ roads: [droite], zones: [masse(-0.5)] });
+      const r = await route(w);
+      t("sol abaissé −½ : ×1, coût = distance (200 px)", !r.erreur && proche(r.cout, 200) &&
+        proche(r.totalDistance, 200), r.erreur || r.cout);
+    }
+    {
+      // Talus (bords OUVERTS, aucune sonde simulée) : masse ¾ de 10 m de large (x 80-120) et 100 m de long ; la
+      // traversée au milieu ne voit que les bords gauche et droit. Sol = min(1,5 ; tan 30° × d), d = distance au bord.
+      // Vide ≥ 1,8 si d < 0,2 / tan 30° = 0,3464 m ; courbé jusqu'à d = 1 / tan 30° = 1,7321 m ; ramper au-delà
+      // (le vide descend à 0,5 m, jamais dessous). Par côté : 0,5 × (1,7321 − 0,3464) + 2 × (5 − 1,7321) = 7,2287 m ;
+      // deux côtés 14,457 m = 57,83 px de coût en plus (à l'échantillonnage de 0,1 m près). Une moyenne de la zone
+      // (vide 0,5 m partout → +80 px) serait fausse.
+      const long = R("zn_long", "masse-sol", [[80, -200], [120, -200], [120, 200], [80, 200]], { comble: 0.75 });
+      const w = bacM({ roads: [droite], zones: [long] }, null, true);
+      const r = await route(w);
+      t("talus pris point par point : +57,8 px (14,46 m) au lieu de +80 px (moyenne)", !r.erreur &&
+        Math.abs(r.cout - 200 - 57.83) < 1.2 && proche(r.totalDistance, 200), r.erreur || r.cout - 200);
+    }
+    {
+      const w = bacM({});
+      const r = w.Pathfinder.computeRouteOnRoads([A, B], [droite], { allowedTypes: ["principal"],
+        zones: [masse(0.75)], echelle: ECHELLE });
+      t("inter-plans (réseau fourni) : masse ¾ → coût 280 px, distance 200 px", proche(r.cout, 280) &&
+        proche(r.totalDistance, 200), [r.cout, r.totalDistance]);
+      let ko3 = null;
+      try {
+        w.Pathfinder.computeRouteOnRoads([A, B], [droite], { allowedTypes: ["principal"], zones: [masse(0.8)],
+          echelle: ECHELLE });
+      } catch (e) { ko3 = e.code; }
+      t("inter-plans : masse coupée → aucun chemin", ko3 === "NO_PATH", ko3);
+    }
+    {
+      const w = bacM({ zones: [masse(0.75)] });
+      const cum = w.Pathfinder.surcoutMasseTrajet([P(0, 0), P(100, 0), P(200, 0)]);
+      t("guidage : ralentissement cumulé ¾ = 0 / 40 / 80 px (le temps compte 20 m de plus)",
+        cum.length === 3 && proche(cum[0], 0) && proche(cum[1], 40) && proche(cum[2], 80), cum);
+    }
+    {
+      // Zones à coût et inaccessible inchangées en présence d'une masse ailleurs (x 20-40, hors de la zone).
+      const loin = R("zn_ms_loin", "masse-sol", [[20, 40], [40, 40], [40, 60], [20, 60]], { comble: 0.75 });
+      for (const type of ["remblais", "effondrement"]) {
+        let w = bacM({ roads: [droite], zones: [zone(type), loin] });
+        let r = await route(w);
+        t(type + " avec une masse ailleurs : coût inchangé (200 + 40 × 1e6), traversée dite", !r.erreur &&
+          proche(r.cout, 200 + 40e6, 1e-3) && r.zonesTraversees.length === 1, r.erreur || r.cout);
+        w = bacM({ roads: [droite, detour], zones: [zone(type), loin] });
+        r = await route(w);
+        t(type + " avec une masse ailleurs : toujours évité (400 px)", !r.erreur && proche(r.totalDistance, 400));
+      }
+      const w = bacM({ roads: [droite4], zones: [zone("inaccessible"), loin] });
+      const r = await route(w);
+      t("inaccessible avec une masse ailleurs : toujours dure (NO_PATH)", r.erreur === "NO_PATH", r.erreur);
+      const w2 = bacM({ roads: [droite, detour], zones: [zone("eau")] });
+      const r2 = await route(w2);
+      t("sans masse : coût = distance au bit près", !r2.erreur && r2.cout === r2.totalDistance);
+    }
   }
 
   console.log(ko ? "\n❌ check-zones-cout : " + ko + " échec(s)" : "\n✅ check-zones-cout : zones à coût conformes");
