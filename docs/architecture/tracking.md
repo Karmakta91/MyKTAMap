@@ -1476,7 +1476,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
   du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, chatière, véhicule, porte… :
   tout le volume, `_construireVolume`) ; un passage troué (puits, galerie inclinée) reste au sol du niveau. Mini-carte :
-  contour comme une zone qui bouche. **Rubans des tracés ordinaires** (et liseré du mode galerie, surlignage 📏, ronds
+  sable selon le cran, obstacle seulement sous 0,5 m de vide (§ Mini-carte). **Rubans des tracés ordinaires** (et liseré du mode galerie, surlignage 📏, ronds
   d'intersection) : sur le sol local (`_rubanSol`, morceaux de `MASSE.pas` au plus sur une masse, pentes des rampes
   suivies) ; un front vertical = palier puis contremarche verticale au droit du front, décollée d'1 cm vers le côté bas
   (`FRONT_RUBAN`). 🩸 Le creux est un trou du sol par le gabarit (bit 1), que le matériau `rubans` respecte : les morceaux
@@ -2776,8 +2776,12 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 - **Rendu** (décision produit) : un canvas 2D dessiné par `vue3d.js` à partir de ce que la scène a déjà lu à
   `_reindexer` (`_donneesMiniCarte` : objets de `_collecter`, donc **mêmes filtres ≡** de la carte, calques cochés et
   niveaux visibles) — jamais une seconde carte Leaflet, une image du plan ni une seconde caméra three.js. **Niveau actif
-  de la 3D** en plein : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible),
-  structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
+  de la 3D** en plein : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible ;
+  Comblé et effondrement avec le **couloir** des tracés qui les traversent laissé ouvert, pièces du modèle galerie comme
+  `KtaGalerie.dansCouloir`) et **masses au sol** (`_masseMiniCarte`, décision produit : sable du canon, opacité
+  `MINI_CARTE.masse` selon |cran|, contour tireté ; sol abaissé presque transparent, `MINI_CARTE.creux` ; hachure de
+  l'inaccessible seulement si le cran laisse moins de `MASSE.ramper` sous le plafond ; rampes en chevrons,
+  `KtaMasseSol.chevrons`, illisibles au-delà de quelques mètres de rayon : jamais un obstacle sinon), structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
   **tous les POI** montrés par les filtres, en pastille avec leur icône (`getIconUrlForPoint`, liseré
   `--kta-texte-3`) ; par-dessus eux, liseré propre : **passage** vers un autre niveau (`_estPassage`, liseré du tracé
   jonction et ↕ au coin, la marque du panneau), **danger** (`_estDanger`, liseré `--kta-erreur`), **sortie**

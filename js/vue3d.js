@@ -12735,7 +12735,9 @@
   // côté du fond (px) ; `cone` : demi-angle du cône (°) ; `traitM` : largeur d'un tracé (m), jamais moins de
   // `traitPx` px CSS ; `poiPx` : rayon d'une pastille de POI (px CSS).
   const MINI_CARTE = { rayon: 30, min: 10, max: 100, grande: 2, fenetre: 3, ms: 100, bouge: 0.3, densite: 2,
-    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8, voisinAlpha: 0.35 };
+    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8, voisinAlpha: 0.35,
+    // Masse au sol : opacité du sable = masse[0] + masse[1] × |cran| (¼ clair → ¾ dense) ; sol abaissé : creux.
+    masse: [0.2, 0.7], creux: 0.12 };
   let _rayonMiniCarte = MINI_CARTE.rayon;   // retenu tant que la page vit (vue refermée puis rouverte)
   let _observateursTaille = 0;              // ResizeObserver de la rangée et du bandeau branchés (checkup : 0 fermée)
   const _iconesMiniCarte = new Map();       // url → Image (icônes des POI, chargées une fois)
@@ -12857,9 +12859,39 @@
         if (z < z0) z0 = z;
         if (z > z1) z1 = z;
       }
-      if (pts.length < 4) return;
-      formes.push({ cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1,
-        voisin: voisin || null });
+      if (pts.length < 4) return null;
+      const fo = { cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1, voisin: voisin || null };
+      formes.push(fo);
+      return fo;
+    };
+    // ⚠️ contrat (décision produit) : une masse au sol n'est jamais dessinée comme un obstacle, sauf si son cran laisse
+    // moins de MASSE.ramper sous le plafond (on ne passe plus) ; ses rampes en chevrons (KtaMasseSol.chevrons). Comblé et
+    // effondrement : le couloir des tracés qui les traversent (pièces du modèle galerie, KtaGalerie.dansCouloir) est
+    // laissé ouvert, comme en 3D.
+    const G = window.KtaGalerie, CR = (G && G.CREUSABLES) || {}, niv = e.niveau === null ? undefined : e.niveau;
+    let modele;
+    const couloirDe = function (fo) {
+      if (modele === undefined) modele = G && typeof G.modele === "function" ? G.modele(niv) : null;
+      if (!modele || typeof modele.piecesPres !== "function") return [];
+      return modele.piecesPres(fo.x0 * sc, fo.z0 * sc, fo.x1 * sc, fo.z1 * sc).filter(function (i) {
+        return modele.pieces[i].genre !== "niche";
+      }).map(function (i) {
+        const out = [];
+        modele.pieces[i].pts.forEach(function (q) { out.push(q[0] / sc, q[1] / sc); });
+        return out;
+      });
+    };
+    const masseDe = function (fo, z) {
+      const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;
+      fo.cran = c;
+      fo.bloque = c > 0 && e.hauteur * (1 - Math.min(1, c)) < MASSE.ramper;
+      const M = window.KtaMasseSol;
+      fo.chevrons = M && typeof M.chevrons === "function" && Array.isArray(z.rampes) && z.rampes.length
+        ? M.chevrons(z, sc).map(function (l) {
+          const out = [];
+          l.forEach(function (q) { out.push(q.x / sc, q.y / sc); });
+          return out;
+        }) : [];
     };
     // Niveaux voisins (celui du dessus et celui du dessous, ordre de ▲▼ : _niveauxEdition), mêmes filtres que la
     // carte : structures et tracés seulement, dessinés estompés SOUS le niveau actif (_dessinerFondMiniCarte).
@@ -12874,7 +12906,13 @@
         });
       });
     }
-    d.zones.forEach(function (z) { if (B[z.type] || z.type === "masse-sol") forme(z, "zones", true); });
+    d.zones.forEach(function (z) {
+      if (!B[z.type] && z.type !== "masse-sol") return;
+      const fo = forme(z, "zones", true);
+      if (!fo) return;
+      if (z.type === "masse-sol") masseDe(fo, z);
+      else if (CR[z.type]) fo.couloir = couloirDe(fo);
+    });
     d.structures.forEach(function (s) { forme(s, "structures", !_estLigne(s.type)); });
     d.roads.forEach(function (r) { if (r.type !== "itinerary" && r.type !== "jonction") forme(r, "traces", false); });
     d.points.forEach(function (p) {
@@ -12956,6 +12994,47 @@
 
   function _rayonMontre() { return _rayonMiniCarte * (_e.mc.grande ? MINI_CARTE.grande : 1); }
 
+  // Masse au sol `f` (chemin du contour déjà posé, repère en mètres) : sable du canon (`s`, aplat), opacité selon
+  // |cran|, contour tireté ; sol abaissé presque transparent ; hachures de l'obstacle (`so`, inaccessible) seulement si
+  // f.bloque ; chevrons des rampes. Note ce qui a été dessiné dans `vues`.
+  function _masseMiniCarte(ctx, f, s, so, trait, vues) {
+    const c = Number.isFinite(f.cran) ? f.cran : 0.5, sable = s.fillColor || s.color || "#888888";
+    const a = c > 0 ? Math.min(1, MINI_CARTE.masse[0] + MINI_CARTE.masse[1] * Math.min(1, c)) : MINI_CARTE.creux;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = sable;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = sable;
+    ctx.lineWidth = trait * 0.5;
+    ctx.setLineDash([trait * 1.2, trait * 0.9]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (f.bloque) {
+      ctx.save();
+      ctx.clip();
+      ctx.strokeStyle = so.fillColor || so.color || sable;
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = trait * 0.4;
+      ctx.beginPath();
+      const pas = trait * 2.5, d = (f.x1 - f.x0) + (f.z1 - f.z0);
+      for (let t = -d; t <= d; t += pas) { ctx.moveTo(f.x0 + t, f.z0); ctx.lineTo(f.x0 + t + d, f.z0 + d); }
+      ctx.stroke();
+      ctx.restore();
+    }
+    (f.chevrons || []).forEach(function (q) {
+      ctx.beginPath();
+      ctx.moveTo(q[0], q[1]);
+      for (let i = 2; i < q.length; i += 2) ctx.lineTo(q[i], q[i + 1]);
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = s.color || sable;
+      ctx.lineWidth = trait * 0.4;
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+    vues.push({ cle: "masse-sol", cran: c, alpha: +a.toFixed(3), bloque: !!f.bloque,
+      chevrons: (f.chevrons || []).length, tirets: true });
+  }
+
   // Matrice monde (m) → pixels d'un canvas de côté `cote`, centré sur (cx, cz), nord réel en haut, `k` px / m.
   function _matriceMiniCarte(cx, cz, k, cote) {
     const n = -(Number(_e.nord) || 0) * Math.PI / 180, a = k * Math.cos(n), b = k * Math.sin(n);
@@ -12986,6 +13065,7 @@
     ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     let n = 0;
+    const zonesVues = [];   // checkup : ce que la mini-carte a fait de chaque zone (_etatMiniCarte)
     // Niveaux voisins d'abord, en contour estompé (dessous en tirets) : le niveau actif se lit par-dessus.
     const jv = _jetonsSombres();
     D.formes.forEach(function (f) {
@@ -13013,11 +13093,30 @@
         ctx.beginPath();
         ctx.moveTo(p[0], p[1]);
         for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
-        if (f.ferme) {
+        if (f.ferme && f.cle === "masse-sol") {
+          ctx.closePath();
+          _masseMiniCarte(ctx, f, s, style("zones", "inaccessible"), trait, zonesVues);
+        } else if (f.ferme) {
           ctx.closePath();
           ctx.globalAlpha = Number.isFinite(s.fillOpacity) ? s.fillOpacity : 0.8;
           ctx.fillStyle = s.fillColor || s.color || "#888888";
           ctx.fill();
+          if (f.couloir && f.couloir.length) {
+            // Couloir creusé : effacé du remplissage, dans le contour de la zone seulement.
+            ctx.save();
+            ctx.clip();
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            f.couloir.forEach(function (q) {
+              ctx.moveTo(q[0], q[1]);
+              for (let i = 2; i < q.length; i += 2) ctx.lineTo(q[i], q[i + 1]);
+              ctx.closePath();
+            });
+            ctx.fill();
+            ctx.restore();
+          }
+          if (cat === "zones") zonesVues.push({ cle: f.cle, couloir: f.couloir ? f.couloir.length : 0 });
         } else {
           ctx.globalAlpha = Number.isFinite(s.opacity) ? s.opacity : 1;
           ctx.strokeStyle = s.color || s.fillColor || "#888888";
@@ -13058,7 +13157,7 @@
       }
       n++;
     });
-    m.f = { x: cx, z: cz, k: k, cote: cote, nord: Number(e.nord) || 0, demi: cote / 2 / k, objets: n };
+    m.f = { x: cx, z: cz, k: k, cote: cote, nord: Number(e.nord) || 0, demi: cote / 2 / k, objets: n, zones: zonesVues };
     m.fondSale = false;
     m.fonds++;
     m.msFond = performance.now() - t0;
@@ -13258,7 +13357,7 @@
       msMajMax: +m.msMajMax.toFixed(2), msMajMoy: m.majs ? +(m.msMajSomme / m.majs).toFixed(3) : 0,
       msDernieres: m.dernieres.map(function (v) { return +v.toFixed(2); }),
       pois: e.mcDonnees ? e.mcDonnees.pois.map(function (q) { return q.genre; }) : [],
-      formes: fm.filter(function (f) { return !f.voisin; }).length,
+      formes: fm.filter(function (f) { return !f.voisin; }).length, zones: m.f ? m.f.zones : [],
       voisins: fm.filter(function (f) { return f.voisin; }).map(function (f) { return f.voisin; }),
       iti: e.mcIti ? { morceaux: e.mcIti.morceaux.length, marques: e.mcIti.marques.length,
         cible: !!_pointItiMiniCarte(e.mcCible) } : null,

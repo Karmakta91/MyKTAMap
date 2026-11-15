@@ -14322,6 +14322,61 @@ async function sectionMiniCarte(nav) {
       "agrandissement compris : " + c.marche.msFondMax + " ms au plus pour un fond)");
     verifier(c.marche.majs >= 5 && c.marche.majs <= Math.ceil(c.marche.ms / 100) + 2 && c.marche.fonds <= 2,
       nom + "mises à jour bornées à 10 par seconde, fond refait seulement au bord de sa fenêtre", c.marche);
+    // ── Zones : masse au sol selon son cran (obstacle seulement sous 0,5 m de vide), rampe en chevrons ; Comblé
+    // traversé par le tracé : couloir laissé ouvert (vue3d.js > _masseMiniCarte, _donneesMiniCarte) ──
+    const zm = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      const carre = function (x, z, c) { return [P(x - c, z - c), P(x + c, z - c), P(x + c, z + c), P(x - c, z + c)]; };
+      const av = { z: window.getZones().slice(), s: window.getStructures().slice() };
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setStructures([]);
+      window.setZones([
+        { uid: "zn_mc_q", type: "masse-sol", level: 0, comble: 0.25, points: carre(-12, 8, 2) },
+        { uid: "zn_mc_d", type: "masse-sol", level: 0, comble: 0.5, points: carre(-6, 8, 2), rampes: [{ bord: 3 }] },
+        { uid: "zn_mc_t", type: "masse-sol", level: 0, comble: 0.75, points: carre(0, 8, 2) },
+        { uid: "zn_mc_b", type: "masse-sol", level: 0, comble: 0.9, points: carre(6, 8, 2) },
+        { uid: "zn_mc_n", type: "masse-sol", level: 0, comble: -0.5, points: carre(12, 8, 2) },
+        { uid: "zn_mc_c", type: "remblais", level: 0, points: [P(-20, -3), P(-14, -3), P(-14, 3), P(-20, 3)] }
+      ]);
+      await window.__fxOuvrir(-8, 0, 90, 0, "structures");
+      await window.__fxImages(20);
+      const m = window.__mc(), b = window.__mcEl().getBoundingClientRect();
+      return { zones: m.zones, boite: { x: b.left, y: b.top, width: b.width, height: b.height }, av: true,
+        restaurer: JSON.stringify({ n: av.z.length }) };
+    });
+    if (CAPTURES) {
+      await page.screenshot({ path: path.join(CAPTURES, "minicarte-zones.png"), clip: zm.boite });
+      const bg = await page.evaluate(async function () {
+        window.__mcEl().click();
+        await new Promise(function (ok) { setTimeout(ok, 300); });
+        await window.__fxImages(10);
+        const b = window.__mcEl().getBoundingClientRect();
+        return { x: b.left, y: b.top, width: b.width, height: b.height };
+      });
+      await page.screenshot({ path: path.join(CAPTURES, "minicarte-zones-grande.png"), clip: bg });
+      await page.evaluate(function () { window.__mcEl().click(); });
+    }
+    await page.evaluate(async function () {
+      await window.KtaVue3D.fermer();
+      window.setZones([]);
+    });
+    const ms = (zm.zones || []).filter(function (q) { return q.cle === "masse-sol"; });
+    const parCran = function (c) { return ms.filter(function (q) { return Math.abs(q.cran - c) < 1e-6; })[0] || null; };
+    const q1 = parCran(0.25), q2 = parCran(0.5), q3 = parCran(0.75), q9 = parCran(0.9), qn = parCran(-0.5);
+    const cb = (zm.zones || []).filter(function (q) { return q.cle === "remblais"; })[0] || null;
+    verifier(q1 && q2 && q3 && q9 && qn && q1.alpha < q2.alpha && q2.alpha < q3.alpha && q3.alpha < q9.alpha &&
+      ms.every(function (q) { return q.tirets; }),
+      nom + "masse au sol : sable du canon, plus dense avec le cran (¼ " + (q1 && q1.alpha) + " → ¾ " + (q3 && q3.alpha) +
+      "), contour tireté — jamais à la couleur du Comblé", ms);
+    verifier(q1 && q2 && q3 && q9 && !q1.bloque && !q2.bloque && !q3.bloque && q9.bloque,
+      nom + "masse au sol : hachure d'obstacle seulement là où l'on ne passe plus (0,9 : 0,25 m de vide sous 2,5 m ; ¾ " +
+      "laisse 0,62 m)", ms);
+    verifier(qn && qn.alpha <= 0.15 && !qn.bloque, nom + "sol abaissé : sable presque transparent, contour tireté, " +
+      "jamais un obstacle", qn);
+    verifier(q2 && q2.chevrons > 0 && q1 && q1.chevrons === 0, nom + "rampe de la ½ en chevrons (" +
+      (q2 && q2.chevrons) + "), aucune sur une masse sans rampe", { q1: q1, q2: q2 });
+    verifier(cb && cb.couloir > 0, nom + "Comblé traversé par le tracé : couloir creusé laissé ouvert (" +
+      (cb && cb.couloir) + " pièce(s) du modèle galerie)", cb);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
