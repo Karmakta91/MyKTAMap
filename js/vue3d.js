@@ -920,6 +920,9 @@
   // (KtaMasseSol.sol). Sur une rampe, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°).
   // Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
   // pas des maillages : masseSol.js (KtaMasseSol), la règle partagée avec la fiche et l'itinéraire.
+  // Ruban d'un tracé sur une masse au sol (_rubanSol) : marche (m) au-delà de laquelle on cherche un front, nombre de
+  // pas de dichotomie (0,5 m / 2^10 ≈ 0,5 mm), décollement de la contremarche vers le côté bas (m).
+  const FRONT_RUBAN = { seuil: 0.05, iter: 10, decolle: 0.01 };
   const MASSE = { pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
     ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
     lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05, chute: [0.3, 0.5], amorti: 0.06 };
@@ -1674,6 +1677,52 @@
     return false;
   }
 
+  // Ruban d'un tracé ordinaire (liseré du mode galerie, surlignage 📏 compris) sur le SOL LOCAL : hors masse au sol,
+  // _ruban à `y` du sol du niveau ; sur une masse (remblai ou creux) du niveau, morceaux de MASSE.pas m au plus posés
+  // à sol + y (_solMasse : la règle du pas, des POI et du ruban d'itinéraire), pentes des rampes comprises.
+  // Niveau actif seulement : les tracés d'un niveau voisin restent au sol de leur niveau.
+  // ⚠️ contrat : un FRONT vertical (la marche ne se resserre pas à la dichotomie, FRONT_RUBAN.iter) se dessine en palier
+  // puis contremarche verticale au droit du front, décollée de FRONT_RUBAN.decolle vers le côté bas : pas de trou, pas
+  // de scintillement avec la face de la masse. Coût borné : L / MASSE.pas appels à _solMasse par segment (plus la
+  // dichotomie aux fronts), à la construction de la tuile seulement, jamais à l'image.
+  // 🩸 Un creux est un trou du sol du niveau par le gabarit (bit 1), que le matériau des rubans respecte (pas de ruban
+  // dans une bouche de puits) : les morceaux sous le sol du niveau (fond, pente et contremarche d'un creux) vont dans
+  // `lotFond` (matériau rubansFond, sans test du gabarit) ; sans lotFond, dans `lot`.
+  function _rubanSol(lot, a, b, sc, larg, y, col, lotFond) {
+    const ax = a.x / sc, az = a.y / sc, bx = b.x / sc, bz = b.y / sc, L = Math.hypot(bx - ax, bz - az);
+    if (L < 1e-6) return;
+    // Niveau actif seulement (comme _fondPied) : un voisin construit n'a pas ses masses dans e.masses.
+    const e = _e, actif = !e.dyContexte && e.massesNiveau === e.niveau;
+    if (!actif || !_masseSurSegment(ax, az, bx, bz)) { _ruban(lot, a, b, sc, larg, y, col); return; }
+    const ux = (bx - ax) / L, uz = (bz - az) / L, w = larg / 2, nx = -uz * w, nz = ux * w;
+    const sol = function (q) { return _solMasse(ax + ux * q, az + uz * q); };
+    const vers = function (s1, s2) { return lotFond && Math.min(s1, s2) < -0.001 ? lotFond : lot; };
+    // Recouvrement aux jointures (comme _ruban) : de −w à L + w.
+    const q0 = -w, q1 = L + w, k = Math.max(1, Math.ceil((q1 - q0) / MASSE.pas));
+    let qa = q0, sa = sol(Math.max(0, Math.min(L, qa)));
+    for (let j = 1; j <= k; j++) {
+      const qb = q0 + (q1 - q0) * j / k, sb = sol(Math.max(0, Math.min(L, qb)));
+      let lo = qa, hi = qb, slo = sa, shi = sb;
+      if (Math.abs(sb - sa) > FRONT_RUBAN.seuil) {
+        for (let i = 0; i < FRONT_RUBAN.iter; i++) {
+          const mi = (lo + hi) / 2, sm = sol(Math.max(0, Math.min(L, mi)));
+          if (Math.abs(sm - slo) >= Math.abs(shi - sm)) { hi = mi; shi = sm; } else { lo = mi; slo = sm; }
+        }
+      }
+      if (Math.abs(shi - slo) > FRONT_RUBAN.seuil) {
+        const fq = (lo + hi) / 2, bas = slo < shi ? -1 : 1, d = FRONT_RUBAN.decolle * bas;
+        const px = ax + ux * (fq + d), pz = az + uz * (fq + d), y0 = Math.min(slo, shi) + y, y1 = Math.max(slo, shi) + y;
+        _bande(vers(sa, slo), ax + ux * qa, az + uz * qa, ax + ux * fq, az + uz * fq, larg, sa + y, col, slo + y);
+        vers(slo, shi).quad([px + nx, y0, pz + nz], [px - nx, y0, pz - nz], [px - nx, y1, pz - nz],
+          [px + nx, y1, pz + nz], [ux * bas, 0, uz * bas], col);
+        _bande(vers(shi, sb), ax + ux * fq, az + uz * fq, ax + ux * qb, az + uz * qb, larg, shi + y, col, sb + y);
+      } else {
+        _bande(vers(sa, sb), ax + ux * qa, az + uz * qa, ax + ux * qb, az + uz * qb, larg, sa + y, col, sb + y);
+      }
+      qa = qb; sa = sb;
+    }
+  }
+
   // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } : bande claire pleine posée sur une bande sombre plus
   // large de 2 × ITI.lisere (le liseré), prolongées d'une demi-largeur aux bouts du segment (coude fermé), puis les
   // chevrons de sens dont l'abscisse tombe dans [s0, s0 + longueur[ (un raccord n'en porte qu'un).
@@ -1732,7 +1781,7 @@
   // PAR-DESSUS la zone dessinée (zones montrées du niveau, _collecter) : posés sur son dessus à leur hauteur propre, une
   // contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en sort. Comblé et effondrement n'y
   // sont plus (révision du 14/11/2026) : le tracé y creuse la galerie (_volumeCreuse), l'itinéraire y passe au sol.
-  // Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
+  // Le tracé 2D ne change pas ; les rubans des tracés suivent le sol local (_rubanSol).
   const ITI_SUR = {};
   const ITI_FACE = 0.03;   // m : contremarche décollée de la face (pas de scintillement)
 
@@ -1856,6 +1905,7 @@
     if (_e.galerie) { _construireTuileGalerie(t); return; }
     const sc = _e.sc, h = _e.hauteur, mx = _e.mixte;
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot(), rubans = new Lot();
+    const rubansFond = new Lot();   // rubans au fond d'un creux (_rubanSol)
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
     const parois = new Lot(), paroisUnies = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
@@ -1942,7 +1992,7 @@
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
       else if (!_zoneSous((r.a.x + r.b.x) / 2 / sc, (r.a.y + r.b.y) / 2 / sc)) {
-        _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);   // dans une zone jonction : sous son sol en pente
+        _rubanSol(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col, rubansFond);   // zone jonction : sous son sol
       }
     }
     const groupe = new THREE.Group();
@@ -1958,6 +2008,7 @@
     };
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
     ajouter(rubans, _e.mats.rubans, 0, "rubans");
+    ajouter(rubansFond, _e.mats.rubansFond, 0, "rubans");
     ajouter(murs, _e.mats.murs, 0, "murs");
     if (roche.p.length || parpaing.p.length) _matsTextures();
     ajouter(roche, _e.mats.roche, 0, "opaque");
@@ -2123,7 +2174,7 @@
   function _construireTuileGalerie(t) {
     const e = _e, m = e.galerie, sc = e.sc, h = e.hauteur;
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
-    const rubans = new Lot(), paroisUnies = new Lot();
+    const rubans = new Lot(), paroisUnies = new Lot(), rubansFond = new Lot();
     const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot(), eboulis = new Lot();
     if (e.textures === true) parois.ombre = { sol: 0, plafond: h };   // ombre de contact (OMBRE_CONTACT)
     t.parois = []; t.paroisY = [];
@@ -2146,7 +2197,7 @@
       if (!_lignesSol() || !_typeTraceMontre(r.type)) continue;
       const col = _couleur("traces", r.type, "color");
       _compter(e.liseres, r.type);
-      _ruban(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
+      _rubanSol(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col, rubansFond);
     }
     // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
     const tx = e.textures === true;
@@ -2162,7 +2213,7 @@
       if (r.type !== "itinerary" && !_lignesSol()) continue;
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
-      else _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
+      else _rubanSol(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col, rubansFond);
     }
     const groupe = new THREE.Group();
     const ajouter = function (lot, mat, ordre, famille) {
@@ -2184,6 +2235,7 @@
     _poserArcs(arcs, ajouter);
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(rubans, e.mats.rubans, 0, "rubans");
+    ajouter(rubansFond, e.mats.rubansFond, 0, "rubans");
     if (tx && remblais.p.length) _matZone("remblais");
     ajouter(remblais, tx ? e.mats.remblais : e.mats.opaque, 0, "remblais");
     if (eboulis.p.length) _matZone("eboulis");
@@ -3978,6 +4030,8 @@
       // Rubans des tracés et liserés au sol : troués par la bouche d'un passage comme le sol (gabarit ci-dessous),
       // jamais suspendus au-dessus du vide. L'itinéraire n'y est pas : il mène au passage, ses marqueurs ont un mât.
       rubans: new THREE.MeshLambertMaterial({ vertexColors: true }),
+      // Rubans au fond d'un creux (_rubanSol) : les mêmes, sans test du gabarit (le creux est un trou du sol, bit 1).
+      rubansFond: new THREE.MeshLambertMaterial({ vertexColors: true }),
       // Itinéraire et ronds d'intersection : couleurs exactes du jeton et de la légende (sans compression de tons).
       iti: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
       transp: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
@@ -11292,11 +11346,11 @@
       if (e.niveau !== null && Number.isInteger(it.level) && it.level !== e.niveau) return;
       const col = new THREE.Color();
       try { col.setStyle(it.color); } catch (err) { col.set(0xffffff); }
-      const cx = it.point.x / sc, cz = it.point.y / sc;
+      const cx = it.point.x / sc, cz = it.point.y / sc, ry = ROND.y + _solMasse(cx, cz);   // sol local (masse au sol)
       for (let k = 0; k < n; k++) {
         const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n;
-        lot.tri([cx, ROND.y, cz], [cx + Math.cos(a0) * ROND.rayon, ROND.y, cz + Math.sin(a0) * ROND.rayon],
-          [cx + Math.cos(a1) * ROND.rayon, ROND.y, cz + Math.sin(a1) * ROND.rayon], haut, col);
+        lot.tri([cx, ry, cz], [cx + Math.cos(a0) * ROND.rayon, ry, cz + Math.sin(a0) * ROND.rayon],
+          [cx + Math.cos(a1) * ROND.rayon, ry, cz + Math.sin(a1) * ROND.rayon], haut, col);
       }
       e.listeRonds.push({ x: cx, z: cz, couleur: it.color, niveau: Number.isInteger(it.level) ? it.level : null });
     });
@@ -11313,8 +11367,8 @@
   // ⚠️ contrat : la 3D ne compte rien ; elle lit les tronçons COMPTÉS par la carte (interfaceDistanceTotale.js >
   // ktaDistanceTotaleSurlignage : cases du panneau, niveau de la vue) et pose un ruban au sol par segment, à la
   // couleur du surlignage 2D, dans un seul maillage hors tuiles. Refait à _reindexer et à `kta:distanceTotaleChange`
-  // (panneau ouvert, case cochée, ❌ Effacer) : jamais de reconstruction de la scène. Au sol comme les rubans des
-  // tracés (pas par-dessus un remblais : c'est le tracé qui est surligné, pas l'itinéraire).
+  // (panneau ouvert, case cochée, ❌ Effacer) : jamais de reconstruction de la scène. Sur le sol local comme les rubans
+  // des tracés (_rubanSol : masse au sol suivie ; pas par-dessus un remblais : c'est le tracé qui est surligné).
   function _majDistTot() {
     const e = _e, sc = e.sc;
     if (e.distTot) {
@@ -11335,7 +11389,7 @@
       for (let j = 0; j + 1 < r.points.length; j++) {
         const a = r.points[j], b = r.points[j + 1];
         if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(b.x)) continue;
-        _ruban(lot, a, b, sc, SURLIGNE.larg, SURLIGNE.y, col);
+        _rubanSol(lot, a, b, sc, SURLIGNE.larg, SURLIGNE.y, col);
         segments++;
       }
     });
@@ -14949,9 +15003,9 @@
 
   // Profil de l'itinéraire construit (checkup : par-dessus les volumes) : un quadrilatère par entrée
   // [x, z, yMin, yMax, clair] (m, centre ; clair = bande du ruban, sinon liseré), chevrons [x, z, y], étapes
-  // [x, z, y], et la plus haute bande des rubans des tracés (rubansYMax).
+  // [x, z, y], la plus haute bande des rubans des tracés (rubansYMax) et leurs quadrilatères [x, z, yMin, yMax].
   function _profilIti() {
-    const e = _e, cols = _couleursIti(), rouge = Math.round(cols.ruban.r * 255), profil = [], rubansY = [];
+    const e = _e, cols = _couleursIti(), rouge = Math.round(cols.ruban.r * 255), profil = [], rubansY = [], rubansQ = [];
     const quads = function (m, f) {
       const p = m.geometry.attributes.position.array, c = m.geometry.attributes.color.array;
       for (let q = 0; q + 17 < p.length; q += 18) {
@@ -14970,7 +15024,7 @@
         if (m.userData.famille === "itineraire") {
           quads(m, function (x, z, y0, y1, clair) { profil.push([x, z, y0, y1, clair ? 1 : 0]); });
         } else if (m.userData.famille === "rubans") {
-          quads(m, function (x, z, y0, y1) { rubansY.push(y1); });
+          quads(m, function (x, z, y0, y1) { rubansY.push(y1); rubansQ.push([x, z, y0, y1]); });
         }
       });
     });
@@ -14984,7 +15038,7 @@
       });
     }
     return { profil: profil, chevronsY: chevronsY, etapesY: etapesY,
-      rubansYMax: rubansY.length ? Math.max.apply(null, rubansY) : null };
+      rubansYMax: rubansY.length ? Math.max.apply(null, rubansY) : null, rubans: rubansQ };
   }
 
   // Part de la largeur de l'écran couverte par un panneau visible (checkup : pas plus que PRES.ecran de près).

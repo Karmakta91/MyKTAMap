@@ -3090,6 +3090,8 @@ async function sectionMasseSol(page) {
     C.smartNav = false;
     if (K.etat().ouvert !== false) await K.fermer();
     window.setEditorPoints([]);
+    av.lignesSol = window.getVue3DLignesSol();
+    window.setVue3DLignesSol(true);
     window.setRoads([
       { uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
       { uid: "rd_ms_m1", type: "principal", level: -1, points: [P(-60, 12), P(60, 12)] },
@@ -3113,6 +3115,13 @@ async function sectionMasseSol(page) {
     window.setPlanHauteursNiveaux(PID, { "0": 2.4, "-1": 2.4 });
     window.ktaSetActiveLevel(0);
     const relx = function () { return +(K.etat().pos.x / sc - ox).toFixed(3); };
+    // Quadrilatères des rubans des tracés le long du tracé z = 0 : [x, z, yMin, yMax] (m, relatifs).
+    const rubansRel = function () {
+      const it = K.etat({ profilIti: true }).itineraire;
+      return ((it && it.rubans) || []).map(function (q) {
+        return [+(q[0] - ox).toFixed(3), +(q[1] - oz).toFixed(3), q[2], q[3]];
+      }).filter(function (q) { return Math.abs(q[1]) < 0.5; });
+    };
     const lire = function () {
       const e = K.etat();
       return { x: relx(), z: +(e.pos.y / sc - oz).toFixed(3), cam: e.cameraY, oeil: e.oeil, ramper: e.ramper,
@@ -3181,6 +3190,7 @@ async function sectionMasseSol(page) {
       c.departDedans.degage = K.etat().degagements;
       // Jonction posée sur une masse : la galerie inclinée l'emporte.
       c.jonction = await ici(40, 5, 180);
+      c.rubans = rubansRel();
       r.cas.push(c);
     }
     // Multi-niveau : au −1, la masse ¾ (sous la ¼ du 0) ; au 0, la ¼ seule.
@@ -3222,6 +3232,9 @@ async function sectionMasseSol(page) {
       const buteSR = await marcher(-12, 40);
       r.creux[rendu].sansRampe = { chutes: K.etat().masses.chutes - cs0, fin: buteSR[buteSR.length - 1],
         arrets: buteSR.filter(function (q) { return !q.ok; }).length };
+      // Fond du −¾ : borné au-dessus du plafond du niveau −1 (vue3d.js > _fondMasse), lu à la 3D.
+      r.creux[rendu].solFond = (await ici(-4, 0)).sol;
+      r.creux[rendu].rubans = rubansRel();
       await K.fermer();
     }
     window.setStructures([]);
@@ -3370,6 +3383,7 @@ async function sectionMasseSol(page) {
       await K.fermer();
     }
     window.setVue3DTextures(true);
+    window.setVue3DLignesSol(av.lignesSol);
 
     window.effacerReglagesNiveaux(PID);
     window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
@@ -3393,6 +3407,46 @@ async function sectionMasseSol(page) {
     return Math.min(oeil, 0.8) * (1 - k) + Math.min(oeil, 0.35) * k;
   };
   const camOk = function (q) { return pr(q.cam, q.sol + oeilAtt(q.oeil, q.vide), 0.02); };
+  // Rubans des tracés sur le sol local (vue3d.js > _rubanSol) : horizontaux (ou inclinés) à sol + 3 cm (liseré du mode
+  // galerie : + 1,5 cm), contremarche verticale au droit d'un front, décollée de 1 cm vers le côté bas.
+  const RUB = function (q) { return (q[2] + q[3]) / 2; };
+  const plats = function (l, x0, x1) {
+    return l.filter(function (q) { return q[3] - q[2] < 0.3 && q[0] > x0 && q[0] < x1; });
+  };
+  const autour = function (y, att) { return y >= att + 0.005 && y <= att + 0.045; };
+  const fronts = function (l, x0, x1, ya, yb) {
+    return l.filter(function (q) {
+      return q[3] - q[2] > 0.3 && q[0] >= x0 && q[0] <= x1 && q[2] <= ya + 0.05 && q[3] >= yb + 0.01;
+    });
+  };
+  R.cas.forEach(function (c) {
+    const k = "tracé sur masse au sol, " + c.rendu, l = c.rubans || [];
+    const hors = plats(l, -38, -32), haut = plats(l, -6.4, 1.6), pente = plats(l, -9.6, -7.2);
+    const fr = fronts(l, 1.99, 2.05, 0.03, 1.8);
+    // Sol de la rampe de la ¾ (bord ouest à x = −10, fin à 30° : L = 1,8 / tan 30° = 3,118 m).
+    const solRampe = function (x) { return 1.8 * Math.max(0, Math.min(1, (x + 10) / (1.8 / T30))); };
+    verifier(l.length > 0 && hors.length > 0 && hors.every(function (q) { return autour(RUB(q), 0); }),
+      k + " : hors masse, le ruban reste au sol du niveau (+ 3 cm)", hors.slice(0, 3));
+    verifier(haut.length > 0 && haut.every(function (q) { return autour(q[2], 1.8) && autour(q[3], 1.8); }),
+      k + " : sur la ¾ (1,8 m), le ruban est posé sur le dessus, jamais dessous (" + haut.length + " morceaux)",
+      haut.slice(0, 3));
+    verifier(pente.length > 0 && pente.every(function (q) { return Math.abs(RUB(q) - solRampe(q[0]) - 0.025) < 0.09; }),
+      k + " : sur la rampe à 30°, le ruban suit la pente (morceaux inclinés)", pente.slice(0, 4));
+    verifier(fr.length >= 1, k + " : au front est de la ¾ (sans rampe), contremarche verticale de 0 à 1,8 m au droit " +
+      "du front, sans trou", { fronts: fr, n: l.filter(function (q) { return q[3] - q[2] > 0.3; }).length });
+  });
+  ["galerie", "structures"].forEach(function (rendu) {
+    const cr = R.creux[rendu], l = (cr && cr.rubans) || [], k = "tracé dans un creux, " + rendu;
+    const sf = cr ? cr.solFond : NaN, fond = plats(l, -8, 0), fondRampe = plats(l, -27.5, -20.5);
+    const fo = fronts(l, -10.01, -9.95, sf, 0), fe = fronts(l, 1.95, 2.01, sf, 0);
+    verifier(sf < -1.5 && fond.length > 0 && fond.every(function (q) { return autour(q[2], sf) && autour(q[3], sf); }),
+      k + " : dans le −¾ sans rampe, le ruban est au fond (" + sf + " m, la 3D), plus au sol du niveau",
+      { fond: fond.slice(0, 3), sf: sf });
+    verifier(fondRampe.length > 0 && fondRampe.every(function (q) { return autour(RUB(q), -1.2); }),
+      k + " : dans le −½ avec rampe, au fond après la pente (−1,2 m)", fondRampe.slice(0, 3));
+    verifier(fo.length >= 1 && fe.length >= 1,
+      k + " : contremarches aux deux bords droits du creux, décollées vers le fond", { ouest: fo, est: fe });
+  });
   R.cas.forEach(function (c) {
     const k = "masse au sol, " + c.rendu, p = c.points;
     verifier(c.masses.n === 5 && c.hauteur === HN,
@@ -3536,7 +3590,8 @@ async function sectionMasseSol(page) {
 
 // Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : pied du talus de la ½, son sommet (courbé), sur la ¾ (on rampe),
 // dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord (aussi 🧱 coupé) et du fond
-// (pilier en structures) ; rampe (bord ouest) vue du bas, front latéral, creux avec rampe.
+// (pilier en structures) ; rampe (bord ouest) vue du bas, front latéral, creux avec rampe ; ruban d'un tracé au front
+// est de la ¾ (contremarche), sur une rampe, dans un creux (lignes au sol allumées).
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -3546,7 +3601,13 @@ async function capturesMasseSol(page) {
     ["creux-pilier-hd", -28.5, 0.5, 130, true, true, true],
     ["rampe-bas", -33, 0, 90, true, false, false, true], ["rampe-front", -25, -9, 180, true, false, false, true],
     ["rampe-creux", -33, 0, 90, true, true, false, true], ["rampe-fin", -34, 0, 90, true, false, false, "fin"],
-    ["masse-piliers", -14, 0.3, 90, true, false, false, false, true]];
+    ["masse-piliers", -14, 0.3, 90, true, false, false, false, true], ["trace-front", 6, 0.6, 270, true],
+    ["trace-rampe", -33, 0.6, 90, true, false, false, "fin"], ["trace-creux", -33, 0.6, 90, true, true]];
+  const lignesSol = await page.evaluate(function () {
+    const v = window.getVue3DLignesSol();
+    window.setVue3DLignesSol(true);
+    return v;
+  });
   for (const rendu of ["galerie", "mixte", "structures"]) {
     for (const q of vues) {
       await page.evaluate(async function (c) {
@@ -3589,12 +3650,13 @@ async function capturesMasseSol(page) {
       await capture(page, q[0] + "-" + rendu);
     }
   }
-  await page.evaluate(async function () {
+  await page.evaluate(async function (v) {
     await window.KtaVue3D.fermer();
     window.setVue3DTextures(true);
     window.setVue3DTexturesHD(false);
+    window.setVue3DLignesSol(v);
     window.effacerReglagesNiveaux("v3d-checkup-masse");
-  });
+  }, lignesSol);
 }
 
 // Mesure (KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse) : téléphone émulé (iPhone 393 × 852 × 3, processeur ralenti × 4,

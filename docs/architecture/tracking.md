@@ -1474,8 +1474,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
   du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, chatière, véhicule, porte… :
   tout le volume, `_construireVolume`) ; un passage troué (puits, galerie inclinée) reste au sol du niveau. Mini-carte :
-  contour comme une zone qui bouche. 🩸 Rubans des tracés ordinaires : restent au sol du niveau. L'itinéraire calculé ne
-  change pas. Mesuré (téléphone émulé × 4) : `KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse`. Garde-fou :
+  contour comme une zone qui bouche. **Rubans des tracés ordinaires** (et liseré du mode galerie, surlignage 📏, ronds
+  d'intersection) : sur le sol local (`_rubanSol`, morceaux de `MASSE.pas` au plus sur une masse, pentes des rampes
+  suivies) ; un front vertical = palier puis contremarche verticale au droit du front, décollée d'1 cm vers le côté bas
+  (`FRONT_RUBAN`). 🩸 Le creux est un trou du sol par le gabarit (bit 1), que le matériau `rubans` respecte : les morceaux
+  sous le sol du niveau passent par `rubansFond` (sans gabarit), sinon le ruban disparaissait au fond. Niveau actif
+  seulement (un voisin garde ses rubans au sol de son niveau). L'itinéraire calculé ne change pas. Mesuré (téléphone émulé × 4) : `KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse`. Garde-fou :
   `scripts/smoke/checkup-vue-3d.js > sectionMasseSol` (`KTA_V3D_SEUL=massesol`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
@@ -1742,7 +1746,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `versGalerie` ignore (recalage de la 2D inchangé : un tracker recalé n'y entre pas). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
   cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en vue d'édition. Filtres ignorés (masquer
   ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
-  le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
+  le sol : coupés à la bouche, jamais suspendus au-dessus du vide (au fond d'un creux de masse au sol : `rubansFond`) ; l'itinéraire (marqueurs à mât) n'est pas coupé.
   `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux) ; POI décalés de 1 à 5 m, carrefour, raccords,
   panneau et 🪜 au volume : § 14 ter.
 - **Accès de surface sans passage** (`vue3d.js > _volumeAcces`, `_acces` ; formes et dimensions :
@@ -2589,7 +2593,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`interfaceDistanceTotale.js > ktaDistanceTotaleSurlignage`) et pose un ruban au sol de `SURLIGNE.larg` à la couleur
   du surlignage de la carte (`ktaSwatchColor("traces", "jonction")`), un seul maillage hors tuiles (`_majDistTot`),
   refait à `kta:distanceTotaleChange` (case, ❌ Effacer, réouverture) et à chaque reconstruction, jamais l'inverse ;
-  au sol comme les rubans des tracés. Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
+  sur le sol local comme les rubans des tracés (`_rubanSol`). Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
   panneau (`ktaDistanceTotaleRafraichir`). ⛏️ lit la surface ♦️ posée dans la vue (rien de neuf à dessiner) ; sans
   surface, le message de la carte.
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
