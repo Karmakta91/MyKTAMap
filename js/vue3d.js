@@ -916,7 +916,7 @@
   // pente, pas des bords et sonde : masseSol.js (KtaMasseSol), la règle partagée avec la fiche de la carte.
   const MASSE = { pente: window.KtaMasseSol.PENTE, pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
     ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
-    lent: 15, lentPlancher: 0.5 };
+    lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05 };
 
   // Sonde de A à B (m) arrêtée par la règle du pas du rendu, au niveau de la scène (contexte d'un voisin compris) :
   // structures, parois des tubes (mixte) ou emprise (galerie), zones qui bouchent ; hors de l'image du plan = arrêtée.
@@ -965,7 +965,9 @@
     const cle = (e.donnees ? e.donnees.empreinte : "") + "|" + e.niveau + "|" + e.hauteur + "|" + e.rendu;
     if (!e.massesCache || e.massesCache.cle !== cle) e.massesCache = { cle: cle, parPoints: new Map() };
     const C = e.massesCache.parPoints;
-    if (C.has(z.points)) return C.get(z.points);
+    // Rampes (masseSol.js > rampesValides) : dans la clé, une rampe posée ou retirée refait la masse.
+    const sig = window.KtaMasseSol.rampesValides(z).join(",");
+    if (C.has(z.points) && (!C.get(z.points) || C.get(z.points).sigRampes === sig)) return C.get(z.points);
     const ring = _anneau(z.points, e.sc);
     let m = null;
     if (ring.length >= 3) {
@@ -985,6 +987,8 @@
       const b = window.KtaMasseSol.bords(ring, _bloqueSonde, _autresMasses(z));
       m.ouverts = b.ouverts;
       m.fermes = b.fermes;
+      m.rampes = window.KtaMasseSol.rampes(z, e.sc);
+      m.sigRampes = sig;
     }
     C.set(z.points, m);
     return m;
@@ -1100,6 +1104,17 @@
   function _masseBloque(x0, y0, x1, y1, ux, uy) {
     const e = _e, sc = e.sc;
     if (!e.masses || !e.masses.length) return false;
+    // ⚠️ contrat (décision produit) : un FRONT (bord sans rampe d'une zone qui en a, bord commun de deux masses de
+    // hauteurs différentes) arrête le pas : un saut du sol de plus de MASSE.marche entre deux points du trajet à
+    // MASSE.pasFront l'un de l'autre, jusqu'à un corps devant, montée comme descente. Une pente, si raide soit-elle,
+    // reste praticable (le saut est mesuré sur 5 cm) ; ralentie au-delà de 15° (_ralentiMasse).
+    const L = Math.hypot(x1 - x0, y1 - y0) / sc + RAYON_CORPS, n = Math.max(1, Math.ceil(L / MASSE.pasFront));
+    let sp = _solMasse(x0 / sc, y0 / sc);
+    for (let k = 1; k <= n; k++) {
+      const d = L * k / n, s = _solMasse(x0 / sc + ux * d, y0 / sc + uy * d);
+      if (Math.abs(s - sp) > MASSE.marche) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
+      sp = s;
+    }
     const v0 = _videMasse(x0 / sc, y0 / sc);
     const v1 = Math.min(_videMasse(x1 / sc, y1 / sc),
       _videMasse((x1 + ux * RAYON_CORPS * sc) / sc, (y1 + uy * RAYON_CORPS * sc) / sc));
@@ -14614,6 +14629,8 @@
         ouverts: (e.masses || []).map(function (m) { return m.ouverts.length; }),
         fermes: (e.masses || []).map(function (m) { return m.fermes; }),
         fonds: (e.masses || []).map(function (m) { return +m.H.toFixed(3); }),
+        rampes: (e.masses || []).map(function (m) { return (m.rampes || []).map(function (r) { return r.bord; }); }),
+        fronts: e.frontsMasse || 0,
         bornes: (e.masses || []).map(function (m) { return !!m.borne; }), pieds: e.piedsMasse || 0 },
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {
         return s + t.octets;

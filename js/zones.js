@@ -9,9 +9,10 @@
 // Expose : window.initZones, toggleZoneMode, getZones/setZones, getCurrentZone(Index), …
 // 🩸 La zone INACCESSIBLE bloque le pathfinder (segment qui traverse le polygone retiré du graphe) ; ses
 //   hachures sont un CanvasPattern (styleResolver.js) sur le canvas commun : elle passe sous les structures.
-// ⚠️ Masse au sol (`masse-sol`, remblai partiel) : `comble` = part de la hauteur de galerie comblée (0-1), absent = ½
-//   (styleResolver.js > ktaCombleZone) ; ses grains suivent cette part (ktaResolveStyle(…, { comble })). Sans effet
-//   sur l'itinéraire et la vue 3D tant que leurs lots ne sont pas livrés (docs/ETUDE_REMBLAIS.md).
+// ⚠️ Masse au sol (`masse-sol`, remblai partiel) : `comble` = part de la hauteur de galerie comblée (−1 à 1, absent =
+//   ½ ; styleResolver.js > ktaCombleZone) ; ses grains suivent cette part (ktaResolveStyle(…, { comble })). `rampes`
+//   = [{ bord }] : chevrons de pente pointés vers le haut, à la couleur du contour (ktaChevronsRampes, masseSol.js >
+//   chevrons) ; « Placer une pente » (ktaArmerRampe) : bandeau `.kta-iti-floater`, un toucher sur le bord bas.
 // ⚠️ Empilement : eau < masse au sol < remblais < effondrement < inaccessible < structures (structures.js >
 //   ktaStructuresAuDessus, rappelé après chaque rendu).
 // ⚠️ Plusieurs niveaux : `niveaux` (⊇ level, poiJonction.js > ktaNiveauxObjet), saisis dans la fiche de la zone
@@ -305,6 +306,8 @@ function renderZones() {
       const polygonOpts = style;
       const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
+      // Masse au sol : chevrons de pente de ses rampes, à la couleur du contour.
+      window.ktaChevronsRampes(zone, target, polygonOpts.color).forEach(function(c) { zoneLayers.push(c); });
       // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.
       if (window.KtaExtensions && typeof window.KtaExtensions.marquerCouche === "function") {
         window.KtaExtensions.marquerCouche(polygon, zone.uid, polygonOpts.dashArray);
@@ -510,3 +513,83 @@ window.ktaFormesAjustables.zones = {
   libelle: function(z) { return _labelTypeZone(z.type); },
   rendre: function() { renderZones(); }
 };
+
+// ── Rampes d'une masse au sol ──────────────────────────────
+// Chevrons de pente de `zone` sur `layer`, à la couleur `color` (celle du contour), jamais interactifs → couches.
+window.ktaChevronsRampes = function(zone, layer, color) {
+  const sc = Number(window.APP_CONFIG && window.APP_CONFIG.scale);
+  if (!zone || zone.type !== "masse-sol" || !window.KtaMasseSol || !(sc > 0) || !layer) return [];
+  // Liseré clair dessous (lisible sur les grains, au dézoom aussi), chevron à la couleur du contour dessus.
+  const out = [];
+  window.KtaMasseSol.chevrons(zone, sc).forEach(function(pts) {
+    const ll = pts.map(function(q) { return convertCoord(q.x, q.y); });
+    out.push(L.polyline(ll, { color: "#ffffff", weight: 6, opacity: 0.75, interactive: false, lineCap: "round",
+      lineJoin: "round", className: "kta-rampe-lisere" }).addTo(layer));
+    out.push(L.polyline(ll, { color: color, weight: 3, opacity: 1, interactive: false, lineCap: "round",
+      lineJoin: "round", className: "kta-rampe-chevron" }).addTo(layer));
+  });
+  return out;
+};
+
+// « Placer une pente » (fiche d'une masse au sol) : bandeau, puis un toucher près d'un bord de la zone (tolérance de
+// fermeture d'un tracé, utils.js > ktaToleranceFermeture) en fait un bord bas (KtaConvertir.ajouterRampe) ; un toucher
+// loin de tout bord le redit, Échap ou ✕ annule. 🩸 Les autres modes « clic carte » tombent avant d'armer (même règle
+// que poiPrecis.js > armer). → true si armé.
+let _rampeMode = null;
+function _rampeFin() {
+  if (!_rampeMode) return;
+  try { _rampeMode.carte.off("click", _rampeMode.handler); } catch (e) { /* carte fermée */ }
+  window.removeEventListener("keydown", _rampeMode.touche, true);
+  const fl = document.getElementById("kta-rampe-floater");
+  if (fl) fl.remove();
+  _rampeMode = null;
+}
+window.ktaArmerRampe = function(zone) {
+  if (!zone || zone.type !== "masse-sol" || !window.map || !window.KtaConvertir) return false;
+  if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+  _rampeFin();
+  try { if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes(); } catch (e) {}
+  window.modeEdition = false; window.modeMesure = false; window.modeRoad = false; window.modeZone = false;
+  window.modeStructure = false;
+  try { window.map.closePopup(); } catch (e) { /* rien d'ouvert */ }
+  const t = function(k) { return window.I18n.t(k); };
+  const toast = function(msg, genre) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, genre);
+  };
+  const handler = function(e) {
+    if (!_rampeMode || !e || !e.latlng) return;
+    const H = window.APP_CONFIG && window.APP_CONFIG.imageHeight;
+    const px = e.latlng.lng, py = H ? H - e.latlng.lat : e.latlng.lat, P = zone.points || [];
+    let best = -1, d = Infinity;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], vx = b.x - a.x, vy = b.y - a.y, l2 = vx * vx + vy * vy;
+      const k = l2 ? Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / l2)) : 0;
+      const dd = Math.hypot(px - a.x - vx * k, py - a.y - vy * k);
+      if (dd < d) { d = dd; best = i; }
+    }
+    const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) * 2 : 20;
+    if (best < 0 || d > tol) { toast(t("masseSol.rampe.loin"), "warn"); return; }
+    _rampeFin();
+    if (window.KtaConvertir.ajouterRampe(zone, best)) toast(t("masseSol.rampe.posee"), "success");
+    else toast(t("masseSol.rampe.deja"), "warn");
+  };
+  const touche = function(ev) { if (ev.key === "Escape") { ev.preventDefault(); _rampeFin(); } };
+  _rampeMode = { carte: window.map, handler: handler, touche: touche };
+  window.map.on("click", handler);
+  window.addEventListener("keydown", touche, true);
+  const fl = document.createElement("div");
+  fl.id = "kta-rampe-floater";
+  fl.className = "kta-iti-floater kta-rampe-floater";
+  fl.innerHTML = '<span class="kta-iti-floater-icon"></span><span class="kta-iti-floater-msg"></span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-rampe-cancel" type="button"></button>';
+  if (typeof window.ktaIcone === "function") {
+    fl.querySelector(".kta-iti-floater-icon").innerHTML = window.ktaIcone("chevron-up");
+  }
+  fl.querySelector(".kta-iti-floater-msg").textContent = t("masseSol.rampe.bandeau");
+  const b = fl.querySelector("#kta-rampe-cancel");
+  b.textContent = t("masseSol.rampe.annuler");
+  b.addEventListener("click", _rampeFin);
+  document.body.appendChild(fl);
+  return true;
+};
+window.ktaRampeArmee = function() { return !!_rampeMode; };

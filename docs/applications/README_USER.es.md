@@ -1004,6 +1004,7 @@ Un **relleno parcial** son escombros que solo llenan una parte de la altura de l
 - En la burbuja de la zona, elige la **parte rellena**: ¼, ½, ¾ u **Otra** (un valor como 0,9) y luego **Aplicar la parte rellena**. La burbuja muestra también el equivalente en metros, según la altura del nivel (ajustes del plano).
 - Sin valor, un relleno parcial cuenta como ½.
 - Una parte **negativa** (−¼, −½, −¾ o un valor como −0,4) baja el suelo: la burbuja indica entonces cuánto baja. En el mapa, sus granos son claros, hundidos, sin guijarros. Por debajo de −1, el valor se rechaza.
+- **Pendientes (rampas)**: sin pendiente, la parte superior sube en talud desde los bordes libres. Para indicar por dónde se sube, pulsa **Colocar una pendiente** en la burbuja y toca el **borde bajo** de la zona (desde el que se sube): el suelo sube en línea recta hasta el borde opuesto, y los demás bordes se vuelven frentes rectos contra los que se choca en 3D. Puedes colocar varias (se sube entonces por cualquiera); cada una se quita con su cruz en la burbuja. En el mapa, unos galones muestran el sentido de la subida; la leyenda los explica. Con una parte negativa, la pendiente baja.
 - En el mapa, cuanto más alta es la parte, más granos hay.
 - Con 1 o más, la galería está llena: la burbuja propone pasar la zona a **Colmatado**.
 - La **Hoja de cálculo** tiene una columna **comble**, con las mismas opciones.

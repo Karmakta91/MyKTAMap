@@ -227,12 +227,107 @@ function charger(win, fichiers) {
       rN.zones[0].type === "masse-sol" && /^cust-/.test(rN.zones[3].type));
   }
 
+  // ── 5 bis. Rampes : règle partagée (masseSol.js), fiche (poser / retirer), type changé, KMZ, GeoJSON, SIG ──
+  {
+    const w = contexte();
+    let zones = [{ uid: "zn_r", type: "masse-sol", level: 0, comble: 0.5,
+      points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 60 }, { x: 0, y: 60 }] }];
+    const notes = [];
+    w.getZones = () => zones; w.setZones = (l) => { zones = l; };
+    w.getRoads = () => []; w.setRoads = () => {};
+    w.getStructures = () => []; w.setStructures = () => {};
+    w.HistoryManager = { captureState: () => ({}), record: (lbl) => notes.push(lbl) };
+    w.KtaUid = { touch: (o) => { o.updatedAt = (o.updatedAt || 0) + 1; }, getTombstones: () => [],
+      getTracesCopie: () => [] };
+    charger(w, ["js/styleResolver.js", "js/poiJonction.js", "js/masseSol.js", "js/convertirObjet.js"]);
+    const M = w.KtaMasseSol, C = w.KtaConvertir;
+    // Rampes ouest (bord 3) et est (bord 1), échelle 10 px / m : 10 × 6 m, hauteur 1,2 m.
+    t("règle : bords bas valides seulement (entiers, dans le contour, une fois)",
+      J(M.rampesValides({ points: zones[0].points, rampes: [{ bord: 3 }, { bord: 1 }, { bord: 1 }, { bord: 9 },
+        { bord: "2" }, null] })) === "[1,3]");
+    const m = M.masse({ points: zones[0].points, rampes: [{ bord: 3 }, { bord: 1 }] }, 10, 1.2, () => false);
+    const sol = (x) => +M.sol(m, x, 3).toFixed(3);
+    t("règle : minimum des profils (0 aux bords bas, 0,6 au milieu), plafonné au cran", sol(0) === 0 && sol(10) === 0 &&
+      sol(5) === 0.6 && sol(2.5) === 0.3 && M.atteinte(m) > 0.59 && M.atteinte(m) <= 0.6);
+    const m1 = M.masse({ points: zones[0].points, rampes: [{ bord: 3 }] }, 10, -1.2, () => false);
+    t("règle : une rampe seule monte (descend en négatif) de 0 au cran à l'extrémité opposée",
+      M.sol(m1, 0, 3) === 0 && +M.sol(m1, 10, 3).toFixed(3) === -1.2 && +M.sol(m1, 5, 3).toFixed(3) === -0.6);
+    const mt = M.masse({ points: zones[0].points }, 10, 1.2, () => false);
+    t("règle : sans rampe, talus automatique (30°)",
+      +M.sol(mt, 1, 3).toFixed(3) === +(Math.tan(Math.PI / 6)).toFixed(3));
+    t("chevrons : un jeu par rampe, pointés vers le haut, dans le contour",
+      M.chevrons({ points: zones[0].points, rampes: [{ bord: 3 }] }, 10).length > 0 &&
+      M.chevrons({ points: zones[0].points, rampes: [{ bord: 3 }, { bord: 1 }] }, 10).length ===
+        2 * M.chevrons({ points: zones[0].points, rampes: [{ bord: 3 }] }, 10).length);
+    t("fiche : poser l'ouest puis l'est (deux entrées ⏪, horodaté), le même bord refusé",
+      C.ajouterRampe(zones[0], 3) && C.ajouterRampe(zones[0], 1) && !C.ajouterRampe(zones[0], 1) &&
+      J(zones[0].rampes) === J([{ bord: 1 }, { bord: 3 }]) && notes.length === 2 && zones[0].updatedAt === 2);
+    t("fiche : bord hors du contour ou zone qui n'est pas une masse au sol refusés",
+      !C.ajouterRampe(zones[0], 7) && !C.ajouterRampe({ type: "eau", points: zones[0].points }, 0));
+    t("fiche : retirer l'est, puis l'ouest → champ retiré (talus automatique)",
+      C.retirerRampe(zones[0], 1) && J(zones[0].rampes) === J([{ bord: 3 }]) && C.retirerRampe(zones[0], 3) &&
+      !("rampes" in zones[0]) && !C.retirerRampe(zones[0], 3));
+    C.ajouterRampe(zones[0], 3);
+    t("changement de type : passer en Comblé retire les rampes",
+      C.convertir("zones", zones[0], "zones", "remblais") === true &&
+      zones.some(z => z.uid === "zn_r" && z.type === "remblais" && !("rampes" in z)));
+  }
+  {
+    const w = contexte();
+    charger(w, ["js/poiJonction.js", "js/styleResolver.js", "js/masseSol.js", "js/kmzExport.js",
+      "js/geojsonExport.js"]);
+    const KE = w.KmzExport, GJ = w.GeojsonExport;
+    const tr = KE.buildTransformCalib({
+      pointA: { x: 300, y: 2700, lat: 46.5, lng: 3.0 },
+      pointB: { x: 3600, y: 400, lat: 46.50845, lng: 3.02631 },
+      pointC: { x: 3500, y: 2800, lat: 46.49840, lng: 3.02560 }
+    });
+    w.APP_CONFIG.imageHeight = 3000;
+    const data = { editorPoints: [], roads: [], structures: [], zones: [
+      { type: "masse-sol", comble: 0.5, rampes: [{ bord: 3 }, { bord: 1 }], points: carre(1000, 1000, 50),
+        description: "MasseRampes" },
+      { type: "masse-sol", points: carre(1500, 1000, 50), description: "MasseSansRampe" }
+    ] };
+    const inc = { points: false, roads: false, zones: true, structures: false, jonctions: false, itineraire: false };
+    const kml = KE.genererKml({ transform: tr, planName: "Test", include: inc, levels: null, data: data });
+    const pm = kml.split("<Placemark>").slice(1), pmDe = (txt) => pm.find(p => p.indexOf(txt) >= 0) || "";
+    t("KMZ : mkm:rampes « 1,3 » sur la zone à rampes, absent sur l'autre",
+      pmDe("MasseRampes").indexOf('mkm:rampes"><value>1,3<') >= 0 && pmDe("MasseSansRampe").indexOf("mkm:rampes") < 0);
+    const ki = lire("js/kmzImport.js");
+    t("KMZ relu : mkm:rampes reposé sur la masse au sol, revalidé sur le contour",
+      /name === "mkm:rampes"/.test(ki) && /_zn\.rampes = _mkmData\.rampes\.map/.test(ki) &&
+      /window\.KtaMasseSol\.rampesValides\(_zn\)/.test(ki));
+    const fc = GJ.generer({ transform: tr, epsg: 4326, planName: "Test", include: inc, levels: null, data: data });
+    const g = fc.features.filter(x => x.properties.type === "masse-sol");
+    t("GeoJSON : propriété rampes [1, 3] sur la zone à rampes, absente sur l'autre",
+      g.some(x => J(x.properties.rampes) === "[1,3]") && g.some(x => !("rampes" in x.properties)));
+  }
+  {
+    const w = contexte();
+    w.KmzExport = { gpsToPlan: (t2, lat, lng) => ({ x: lng * 1000, y: lat * 1000 }) };
+    charger(w, ["js/sigImport.js"]);
+    const S = w.SigImport;
+    t("SIG : colonne rampes relue (liste ou « 1,3 »), bords hors contour et doublons écartés",
+      J(S.rampesDe({ rampes: [3, 1, 1, 9] }, 4)) === J([{ bord: 1 }, { bord: 3 }]) &&
+      J(S.rampesDe({ Rampes: "1,3" }, 4)) === J([{ bord: 1 }, { bord: 3 }]) && S.rampesDe({ rampes: "x" }, 4) === null &&
+      S.rampesDe({}, 4) === null);
+    const poly = { props: { type: "ms", rampes: [0] },
+      coords: [{ lat: 1, lng: 1 }, { lat: 1, lng: 2 }, { lat: 2, lng: 2 }, { lat: 2, lng: 1 }] };
+    const r = S.ingest({ points: [], lignes: [], polygones: [poly] }, {},
+      { cleType: "type", mapZones: S.proposerMapping(["ms"], "zones") });
+    t("SIG : aller-retour GeoJSON → masse au sol avec sa rampe", r.zones[0].type === "masse-sol" &&
+      J(r.zones[0].rampes) === J([{ bord: 0 }]));
+  }
+
   // ── 6. Copies champ par champ et défauts du Générateur (lecture du code) ──
   {
     const u = lire("js/utils.js");
     t("zone embarquée : le registre garde `comble` (entrée _ktaDataPolygons)",
       /comble:\s+Number\.isFinite\(zone\.comble\) \? zone\.comble : undefined/.test(u));
     t("getAllEmbeddedZones recopie `comble`", /if \(Number\.isFinite\(e\.comble\)\) out\.comble = e\.comble;/.test(u));
+    t("zone embarquée : registre et getAllEmbeddedZones gardent `rampes`, chevrons dessinés",
+      /rampes:\s+Array\.isArray\(zone\.rampes\)/.test(u) && /out\.rampes = e\.rampes\.map/.test(u) &&
+      /window\.ktaChevronsRampes\(zone, layer, style\.color\)/.test(u));
     t("zone embarquée : style avec sa part, fiche même sans note",
       /_ktaStyleMap\("zones", zone\.type, "remblais",\s*typeof window\.ktaCombleZone === "function" \? \{ comble: window\.ktaCombleZone\(zone\) \}/.test(u) &&
       /\|\| zone\.type === "masse-sol";/.test(u));

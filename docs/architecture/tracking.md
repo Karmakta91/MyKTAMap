@@ -1425,6 +1425,17 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   autour d'un pilier) ou, à ±45°, touche une structure ; ou le bout de la sonde courte est dans une autre masse au sol
   du niveau (masses jointives = un seul remblai). Un pilier, un mur ou un front dans la zone n'est donc jamais un bord
   ouvert.
+  **Rampes** (`zone.rampes` = bords bas ; `KtaMasseSol.rampes`) : la zone n'a plus de talus automatique ; chaque rampe
+  monte linéairement de son bord bas (0) au point du contour le plus loin dans l'axe perpendiculaire (|H|), le sol est
+  le **minimum** des profils, plafonné au cran (on monte par n'importe laquelle, les profils se rejoignent sans marche ;
+  négatif : même chose en descente). Les autres bords sont des **fronts** : `_masseBloque` arrête le pas sur un saut du
+  sol de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à `MASSE.pasFront` (5 cm), jusqu'à un corps devant,
+  montée comme descente (même règle au bord commun de deux masses de hauteurs différentes) ; une rampe, si raide
+  soit-elle, reste praticable, ralentie au-delà de 15°. La masse est refaite quand ses rampes changent (`m.sigRampes`).
+  Carte : chevrons de pente pointés vers le haut, à la couleur du contour sur un liseré clair (`zones.js >
+  ktaChevronsRampes`, `masseSol.js > chevrons`, zones de session et calques) ; légende : une ligne « Pente » quand une
+  zone en porte ; fiche : liste (sens de la montée en flèche), ✕ par pente, « Placer une pente » (`ktaArmerRampe` :
+  bandeau `.kta-iti-floater`, un toucher près d'un bord, tolérance de fermeture × 2).
   ⚠️ contrat : le sol sous les pieds vient de cette **formule** (`_solMasse`, appelée par `_solPlace` après la galerie
   inclinée : une jonction posée sur une masse l'emporte), jamais du maillage. Vide = hauteur du niveau − sol :
   ≥ 1,8 m debout ; 1 à 1,8 m œil abaissé à vide − 0,2 m ; sous 1 m on rampe (œil `CHATIERE.oeil`, transition lissée sur

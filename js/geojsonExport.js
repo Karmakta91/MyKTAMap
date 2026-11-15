@@ -178,6 +178,9 @@
         if (z.type === "masse-sol") {
           props.comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z)
             : (Number.isFinite(z.comble) && z.comble > 0 ? z.comble : 0.5);
+          // Rampes : indices des bords bas (relus par l'import SIG, colonne « rampes »).
+          const rp = window.KtaMasseSol ? window.KtaMasseSol.rampesValides(z) : [];
+          if (rp.length) props.rampes = rp;
         }
         ajouter(polygone(z.points), props, z.uid);
       });

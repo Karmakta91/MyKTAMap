@@ -1004,6 +1004,7 @@ Une **masse au sol** est un remblai partiel : il ne remplit qu'une partie de la 
 - Dans la bulle de la zone, choisis la **part comblée** : ¼, ½, ¾ ou **Autre** (une valeur comme 0,9), puis **Appliquer la part comblée**. La bulle affiche aussi l'équivalent en mètres, d'après la hauteur du niveau (réglages du plan).
 - Sans valeur, une masse au sol vaut ½.
 - Une part **négative** (−¼, −½, −¾ ou une valeur comme −0,4) abaisse le sol : la bulle dit alors de combien il descend. Sur la carte, ses grains sont clairs, en creux, sans galets. En dessous de −1, la valeur est refusée.
+- **Pentes (rampes)** : sans pente, le dessus monte en talus depuis les bords libres. Pour dire par où l'on monte, appuie sur **Placer une pente** dans la bulle, puis touche le **bord bas** de la zone (celui d'où l'on monte) : le sol monte en ligne droite jusqu'au bord opposé, et les autres bords deviennent des fronts droits sur lesquels on bute en 3D. Tu peux en placer plusieurs (on monte alors par n'importe laquelle) ; chacune se retire par sa croix dans la bulle. Sur la carte, des chevrons montrent le sens de la montée ; la légende les explique. En négatif, la pente descend.
 - Sur la carte, plus la part est haute, plus il y a de grains.
 - À 1 ou plus, la galerie est pleine : la bulle propose de passer la zone en **Comblé**.
 - Le **Tableur** a une colonne **comble**, avec les mêmes choix.

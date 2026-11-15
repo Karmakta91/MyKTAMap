@@ -728,7 +728,8 @@
     // Masse au sol : la part comblée a sa colonne, même si aucune zone ne la porte encore (absente = ½).
     if (data.some(function(p) { return p && p.type === "masse-sol"; })) set.add("comble");
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
-    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "comble", "tags", "etat", "description",
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "comble", "rampes", "tags", "etat",
+      "description",
       "points", "profondeur", "date_update", "dateConstat"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
@@ -885,7 +886,8 @@
       _colonnes.forEach(function(col) {
         const v = p[col];
         const ro = (col === "id" || col === "points" || col === "accroches" || col === "precis" ||
-                    (col === "level" && _sansNiveau(p)) || (col === "comble" && p.type !== "masse-sol"));
+                    (col === "level" && _sansNiveau(p)) || (col === "comble" && p.type !== "masse-sol") ||
+                    col === "rampes");
         let cls = "";
         if (ro) cls += "col-readonly";
         const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
@@ -914,6 +916,10 @@
           // Part comblée : texte du cran (« ½ ») ; absente → la valeur par défaut, dite comme telle.
           contenu = _escapeHtml(Number.isFinite(v) && v !== 0 ? window.ktaTexteComble(v)
             : window.I18n.t("tabledit.col.combleDefaut", { part: window.ktaTexteComble(0.5) }));
+        } else if (col === "rampes") {
+          // Rampes d'une masse au sol : posées depuis la fiche de la zone (bord bas), jamais saisies ici.
+          const n = Array.isArray(v) ? v.length : 0;
+          contenu = n ? _escapeHtml(window.I18n.t("tabledit.col.rampes", { n: n })) : "";
         } else if (col === "niveaux" && Array.isArray(v)) {
           contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
         } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
@@ -1004,6 +1010,7 @@
 
     if (col === "level" && _niveauxPlan()) { _editerNiveau(td, idx); return; }
     if (col === "comble") { if (p.type === "masse-sol") _editerComble(td, idx); return; }
+    if (col === "rampes") return;   // posées depuis la fiche de la zone
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 

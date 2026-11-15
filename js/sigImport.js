@@ -584,6 +584,21 @@
   // Part comblée d'une masse au sol lue dans la colonne `cle` (facultative) : « 0,5 » ou 0.5 = part ; « 50 % » ou un
   // nombre de 1 à 100 = pourcentage ; signe moins = sol abaissé (« -0,5 », « -50 % »). Vide, illisible, nulle, sous
   // −1 ou ≥ 1 (un Comblé) → null : la zone garde le défaut (½).
+  // Rampes d'une masse au sol (colonne `rampes` de l'export GeoJSON de l'app) : liste d'entiers ou « 0,2 » → [{ bord }]
+  // (bords dans [0, n[, chacun une fois) ; rien de lisible → null.
+  function rampesDe(props, n) {
+    const k = props ? _trouverCle(props, "rampes") : null;
+    if (!k || props[k] == null) return null;
+    const brut = Array.isArray(props[k]) ? props[k] : String(props[k]).split(/[,;\s]+/);
+    const vus = {};
+    const l = brut.map(Number).filter(function(b) {
+      if (!Number.isInteger(b) || b < 0 || b >= n || vus[b]) return false;
+      vus[b] = true;
+      return true;
+    }).sort(function(a, b) { return a - b; });
+    return l.length ? l.map(function(b) { return { bord: b }; }) : null;
+  }
+
   function combleDe(props, cle) {
     if (!cle || !props) return null;
     const k = _trouverCle(props, cle);
@@ -888,6 +903,8 @@
       if (rZ.type === "masse-sol") {
         const c = combleDe(z.props, cleComble);
         if (c !== null) o.comble = c;
+        const rp = rampesDe(z.props, pts.length);
+        if (rp) o.rampes = rp;
       }
       const lvl = _niveauDe(z.props);
       if (lvl !== null) o.level = lvl;
@@ -1196,6 +1213,7 @@
     valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,
     combleDe:           combleDe,   // part comblée lue dans la colonne de hauteur (masse au sol)
+    rampesDe:           rampesDe,   // rampes lues dans la colonne `rampes` (masse au sol, export GeoJSON de l'app)
     compterPolygonesDefaut: compterPolygonesDefaut,   // polygones rangés dans le type par défaut
     previsualiserEntreesNiveaux: previsualiserEntreesNiveaux,
     ingest:             ingest,

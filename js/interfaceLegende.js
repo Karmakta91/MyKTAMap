@@ -283,6 +283,13 @@ function _ktaLegendeCorps(src, opts) {
   } else {
     contenuZones += _ligneZone("masse-sol");
   }
+  // Rampe d'une masse au sol (chevrons de pente, couleur du contour) : seulement si une zone en porte une.
+  const _avecRampe = [].concat(typeof window.getZones === "function" ? (window.getZones() || []) : [],
+    typeof window.getAllEmbeddedZones === "function" ? (window.getAllEmbeddedZones() || []) : [])
+    .some(function (z) { return z && z.type === "masse-sol" && Array.isArray(z.rampes) && z.rampes.length; });
+  if (_avecRampe && _visible("zones", "masse-sol") && typeof window.ktaIcone === "function") {
+    contenuZones += `<div class="kta-legende-ligne"><span class="kta-legende-trait kta-legende-rampe" style="${_echMasse ? `background:url(${_echMasse}) center/28px;` : ""} border:2px dashed ${_couleurTrait("zones", "masse-sol")}; color:${_couleurTrait("zones", "masse-sol")};">${window.ktaIcone("chevron-up")}</span><span class="kta-legende-label">${window.I18n.t("legendui.rampe")}</span></div>`;
+  }
   contenuZones += _ligneZone("remblais");
   contenuZones += _ligneZone("effondrement");
   // Inaccessible : fond hachuré, traité à part.

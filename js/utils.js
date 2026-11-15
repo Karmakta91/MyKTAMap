@@ -1131,7 +1131,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
       '<div class="kta-note-popup-comble-atteinte kta-tx-warn">' + _esc(_texteAtteinteComble(o, v)) + '</div>';
     if (!opts.convertir || mode === "readonly") {
       return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
-             '</strong>' + metres + '</div>';
+             '</strong>' + metres + _rampesHtml(o, false) + '</div>';
     }
     const crans = [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75], autre = crans.indexOf(v) < 0;
     const radio = function (val, txt, coche) {
@@ -1151,8 +1151,42 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                '<button class="kta-popup-btn kta-note-popup-comble-appliquer" type="button">' +
                  _esc(window.I18n.t("masseSol.appliquer")) +
                '</button>' +
-             '</div>' +
+             '</div>' + _rampesHtml(o, true) +
            '</div>';
+  }
+  // Pentes (rampes) d'une masse au sol : une ligne par bord bas (« Pente 1 — bord 3 », ✕ pour la retirer), « Placer une
+  // pente » (zones.js > ktaArmerRampe) ; sans pente, le talus automatique est rappelé. Lecture seule : le nombre.
+  // Sens de la montée d'une rampe (bord bas `b`) en flèche, dans le repère du plan (haut de l'image = ↑).
+  function _sensRampe(o, b) {
+    const sc = Number(window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
+    const r = (window.KtaMasseSol ? window.KtaMasseSol.rampes(o, sc) : []).filter(function (q) {
+      return q.bord === b;
+    })[0];
+    if (!r) return "";
+    const k = Math.round(((Math.atan2(r.nx, -r.nz) * 180 / Math.PI) + 360) % 360 / 45) % 8;
+    return ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"][k];
+  }
+  function _rampesHtml(o, edit) {
+    const bords = window.KtaMasseSol ? window.KtaMasseSol.rampesValides(o) : [];
+    const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.rampe.titre")) +
+      '</span>';
+    const vide = '<div class="kta-note-popup-comble-metres">' + _esc(window.I18n.t("masseSol.rampe.aucune")) + '</div>';
+    if (!edit) {
+      return '<div class="kta-note-popup-rampes">' + titre + ' <strong>' + bords.length + '</strong></div>';
+    }
+    const croix = typeof window.ktaIcone === "function" ? window.ktaIcone("x") : "";
+    return '<div class="kta-note-popup-rampes">' + titre +
+      (bords.length ? bords.map(function (b, i) {
+        const lib = window.I18n.t("masseSol.rampe.ligne", { n: i + 1, sens: _sensRampe(o, b) });
+        return '<div class="kta-note-popup-rampe"><span>' + _esc(lib) + '</span>' +
+          '<button class="kta-popup-btn kta-note-popup-rampe-retirer" type="button" data-bord="' + b + '" title="' +
+          _esc(window.I18n.t("masseSol.rampe.retirer")) + '" aria-label="' +
+          _esc(window.I18n.t("masseSol.rampe.retirer")) + ' ' + _esc(lib) + '">' + croix + '</button></div>';
+      }).join("") : vide) +
+      '<div class="kta-popup-actions kta-note-popup-actions">' +
+        '<button class="kta-popup-btn kta-note-popup-rampe-placer" type="button">' +
+          _esc(window.I18n.t("masseSol.rampe.placer")) + '</button>' +
+      '</div></div>';
   }
   // Zone trop courte pour que le talus atteigne son cran : « hauteur atteinte : 2,9 m sur 7,5 m » (profondeur pour un
   // sol abaissé), même calcul que la 3D (masseSol.js > atteinteZone) ; vide sinon.
@@ -1418,6 +1452,25 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           }
         });
       }
+      // Pentes d'une masse au sol : « Placer une pente » arme le toucher du bord bas (zones.js > ktaArmerRampe) ;
+      // ✕ retire cette pente (une entrée ⏪), la fiche se ferme (la zone est redessinée).
+      const rpPlacer = popupRoot.querySelector(".kta-note-popup-rampe-placer");
+      if (rpPlacer && opts.convertir && typeof window.ktaArmerRampe === "function") {
+        rpPlacer.addEventListener("click", function () {
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          window.ktaArmerRampe(opts.convertir.obj);
+        });
+      }
+      popupRoot.querySelectorAll(".kta-note-popup-rampe-retirer").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.retirerRampe) return;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.retirerRampe(opts.convertir.obj, Number(bt.dataset.bord)) && window.OOMGuard &&
+              typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("masseSol.rampe.retiree"), "success");
+          }
+        });
+      });
       // Niveaux d'une zone jonction : deux niveaux identiques refusés DANS la fiche, comme pour un tracé jonction.
       const penteBtn = popupRoot.querySelector(".kta-note-popup-pente-appliquer");
       if (penteBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxPente) {
@@ -2451,6 +2504,9 @@ window.getAllEmbeddedZones = function() {
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (Array.isArray(e.niveaux) && e.niveaux.length >= 2) out.niveaux = e.niveaux.slice();
       if (Number.isFinite(e.comble)) out.comble = e.comble;
+      if (Array.isArray(e.rampes) && e.rampes.length) {
+        out.rampes = e.rampes.map(function (r) { return { bord: r.bord }; });
+      }
       if (e.description) out.description = e.description;
       if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
@@ -3014,6 +3070,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           const hasNoteROZone = !!(zone.description && String(zone.description).trim()) || zone.type === "masse-sol";
           const polyOpts = Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
+          // Masse au sol : chevrons de pente de ses rampes (zones.js > ktaChevronsRampes).
+          if (typeof window.ktaChevronsRampes === "function") window.ktaChevronsRampes(zone, layer, style.color);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
             const _zoneEmojisRO = { eau: "💧", remblais: "⬛", "masse-sol": "", effondrement: "🟥",
               inaccessible: "⛔", pente: "🪜" };
@@ -3060,6 +3118,9 @@ function ajouterPointsDepuisJSON(url, layer) {
                                ? window.ktaNiveauxObjet(zone) : undefined,
             // Masse au sol : part comblée (une valeur pour tous ses niveaux), gardée telle quelle.
             comble:          Number.isFinite(zone.comble) ? zone.comble : undefined,
+            // Masse au sol : rampes (bords bas, masseSol.js > rampes), gardées telles quelles.
+            rampes:          Array.isArray(zone.rampes) && zone.rampes.length
+                               ? zone.rampes.map(function (r) { return { bord: r.bord }; }) : undefined,
             description:     zone.description || undefined,
             uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,

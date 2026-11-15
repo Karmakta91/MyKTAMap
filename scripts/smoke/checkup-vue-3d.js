@@ -3272,6 +3272,56 @@ async function sectionMasseSol(page) {
       await K.fermer();
     }
     window.setEditorPoints([]);
+    // Rampes (structures) : masse ½ de x 0 à 10 m, z −6 à 6, rampes sur le bord ouest (bord 3) et le bord est (bord 1).
+    // Monter par chacune, buter sur un bord sans rampe, profils qui se rejoignent au milieu sans marche ; une rampe
+    // retirée, l'autre seule ; sol abaissé avec une rampe ; plus aucune rampe : talus automatique.
+    window.setEditorPoints([]);
+    window.setStructures([]);
+    window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([{ uid: "zn_ms_rp", type: "masse-sol", level: 0, comble: 0.5, points: rect(0, -6, 10, 6) }]);
+    const zr = function () { return window.getZones().filter(function (z) { return z.uid === "zn_ms_rp"; })[0]; };
+    const KC = window.KtaConvertir;
+    r.rampes = { pose: [KC.ajouterRampe(zr(), 3), KC.ajouterRampe(zr(), 1), KC.ajouterRampe(zr(), 1)],
+      donnee: JSON.stringify(zr().rampes) };
+    window.setPlanRenduVue3D(null, "structures");
+    window.KtaGalerie.invalider();
+    const marche = async function (x, z, cap, n) {
+      await ici(x, z, cap);
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const ok = K.avancer(0.1);
+        await pause(20);
+        const l = lire();
+        l.ok = ok;
+        out.push(l);
+      }
+      return out;
+    };
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.masses = K.etat().masses;
+    r.rampes.ouest = await marche(-2, 0, 90, 140);
+    r.rampes.est = await marche(12, 0, 270, 140);
+    r.rampes.milieu = await ici(5, 0);
+    r.rampes.cote = await marche(5, -8, 180, 40);
+    await K.fermer();
+    r.rampes.retrait = KC.retirerRampe(zr(), 1);
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.seule = { haut: await ici(9.8, 0), estBute: await marche(12, 0, 270, 40) };
+    await K.fermer();
+    window.setZones([Object.assign({}, zr(), { comble: -0.5 })]);
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.creux = { descente: await marche(-2, 0, 90, 90), cote: await marche(5, -8, 180, 40) };
+    await K.fermer();
+    r.rampes.sansRampe = KC.retirerRampe(zr(), 3) && !("rampes" in zr());
+    window.setZones([Object.assign({}, zr(), { comble: 0.5 })]);
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.talus = await ici(1, 0);
+    await K.fermer();
+    window.setZones([]);
     // Budget : une masse de 40 × 12 m (480 m²), 🧱 allumé puis coupé.
     window.setZones([{ uid: "zn_ms_g", type: "masse-sol", level: 0, comble: 0.75, points: rect(-40, -6, 0, 6) }]);
     window.setPlanRenduVue3D(null, "structures");
@@ -3397,6 +3447,34 @@ async function sectionMasseSol(page) {
       "masse au sol " + (c > 0 ? "½" : "−½") + " : panneau, halo et forme (outil de carrier) posés sur le sol local (" + sol +
       " m)", q);
   });
+  {
+    const q = R.rampes, saut = function (l) {
+      let m = 0;
+      for (let i = 1; i < l.length; i++) m = Math.max(m, Math.abs(l[i].cam - l[i - 1].cam));
+      return m;
+    };
+    verifier(JSON.stringify(q.pose) === "[true,true,false]" && q.donnee === JSON.stringify([{ bord: 1 }, { bord: 3 }]) &&
+      JSON.stringify(q.masses.rampes) === "[[1,3]]",
+      "rampes : deux bords bas posés (ouest et est), le même bord refusé deux fois, lus par la 3D", q);
+    const o = q.ouest, e = q.est;
+    verifier(o.every(function (l) { return l.ok; }) && saut(o) < 0.12 && pr(q.milieu.sol, 0.6, 0.02) &&
+      e.every(function (l) { return l.ok; }) && saut(e) < 0.12,
+      "rampes : on monte par chacune (ouest et est) sans arrêt ni saut (" + saut(o).toFixed(3) + " / " +
+      saut(e).toFixed(3) + " m), les deux profils se rejoignent au milieu (minimum : 0,6 m)", { milieu: q.milieu });
+    const c = q.cote, cf = c[c.length - 1];
+    verifier(c.some(function (l) { return !l.ok; }) && cf.z < -6 && cf.sol === 0,
+      "rampes : on bute sur un bord sans rampe (front vertical), sans monter sur la masse", cf);
+    verifier(q.retrait && pr(q.seule.haut.sol, 1.2 * 9.8 / 10, 0.03) && q.seule.estBute.some(function (l) { return !l.ok; }) &&
+      q.seule.estBute[q.seule.estBute.length - 1].x > 10,
+      "rampes : la rampe est retirée, l'ouest seule monte jusqu'au cran à l'est, le bord est devient un front", q.seule);
+    const d = q.creux.descente;
+    verifier(d.every(function (l) { return l.ok; }) && saut(d) < 0.12 && d[d.length - 1].sol < -0.4 &&
+      q.creux.cote.some(function (l) { return !l.ok; }),
+      "rampes, sol abaissé : on descend par la rampe sans arrêt, un bord sans rampe arrête (on ne saute pas dans le creux)",
+      { fin: d[d.length - 1], cote: q.creux.cote[q.creux.cote.length - 1] });
+    verifier(q.sansRampe && pr(q.talus.sol, T30, 0.02),
+      "rampes : plus aucune rampe → talus automatique à 30° (1 m du bord → " + T30.toFixed(3) + " m)", q.talus);
+  }
   ["textures", "aplat"].forEach(function (t) {
     const m = R.budget[t];
     verifier(m && m.n === 1 && m.triMax > 0 && m.triMax <= 2000,
@@ -3408,14 +3486,16 @@ async function sectionMasseSol(page) {
 
 // Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : pied du talus de la ½, son sommet (courbé), sur la ¾ (on rampe),
 // dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord (aussi 🧱 coupé) et du fond
-// (pilier en structures).
+// (pilier en structures) ; rampe (bord ouest) vue du bas, front latéral, creux avec rampe.
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
     ["creux-bord", -33, 0, 90, true, true], ["creux-fond", -27, -2, 60, true, true],
     ["creux-bord-aplat", -33, 0, 90, false, true], ["masse-sommet-aplat", -25, 0, 90, false],
     ["creux-pilier", -28.5, 0.5, 130, true, true],
-    ["creux-pilier-hd", -28.5, 0.5, 130, true, true, true]];
+    ["creux-pilier-hd", -28.5, 0.5, 130, true, true, true],
+    ["rampe-bas", -33, 0, 90, true, false, false, true], ["rampe-front", -25, -9, 180, true, false, false, true],
+    ["rampe-creux", -33, 0, 90, true, true, false, true]];
   for (const rendu of ["galerie", "mixte", "structures"]) {
     for (const q of vues) {
       await page.evaluate(async function (c) {
@@ -3433,7 +3513,8 @@ async function capturesMasseSol(page) {
         window.setEditorPoints([]);
         window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
         window.setZones([
-          { uid: "zn_ms_d", type: "masse-sol", level: 0, comble: c.q[5] ? -0.5 : 0.5, points: rect(-30, -6, -20, 6) },
+          Object.assign({ uid: "zn_ms_d", type: "masse-sol", level: 0, comble: c.q[5] ? -0.5 : 0.5,
+            points: rect(-30, -6, -20, 6) }, c.q[7] ? { rampes: [{ bord: 3 }] } : {}),
           { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) }
         ]);
         window.setPlanHauteursNiveaux(PID, { "0": 2.4 });

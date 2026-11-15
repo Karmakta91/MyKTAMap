@@ -308,7 +308,7 @@
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
         const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null,
-          jonction: false, comble: null };
+          jonction: false, comble: null, rampes: null };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -328,6 +328,12 @@
           if (name === "mkm:comble") {
             const c = Number((valEl.textContent || "").trim().replace(",", ".").replace("−", "-"));
             if (Number.isFinite(c) && c !== 0 && c >= -1) out.comble = c;
+            continue;
+          }
+          // Masse au sol : rampes « 0,2 » (indices de bords, revalidés sur le contour par masseSol.js > rampesValides).
+          if (name === "mkm:rampes") {
+            const l = (valEl.textContent || "").split(",").map(function(s) { return Number(s.trim()); });
+            if (l.length && l.every(Number.isInteger)) out.rampes = l;
             continue;
           }
           // Ancien marqueur de zone jonction (KMZ d'avant le type `pente`) : converti à l'import.
@@ -470,6 +476,13 @@
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
             if (zoneType === "masse-sol" && _mkmData.comble !== null) _zn.comble = _mkmData.comble;
+            if (zoneType === "masse-sol" && _mkmData.rampes) {
+              _zn.rampes = _mkmData.rampes.map(function(b) { return { bord: b }; });
+              if (window.KtaMasseSol) {
+                const ok = window.KtaMasseSol.rampesValides(_zn);
+                if (ok.length) _zn.rampes = ok.map(function(b) { return { bord: b }; }); else delete _zn.rampes;
+              }
+            }
             if (_mkmData.niveaux && _mkmData.jonction && _mkmData.niveaux.length >= 2) _zn.type = "pente";
             out.zones.push(_zn);
           }

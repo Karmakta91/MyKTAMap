@@ -117,7 +117,7 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         { uid: "zn_n75", type: "masse-sol", comble: -0.75, points: r(2, 40) },
         // Hauteur atteinte : bande de 2 m de large à ¾ (le talus n'atteint pas le cran), carré de 30 m à ¼ (atteint).
         { uid: "zn_court", type: "masse-sol", comble: 0.75, points: m(0, 80, 20, 2) },
-        { uid: "zn_long", type: "masse-sol", comble: 0.25, points: m(0, 80 + 4 * sc, 30, 30) }
+        { uid: "zn_long", type: "masse-sol", comble: 0.25, points: m(0, 80 + 4 * sc, 30, 30), rampes: [{ bord: 3 }] }
       ]);
       window.map.fitBounds([[H - y0 - 80, x0 - 10], [H - y0 + 10, x0 + 300]], { animate: false });
       return JSON.stringify({ type: "devmap-session", version: "1.0", editorPoints: [], roads: [],
@@ -306,6 +306,11 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         eauRo: !!cell(5) && cell(5).classList.contains("col-readonly") };
     });
     verifier(d.cols.indexOf("comble") >= 0, "Tableur : colonne comble", d.cols);
+    const rp = await page.evaluate(function () {
+      const c = document.querySelector('#kta-tbl-table td[data-col="rampes"][data-idx="10"]');
+      return c ? { texte: c.textContent.trim(), ro: c.classList.contains("col-readonly") } : null;
+    });
+    verifier(!!rp && /\(1\)/.test(rp.texte) && rp.ro, "Tableur : colonne rampes en lecture seule (« oui (1) »)", rp);
     verifier(d.c25 === "¼" && /½/.test(d.c00 || "") && d.eauRo,
       "Tableur : ¼ affiché, « ½ (défaut) » pour la zone sans valeur, lecture seule sur l'eau", d);
     const tb = await page.$("#kta-tbl-modal .kta-readme-modal-boite, #kta-tbl-modal");
@@ -333,6 +338,106 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
       k.some(function (z) { return z.comble === 0.75; }) && k.some(function (z) { return z.comble === null; }) &&
       k.some(function (z) { return z.comble === -0.5; }),
       "KMZ relu : trois masses au sol, ¾ et −½ gardés, la zone sans valeur reste sans valeur (½)", k);
+
+    // ── F. Rampes : « Placer une pente » dans la fiche, un toucher près du bord bas, chevrons, légende, ✕ ──
+    const zrp = await page.evaluate(function () {
+      // Chevrons de pente posés sur la carte (canvas : comptés par leurs couches, pas dans le DOM).
+      window.__ktaChevrons = function () {
+        let k = 0;
+        window.map.eachLayer(function (l) { if (l.options && l.options.className === "kta-rampe-chevron") k++; });
+        return k;
+      };
+      const sc = window.APP_CONFIG.scale, c = window.map.getCenter(), H = window.APP_CONFIG.imageHeight;
+      const x0 = Math.round(c.lng), y0 = Math.round(H - c.lat);
+      const pts = [{ x: x0, y: y0 }, { x: x0 + 20 * sc, y: y0 }, { x: x0 + 20 * sc, y: y0 + 10 * sc },
+        { x: x0, y: y0 + 10 * sc }];
+      window.setZones(window.getZones().concat([{ uid: "zn_rp", type: "masse-sol", comble: 0.5, points: pts }]));
+      window.map.fitBounds([[H - y0 - 12 * sc, x0 - 2 * sc], [H - y0 + 2 * sc, x0 + 22 * sc]], { animate: false });
+      return { x0: x0, y0: y0, sc: sc };
+    });
+    await page.waitForTimeout(500);
+    verifier(await ouvrirFiche(page, "zn_rp"), "rampes : fiche de la masse au sol ouverte");
+    await page.waitForTimeout(400);
+    const f0 = await page.evaluate(function () {
+      const b = document.querySelector(".leaflet-popup-content .kta-note-popup-rampe-placer");
+      const v = document.querySelector(".leaflet-popup-content .kta-note-popup-rampes");
+      return { bouton: !!b, aucune: v ? v.textContent : "" };
+    });
+    await page.evaluate(function () {
+      document.querySelector(".leaflet-popup-content .kta-note-popup-rampe-placer").click();
+    });
+    await page.waitForTimeout(300);
+    const arme = await page.evaluate(function () {
+      const fl = document.getElementById("kta-rampe-floater");
+      return { bandeau: fl ? fl.textContent : null, clicCarte: window._modeClicCarteActif() };
+    });
+    // Un toucher loin de tout bord (le centre), puis un toucher à 0,2 m du bord ouest (bord 3).
+    const toucher = function (x, y) {
+      return page.evaluate(function (q) {
+        const H = window.APP_CONFIG.imageHeight;
+        window.map.fire("click", { latlng: L.latLng(H - q.y, q.x) });
+      }, { x: x, y: y });
+    };
+    await toucher(zrp.x0 + 10 * zrp.sc, zrp.y0 + 5 * zrp.sc);
+    await page.waitForTimeout(200);
+    const loin = await page.evaluate(function () { return !!document.getElementById("kta-rampe-floater"); });
+    await toucher(zrp.x0 + 0.2 * zrp.sc, zrp.y0 + 5 * zrp.sc);
+    await page.waitForTimeout(500);
+    const pose = await page.evaluate(function () {
+      const z = window.getZones().filter(function (q) { return q.uid === "zn_rp"; })[0];
+      return { rampes: z && z.rampes ? JSON.stringify(z.rampes) : null,
+        bandeau: !!document.getElementById("kta-rampe-floater"),
+        chevrons: window.__ktaChevrons() };
+    });
+    verifier(f0.bouton && /talus/.test(f0.aucune) && /bord bas/.test(arme.bandeau || "") && arme.clicCarte && loin &&
+      pose.rampes === JSON.stringify([{ bord: 3 }]) && !pose.bandeau && pose.chevrons > 0,
+      "rampes : « Placer une pente », bandeau, toucher loin d'un bord ignoré, toucher sur le bord ouest → rampe posée, " +
+      "chevrons dessinés", { f0: f0, arme: arme, loin: loin, pose: pose });
+    await capture(page, "6-carte-rampe-chevrons");
+    await page.evaluate(function () { window.map.setZoom(window.map.getZoom() - 2, { animate: false }); });
+    await page.waitForTimeout(500);
+    await capture(page, "7-carte-rampe-dezoom");
+    await page.evaluate(function () { window.map.setZoom(window.map.getZoom() + 2, { animate: false }); });
+    await page.waitForTimeout(400);
+    await page.evaluate(function () { window.afficherLegende(); });
+    await page.waitForSelector("#kta-legende-modal");
+    const lgR = await page.evaluate(function () {
+      const l = Array.from(document.querySelectorAll("#kta-legende-modal .kta-legende-ligne")).find(function (x) {
+        return /Pente d'une masse au sol/.test(x.textContent);
+      });
+      return { ligne: !!l, svg: !!(l && l.querySelector(".kta-legende-rampe svg")) };
+    });
+    const lgElR = await page.$("#kta-legende-modal .kta-readme-modal-boite, #kta-legende-modal");
+    if (lgElR && CAPTURES) await lgElR.screenshot({ path: path.join(CAPTURES, "8-legende-rampe.png") });
+    await page.evaluate(function () {
+      const m = document.getElementById("kta-legende-modal");
+      const x = m && m.querySelector(".kta-panneau-close, .kta-readme-modal-close");
+      if (x) x.click(); else if (m) m.remove();
+    });
+    verifier(lgR.ligne && lgR.svg, "légende : ligne « Pente d'une masse au sol » (chevron) quand une zone a une rampe", lgR);
+    verifier(await ouvrirFiche(page, "zn_rp"), "rampes : fiche rouverte");
+    await page.waitForTimeout(400);
+    await capture(page, "9-fiche-pentes");
+    const lst = await page.evaluate(function () {
+      const l = Array.from(document.querySelectorAll(".leaflet-popup-content .kta-note-popup-rampe"));
+      const t = l.map(function (x) { return x.textContent.trim(); });
+      const b = document.querySelector(".leaflet-popup-content .kta-note-popup-rampe-retirer");
+      if (b) b.click();
+      return t;
+    });
+    await page.waitForTimeout(400);
+    const ret = await page.evaluate(function () {
+      const z = window.getZones().filter(function (q) { return q.uid === "zn_rp"; })[0];
+      return { rampes: z && "rampes" in z, chevrons: window.__ktaChevrons() };
+    });
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(300);
+    const annule = await page.evaluate(function () {
+      const z = window.getZones().filter(function (q) { return q.uid === "zn_rp"; })[0];
+      return z && z.rampes ? JSON.stringify(z.rampes) : null;
+    });
+    verifier(lst.length === 1 && /→/.test(lst[0]) && !ret.rampes && annule === JSON.stringify([{ bord: 3 }]),
+      "rampes : la fiche liste la pente (monte vers →), ✕ la retire (talus automatique), ⏪ la remet", { lst, ret, annule });
 
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 3));
   } catch (e) {
