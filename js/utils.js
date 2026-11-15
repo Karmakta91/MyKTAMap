@@ -1128,7 +1128,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     const v = window.ktaCombleZone(o);
     const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.label")) + '</span>';
     const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>' +
-      '<div class="kta-note-popup-comble-atteinte kta-tx-warn">' + _esc(_texteAtteinteComble(o, v)) + '</div>';
+      // Hauteur atteinte : vide ici, remplie à l'ouverture de la fiche (_remplirAtteinte).
+      '<div class="kta-note-popup-comble-atteinte kta-tx-warn"></div>';
     if (!opts.convertir || mode === "readonly") {
       return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
              '</strong>' + metres + _rampesHtml(o, false) + '</div>';
@@ -1190,6 +1191,20 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   }
   // Zone trop courte pour que le talus atteigne son cran : « hauteur atteinte : 2,9 m sur 7,5 m » (profondeur pour un
   // sol abaissé), même calcul que la 3D (masseSol.js > atteinteZone) ; vide sinon.
+  // ⚠️ contrat (performance) : atteinteZone sonde tous les bords de la zone et balaie une grille : JAMAIS au rendu ni au
+  // bindPopup (la fiche de chaque zone est construite à chaque rendu de la carte), seulement à l'ouverture de la fiche
+  // de CETTE zone, dans les deux modes (lecture seule comprise), puis au changement de cran (majMetres).
+  function _remplirAtteinte(evt) {
+    const o = (opts.convertir && opts.convertir.obj) || opts.objet;
+    if (!o || o.type !== "masse-sol" || !window.KtaMasseSol || typeof window.ktaCombleZone !== "function") return;
+    setTimeout(function () {
+      const racine = (evt && evt.popup && typeof evt.popup.getElement === "function" && evt.popup.getElement())
+        || document;
+      const el = racine.querySelector(".leaflet-popup-content .kta-note-popup-comble-atteinte");
+      if (!el || !el.isConnected) return;
+      el.textContent = _texteAtteinteComble(o, window.ktaCombleZone(o));
+    }, 30);
+  }
   function _texteAtteinteComble(o, v) {
     if (!window.KtaMasseSol || !Number.isFinite(v) || v === 0) return "";
     const r = window.KtaMasseSol.atteinteZone(Object.assign({}, o, { comble: v }));
@@ -1332,6 +1347,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     // contenu re-rendu : la note a pu changer (undo/redo)
     const fresh = _renderPopupHtml();
     if (evt && evt.popup) evt.popup.setContent(fresh);
+    _remplirAtteinte(evt);   // masse au sol : hauteur atteinte, calculée maintenant seulement
     if (mode === "readonly") return;
     setTimeout(function() {
       // 🩸 Cherché DANS la popup ouverte, jamais dans tout le document : la popup qu'on vient de quitter reste dans le
