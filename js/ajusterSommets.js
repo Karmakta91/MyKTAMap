@@ -270,6 +270,15 @@ window.KtaAjusterSommets = (function () {
     return true;
   }
 
+  // Rampes d'une masse au sol : elles suivent leur segment (masseSol.js > suivreBords), à appeler AVANT le splice
+  // (n = longueur avant). Les autres formes n'ont pas le champ : sans effet.
+  function _suivreBords(o, op, i) {
+    const M = window.KtaMasseSol;
+    if (o && Array.isArray(o.rampes) && M && typeof M.suivreBords === "function") {
+      M.suivreBords(o, op, i, o.points.length);
+    }
+  }
+
   // ── Écriture : un geste = une entrée d'historique, un rendu ──
   function _ecrire(action, c, p, tol) {
     if (!_permis() || !_encorePresent(c)) return false;
@@ -281,6 +290,7 @@ window.KtaAjusterSommets = (function () {
     }
     const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
     if (action === "supprimer") {
+      _suivreBords(o, "retire", c.i);
       o.points.splice(c.i, 1);
     } else {
       let np = { x: p.x, y: p.y };
@@ -290,8 +300,10 @@ window.KtaAjusterSommets = (function () {
         const s = a.aimanter(np.x, np.y, o, exclus.filter(Boolean), tol);
         if (s) np = { x: s.x, y: s.y };
       }
-      if (action === "ajouter") o.points.splice(c.i, 0, np);
-      else o.points[c.i] = Object.assign({}, o.points[c.i], np);
+      if (action === "ajouter") {
+        _suivreBords(o, "insere", c.i);
+        o.points.splice(c.i, 0, np);
+      } else o.points[c.i] = Object.assign({}, o.points[c.i], np);
     }
     if (o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(o);
     try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }
@@ -418,6 +430,7 @@ window.KtaAjusterSommets = (function () {
       if (s) np = { x: s.x, y: s.y };
     }
     const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
+    _suivreBords(o, "insere", st.pose);
     pts.splice(st.pose, 0, np);
     if (o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(o);
     try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }

@@ -136,8 +136,11 @@ double écartés). Posé, fin déplacée et retiré depuis la fiche (`KtaConvert
 (`_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:rampes` « 1,3 » ou « 3:lng;lat,1 », fin en WGS84, revalidé et
 reprojeté à la relecture ; l'ancien format reste lu), GeoJSON (propriété `rampes` : entiers, ou `{ bord, fin: [lng,
 lat] }` en WGS84 quelle que soit la projection ; relue par l'import SIG, `sigImport.js > rampesDe`) ; Tableur : colonne
-`rampes` en lecture seule. La fin, en coordonnées du plan, ne suit pas un contour déplacé (voulu). ⚠️ Un
-sommet ajouté ou retiré au contour décale les indices : la rampe suit l'indice, pas le bord physique.
+`rampes` en lecture seule. ⚠️ Un sommet ajouté ou retiré au contour décale les indices : la rampe suit son SEGMENT
+(`masseSol.js > suivreBords`, appelée par `ajusterSommets.js` en 2D comme en 3D et par le dédoublonnage du Tableur) —
+sommet inséré avant : l'indice avance ; sommet né sur le bord de la rampe : elle garde la première moitié ; sommet
+supprimé à un bout de son bord : le segment disparaît, la rampe aussi. La fin, en coordonnées du plan, ne bouge pas
+(voulu).
 → **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
 `niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction
 qui la traverse (`galerieEmprise.js > penteDeZone`). Couleur, libellé et visibilité de légende : ceux du tracé jonction

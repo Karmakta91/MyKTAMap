@@ -15,6 +15,7 @@
 //   masseCarte(zone) → { m, h, sc } d'après la hauteur du niveau (fiche, itinéraire : pathfinder.js > _masseDuPlan) ;
 //   atteinteZone(zone) → { atteinte, H } (m, signés) ;
 //   rampesValides(zone) → indices des bords bas (`zone.rampes` = [{ bord, fin? }], un bord au plus une fois) ;
+//   suivreBords(zone, op, i, n) → les rampes suivent leur segment quand le contour change d'indices ;
 //   rampes(zone, sc) → [{ bord, ax, az, bx, bz, nx, nz, L, fin }] (m) ;
 //   chevrons(zone, sc) → [[{ x, y }…]] (px du plan) : chevrons de pente et marque de fin.
 // ⚠️ contrat (décision produit, révision du 15/11/2026, docs/ETUDE_REMBLAIS.md) : SANS rampe, la masse est à pleine
@@ -94,6 +95,38 @@
       vus[b] = true;
       return true;
     }).sort(function (a, b) { return a - b; });
+  }
+
+  // ⚠️ contrat : une rampe suit SON segment quand un sommet entre ou sort du contour (n = nombre de points AVANT le
+  // changement, i = indice du sommet) ; à appeler à chaque écriture qui décale les indices (ajusterSommets.js,
+  // tableEditor.js > dédoublonnage), avant l'entrée ⏪ (qui garde l'objet entier, rampes comprises).
+  //   "insere"  : sommet posé à l'indice i, sur le côté i − 1 → i : les bords ≥ i avancent d'un ; le côté coupé garde
+  //               sa rampe sur sa première moitié ;
+  //   "retire"  : sommet i supprimé : ses deux côtés disparaissent (i − 1 et i, modulo n), leurs rampes avec ; les
+  //               bords > i reculent d'un ;
+  //   "doublon" : sommet i, confondu avec i − 1, retiré : seul le côté nul i − 1 disparaît ; les bords ≥ i reculent.
+  // La fin d'une rampe, en coordonnées du plan, ne bouge pas (décision produit). Rampes vides : champ retiré.
+  // → true si `zone.rampes` a changé.
+  function suivreBords(zone, op, i, n) {
+    if (!zone || !Array.isArray(zone.rampes) || !Number.isInteger(i) || !Number.isInteger(n) || n < 1) return false;
+    const avant = JSON.stringify(zone.rampes), out = [];
+    zone.rampes.forEach(function (r) {
+      if (!r || !Number.isInteger(r.bord)) return;
+      let b = r.bord;
+      if (op === "insere") {
+        if (b >= i) b++;
+      } else if (op === "retire") {
+        if (b === i || b === (i - 1 + n) % n) return;
+        if (b > i) b--;
+      } else if (op === "doublon") {
+        if (b === (i - 1 + n) % n) return;
+        if (b >= i) b--;
+      } else return out.push(r);
+      out.push(Object.assign({}, r, { bord: b }));
+    });
+    if (out.length) zone.rampes = out;
+    else delete zone.rampes;
+    return JSON.stringify(zone.rampes || []) !== avant;
   }
 
   // Fin d'une rampe (première entrée de ce bord) : { x, y } px du plan, ou null.
@@ -196,6 +229,7 @@
   }
 
   window.KtaMasseSol = { PENTE: PENTE, PAS: PAS, sol: sol, atteinte: atteinte, anneau: anneau, masse: masse,
-    masseCarte: masseCarte, atteinteZone: atteinteZone, rampesValides: rampesValides, rampes: rampes,
+    masseCarte: masseCarte, atteinteZone: atteinteZone, rampesValides: rampesValides,
+    suivreBords: suivreBords, rampes: rampes,
     chevrons: chevrons };
 })();

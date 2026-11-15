@@ -1756,11 +1756,17 @@
       return a && b && a.x === b.x && a.y === b.y
         && (a.level === b.level || (a.level == null && b.level == null));
     };
-    const nettoyer = function(points) {
+    // `g` : l'objet, dont les rampes d'une masse au sol suivent leur segment (masseSol.js > suivreBords, "doublon").
+    const nettoyer = function(points, g) {
       if (!Array.isArray(points) || points.length < 2) return points;
-      const out = [points[0]];
+      const out = [points[0]], M = window.KtaMasseSol;
+      const suivre = !!(g && Array.isArray(g.rampes) && M && typeof M.suivreBords === "function");
       for (let i = 1; i < points.length; i++) {
-        if (memes(points[i], out[out.length - 1])) { bilan.sommets++; continue; }
+        if (memes(points[i], out[out.length - 1])) {
+          bilan.sommets++;
+          if (suivre) M.suivreBords(g, "doublon", out.length, out.length + points.length - i);
+          continue;
+        }
         out.push(points[i]);
       }
       return out;
@@ -1770,7 +1776,7 @@
       obj[k] = obj[k].filter(function(g) {
         if (!g || !Array.isArray(g.points)) return true;
         const avant = g.points.length;
-        g.points = nettoyer(g.points);
+        g.points = nettoyer(g.points, g);
         if (g.points.length === avant) return true;   // rien retiré → jamais supprimé
         const estLigne = (k === "roads")
           || (k === "structures" && !(typeof g.type === "string"

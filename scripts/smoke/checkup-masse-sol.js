@@ -13,6 +13,9 @@
 //    confirmation chartée → la zone devient un Remblais, sans `comble`.
 // D. Tableur : colonne `comble` (« ½ (défaut) » pour la zone sans valeur, lecture seule sur l'eau).
 // E. KMZ relu par l'import de l'app (DOMParser) : type masse-sol et comble 0,75 gardés, −½ (sol abaissé) aussi.
+// F. Rampes : « Placer une pente » (bord bas puis fin), chevrons, légende, ✕ et ⏪ dans la fiche.
+// G. Ajuster les sommets (prise `plan` de ajusterSommets.js) : la rampe suit son segment (insertion avant, sommet né
+//    sur son bord), disparaît avec lui (sommet supprimé) ; ⏪ remet tout.
 // Sol abaissé (part négative, deuxième rangée −¼ −½ −¾) : motif à grains clairs en creux, distinct de chaque cran
 // positif, densité qui suit |comble| ; fiche : crans −¾ −½ −¼, −½ appliqué, mètres « plus bas ».
 // KTA_CAPTURES=<dossier hors dépôt> : captures de la carte (proche, dézoomée), de la légende, de la fiche, du Tableur.
@@ -449,6 +452,57 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     });
     verifier(lst.length === 1 && /→/.test(lst[0]) && /avec fin/.test(lst[0]) && !ret.rampes && annule === finAtt,
       "rampes : la fiche liste la pente (monte vers →), ✕ la retire (pleine hauteur), ⏪ la remet", { lst, ret, annule });
+
+    // ── G. Les rampes suivent leur segment quand on ajuste les sommets (masseSol.js > suivreBords) ──
+    // zn_rp : rectangle p0 p1 p2 p3, rampe sur le bord 3 (p3 → p0, côté ouest) avec sa fin.
+    const bg = await page.evaluate(function () {
+      window.map.closePopup();
+      const A = window.KtaAjusterSommets.plan, H = window.HistoryManager;
+      const z = function () { return window.getZones().filter(function (q) { return q.uid === "zn_rp"; })[0]; };
+      const garder = function (f, o) { return o.uid === "zn_rp"; };
+      const cote = function () {   // le segment physique de la rampe : ses deux sommets
+        const o = z(), r = o.rampes && o.rampes[0];
+        if (!r) return null;
+        const n = o.points.length, a = o.points[r.bord], b = o.points[(r.bord + 1) % n];
+        return { bord: r.bord, n: n, a: [a.x, a.y], b: [b.x, b.y], fin: r.fin ? [r.fin.x, r.fin.y] : null };
+      };
+      const p = z().points.map(function (q) { return { x: q.x, y: q.y }; }), r = {};
+      r.avant = cote();
+      // Sommet né au milieu du bord 0 (p0 → p1), AVANT le bord de la rampe : elle passe au bord 4, même segment.
+      const c1 = A.saisir((p[0].x + p[1].x) / 2, p[0].y, 2, garder);
+      r.genre1 = c1 && c1.genre;
+      r.ajoute = A.lacher(c1, null, 2);
+      r.insere = cote();
+      H.undo();
+      r.annuleInsere = cote();
+      // Sommet né au milieu du bord de la rampe lui-même (p3 → p0, côté de fermeture) : la rampe garde la 1re moitié.
+      const c2 = A.saisir(p[0].x, (p[0].y + p[3].y) / 2, 2, garder);
+      r.ajoute2 = A.lacher(c2, null, 2);
+      r.coupe = cote();
+      H.undo();
+      // Suppression du sommet p0 : le segment p3 → p0 disparaît, la rampe aussi ; ⏪ la remet.
+      const c3 = A.saisir(p[0].x, p[0].y, 2, garder);
+      r.genre3 = c3 && c3.genre;
+      r.supprime = A.supprimer(c3);
+      r.apresSuppr = { n: z().points.length, rampes: "rampes" in z() };
+      H.undo();
+      r.annuleSuppr = cote();
+      r.p = p.map(function (q) { return [q.x, q.y]; });
+      return r;
+    });
+    const J = JSON.stringify, P = bg.p;
+    verifier(bg.avant && bg.avant.bord === 3 && J(bg.avant.a) === J(P[3]) && J(bg.avant.b) === J(P[0]) &&
+      bg.genre1 === "milieu" && bg.ajoute === "ajoute" && bg.insere && bg.insere.n === 5 && bg.insere.bord === 4 &&
+      J(bg.insere.a) === J(P[3]) && J(bg.insere.b) === J(P[0]) && J(bg.insere.fin) === J(bg.avant.fin),
+      "rampes : sommet inséré avant le bord de la rampe (bord 3 → 4) : elle reste sur le même segment, fin inchangée",
+      bg);
+    verifier(J(bg.annuleInsere) === J(bg.avant), "rampes : ⏪ de l'insertion → bord 3, 4 sommets", bg.annuleInsere);
+    verifier(bg.ajoute2 === "ajoute" && bg.coupe && bg.coupe.bord === 3 && bg.coupe.n === 5 &&
+      J(bg.coupe.a) === J(P[3]) && bg.coupe.b[0] === P[0][0],
+      "rampes : sommet né sur le bord de la rampe : elle garde la première moitié du côté coupé", bg.coupe);
+    verifier(bg.genre3 === "sommet" && bg.supprime === true && bg.apresSuppr.n === 3 && !bg.apresSuppr.rampes &&
+      J(bg.annuleSuppr) === J(bg.avant),
+      "rampes : sommet supprimé au bout du bord de la rampe → segment disparu, rampe retirée ; ⏪ la remet", bg);
 
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 3));
   } catch (e) {

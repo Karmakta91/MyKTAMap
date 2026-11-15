@@ -287,6 +287,36 @@ function charger(win, fichiers) {
       !zones[0].rampes.some(function (r) { return r.fin; }) && !C.changerFinRampe(zones[0], 2, { x: 1, y: 1 }));
     C.retirerRampe(zones[0], 0);
     C.retirerRampe(zones[0], 1);
+    {
+      const sq = () => ({ type: "masse-sol", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 6 }, { x: 0, y: 6 }],
+        rampes: [{ bord: 1 }, { bord: 3, fin: { x: 3, y: 3 } }] });
+      const a = sq(), b = sq(), c = sq(), d = sq(), e = sq(), f = sq();
+      t("suivre les bords : insertion à 1 → bords ≥ 1 avancent (1 → 2, 3 → 4), fin gardée",
+        M.suivreBords(a, "insere", 1, 4) && J(a.rampes) === J([{ bord: 2 }, { bord: 4, fin: { x: 3, y: 3 } }]));
+      t("suivre les bords : insertion au bout (côté de fermeture) → rien ne bouge, le côté coupé garde sa rampe",
+        !M.suivreBords(b, "insere", 4, 4) && J(b.rampes) === J(sq().rampes));
+      t("suivre les bords : sommet 0 retiré → côtés 3 et 0 disparus (rampe 3 retirée), 1 → 0",
+        M.suivreBords(c, "retire", 0, 4) && J(c.rampes) === J([{ bord: 0 }]));
+      t("suivre les bords : sommet 2 retiré → côtés 1 et 2 disparus (rampe 1 retirée), 3 → 2",
+        M.suivreBords(d, "retire", 2, 4) && J(d.rampes) === J([{ bord: 2, fin: { x: 3, y: 3 } }]));
+      t("suivre les bords : doublon 2 retiré → côté nul 1 disparu, 3 → 2 (même segment)",
+        M.suivreBords(e, "doublon", 2, 4) && J(e.rampes) === J([{ bord: 2, fin: { x: 3, y: 3 } }]));
+      M.suivreBords(f, "retire", 0, 4);
+      // Dédoublonnage du Tableur (tableEditor.js > _dedupliquerFichier, privée : lue dans la source).
+      const src = lire("js/tableEditor.js"), d0 = src.indexOf("  function _dedupliquerFichier(obj) {");
+      const d1 = src.indexOf("\n  }", d0);
+      vm.runInContext(src.slice(d0, d1 + 4) + "; window.__dedup = _dedupliquerFichier;", w);
+      const fic = { zones: [{ type: "masse-sol", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 6 },
+        { x: 10, y: 6 }, { x: 0, y: 6 }], rampes: [{ bord: 2 }, { bord: 5, fin: { x: 3, y: 3 } }] }] };
+      const bil = w.__dedup(fic), zf = fic.zones[0], seg = (r) => [zf.points[r.bord], zf.points[(r.bord + 1) % 4]];
+      t("Tableur, dédoublonnage : 2 sommets doublons retirés, chaque rampe reste sur son segment (2 → 1 ; 5 → 3, fin)",
+        d0 > 0 && bil.sommets === 2 && zf.points.length === 4 &&
+        J(zf.rampes) === J([{ bord: 1 }, { bord: 3, fin: { x: 3, y: 3 } }]) &&
+        J(seg(zf.rampes[0])) === J([{ x: 10, y: 0 }, { x: 10, y: 6 }]) &&
+        J(seg(zf.rampes[1])) === J([{ x: 0, y: 6 }, { x: 0, y: 0 }]));
+      t("suivre les bords : plus aucune rampe → champ retiré",
+        M.suivreBords(f, "retire", 1, 3) && !("rampes" in f) && !M.suivreBords({ type: "eau", points: [] }, "insere", 0, 3));
+    }
     t("changement de type : passer en Comblé retire les rampes",
       C.convertir("zones", zones[0], "zones", "remblais") === true &&
       zones.some(z => z.uid === "zn_r" && z.type === "remblais" && !("rampes" in z)));

@@ -2527,6 +2527,9 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
   appui long : posé sur un sommet ou un milieu, il l'ajuste, même règle qu'en vue 3D ; une souris tenue immobile
   ouvre ce menu à coup sûr, et l'appui suivant sur le sommet partait en pan). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
   une surface), pas de 🗑️ : un toast dit pourquoi.
+- **Rampes d'une masse au sol** : elles suivent leur segment quand un sommet est ajouté, inséré ou supprimé
+  (`masseSol.js > suivreBords`, appelée avant chaque `splice` de `_ecrire` et `_poser`) ; une rampe dont le segment
+  disparaît est retirée, dans la même entrée ⏪. Règle : `data-formats.md` § rampes.
 - **✂️ Couper un tracé** (décision du 08/11/2026) : même menu, troisième bouton `.kta-ajuster-couper`, seulement sur un
   **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary`) et
   `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
