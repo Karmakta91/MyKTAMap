@@ -184,7 +184,7 @@
     difficile: { traces: false, route: false, guidage: false,
       butin: { x: 1, min: 1, lacher: 0.25, lacherMunitions: 0, pileX: 1, fumigenes: 1 } }
   };
-  const ROUTE = { largeur: 0.3, y: 0.08 };
+  const ROUTE = { largeur: 0.3, y: 0.08, morceau: 0.5 };   // morceau : pas (m) du ruban qui suit le sol local
   // Chevrons du sens du trajet, posés sur le ruban (m) : un tous les `pas`, longueur `l`, épaisseur des branches `ep`.
   const CHEVRON = { pas: 2, l: 0.26, ep: 0.06, y: 0.09 };
   const BALISE = { rayon: 0.25, anneau: [0.6, 0.85], opacite: 0.55 };
@@ -1049,8 +1049,9 @@
   function _ajouter(o) { _p.ctx.groupe.add(o); _p.traits.push(o); }
 
   // Un chevron « ^ » au sol en (cx, cz) m, pointe dans le sens (ux, uz) : deux branches (2 triangles chacune).
-  function _chevron(out, cx, cz, ux, uz) {
-    const l = CHEVRON.l, ep = CHEVRON.ep, y = CHEVRON.y, nx = -uz, nz = ux;
+  // Chevron au centre (cx, cz) m, sens (ux, uz), `dy` : sol local (m).
+  function _chevron(out, cx, cz, ux, uz, dy) {
+    const l = CHEVRON.l, ep = CHEVRON.ep, y = CHEVRON.y + (dy || 0), nx = -uz, nz = ux;
     const px = cx + ux * l / 2, pz = cz + uz * l / 2;
     [-1, 1].forEach(function (cote) {
       const qx = cx - ux * l / 2 + cote * nx * l / 2, qz = cz - uz * l / 2 + cote * nz * l / 2;
@@ -1064,6 +1065,8 @@
     const p = _p;
     if (!p || !p.ctx) return;
     const ctx = p.ctx, T = ctx.THREE, sc = ctx.sc;
+    // Sol local (m) sous (x, z) m : la prise de la vue (masse au sol, galerie inclinée) ; 0 sans elle.
+    const sol = function (x, z) { return typeof ctx.sol === "function" ? ctx.sol(x * sc, z * sc) : 0; };
     _vider();
     p.nChevrons = 0;
     const accent = new T.Color(_couleur("--kta-accent", "") || 0xf4c542);
@@ -1078,13 +1081,19 @@
         if (l < 1e-6) continue;
         const ux = (bx - ax) / l, uz = (bz - az) / l;
         if (!autre) {
-          const nx = -uz * ROUTE.largeur / 2, nz = ux * ROUTE.largeur / 2, y = ROUTE.y;
-          pos.push(ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz,
-            ax + nx, y, az + nz, bx - nx, y, bz - nz, ax - nx, y, az - nz);
+          // Ruban posé sur le sol local, par morceaux de ROUTE.morceau m au plus (masse au sol, pente).
+          const nx = -uz * ROUTE.largeur / 2, nz = ux * ROUTE.largeur / 2, k = Math.max(1, Math.ceil(l / ROUTE.morceau));
+          for (let j = 0; j < k; j++) {
+            const x0 = ax + ux * l * j / k, z0 = az + uz * l * j / k, x1 = ax + ux * l * (j + 1) / k;
+            const z1 = az + uz * l * (j + 1) / k, y0 = ROUTE.y + sol(x0, z0), y1 = ROUTE.y + sol(x1, z1);
+            pos.push(x0 + nx, y0, z0 + nz, x1 + nx, y1, z1 + nz, x1 - nx, y1, z1 - nz,
+              x0 + nx, y0, z0 + nz, x1 - nx, y1, z1 - nz, x0 - nx, y0, z0 - nz);
+          }
         }
         // Chevrons tous les CHEVRON.pas m le long du trajet (abscisse continue, même sur un autre niveau).
         for (; prochain <= cum + l; prochain += CHEVRON.pas) {
-          if (!autre) _chevron(chev, ax + ux * (prochain - cum), az + uz * (prochain - cum), ux, uz);
+          const cx = ax + ux * (prochain - cum), cz = az + uz * (prochain - cum);
+          if (!autre) _chevron(chev, cx, cz, ux, uz, sol(cx, cz));
         }
         cum += l;
       }
@@ -1110,16 +1119,16 @@
     }
     // Balise de la cible (facile, moyen) : colonne et anneau au sol, éteints par le brouillard au loin.
     if (p.cible && p.regle.route && (p.cible.niveau === undefined || p.cible.niveau === ctx.niveau)) {
-      const cx = p.cible.x / sc, cz = p.cible.y / sc, h = ctx.hauteur;
+      const cx = p.cible.x / sc, cz = p.cible.y / sc, s0 = sol(cx, cz), h = Math.max(0.3, ctx.hauteur - s0);
       const col = new T.Mesh(new T.CylinderGeometry(BALISE.rayon, BALISE.rayon, h, 16, 1, true),
         new T.MeshBasicMaterial({ color: accent, transparent: true, opacity: BALISE.opacite, toneMapped: false,
           depthWrite: false, side: T.DoubleSide }));
-      col.position.set(cx, h / 2, cz);
+      col.position.set(cx, s0 + h / 2, cz);
       _ajouter(col);
       const an = new T.Mesh(new T.RingGeometry(BALISE.anneau[0], BALISE.anneau[1], 32),
         new T.MeshBasicMaterial({ color: accent, toneMapped: false, side: T.DoubleSide }));
       an.rotation.x = -Math.PI / 2;
-      an.position.set(cx, 0.05, cz);
+      an.position.set(cx, s0 + 0.05, cz);
       _ajouter(an);
     }
     ctx.sale();
@@ -1345,7 +1354,7 @@
       chronoReste: p.chronoFin ? Math.round((p.chronoFin - performance.now()) / 1000) : null,
       ennemis: p.ennemis.map(function (o) {
         return { type: o.type, x: o.x, y: o.y, pv: o.pv, vu: !!o.vu, sonnee: performance.now() < (o.sonneeFin || 0),
-          elan: !!o.elanFin };
+          elan: !!o.elanFin, yMesh: o.mesh ? +o.mesh.position.y.toFixed(3) : null };
       }),
       coups: { portes: p.coups, rates: p.rates }, bilan: _bilan(p),
       usure: +p.usure.toFixed(4), vacille: performance.now() < (p.vacilleFin || 0),
@@ -1355,7 +1364,9 @@
             opacite: n.mat ? +n.mat.opacity.toFixed(3) : 0,
             plein: performance.now() - n.t0 < _monde().REGLES.fumigene.pleinS * 1000 };
         }) },
-      objets: p.objets.map(function (o) { return { type: o.type, x: o.x, y: o.y }; }),
+      objets: p.objets.map(function (o) {
+        return { type: o.type, x: o.x, y: o.y, yMesh: o.mesh ? +o.mesh.position.y.toFixed(3) : null };
+      }),
       cadavres: (p.cadavres || []).length, butin: p.regle.butin, pile: Math.round(p.pile), lampe: +p.lampeK.toFixed(2), eau: p.eau,
       cibleNiveau: p.cible && p.cible.niveau !== undefined ? p.cible.niveau : null,
       mondes: Object.keys(p.mondes || {}).length, niveauMonde: p.niveauMonde };

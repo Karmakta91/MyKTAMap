@@ -14750,11 +14750,23 @@
         if (change.miniCarte) _appliquerMiniCarte();
         _e.sale = true;
       },
+      // Règle du pas, masses au sol comprises (_masseBloque : seule la règle du vide), sans toucher au compteur du
+      // joueur (e.frontsMasse).
       bloque: function (x0, y0, x1, y1) {
         const l = Math.hypot(x1 - x0, y1 - y0);
         if (!_e || l < 1e-9) return false;
-        const n = _balayage(x0, y0, x1, y1, (x1 - x0) / l, (y1 - y0) / l);
-        return n < 0 || (n > 0 && n > _rayonsBloques(x0, y0));
+        const ux = (x1 - x0) / l, uy = (y1 - y0) / l, n = _balayage(x0, y0, x1, y1, ux, uy);
+        if (n < 0 || (n > 0 && n > _rayonsBloques(x0, y0))) return true;
+        const fm = _e.frontsMasse, b = _masseBloque(x0, y0, x1, y1, ux, uy);
+        _e.frontsMasse = fm;
+        return b;
+      },
+      // Sol local (m) sous (x, y) px : galerie inclinée ou masse au sol (_surPente, _solMasse : la règle de la place,
+      // jamais une copie) ; 0 ailleurs. Lecture seule.
+      sol: function (x, y) {
+        if (!_e) return 0;
+        const q = _surPente(x / _e.sc, y / _e.sc, 0);
+        return q ? q.dy : _solMasse(x / _e.sc, y / _e.sc);
       },
       ligneBloquee: function (x0, y0, x1, y1) { return !!_e && !!_juger([[x0, y0, x1, y1]])[0]; },
       // 🩸 La règle du pas ignore la structure où l'on se trouve déjà (on en sort) : la place est donc aussi

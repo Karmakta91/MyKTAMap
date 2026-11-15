@@ -528,9 +528,12 @@
     if (os.flaque) os.flaque.scale.setScalar(0.2 + 0.8 * Math.min(1, kf));
   }
 
+  // Sol local sous (x, y) px (prise de la vue : ctx.sol, masse au sol, galerie inclinée) ; 0 sur une vue sans la prise.
+  function _sol(ctx, x, y) { return typeof ctx.sol === "function" ? ctx.sol(x, y) : 0; }
+
   function _placer(o, ctx) {
     if (!o.mesh) return;
-    o.mesh.position.set(o.x / ctx.sc, 0, o.y / ctx.sc);
+    o.mesh.position.set(o.x / ctx.sc, _sol(ctx, o.x, o.y), o.y / ctx.sc);
     if (o.mortT) o.mesh.rotation.y = o.lacet || 0;
     else if (_estMarcheur(o) || o.type === "silhouette") {
       const pos = ctx.pos;
@@ -771,7 +774,7 @@
       b.scale.set(w, w, 1);
       grp.add(b);
     }
-    grp.position.set(n.x / ctx.sc, 0, n.y / ctx.sc);
+    grp.position.set(n.x / ctx.sc, _sol(ctx, n.x, n.y), n.y / ctx.sc);
     ctx.groupe.add(grp);
     n.mesh = grp; n.mat = mat;
   }

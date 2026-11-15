@@ -13382,6 +13382,103 @@ async function sectionMkmgNiveaux(nav) {
 // KTA_V3D_SEUL=mkmg) ──────────────────────────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : une galerie est-ouest de 160 m (un sommet tous les 5 m), un POI à 70 m du départ. Partie en
 // facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
+// ── 23 ter. Jeu sur une masse au sol (KTA_V3D_SEUL=mkmgmasse ; vue3d.js > _ctxGreffe : ctx.sol, ctx.bloque ;
+// addons/mkmg) : plan FICTIF en mémoire, masse +½ et creux −½ traversés par le tracé ; entités du jeu (rampant,
+// égaré, butin) posées dans chacune : leur maillage au sol local (±1,25 m), suivi en marchant ; puis la prise seule :
+// ctx.sol = le sol local, ctx.bloque refuse d'entrer dans une masse 0,9 (vide 0,25 m < 0,5 m, la règle du pas) et
+// laisse monter sur la ½. ──
+async function sectionMkmgMasse(nav) {
+  const nom = "§ 23 ter ";
+  console.log("§ 23 ter — jeu sur une masse au sol : entités et prise (ctx.sol, ctx.bloque)");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-masse", [0], { "0": -25 }, { "0": 2.5 }, function () {
+    const P = window.__fxP, pts = [];
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
+    window.setRoads([{ uid: "rd_mm", type: "principal", level: 0, points: pts }]);
+    window.setZones([
+      { uid: "zn_mm_p", type: "masse-sol", level: 0, comble: 0.5, points: rect(-10, -6, 2, 6) },
+      { uid: "zn_mm_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(20, -6, 32, 6) },
+      { uid: "zn_mm_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(50, -6, 62, 6) }
+    ]);
+    window.setEditorPoints([Object.assign({ id: "mm1", nom: "Salle fictive", uid: "pt_mm_1", level: 0, tags: [] },
+      P(70, 0))]);
+  });
+  const page = t.page;
+  try {
+    const r = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector(s); };
+      const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+      const appui = function (b) {
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+        window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      };
+      await window.__fxOuvrir(-30, 0, 90, 0, "mixte");
+      appui(q('#kta-vue3d [data-v3d="av"]'));
+      for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+      for (let k = 0; k < 60 && !q("#kta-confirm-oui"); k++) await pause(50);
+      if (!q("#kta-confirm-oui")) return { erreur: "pas de confirmation" };
+      q("#kta-confirm-oui").click();
+      for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
+      const X = M().essai, out = {};
+      X.vider();
+      // Entités posées : rampant sur la ½ (x −4), égaré dans le creux (x 26), butin (pile) sur chacune.
+      const a = P(-4, 2), b = P(26, -2), c = P(-6, -3), d = P(28, 3);
+      X.poser("rampant", a.x, a.y);
+      X.poser("egare", b.x, b.y);
+      X.poser("pile", c.x, c.y);
+      X.poser("pile", d.x, d.y);
+      await window.__fxImages(4);
+      const lire = function () {
+        const e = M().etat();
+        return { ennemis: e.ennemis.map(function (o) { return { type: o.type, rel: window.__fxRel(o), y: o.yMesh }; }),
+          objets: e.objets.map(function (o) { return { type: o.type, rel: window.__fxRel(o), y: o.yMesh }; }) };
+      };
+      out.poses = lire();
+      // Elles marchent vers le joueur, placé sur la ½ à 3 m du rampant : relevé après 1,5 s.
+      const j = P(-1, 2);
+      K.placer(j.x, j.y, 270);
+      await pause(1500);
+      out.marche = lire();
+      M().quitter();
+      await pause(300);
+      // La prise seule : une greffe d'essai lit ctx.sol et ctx.bloque.
+      let cx = null;
+      const deg = K.greffer({ nom: "v3d-checkup-prise-sol", scene: function (ctx) { cx = ctx; } });
+      await window.__fxImages(2);
+      const p0 = P(-20, 0), p05 = P(-4, 0), pn = P(26, 0), pb = P(56, 0), avant05 = P(-11, 0), avantB = P(49, 0);
+      out.prise = { sol0: cx.sol(p0.x, p0.y), solPlus: cx.sol(p05.x, p05.y), solMoins: cx.sol(pn.x, pn.y),
+        solB: cx.sol(pb.x, pb.y),
+        monteDemi: cx.bloque(avant05.x, avant05.y, P(-9.6, 0).x, P(-9.6, 0).y),
+        entreB: cx.bloque(avantB.x, avantB.y, P(50.4, 0).x, P(50.4, 0).y),
+        fronts: K.etat().masses.fronts };
+      if (deg) deg();
+      await K.fermer();
+      return out;
+    });
+    const pr = function (a, b) { return Number.isFinite(a) && Math.abs(a - b) <= 0.011; };
+    if (r.erreur) { verifier(false, nom + "jeu lancé", r); return; }
+    const sur = function (l, x) { return l.filter(function (o) { return Math.abs(o.rel[0] - x) < 2.5; }); };
+    const E = r.poses;
+    const rp = sur(E.ennemis, -4)[0], eg = sur(E.ennemis, 26)[0], b1 = sur(E.objets, -6)[0], b2 = sur(E.objets, 28)[0];
+    verifier(rp && eg && b1 && b2 && pr(rp.y, 1.25) && pr(eg.y, -1.25) && pr(b1.y, 1.25) && pr(b2.y, -1.25),
+      nom + "entités posées sur le sol local : rampant et butin sur la masse +½ (1,25 m), égaré et butin au fond du " +
+      "creux −½ (−1,25 m)", E);
+    const rm = r.marche.ennemis.filter(function (o) { return o.type === "rampant"; })[0];
+    verifier(rm && Math.abs(rm.rel[0] - (-4)) > 0.2 && pr(rm.y, rm.rel[0] > -10 && rm.rel[0] < 2 ? 1.25 : 0),
+      nom + "en marchant vers le joueur, le rampant reste posé sur le sol local (" + (rm && rm.y) + " m)", r.marche);
+    const P_ = r.prise;
+    verifier(pr(P_.sol0, 0) && pr(P_.solPlus, 1.25) && pr(P_.solMoins, -1.25) && pr(P_.solB, 2.25),
+      nom + "prise : ctx.sol = sol local (0 / 1,25 / −1,25 / 2,25 m)", P_);
+    verifier(P_.monteDemi === false && P_.entreB === true,
+      nom + "prise : ctx.bloque laisse monter sur la ½ et refuse d'entrer dans la 0,9 (règle du vide du pas)", P_);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 async function sectionMkmgArsenal(nav) {
   const nom = "§ 23 bis ";
   console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène, coups portés, écran de fin");
@@ -17183,7 +17280,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
       SEUL === "minicarte" || SEUL === "mcbandeau" || SEUL === "menusHaut" || SEUL === "mkmgniveaux" ||
-      SEUL === "mkmg") {
+      SEUL === "mkmg" || SEUL === "mkmgmasse") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -23720,6 +23817,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
     if (!SEUL || SEUL === "mkmgniveaux") await sectionMkmgNiveaux(nav);
     if (!SEUL || SEUL === "mkmg") await sectionMkmgArsenal(nav);
+    if (!SEUL || SEUL === "mkmgmasse") await sectionMkmgMasse(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.
