@@ -954,8 +954,12 @@ window._kta_resetDataLayerNoteGhosts = function() {
 // aussi sans rien changer (option de la carte, filtres) ; l'abonné relit sa propre empreinte avant de refaire
 // quoi que ce soit (vue3d.js > _empreinteDonnees). Sans abonné, rien d'autre que l'envoi. Doc : tracking.md
 // § Vue 3D.
+// `detail.affichage` : émis pendant un redessin d'affichage seul (window._ktaRenduAffichage > 0, posé par
+// interfaceConfig.js > appliquerFiltreNiveau) ; la sauvegarde de session l'ignore, les autres abonnés relisent.
 window.ktaSignalerDonneesPlan = function(source) {
-  try { window.dispatchEvent(new CustomEvent("kta:donneesPlanChange", { detail: { source: source || "" } })); }
+  const affichage = (window._ktaRenduAffichage || 0) > 0;
+  const detail = { source: source || "", affichage: affichage };
+  try { window.dispatchEvent(new CustomEvent("kta:donneesPlanChange", { detail: detail })); }
   catch (e) { /* rien : un abonné en erreur ne bloque pas le rendu */ }
 };
 

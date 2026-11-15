@@ -113,12 +113,18 @@ de répondre). 🔒 **Plan d'extension en lecture seule** (`ktaEditionRefusee`) 
 tick n'en paie plus que ~0,2 ms. Il sérialise si l'un de ces signaux est vrai, sinon il saute :
 - **rendu des données** : `kta:donneesPlanChange` (`utils.js > ktaSignalerDonneesPlan`, émis par renderRoads /
   renderZones / renderStructures / renderEditorPoints et CalqueSession) — toute écriture d'objet finit par un rendu :
-  setters, fiche, ajuster, convertir, Tableur, import, synchro d'une extension, phase 2 de la restauration ;
+  setters, fiche, ajuster, convertir, Tableur, import, synchro d'une extension, phase 2 de la restauration. 🩸 Sauf
+  `detail.affichage` : les rendus lancés par `interfaceConfig.js > appliquerFiltreNiveau` (niveau actif, niveaux
+  visibles, filtres) ne changent aucune donnée et ne salissent rien — sans ça, chaque changement de niveau
+  resérialisait toute la session (≈ 0,4 s mesurée sur un relevé réel lourd, CPU ×4) ;
 - **historique** : `HistoryManager.onChange` (enregistrement, ⏪, ↪, remise à zéro) ;
 - **geste de l'utilisateur** : `pointerup`, `click`, `keydown`, `input`, `change`, `drop` (capture sur window) rendent
   la session sale pendant `FENETRE_GESTE_MS` (4 s) — mesure 📐 posée au clic, légende, filtres, mode de mesure, et
   les suites asynchrones d'un geste (fichier lu, confirmation). Ni `pointermove` ni molette : déplacer la carte ne
-  salit rien ;
+  salit rien. Un geste qui n'a fait que changer l'affichage (même `appliquerFiltreNiveau`) retire sa fenêtre
+  (`SessionPersist.ignorerGeste`, événements à moins de `RAFALE_MS` = 1 s d'écart) ; celle des gestes d'avant reste.
+  Les filtres, qui font partie de la session, sont vus par l'empreinte légère ; le niveau actif n'en fait pas partie
+  (vue du plan, `plans-loader.md` § Vue retrouvée) ;
 - **empreinte légère changée** (`_signatureLegere`, sans copie ni JSON de la session) : nombres de points / tracés /
   zones / structures / points de mesure, mode de mesure, longueur et dernier pas de la timeline du suivi, début du
   suivi, nombres de traces, filtres. Attrape les ajouts sans geste (pas du podomètre, `devicemotion`).

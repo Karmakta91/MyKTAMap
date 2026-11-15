@@ -46,6 +46,8 @@
   // n'est jamais perdu : le filet sérialise au plus tard après FILET_MS, et à la fermeture / mise en arrière-plan.
   const FENETRE_GESTE_MS = 4000;
   const FILET_MS         = 30000;
+  // Événements d'un même geste (pointerup → click → change) : moins de RAFALE_MS entre deux.
+  const RAFALE_MS        = 1000;
 
   function _currentPollInterval() {
     if (window.PerfUltra && window.PerfUltra.get("slowSave")) {
@@ -70,6 +72,8 @@
   let _phase2TimeoutId = null;
   let _sale = true;            // une modification a pu avoir lieu depuis la dernière sérialisation
   let _saleJusqua = 0;         // geste de l'utilisateur : sale jusqu'à cette date (suites asynchrones)
+  let _dernierGeste = 0;       // date du dernier événement de geste
+  let _saleAvantRafale = 0;    // _saleJusqua d'avant le geste en cours (cf ignorerGeste)
   let _signature = null;       // empreinte légère de la dernière sérialisation
   let _dernierComplet = 0;     // date de la dernière sérialisation (filet)
   const _ticks = { sautes: 0, complets: 0 };
@@ -1134,11 +1138,22 @@
 
   // ── Signaux « sale » ──────────────
   // Rendu des données (toute écriture d'objet finit par un rendu, couleurs de légende et calques compris).
-  window.addEventListener("kta:donneesPlanChange", _marquerSale);
+  // 🩸 Sauf un redessin d'affichage seul (`detail.affichage` : niveau, niveaux visibles, filtres —
+  // interfaceConfig.js > appliquerFiltreNiveau) : aucune donnée n'a changé, et sur un gros relevé la sérialisation
+  // coûte des centaines de ms à chaque changement de niveau.
+  window.addEventListener("kta:donneesPlanChange", function(e) {
+    if (e && e.detail && e.detail.affichage === true) return;
+    _marquerSale();
+  });
   // Geste de l'utilisateur : sale pendant FENETRE_GESTE_MS (suites asynchrones : fichier lu, confirmation, calcul).
   // Ni pointermove ni molette : un déplacement de la carte ne modifie pas la session.
   ["pointerup", "click", "keydown", "input", "change", "drop"].forEach(function(t) {
-    window.addEventListener(t, function() { _saleJusqua = Date.now() + FENETRE_GESTE_MS; },
+    window.addEventListener(t, function() {
+      const now = Date.now();
+      if (now - _dernierGeste > RAFALE_MS) _saleAvantRafale = _saleJusqua;
+      _dernierGeste = now;
+      _saleJusqua = now + FENETRE_GESTE_MS;
+    },
       { capture: true, passive: true });
   });
   // Historique (enregistrement, ⏪, ↪) : abonné ici (historyManager.js est chargé avant) ou au premier plan.
@@ -1157,6 +1172,10 @@
   window.SessionPersist = {
     // Signal neutre : un module qui modifie la session sans rendu ni geste peut le dire (sinon le filet suffit).
     marquerSale:  _marquerSale,
+    // Le geste en cours n'a fait que changer l'affichage (niveau, filtres) : sa fenêtre est retirée, celle des gestes
+    // d'avant reste. ⚠️ À n'appeler que d'un chemin d'affichage pur : un chemin qui modifie la session sans signal
+    // perdrait sa fenêtre (le filet de 30 s et la fermeture le rattrapent quand même).
+    ignorerGeste: function() { if (Date.now() - _dernierGeste <= RAFALE_MS) _saleJusqua = _saleAvantRafale; },
     // Diagnostic (checkup) : ticks sautés / sérialisations complètes, état sale.
     etatTick:     function() { return { sautes: _ticks.sautes, complets: _ticks.complets, sale: _sale,
       geste: Date.now() < _saleJusqua }; },

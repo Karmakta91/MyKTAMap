@@ -11,7 +11,9 @@
 //    filtres, trace de suppression, suivi (timeline), ⏪ ;
 // 3. chemin douteux (édition en place sans rendu ni geste) : rattrapée par un geste (touche), par pagehide, et par
 //    le filet de 30 s ;
-// 4. plantage simulé (onglet tué, CDP Page.crash) : la session rouverte contient tout.
+// 4. plantage simulé (onglet tué, CDP Page.crash) : la session rouverte contient tout ;
+// 5. changement de niveau (affichage seul) : aucune sérialisation complète, même au clic ; objet modifié puis niveau
+//    changé, rechargé : les deux sont retrouvés ; niveau changé puis onglet tué : le niveau est retrouvé.
 // Usage : node scripts/smoke/checkup-session-sale.js (SMOKE_PORT pour une autre copie)
 // =====================================================================
 "use strict";
@@ -216,6 +218,53 @@ async function etape(page, nom, fn, arg, attendu) {
     s.mesure === 2 && s.surface === 3 && s.traces.indexOf("st_ss1") >= 0 && s.timeline >= 1 &&
     s.legende.indexOf("Libellé de session") >= 0,
   "après l'onglet tué : la session rouverte contient toutes les modifications", s);
+
+  // ── 5. Changement de niveau : affichage seul, niveau retenu hors session ──
+  console.log("\n══ changement de niveau ══");
+  await page.evaluate(function () { window.PlanRegistry.setMultiLevel(window._currentLoadedPlanId, true); });
+  await ouvrir(page);
+  verifier(await page.evaluate(function () { return window.APP_CONFIG.multiLevel === true; }),
+    "plan rouvert en multi-niveau");
+  // Un clic (geste) puis le changement de niveau, comme la pastille ou la modale ≡.
+  const changerNiveau = function (n) {
+    window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    window.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    window.ktaSetActiveLevel(n, { source: "checkup" });
+  };
+  await page.waitForTimeout(TICK_MS);
+  const n0 = await page.evaluate(function () { return window.SessionPersist.etatTick(); });
+  for (const n of [1, -1, 1]) {
+    await page.evaluate(changerNiveau, n);
+    await page.waitForTimeout(TICK_MS);
+  }
+  await page.waitForTimeout(TICK_MS);   // fenêtre du dernier geste passée
+  const n1 = await page.evaluate(function () { return window.SessionPersist.etatTick(); });
+  verifier(n1.complets === n0.complets, "3 changements de niveau au clic : aucune sérialisation complète de la session",
+    { n0: n0, n1: n1 });
+  await page.evaluate(function (n) {
+    window.getRoads().find(function (r) { return r.uid === "rd_ss1"; }).name = "Renommé avant le niveau";
+    window.renderRoads();
+    window.ktaSetActiveLevel(n, { source: "checkup" });
+  }, -1);
+  await page.waitForTimeout(TICK_MS + 1000);
+  await ouvrir(page);   // rechargement
+  const apresRecharge = await page.evaluate(function () { return window.APP_CONFIG.activeLevel; });
+  s = await lireSauvegarde(page);
+  verifier(s && s.nomTrace === "Renommé avant le niveau" && apresRecharge === -1,
+    "objet modifié puis niveau changé, rechargé : la modification et le niveau -1 sont retrouvés",
+    { nom: s && s.nomTrace, niveau: apresRecharge });
+  await page.evaluate(changerNiveau, 1);
+  await page.waitForTimeout(500);
+  const cdp2 = await ctx.newCDPSession(page);
+  await Promise.race([cdp2.send("Page.crash").catch(function () { /* rien */ }),
+    new Promise(function (r) { setTimeout(r, 2000); })]);
+  await page.close().catch(function () { /* déjà morte */ });
+  page = await ctx.newPage();
+  page.on("pageerror", function (e) { erreurs.push(String(e && e.message)); });
+  await ouvrir(page);
+  const apresCrash = await page.evaluate(function () { return window.APP_CONFIG.activeLevel; });
+  verifier(apresCrash === 1, "niveau changé puis onglet tué : le niveau 1 est retrouvé (vue du plan, hors session)",
+    apresCrash);
 
   verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 5));
   await browser.close();
