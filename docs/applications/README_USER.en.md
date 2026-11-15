@@ -1195,7 +1195,8 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 - the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
 - the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
 - the **mined volume**: mined area × **average gallery height**, typed in the window (at first the level's height, otherwise 2 m; recalculated at once). On a single-level map, it is remembered for the map; on a map with several levels, it is only used for the calculation: each level's height is set in ⚙️ Settings › Levels: depth and height, and a sentence under the field says so;
-- the **filled** area (“Filled to roof” zones inside the sector void) in m² and m³, and the **current void** (mined minus filled).
+- the **filled** area (“Filled to roof” zones inside the sector void) in m² and m³, and the **current void** (mined minus filled);
+- if the sector has any, the **partial fill deducted** and the **lowered floor added** (area and volume): a partial fill counts for its share of the height (¼, ½, ¾…), as if its edges were vertical (the slope is ignored, the window says so); a lowered floor adds its share to the void. Where a partial fill overlaps a Filled to roof zone, only that zone counts. The current void volume takes them into account, its area does not.
 
 On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 

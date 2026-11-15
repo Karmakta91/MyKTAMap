@@ -1195,7 +1195,8 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 - les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
 - la **surface exploitée** (secteur moins piliers) et le **taux de défruitement** (exploité ÷ secteur) ;
 - le **volume exploité** : surface exploitée × **hauteur moyenne de galerie**, à saisir dans la fenêtre (au départ celle du niveau, 2 m sinon ; recalcul immédiat). Sur un plan à un niveau, elle est retenue pour le plan ; sur un plan à plusieurs niveaux, elle sert au calcul seulement : la hauteur de chaque niveau se règle dans ⚙️ Réglages › Niveaux : profondeur et hauteur, et une phrase le rappelle sous le champ ;
-- la surface **comblée** (zones « Comblé » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins comblé).
+- la surface **comblée** (zones « Comblé » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins comblé) ;
+- s'il y en a dans le secteur, la **masse au sol retranchée** et le **sol abaissé ajouté** (surface et volume) : une masse au sol compte pour sa part de la hauteur (¼, ½, ¾…), comme si ses bords étaient verticaux (le talus est négligé, la fenêtre le rappelle) ; un sol abaissé ajoute sa part au vide. Là où une masse chevauche un Comblé, seul le Comblé compte. Le volume du vide actuel en tient compte, sa surface non.
 
 Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
 

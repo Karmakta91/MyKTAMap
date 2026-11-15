@@ -1195,7 +1195,8 @@ En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se e
 - los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
 - la **superficie explotada** (sector menos pilares) y la **tasa de extracción** (explotada ÷ sector);
 - el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (al principio la del nivel, si no 2 m; recalculada al instante). En un plano de un solo nivel, se guarda para el plano; en un plano con varios niveles, solo sirve para el cálculo: la altura de cada nivel se ajusta en ⚙️ Ajustes › Niveles: profundidad y altura, y una frase lo recuerda bajo el campo;
-- la superficie **colmatada** (zonas «Colmatado» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos colmatado).
+- la superficie **colmatada** (zonas «Colmatado» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos colmatado);
+- si el sector los tiene, el **relleno parcial descontado** y el **suelo rebajado añadido** (superficie y volumen): un relleno parcial cuenta según su parte de la altura (¼, ½, ¾…), como si sus bordes fueran verticales (el talud se desprecia, la ventana lo recuerda); un suelo rebajado añade su parte al vacío. Donde un relleno parcial se superpone a un Colmatado, solo cuenta el Colmatado. El volumen del vacío actual los tiene en cuenta, su superficie no.
 
 En un plano de varios niveles solo cuenta el **nivel activo** (en la 🧊 Vista 3D: el de la 3D), y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
 

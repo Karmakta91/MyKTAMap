@@ -125,7 +125,8 @@ function charger(fichier, nomGlobal, prealables) {
 // ───────── volumeExploite.js (défruitement d'un secteur) ─────────
 // ⚠️ Valeurs attendues calculées À LA MAIN (rectangles, losanges, L) : échelle 2 px/m, donc 1 m² = 4 px².
 (function () {
-  const VE = charger("js/volumeExploite.js", "KtaVolumeExploite");
+  // styleResolver d'abord : la part d'une masse au sol est lue par window.ktaCombleZone, jamais recopiée.
+  const VE = charger("js/volumeExploite.js", "KtaVolumeExploite", ["js/styleResolver.js"]);
   if (!VE) return;
   const R = function (x0, y0, x1, y1) { return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]; };
   const pil = function (pts, extra) { return Object.assign({ type: "pilier-1", points: pts }, extra || {}); };
@@ -192,6 +193,48 @@ function charger(fichier, nomGlobal, prealables) {
     calc({ secteur: carre, scale: 0 }).ok === false);
   t("volume : secteur de moins de 3 points → refus",
     calc({ secteur: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }).raison === "secteur");
+
+  // Masses au sol (paliers) — carré 100×100 px, 2 px/m (1 m² = 4 px²), hauteur 2 m sauf mention.
+  const msol = function (pts, comble, extra) {
+    return Object.assign({ type: "masse-sol", points: pts, comble: comble }, extra || {});
+  };
+  // Masse seule ½ sur 40×50 px = 2 000 px² = 500 m² ; volume 500 × ½ × 2 = 500 m³ ; vide 2 500 × 2 − 500 = 4 500 m³.
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5)] });
+  t("volume : masse seule ½ (500 m²) → 500 m³ retranchés, vide 4 500 m³, surface du vide inchangée",
+    r.masseSol && proche(r.masseM2, 500) && proche(r.masseM3, 500) && proche(r.videM2, 2500) &&
+    proche(r.videM3, 4500) && proche(r.remblaisM2, 0) && !r.abaisse);
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50))] });
+  t("volume : masse sans part → ½ (ktaCombleZone), 500 m³", proche(r.masseM3, 500));
+  // Paliers : A ¼ sur x 0-60, B ¾ sur x 40-100 (bandes de 50 px de haut), chevauchement x 40-60.
+  // Union 5 000 px² = 1 250 m² ; palier ¼ : 1 250 × ¼ = 312,5 ; palier ¾ : B seule 750 m² × (¾ − ¼) = 375 ;
+  // 687,5 × 2 m = 1 375 m³ (contrôle : A seule 500 m² × ¼ × 2 = 250, B 750 m² × ¾ × 2 = 1 125).
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 60, 50), 0.25), msol(R(40, 0, 100, 50), 0.75)] });
+  t("volume : deux masses ¼ et ¾ qui se chevauchent → union 1 250 m², 1 375 m³ (paliers, rien compté deux fois)",
+    proche(r.masseM2, 1250) && proche(r.masseM3, 1375) && proche(r.videM3, 5000 - 1375));
+  // Masse ½ sur x 25-75 à cheval sur un Comblé x 0-50 : seule la part x 50-75 = 2 500 px² = 625 m² → 625 m³.
+  r = calc({ secteur: carre, zones: [{ type: "remblais", points: R(0, 0, 50, 100) }, msol(R(25, 0, 75, 100), 0.5)] });
+  t("volume : masse sur un Comblé → le Comblé l'emporte (625 m² et 625 m³ retranchés, Comblé 1 250 m²)",
+    proche(r.remblaisM2, 1250) && proche(r.masseM2, 625) && proche(r.masseM3, 625) &&
+    proche(r.videM2, 1250) && proche(r.videM3, 2500 - 625));
+  // Sol abaissé −½ sur 100×20 px = 500 m² → 500 m³ AJOUTÉS : vide 5 000 + 500 = 5 500 m³.
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 100, 20), -0.5)] });
+  t("volume : sol abaissé −½ (500 m²) → 500 m³ ajoutés au vide (5 500 m³), aucune masse retranchée",
+    r.abaisse && !r.masseSol && proche(r.abaisseM2, 500) && proche(r.abaisseM3, 500) && proche(r.videM3, 5500));
+  // Pilier 20×20 px dans une masse ¾ de 100×40 px : 4 000 − 400 = 3 600 px² = 900 m² ; 900 × ¾ × 2 = 1 350 m³ ;
+  // vide (2 500 − 100) × 2 − 1 350 = 3 450 m³.
+  r = calc({ secteur: carre, structures: [pil(R(40, 10, 60, 30))], zones: [msol(R(0, 0, 100, 40), 0.75)] });
+  t("volume : pilier dans une masse ¾ → retiré de la masse (900 m², 1 350 m³), vide 3 450 m³",
+    proche(r.masseM2, 900) && proche(r.masseM3, 1350) && proche(r.videM3, 3450));
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5, { level: -1 })], niveau: 0 });
+  t("volume : masse d'un autre niveau ignorée", !r.masseSol && proche(r.masseM2, 0) && proche(r.videM3, 5000));
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 1.4)] });
+  t("volume : part ≥ 1 bornée à la hauteur (500 m² × 2 m = 1 000 m³)", proche(r.masseM3, 1000));
+  // Plan sans masse : le vide garde EXACTEMENT l'ancienne formule (surface × hauteur), aucune ligne de plus.
+  r = calc({ secteur: carre, hauteur: 2.5, structures: [pil(R(40, 10, 60, 30))],
+             zones: [{ type: "remblais", points: R(0, 0, 100, 20) }, { type: "eau", points: R(0, 50, 100, 100) }] });
+  t("volume : plan sans masse → vide = surface × hauteur au bit près, aucune ligne de masse",
+    r.videM3 === r.videM2 * 2.5 && r.volumeM3 === r.exploiteM2 * 2.5 && r.remblaisM3 === r.remblaisM2 * 2.5 &&
+    !r.masseSol && !r.abaisse && r.masseM2 === 0 && r.abaisseM2 === 0);
 
   // Charge : secteur à 400 sommets (bords subdivisés), 900 piliers 4×4 px dedans = 14 400 px² = 3 600 m².
   const grand = [];

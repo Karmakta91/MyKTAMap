@@ -663,6 +663,16 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
 - **Chiffres** : secteur, piliers (union, coupée au secteur) et leur nombre (part non nulle dans le secteur),
   exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
   (secteur − piliers) couverte par un remblai, vide actuel = exploité − remblais. Surfaces par `formatSurface`.
+- **Masse au sol** (`masse-sol`, `_masses`, `docs/ETUDE_REMBLAIS.md` § 9) : retranchée par sa **part**
+  (`styleResolver.js > ktaCombleZone`, la même que la fiche et la 3D ; bornée à [−1 ; 1]) × la hauteur du calcul, à
+  bords verticaux (talus négligé : une ligne de note le dit). **Paliers exacts** : parts distinctes triées
+  p1 < p2 < … ; la tranche i est l'union des masses de part ≥ pi, d'épaisseur pi − pi−1, et son aire dans le vide hors
+  Comblé vaut |(S ∩ (R ∪ M)) − P| − |(S ∩ R) − P| (deux `calculerAires`) : chevauchements de hauteurs différentes
+  comptés une fois, **le Comblé l'emporte** sur une masse qui le chevauche, un pilier dans une masse en est retiré.
+  **Sol abaissé** (part < 0) : même calcul sur |part|, volume **ajouté**. Vide (volume) = (exploité − Comblé) × h −
+  masses + sols abaissés ; sa surface ne change pas. Lignes de la fenêtre (`volume.masse*`, `volume.abaisse*`,
+  `volume.noteMasse`) seulement si une masse ou un sol abaissé touche le vide du secteur ; plan sans masse : chiffres
+  identiques au bit près. Une masse et un sol abaissé qui se chevauchent comptent chacun (cas non tranché).
 - **Hauteur moyenne** : celle **du niveau mesuré** (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans
   réglage ; plan à un niveau : niveau 0), valeur initiale du champ ; recalcul des volumes à chaque frappe. Plan à un
   niveau : une valeur > 0 est écrite par `setHauteurNiveau`. ⚠️ Plan à étages (décision produit) : le champ sert au
