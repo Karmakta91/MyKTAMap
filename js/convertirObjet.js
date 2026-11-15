@@ -696,10 +696,14 @@
   }
 
   // ── Rampes d'une masse au sol (fiche : « Placer une pente », ✕ d'une pente) ──────────
-  // `rampes` = [{ bord }] (bord = segment points[bord] → points[bord + 1], un bord une fois ; masseSol.js > rampes).
-  // Poser un bord déjà pris ou retirer un bord absent : rien à annuler. Liste vide → champ retiré (talus automatique).
+  // `rampes` = [{ bord, fin? }] (bord = segment points[bord] → points[bord + 1], un bord une fois ; fin = { x, y } px
+  // du
+  // plan où la pente atteint le cran ; masseSol.js > rampes). Poser un bord déjà pris ou retirer un bord absent : rien
+  // à
+  // annuler. Liste vide → champ retiré (masse à pleine hauteur, fronts). Les fins des autres rampes sont gardées.
   // 🩸 Même objet muté en place (uid gardé, touch pour la synchro), une entrée ⏪ par geste.
-  function _changerRampes(obj, bord, poser) {
+  function _finLisible(f) { return !!f && Number.isFinite(f.x) && Number.isFinite(f.y); }
+  function _changerRampes(obj, bord, poser, fin) {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
     if (!obj || obj.type !== "masse-sol" || !Number.isInteger(bord)) return false;
     const ecrire = _ecrivain("zones");
@@ -716,8 +720,14 @@
       ? window.HistoryManager.captureState("zones") : null;
     if (poser) bords.push(bord); else bords.splice(i, 1);
     bords.sort(function (a, b) { return a - b; });
-    if (bords.length) cible.rampes = bords.map(function (b) { return { bord: b }; });
-    else delete cible.rampes;
+    const fins = {};
+    (cible.rampes || []).forEach(function (r) {
+      if (r && _finLisible(r.fin) && !(r.bord in fins)) fins[r.bord] = r.fin;
+    });
+    if (poser && _finLisible(fin)) fins[bord] = { x: Math.round(fin.x * 100) / 100, y: Math.round(fin.y * 100) / 100 };
+    if (bords.length) {
+      cible.rampes = bords.map(function (b) { return fins[b] ? { bord: b, fin: fins[b] } : { bord: b }; });
+    } else delete cible.rampes;
     if (window.KtaUid) window.KtaUid.touch(cible);
     ecrire(liste);
     if (window.HistoryManager && avant && window.HistoryManager.record) {
@@ -727,8 +737,32 @@
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return true;
   }
-  function ajouterRampe(obj, bord) { return _changerRampes(obj, bord, true); }
+  function ajouterRampe(obj, bord, fin) { return _changerRampes(obj, bord, true, fin); }
   function retirerRampe(obj, bord) { return _changerRampes(obj, bord, false); }
+  // Fin d'une rampe posée : { x, y } px du plan, ou null pour la retirer (la pente va alors jusqu'au bout de la zone).
+  function changerFinRampe(obj, bord, fin) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!obj || obj.type !== "masse-sol" || !Number.isInteger(bord)) return false;
+    if (fin !== null && !_finLisible(fin)) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") return false;
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx], r = (cible.rampes || []).filter(function (q) { return q && q.bord === bord; })[0];
+    if (!r) return false;
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    if (fin === null) delete r.fin;
+    else r.fin = { x: Math.round(fin.x * 100) / 100, y: Math.round(fin.y * 100) / 100 };
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("masseSol.rampe.histoireFin"), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
 
   // ── Niveaux d'une zone jonction (fiche de la zone, « Du niveau » / « Au niveau ») ──────────
   // `level` = de, `niveaux` = [de, vers] : exactement deux niveaux, DIFFÉRENTS (comme un tracé jonction). Le sens de
@@ -1272,6 +1306,7 @@
     changerComble: changerComble,   // fiche d'une masse au sol (part comblée)
     ajouterRampe:  ajouterRampe,    // fiche d'une masse au sol : « Placer une pente » (bord bas)
     retirerRampe:  retirerRampe,    // fiche d'une masse au sol : ✕ d'une pente
+    changerFinRampe: changerFinRampe,   // fiche d'une masse au sol : fin d'une pente (posée, déplacée, retirée)
     // Règle seule, sans écriture ni historique : niveau en lot de la sélection (selectionZone.js > niveauLot).
     poserNiveau:   _poserNiveau,
     changerNiveauxPente: changerNiveauxPente,   // fiche d'une zone jonction (du niveau … au niveau …)

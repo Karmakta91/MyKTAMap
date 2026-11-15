@@ -179,10 +179,11 @@
     g.brancard = !!brancard;
     return g;
   }
-  // Masses du plan ouvert : session + calques, construites par masseSol.js > masseCarte (sonde de la carte).
-  // 🩸 Construire une masse sonde chacun de ses bords (~4 ms) : la sortie d'urgence lance jusqu'à 15 calculs d'affilée.
-  // Cache par contour (WeakMap sur `points`), clé = part, niveau, hauteur du niveau, rendu, échelle ; vidé à chaque
-  // signal de données (utils.js > ktaSignalerDonneesPlan : une structure déplacée change les bords).
+  // Masses du plan ouvert : session + calques, construites par masseSol.js > masseCarte (pleine hauteur, rampes).
+  // La sortie d'urgence lance jusqu'à 15 calculs d'affilée : cache par contour (WeakMap sur `points`), clé = part,
+  // niveau, hauteur du niveau, rendu, échelle ; vidé à chaque signal de données (utils.js > ktaSignalerDonneesPlan :
+  // une
+  // rampe posée, retirée ou dont la fin bouge en fait partie).
   let _cacheMasses = new WeakMap();
   if (typeof window.addEventListener === "function") {
     window.addEventListener("kta:donneesPlanChange", function() { _cacheMasses = new WeakMap(); });

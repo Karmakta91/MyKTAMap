@@ -18811,6 +18811,8 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
 .kta-note-popup-rampes { margin-top: 8px; }
 .kta-note-popup-rampe { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .kta-note-popup-rampe .kta-popup-btn { min-width: 32px; min-height: 32px; padding: 4px; }
+.kta-note-popup-rampe-boutons { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.kta-note-popup-rampe { flex-wrap: wrap; }
 .kta-legende-trait.kta-legende-rampe { display: inline-flex; align-items: center; justify-content: center;
   height: 14px; }
 .kta-legende-rampe svg { width: 16px; height: 16px; stroke-width: 3; }

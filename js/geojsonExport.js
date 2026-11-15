@@ -178,9 +178,17 @@
         if (z.type === "masse-sol") {
           props.comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z)
             : (Number.isFinite(z.comble) && z.comble > 0 ? z.comble : 0.5);
-          // Rampes : indices des bords bas (relus par l'import SIG, colonne « rampes »).
+          // Rampes : indices des bords bas, ou { bord, fin: [lng, lat] } (fin en WGS84 quelle que soit la projection ;
+          // relues par l'import SIG, colonne « rampes »).
           const rp = window.KtaMasseSol ? window.KtaMasseSol.rampesValides(z) : [];
-          if (rp.length) props.rampes = rp;
+          if (rp.length) {
+            props.rampes = rp.map(function (b) {
+              const r = (z.rampes || []).filter(function (q) { return q && q.bord === b; })[0];
+              if (!r || !r.fin || !Number.isFinite(r.fin.x) || !Number.isFinite(r.fin.y)) return b;
+              const ll = window.KmzExport.planToGps(opts.transform, r.fin.x, r.fin.y);
+              return { bord: b, fin: [Number(ll.lng.toFixed(8)), Number(ll.lat.toFixed(8))] };
+            });
+          }
         }
         ajouter(polygone(z.points), props, z.uid);
       });

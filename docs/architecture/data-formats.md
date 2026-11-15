@@ -126,13 +126,17 @@ les calques (registre `_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:comb
 colonne de hauteur facultative (`sigImport.js > combleDe` : 0,5 = part, 50 % ou 1-100 = pourcentage, signe moins =
 sol abaissé : « -0,5 », « -50 % ») ; KMZ et GeoJSON écrivent la valeur signée ; **défaut d'un
 polygone SIG non reconnu = `masse-sol`** (Générateur compris). Garde-fou : `scripts/check-masse-sol.js`.
-→ **Rampes d'une masse au sol** : `"rampes": [{ "bord": 3 }, { "bord": 1 }]` = bords bas des pentes, `bord` = indice du
-segment `points[bord]` → `points[bord + 1]` (le dernier rejoint le premier), un bord au plus une fois, liste triée ;
-absent = aucune rampe (talus automatique). Seule règle de lecture : `masseSol.js > rampesValides` (indices hors du
-contour ou en double écartés). Posé et retiré depuis la fiche (`KtaConvertir.ajouterRampe` / `retirerRampe`, une
-entrée ⏪, uid touché) ; retiré quand la zone change de type. Gardé par la session, les calques (`_ktaDataPolygons`,
-`getAllEmbeddedZones`), KMZ (`mkm:rampes` « 1,3 », revalidé à la relecture), GeoJSON (propriété `rampes`, liste
-d'entiers ; relue par l'import SIG, `sigImport.js > rampesDe`) ; Tableur : colonne `rampes` en lecture seule. ⚠️ Un
+→ **Rampes d'une masse au sol** : `"rampes": [{ "bord": 3, "fin": { "x": 1250.5, "y": 840 } }, { "bord": 1 }]` = bords bas
+des pentes, `bord` = indice du segment `points[bord]` → `points[bord + 1]` (le dernier rejoint le premier), un bord au
+plus une fois, liste triée ; `fin` (facultative, px du plan) = l'endroit où la pente atteint le cran (au-delà : plat ;
+sans fin : jusqu'au point du contour le plus loin). Absent = aucune rampe : la masse est à pleine hauteur, bords en
+fronts verticaux. Seule règle de lecture : `masseSol.js > rampesValides` / `rampes` (indices hors du contour ou en
+double écartés). Posé, fin déplacée et retiré depuis la fiche (`KtaConvertir.ajouterRampe` / `changerFinRampe` /
+`retirerRampe`, une entrée ⏪, uid touché) ; retiré quand la zone change de type. Gardé par la session, les calques
+(`_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:rampes` « 1,3 » ou « 3:lng;lat,1 », fin en WGS84, revalidé et
+reprojeté à la relecture ; l'ancien format reste lu), GeoJSON (propriété `rampes` : entiers, ou `{ bord, fin: [lng,
+lat] }` en WGS84 quelle que soit la projection ; relue par l'import SIG, `sigImport.js > rampesDe`) ; Tableur : colonne
+`rampes` en lecture seule. La fin, en coordonnées du plan, ne suit pas un contour déplacé (voulu). ⚠️ Un
 sommet ajouté ou retiré au contour décale les indices : la rampe suit l'indice, pas le bord physique.
 → **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
 `niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction

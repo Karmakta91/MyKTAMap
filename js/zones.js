@@ -531,10 +531,13 @@ window.ktaChevronsRampes = function(zone, layer, color) {
   return out;
 };
 
-// « Placer une pente » (fiche d'une masse au sol) : bandeau, puis un toucher près d'un bord de la zone (tolérance de
-// fermeture d'un tracé, utils.js > ktaToleranceFermeture) en fait un bord bas (KtaConvertir.ajouterRampe) ; un toucher
-// loin de tout bord le redit, Échap ou ✕ annule. 🩸 Les autres modes « clic carte » tombent avant d'armer (même règle
-// que poiPrecis.js > armer). → true si armé.
+// « Placer une pente » (fiche d'une masse au sol), en deux touchers : le BORD BAS (près d'un bord de la zone,
+// tolérance de fermeture d'un tracé × 2, utils.js > ktaToleranceFermeture), puis la FIN, l'endroit où la pente atteint
+// le cran (au-delà : plat) ; « Sans fin » pose la pente jusqu'au bout de la zone (KtaConvertir.ajouterRampe). Un
+// toucher
+// loin de tout bord le redit ; Échap ou ✕ annule. ktaArmerFinRampe : un seul toucher, la fin d'une pente posée
+// (KtaConvertir.changerFinRampe). 🩸 Les autres modes « clic carte » tombent avant d'armer (même règle que
+// poiPrecis.js > armer). → true si armé.
 let _rampeMode = null;
 function _rampeFin() {
   if (!_rampeMode) return;
@@ -544,34 +547,24 @@ function _rampeFin() {
   if (fl) fl.remove();
   _rampeMode = null;
 }
-window.ktaArmerRampe = function(zone) {
-  if (!zone || zone.type !== "masse-sol" || !window.map || !window.KtaConvertir) return false;
+function _rampeToast(cle, genre) {
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(window.I18n.t(cle), genre);
+  }
+}
+// Bandeau d'un toucher : message `cle`, `surToucher(px, py, e)` (true = fini), bouton facultatif { cle, action }.
+function _armerToucherRampe(cle, surToucher, bouton) {
+  if (!window.map || !window.KtaConvertir) return false;
   if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
   _rampeFin();
   try { if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes(); } catch (e) {}
   window.modeEdition = false; window.modeMesure = false; window.modeRoad = false; window.modeZone = false;
   window.modeStructure = false;
   try { window.map.closePopup(); } catch (e) { /* rien d'ouvert */ }
-  const t = function(k) { return window.I18n.t(k); };
-  const toast = function(msg, genre) {
-    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, genre);
-  };
   const handler = function(e) {
     if (!_rampeMode || !e || !e.latlng) return;
     const H = window.APP_CONFIG && window.APP_CONFIG.imageHeight;
-    const px = e.latlng.lng, py = H ? H - e.latlng.lat : e.latlng.lat, P = zone.points || [];
-    let best = -1, d = Infinity;
-    for (let i = 0; i < P.length; i++) {
-      const a = P[i], b = P[(i + 1) % P.length], vx = b.x - a.x, vy = b.y - a.y, l2 = vx * vx + vy * vy;
-      const k = l2 ? Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / l2)) : 0;
-      const dd = Math.hypot(px - a.x - vx * k, py - a.y - vy * k);
-      if (dd < d) { d = dd; best = i; }
-    }
-    const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) * 2 : 20;
-    if (best < 0 || d > tol) { toast(t("masseSol.rampe.loin"), "warn"); return; }
-    _rampeFin();
-    if (window.KtaConvertir.ajouterRampe(zone, best)) toast(t("masseSol.rampe.posee"), "success");
-    else toast(t("masseSol.rampe.deja"), "warn");
+    surToucher(e.latlng.lng, H ? H - e.latlng.lat : e.latlng.lat, e);
   };
   const touche = function(ev) { if (ev.key === "Escape") { ev.preventDefault(); _rampeFin(); } };
   _rampeMode = { carte: window.map, handler: handler, touche: touche };
@@ -581,15 +574,57 @@ window.ktaArmerRampe = function(zone) {
   fl.id = "kta-rampe-floater";
   fl.className = "kta-iti-floater kta-rampe-floater";
   fl.innerHTML = '<span class="kta-iti-floater-icon"></span><span class="kta-iti-floater-msg"></span>' +
+    (bouton ? '<button class="kta-btn kta-btn-ghost" id="kta-rampe-sansfin" type="button"></button>' : "") +
     '<button class="kta-btn kta-btn-ghost" id="kta-rampe-cancel" type="button"></button>';
   if (typeof window.ktaIcone === "function") {
     fl.querySelector(".kta-iti-floater-icon").innerHTML = window.ktaIcone("chevron-up");
   }
-  fl.querySelector(".kta-iti-floater-msg").textContent = t("masseSol.rampe.bandeau");
+  fl.querySelector(".kta-iti-floater-msg").textContent = window.I18n.t(cle);
+  if (bouton) {
+    const sb = fl.querySelector("#kta-rampe-sansfin");
+    sb.textContent = window.I18n.t(bouton.cle);
+    sb.addEventListener("click", function() { _rampeFin(); bouton.action(); });
+  }
   const b = fl.querySelector("#kta-rampe-cancel");
-  b.textContent = t("masseSol.rampe.annuler");
+  b.textContent = window.I18n.t("masseSol.rampe.annuler");
   b.addEventListener("click", _rampeFin);
   document.body.appendChild(fl);
   return true;
+}
+window.ktaArmerRampe = function(zone) {
+  if (!zone || zone.type !== "masse-sol") return false;
+  return _armerToucherRampe("masseSol.rampe.bandeau", function(px, py, e) {
+    const P = zone.points || [];
+    let best = -1, d = Infinity;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], vx = b.x - a.x, vy = b.y - a.y, l2 = vx * vx + vy * vy;
+      const k = l2 ? Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / l2)) : 0;
+      const dd = Math.hypot(px - a.x - vx * k, py - a.y - vy * k);
+      if (dd < d) { d = dd; best = i; }
+    }
+    const tol = typeof window.ktaToleranceFermeture === "function" ? window.ktaToleranceFermeture(e) * 2 : 20;
+    if (best < 0 || d > tol) { _rampeToast("masseSol.rampe.loin", "warn"); return; }
+    if ((window.KtaMasseSol ? window.KtaMasseSol.rampesValides(zone) : []).indexOf(best) >= 0) {
+      _rampeFin();
+      _rampeToast("masseSol.rampe.deja", "warn");
+      return;
+    }
+    // 2e toucher : la fin (ou « Sans fin »).
+    const poser = function(fin) {
+      if (window.KtaConvertir.ajouterRampe(zone, best, fin)) _rampeToast("masseSol.rampe.posee", "success");
+      else _rampeToast("masseSol.rampe.deja", "warn");
+    };
+    _armerToucherRampe("masseSol.rampe.bandeauFin", function(fx, fy) { _rampeFin(); poser({ x: fx, y: fy }); },
+      { cle: "masseSol.rampe.sansFin", action: function() { poser(null); } });
+  });
+};
+window.ktaArmerFinRampe = function(zone, bord) {
+  if (!zone || zone.type !== "masse-sol" || !Number.isInteger(bord)) return false;
+  return _armerToucherRampe("masseSol.rampe.bandeauFin", function(fx, fy) {
+    _rampeFin();
+    if (window.KtaConvertir.changerFinRampe(zone, bord, { x: fx, y: fy })) {
+      _rampeToast("masseSol.rampe.finPosee", "success");
+    }
+  });
 };
 window.ktaRampeArmee = function() { return !!_rampeMode; };

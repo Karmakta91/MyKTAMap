@@ -898,75 +898,37 @@
   }
 
   // ── Masse au sol (zone `masse-sol`, remblai partiel : docs/ETUDE_REMBLAIS.md § 6-7) ────────────────────────────
-  // ⚠️ contrat (décision produit) : la masse comble `comble` (styleResolver.js > ktaCombleZone, absente = ½) de la
-  // hauteur du niveau. Son dessus monte en TALUS à MASSE.pente (30°) depuis ses bords OUVERTS : sol = min(hauteur
-  // comblée, pente × distance au bord ouvert le plus proche). Part NÉGATIVE (sol abaissé) : la même formule, le sol
-  // DESCEND vers l'intérieur ; le sol du niveau y est troué (gabarit, comme la bouche d'un puits), pans sur les bords
-  // fermés ; jamais plus bas que le plafond du niveau du dessous + MASSE.margeDessous (_fondMasse, m.borne) ; le vide
-  // grandit, on y descend debout, rien n'arrête. Un bord est « fermé » (dans la roche, contre un pilier, une
-  // paroi de tube ou une zone qui bouche) si une courte sonde qui le franchit vers l'extérieur est arrêtée par la règle
-  // du pas du rendu (_bloqueSonde) : pas de rigole le long des parois. Le sol sous les pieds vient de cette formule
-  // (_solMasse), jamais du maillage (_maillageMasse, qui la dessine). Vide restant = hauteur du niveau − sol :
-  // ≥ MASSE.courbe debout (œil abaissé à vide − MASSE.marge s'il le faut : 1 à 1,8 m), sous MASSE.courbe on rampe
-  // (œil CHATIERE.oeil, transition lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête
-  // (_masseBloque ; sortir vers plus de vide reste permis). Plafond inchangé. N'entre pas dans les zones qui bouchent
-  // (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. L'itinéraire lit le même sol (KtaMasseSol.sol).
-  // Sur le talus, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°). Formule et bords : masseSol.js.
+  // ⚠️ contrat (décision produit, révision du 15/11/2026) : la masse comble `comble` (styleResolver.js >
+  // ktaCombleZone, absente = ½) de la hauteur du niveau. SANS rampe, elle est à pleine hauteur partout : son dessus est
+  // plat au cran, ses bords sont des FRONTS verticaux. Une rampe (`zone.rampes`, posée par l'utilisateur) monte de son
+  // bord bas jusqu'à sa fin puis reste plate ; plusieurs rampes : le minimum des profils (masseSol.js > sol, la règle
+  // partagée avec la fiche et l'itinéraire). Part NÉGATIVE (sol abaissé) : la même chose en descente ; le sol du
+  // niveau y
+  // est troué (gabarit, comme la bouche d'un puits) ; jamais plus bas que le plafond du niveau du dessous +
+  // MASSE.margeDessous (_fondMasse, m.borne). Le sol sous les pieds vient de cette formule (_solMasse), jamais du
+  // maillage (_maillageMasse, qui la dessine). Vide restant = hauteur du niveau − sol : ≥ MASSE.courbe debout (œil
+  // abaissé à vide − MASSE.marge s'il le faut : 1 à 1,8 m), sous MASSE.courbe on rampe (œil CHATIERE.oeil, transition
+  // lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête (_masseBloque ; sortir vers plus de vide
+  // reste permis). Front : le monter arrête le pas, le descendre fait chuter (_pas). Plafond inchangé. N'entre pas dans
+  // les zones qui bouchent (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. L'itinéraire lit le même sol
+  // (KtaMasseSol.sol). Sur une rampe, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°).
   // Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
-  // pente, pas des bords et sonde : masseSol.js (KtaMasseSol), la règle partagée avec la fiche de la carte.
-  const MASSE = { pente: window.KtaMasseSol.PENTE, pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
+  // pas des maillages : masseSol.js (KtaMasseSol), la règle partagée avec la fiche et l'itinéraire.
+  const MASSE = { pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
     ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
     lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05, chute: [0.3, 0.5], amorti: 0.06 };
 
-  // Sonde de A à B (m) arrêtée par la règle du pas du rendu, au niveau de la scène (contexte d'un voisin compris) :
-  // structures, parois des tubes (mixte) ou emprise (galerie), zones qui bouchent ; hors de l'image du plan = arrêtée.
-  function _bloqueSonde(ax, az, bx, bz) {
-    const e = _e, sc = e.sc, n = e.niveau === null ? undefined : e.niveau, G = window.KtaGalerie;
-    const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
-    if (pc && (bx < 0 || bz < 0 || bx * sc > pc.imageWidth || bz * sc > pc.imageHeight)) return true;
-    const segs = [[ax * sc, az * sc, bx * sc, bz * sc]];
-    if (G && typeof G.zonesBloquent === "function" && G.zonesBloquent(segs, n, undefined, e.rendu)[0]) return true;
-    // 🩸 Un bord posé DANS un pilier (masse dessinée par-dessus) : la sonde ne franchit aucune face, elle passerait
-    // pour ouverte et creuserait une rigole au pied du pilier. Un bout dans une structure (grille du niveau où elle a
-    // été faite, jamais celle d'un autre niveau) = fermé. Galerie : un bout dehors de l'emprise (dans la roche) =
-    // fermé.
-    if (e.volumes && e.volumesNiveau === e.niveau && (_volumeContenant(ax, az) || _volumeContenant(bx, bz))) {
-      return true;
-    }
-    if (e.galerie) return !!(G && (!G.dedans(bx * sc, bz * sc, n) || G.segmentsBloques(segs, n)[0]));
-    if (typeof window.ktaSegmentsBloquesParStructure === "function" &&
-        window.ktaSegmentsBloquesParStructure(segs, n, true)[0]) return true;
-    return !!(e.mixte && G && G.paroisBloquent(segs, n)[0]);
-  }
-  // Structures seules (sondes en biais : masseSol.js > _ferme) : bout dans une structure du niveau, face franchie ;
-  // rien en galerie (les structures n'y sont pas dessinées).
-  _bloqueSonde.structure = function (ax, az, bx, bz) {
-    const e = _e, sc = e.sc, n = e.niveau === null ? undefined : e.niveau;
-    if (e.galerie) return false;
-    if (e.volumes && e.volumesNiveau === e.niveau && _volumeContenant(bx, bz)) return true;
-    return typeof window.ktaSegmentsBloquesParStructure === "function" &&
-      !!window.ktaSegmentsBloquesParStructure([[ax * sc, az * sc, bx * sc, bz * sc]], n, true)[0];
-  };
-
-  // Contours (m) des autres masses au sol du niveau de la scène que `z` (bords jointifs : masseSol.js > _ferme).
-  function _autresMasses(z) {
-    const e = _e;
-    return _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)).filter(function (o) {
-      return o && o !== z && o.type === "masse-sol" && o.points !== z.points && _zoneSurNiveau(o, e.niveau);
-    }).map(function (o) { return _anneau(o.points, e.sc); }).filter(function (r) { return r.length >= 3; });
-  }
-
-  // Masse au sol de la zone `z` au niveau de la scène → { z, ring (m, sens positif), H (m), ouverts ([[ax, az, bx, bz]]
-  // m : morceaux de bord ouverts, de MASSE.pas au plus), x0, z0, x1, z1 }, null si son contour est vide. En cache par
-  // contour, niveau, hauteur, rendu et état des données (les voisins le lisent dans leur propre contexte).
+  // Masse au sol de la zone `z` au niveau de la scène → { z, ring (m, sens positif), H (m), rampes, x0, z0, x1, z1 },
+  // null si son contour est vide. En cache par contour, niveau, hauteur, rendu, état des données et rampes (fins
+  // comprises : les voisins le lisent dans leur propre contexte).
   function _masseDe(z) {
     const e = _e;
     if (!z || !Array.isArray(z.points)) return null;
     const cle = (e.donnees ? e.donnees.empreinte : "") + "|" + e.niveau + "|" + e.hauteur + "|" + e.rendu;
     if (!e.massesCache || e.massesCache.cle !== cle) e.massesCache = { cle: cle, parPoints: new Map() };
     const C = e.massesCache.parPoints;
-    // Rampes (masseSol.js > rampesValides) : dans la clé, une rampe posée ou retirée refait la masse.
-    const sig = window.KtaMasseSol.rampesValides(z).join(",");
+    // Rampes et leurs fins : dans la clé, une rampe posée, retirée ou dont la fin bouge refait la masse.
+    const sig = JSON.stringify(Array.isArray(z.rampes) ? z.rampes : []);
     if (C.has(z.points) && (!C.get(z.points) || C.get(z.points).sigRampes === sig)) return C.get(z.points);
     const ring = _anneau(z.points, e.sc);
     let m = null;
@@ -983,10 +945,6 @@
         m.x0 = Math.min(m.x0, q[0]); m.x1 = Math.max(m.x1, q[0]);
         m.z0 = Math.min(m.z0, q[1]); m.z1 = Math.max(m.z1, q[1]);
       });
-      // Bords découpés et sondés par la règle partagée (masseSol.js > bords), la sonde étant celle de la 3D.
-      const b = window.KtaMasseSol.bords(ring, _bloqueSonde, _autresMasses(z));
-      m.ouverts = b.ouverts;
-      m.fermes = b.fermes;
       m.rampes = window.KtaMasseSol.rampes(z, e.sc);
       m.sigRampes = sig;
     }
@@ -1025,17 +983,20 @@
 
   // Sol (m) des masses au sol du niveau sous (x, z) m : le plus haut des remblais s'il y en a, sinon le plus bas des
   // sols abaissés, 0 hors de toute masse.
-  function _solMasse(x, z) {
+  function _solMasse(x, z) { return _masseSous(x, z).sol; }
+
+  // Masse qui donne le sol en (x, z) m (la même règle que _solMasse) → { sol, m } ; m = null sur le sol du niveau.
+  function _masseSous(x, z) {
     const l = (_e && _e.masses) || [];
-    let haut = 0, bas = 0;
+    let haut = 0, bas = 0, mh = null, mb = null;
     for (let i = 0; i < l.length; i++) {
       const m = l[i];
       if (x < m.x0 || x > m.x1 || z < m.z0 || z > m.z1 || !_dansRing(m.ring, x, z)) continue;
       const s = _solMasseDe(m, x, z);
-      if (s > haut) haut = s;
-      if (s < bas) bas = s;
+      if (s > haut) { haut = s; mh = m; }
+      if (s < bas) { bas = s; mb = m; }
     }
-    return haut > 0 ? haut : bas;
+    return haut > 0 ? { sol: haut, m: mh } : { sol: bas, m: mb };
   }
 
   // Fond (m, ≤ 0) sous une structure (contour en m) posée dans un sol abaissé : le sol local le plus bas (sommets et
@@ -1106,14 +1067,19 @@
     if (!e.masses || !e.masses.length) return false;
     // ⚠️ contrat (décision produit) : un FRONT (bord sans rampe d'une zone qui en a, bord commun de deux masses de
     // hauteurs différentes) qu'il faudrait MONTER arrête le pas : le sol monte de plus de MASSE.marche entre deux points
-    // du trajet à MASSE.pasFront l'un de l'autre, jusqu'à un corps devant. Le DESCENDRE est permis, quelle que soit la
-    // hauteur : on chute (_pas, _solAffiche). Une pente, si raide soit-elle, reste praticable (le saut est mesuré sur
-    // 5 cm) ; ralentie au-delà de 15° (_ralentiMasse).
+    // du trajet à MASSE.pasFront l'un de l'autre, jusqu'à un corps devant. Le DESCENDRE (quelle que soit la hauteur :
+    // on chute, _pas, _solAffiche) n'est permis que si l'on peut ressortir : arrivée sur le sol du niveau, ou dans une
+    // masse qui a au moins une rampe ; sinon (creux sans rampe, masse plus basse sans rampe) on bute, comme devant un mur.
+    // Une pente, si raide soit-elle, reste praticable (le saut est mesuré sur 5 cm) ; ralentie au-delà de 15°.
     const L = Math.hypot(x1 - x0, y1 - y0) / sc + RAYON_CORPS, n = Math.max(1, Math.ceil(L / MASSE.pasFront));
     let sp = _solMasse(x0 / sc, y0 / sc);
     for (let k = 1; k <= n; k++) {
-      const d = L * k / n, s = _solMasse(x0 / sc + ux * d, y0 / sc + uy * d);
+      const d = L * k / n, q = _masseSous(x0 / sc + ux * d, y0 / sc + uy * d), s = q.sol;
       if (s - sp > MASSE.marche) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
+      if (sp - s > MASSE.marche && q.m && !(q.m.rampes && q.m.rampes.length)) {
+        e.frontsMasse = (e.frontsMasse || 0) + 1;
+        return true;
+      }
       sp = s;
     }
     const v0 = _videMasse(x0 / sc, y0 / sc);
@@ -1123,8 +1089,9 @@
   }
 
   // Dessus de la masse `m` dans le lot (grille découpée au contour, MASSE.pas m, plus large si la zone dépasserait
-  // MASSE.triMax triangles) et ses pans verticaux (bords fermés : jusqu'à la hauteur comblée ; bords ouverts : rien,
-  // le talus y part de 0). `tex` : coordonnées de texture en mètres / REMBLAIS.m (lot texturé 🧱). Rend le nombre de
+  // MASSE.triMax triangles) et ses pans verticaux (le long de chaque bord, du sol du niveau au dessus : le front ;
+  // rien là où une rampe part de 0). `tex` : coordonnées de texture en mètres / REMBLAIS.m (lot texturé 🧱). Rend le
+  // nombre de
   // triangles posés.
   function _maillageMasse(lot, m, col, tex, motif) {
     const w = m.x1 - m.x0, d = m.z1 - m.z0;

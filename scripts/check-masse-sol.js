@@ -253,8 +253,19 @@ function charger(win, fichiers) {
     t("règle : une rampe seule monte (descend en négatif) de 0 au cran à l'extrémité opposée",
       M.sol(m1, 0, 3) === 0 && +M.sol(m1, 10, 3).toFixed(3) === -1.2 && +M.sol(m1, 5, 3).toFixed(3) === -0.6);
     const mt = M.masse({ points: zones[0].points }, 10, 1.2, () => false);
-    t("règle : sans rampe, talus automatique (30°)",
-      +M.sol(mt, 1, 3).toFixed(3) === +(Math.tan(Math.PI / 6)).toFixed(3));
+    t("règle : sans rampe, pleine hauteur partout (plus de talus automatique), atteinte = cran",
+      M.sol(mt, 0.1, 3) === 1.2 && M.sol(mt, 5, 3) === 1.2 && M.atteinte(mt) === 1.2);
+    const mf = M.masse({ points: zones[0].points, rampes: [{ bord: 3, fin: { x: 30, y: 30 } }] }, 10, 1.2);
+    t("règle : rampe avec fin à 3 m → pente jusqu'à la fin (0,6 à 1,5 m), plat au cran au-delà",
+      +M.sol(mf, 1.5, 3).toFixed(3) === 0.6 && +M.sol(mf, 3, 3).toFixed(3) === 1.2 && M.sol(mf, 8, 3) === 1.2);
+    const mf2 = M.masse({ points: zones[0].points, rampes: [{ bord: 3, fin: { x: 20, y: 30 } }, { bord: 1, fin: { x: 80, y: 30 } }] },
+      10, 1.2);
+    t("règle : deux rampes à fin (2 m chacune) → plateau au cran entre les deux, minimum des profils",
+      +M.sol(mf2, 1, 3).toFixed(3) === 0.6 && M.sol(mf2, 5, 3) === 1.2 && +M.sol(mf2, 9, 3).toFixed(3) === 0.6);
+    t("chevrons : rampe à fin = chevrons sur la longueur de pente + un trait de fin",
+      M.chevrons({ points: zones[0].points, rampes: [{ bord: 3, fin: { x: 30, y: 30 } }] }, 10).some(function (p) {
+        return p.length >= 2 && p.every(function (q) { return Math.abs(q.x - 30) < 1e-6; });
+      }));
     t("chevrons : un jeu par rampe, pointés vers le haut, dans le contour",
       M.chevrons({ points: zones[0].points, rampes: [{ bord: 3 }] }, 10).length > 0 &&
       M.chevrons({ points: zones[0].points, rampes: [{ bord: 3 }, { bord: 1 }] }, 10).length ===
@@ -264,10 +275,18 @@ function charger(win, fichiers) {
       J(zones[0].rampes) === J([{ bord: 1 }, { bord: 3 }]) && notes.length === 2 && zones[0].updatedAt === 2);
     t("fiche : bord hors du contour ou zone qui n'est pas une masse au sol refusés",
       !C.ajouterRampe(zones[0], 7) && !C.ajouterRampe({ type: "eau", points: zones[0].points }, 0));
-    t("fiche : retirer l'est, puis l'ouest → champ retiré (talus automatique)",
+    t("fiche : retirer l'est, puis l'ouest → champ retiré (pleine hauteur)",
       C.retirerRampe(zones[0], 1) && J(zones[0].rampes) === J([{ bord: 3 }]) && C.retirerRampe(zones[0], 3) &&
       !("rampes" in zones[0]) && !C.retirerRampe(zones[0], 3));
     C.ajouterRampe(zones[0], 3);
+    t("fiche : fin posée à la pose, déplacée, retirée (une entrée ⏪ chacune), les autres fins gardées",
+      C.ajouterRampe(zones[0], 1, { x: 70, y: 30 }) && J(zones[0].rampes[0]) === J({ bord: 1, fin: { x: 70, y: 30 } }) &&
+      C.changerFinRampe(zones[0], 1, { x: 60, y: 30 }) && zones[0].rampes[0].fin.x === 60 &&
+      C.ajouterRampe(zones[0], 0) && zones[0].rampes.filter(function (r) { return r.bord === 1; })[0].fin &&
+      C.changerFinRampe(zones[0], 1, null) &&
+      !zones[0].rampes.some(function (r) { return r.fin; }) && !C.changerFinRampe(zones[0], 2, { x: 1, y: 1 }));
+    C.retirerRampe(zones[0], 0);
+    C.retirerRampe(zones[0], 1);
     t("changement de type : passer en Comblé retire les rampes",
       C.convertir("zones", zones[0], "zones", "remblais") === true &&
       zones.some(z => z.uid === "zn_r" && z.type === "remblais" && !("rampes" in z)));
@@ -286,6 +305,8 @@ function charger(win, fichiers) {
     const data = { editorPoints: [], roads: [], structures: [], zones: [
       { type: "masse-sol", comble: 0.5, rampes: [{ bord: 3 }, { bord: 1 }], points: carre(1000, 1000, 50),
         description: "MasseRampes" },
+      { type: "masse-sol", comble: 0.5, rampes: [{ bord: 0, fin: { x: 1000, y: 1020 } }], points: carre(2000, 1000, 50),
+        description: "MasseFin" },
       { type: "masse-sol", points: carre(1500, 1000, 50), description: "MasseSansRampe" }
     ] };
     const inc = { points: false, roads: false, zones: true, structures: false, jonctions: false, itineraire: false };
@@ -297,10 +318,20 @@ function charger(win, fichiers) {
     t("KMZ relu : mkm:rampes reposé sur la masse au sol, revalidé sur le contour",
       /name === "mkm:rampes"/.test(ki) && /_zn\.rampes = _mkmData\.rampes\.map/.test(ki) &&
       /window\.KtaMasseSol\.rampesValides\(_zn\)/.test(ki));
+    const vf = (pmDe("MasseFin").match(/mkm:rampes"><value>([^<]*)</) || [])[1] || "";
+    const mm = vf.match(/^0:(-?[\d.]+);(-?[\d.]+)$/), back = mm ? w.KmzExport.gpsToPlan(tr, Number(mm[2]), Number(mm[1])) : null;
+    t("KMZ : fin écrite en WGS84 (« 0:lng;lat ») et relue au même point du plan (< 1 cm)",
+      !!back && Math.abs(back.x - 1000) < 0.01 && Math.abs(back.y - 1020) < 0.01, vf);
+    t("KMZ relu : « b:lng;lat » reprojeté (gpsToPixel), « b » seul gardé (rétrocompatible)",
+      /finLL/.test(ki) && /gpsToPixel\(transform, r\.finLL\.lat, r\.finLL\.lng\)/.test(ki));
     const fc = GJ.generer({ transform: tr, epsg: 4326, planName: "Test", include: inc, levels: null, data: data });
     const g = fc.features.filter(x => x.properties.type === "masse-sol");
     t("GeoJSON : propriété rampes [1, 3] sur la zone à rampes, absente sur l'autre",
       g.some(x => J(x.properties.rampes) === "[1,3]") && g.some(x => !("rampes" in x.properties)));
+    const gf = g.filter(x => Array.isArray(x.properties.rampes) && typeof x.properties.rampes[0] === "object")[0];
+    const gb = gf ? w.KmzExport.gpsToPlan(tr, gf.properties.rampes[0].fin[1], gf.properties.rampes[0].fin[0]) : null;
+    t("GeoJSON : rampe à fin = { bord, fin: [lng, lat] }, au même point du plan (< 1 cm)",
+      !!gb && gf.properties.rampes[0].bord === 0 && Math.abs(gb.x - 1000) < 0.01 && Math.abs(gb.y - 1020) < 0.01, gf);
   }
   {
     const w = contexte();
@@ -317,6 +348,9 @@ function charger(win, fichiers) {
       { cleType: "type", mapZones: S.proposerMapping(["ms"], "zones") });
     t("SIG : aller-retour GeoJSON → masse au sol avec sa rampe", r.zones[0].type === "masse-sol" &&
       J(r.zones[0].rampes) === J([{ bord: 0 }]));
+    const g2p = (lat, lng) => ({ x: lng * 100, y: lat * 100 });
+    t("SIG : { bord, fin: [lng, lat] } relu et reprojeté", J(S.rampesDe({ rampes: [{ bord: 2, fin: [1.5, 2.5] }, 0] }, 4, g2p)) ===
+      J([{ bord: 0 }, { bord: 2, fin: { x: 150, y: 250 } }]));
   }
 
   // ── 6. Copies champ par champ et défauts du Générateur (lecture du code) ──

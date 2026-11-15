@@ -3095,11 +3095,15 @@ async function sectionMasseSol(page) {
       { uid: "rd_ms_m1", type: "principal", level: -1, points: [P(-60, 12), P(60, 12)] },
       { uid: "rd_ms_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(40, 0), P(40, 12)] }
     ]);
+    // Rampe ouest (bord 3) dont la fin donne une pente de 30° : L = H / tan 30° (plateau au cran au-delà).
+    const rp30 = function (x0, comble) {
+      return [{ bord: 3, fin: P(x0 + comble * 2.4 / Math.tan(Math.PI / 6), 0) }];
+    };
     const MASSES = [
-      { uid: "zn_ms_q", type: "masse-sol", level: 0, comble: 0.25, points: rect(-50, -6, -40, 6) },
-      { uid: "zn_ms_d", type: "masse-sol", level: 0, comble: 0.5, points: rect(-30, -6, -20, 6) },
-      { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) },
-      { uid: "zn_ms_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(15, -6, 30, 6) },
+      { uid: "zn_ms_q", type: "masse-sol", level: 0, comble: 0.25, points: rect(-50, -6, -40, 6), rampes: rp30(-50, 0.25) },
+      { uid: "zn_ms_d", type: "masse-sol", level: 0, comble: 0.5, points: rect(-30, -6, -20, 6), rampes: rp30(-30, 0.5) },
+      { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6), rampes: rp30(-10, 0.75) },
+      { uid: "zn_ms_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(15, -6, 30, 6), rampes: rp30(15, 0.9) },
       { uid: "zn_ms_j", type: "masse-sol", level: 0, comble: 0.5, points: rect(37, 2, 43, 10) },
       { uid: "zn_ms_m1", type: "masse-sol", level: -1, comble: 0.75, points: rect(-50, 6, -40, 18) }
     ];
@@ -3160,7 +3164,7 @@ async function sectionMasseSol(page) {
         const b = K.etat();
         return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
       };
-      c.vitesse = { plat: await unPas(-35, 0, 90), talus: await unPas(-29, 0, 90), descente: await unPas(-21, 0, 90),
+      c.vitesse = { plat: await unPas(-35, 0, 90), talus: await unPas(-29, 0, 90), descente: await unPas(-29, 0, 270),
         plateau: await unPas(-25, 0, 90), jonction: await unPas(40, 5, 180) };
       c.bloque = await marcher(12, 140);
       // Ressortir : demi-tour, 2 m vers l'ouest (au plus 4 m demandés : le talus ralentit).
@@ -3192,7 +3196,7 @@ async function sectionMasseSol(page) {
     window.ktaSetActiveLevel(0);
     // Sol abaissé : −½ (x −30 à −20) et −¾ (x −10 à 2) au 0, sans sols réglés (pas de borne), puis sols réglés (borne).
     window.setZones([
-      { uid: "zn_ms_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_ms_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(-30, -6, -20, 6), rampes: rp30(-30, 0.5) },
       { uid: "zn_ms_n2", type: "masse-sol", level: 0, comble: -0.75, points: rect(-10, -6, 2, 6) }
     ]);
     r.creux = {};
@@ -3213,6 +3217,11 @@ async function sectionMasseSol(page) {
           const b = K.etat();
           return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
         })() };
+      // −¾ sans rampe (x −10 à 2) : on bute à son bord ouest, comme devant un mur (aucune chute, aucun piège).
+      const cs0 = K.etat().masses.chutes;
+      const buteSR = await marcher(-12, 40);
+      r.creux[rendu].sansRampe = { chutes: K.etat().masses.chutes - cs0, fin: buteSR[buteSR.length - 1],
+        arrets: buteSR.filter(function (q) { return !q.ok; }).length };
       await K.fermer();
     }
     window.setStructures([]);
@@ -3274,7 +3283,7 @@ async function sectionMasseSol(page) {
     window.setEditorPoints([]);
     // Rampes (structures) : masse ½ de x 0 à 10 m, z −6 à 6, rampes sur le bord ouest (bord 3) et le bord est (bord 1).
     // Monter par chacune, buter sur un bord sans rampe, profils qui se rejoignent au milieu sans marche ; une rampe
-    // retirée, l'autre seule ; sol abaissé avec une rampe ; plus aucune rampe : talus automatique.
+    // retirée, l'autre seule ; sol abaissé avec une rampe ; plus aucune rampe : pleine hauteur.
     window.setEditorPoints([]);
     window.setStructures([]);
     window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
@@ -3340,6 +3349,13 @@ async function sectionMasseSol(page) {
     await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
     await pause(300);
     r.rampes.talus = await ici(1, 0);
+    const cp0 = K.etat().masses.chutes;
+    const desc = await marche(5, 0, 90, 60);
+    await pause(700);
+    const auSol = lire();
+    const remonte = await marche(auSol.x, 0, 270, 20);
+    r.rampes.positif = { chutes: K.etat().masses.chutes - cp0, auSol: auSol, remonte: remonte[remonte.length - 1],
+      arrets: remonte.filter(function (q) { return !q.ok; }).length, desc: desc[desc.length - 1] };
     await K.fermer();
     window.setZones([]);
     // Budget : une masse de 40 × 12 m (480 m²), 🧱 allumé puis coupé.
@@ -3442,8 +3458,11 @@ async function sectionMasseSol(page) {
       c.masses);
     verifier(pr(c.centre.sol, -1.2) && c.centre.vide === null && c.centre.ramper === 0 && camOk(c.centre),
       k + " : au milieu de −½, sol 1,2 m plus bas, debout (vide 3,6 m)", c.centre);
-    verifier(pr(c.talus.sol, -T30 * 1.5), k + " : talus inversé à 30° depuis le bord ouvert (1,5 m → −" +
+    verifier(pr(c.talus.sol, -T30 * 1.5), k + " : pente de la rampe à 30° en descente (1,5 m → −" +
       (T30 * 1.5).toFixed(3) + " m)", c.talus);
+    const sr = c.sansRampe;
+    verifier(sr.chutes === 0 && sr.arrets > 0 && sr.fin.x < -10 && sr.fin.sol === 0,
+      k + " : creux sans rampe : on bute à son bord comme devant un mur (pas de chute, pas de piège)", sr);
     verifier(d.every(function (q) { return q.ok && camOk(q); }) && saut < 0.12 && pr(d[d.length - 1].sol, -1.2),
       k + " : descente au pas de 0,1 m sans arrêt, caméra = sol + œil, plus grand écart " + saut.toFixed(3) + " m",
       { saut: saut, ko: d.filter(function (q) { return !q.ok || !camOk(q); }).slice(0, 3) });
@@ -3455,7 +3474,7 @@ async function sectionMasseSol(page) {
     "+ 0,3 m (−0,3 m), borne signalée", R.borne);
   Object.keys(R.piliers).forEach(function (rendu) {
     const p = R.piliers[rendu];
-    verifier(pr(p.encoche.sol, 1.2) && pr(p.joint.sol, 1.2) && pr(p.face.sol, 1.2) && pr(p.bout.sol, T30, 0.02),
+    verifier(pr(p.encoche.sol, 1.2) && pr(p.joint.sol, 1.2) && pr(p.face.sol, 1.2) && pr(p.bout.sol, 1.2),
       "masse au sol, " + rendu + " : à plat (1,2 m) contre l'encoche d'un pilier, contre le bord d'une masse " +
       "jointive " +
       "et contre la face d'un pilier posé dedans ; la pente reste à l'extrémité (1 m → " + T30.toFixed(3) + " m)", p);
@@ -3500,8 +3519,11 @@ async function sectionMasseSol(page) {
       pr(ch.apres.cam, ch.apres.oeil, 0.03),
       "rampes : descendre un front = chute du plateau au sol (" + (ch.derniere ? ch.derniere.h + " m en " +
       ch.derniere.d + " s" : "?") + "), aucun pas pendant la chute, caméra au sol à l'arrivée", ch);
-    verifier(q.sansRampe && pr(q.talus.sol, T30, 0.02),
-      "rampes : plus aucune rampe → talus automatique à 30° (1 m du bord → " + T30.toFixed(3) + " m)", q.talus);
+    verifier(q.sansRampe && pr(q.talus.sol, 1.2),
+      "rampes : plus aucune rampe → pleine hauteur partout (1 m du bord : 1,2 m), plus de talus", q.talus);
+    const po = q.positif;
+    verifier(po.chutes >= 1 && po.auSol.sol === 0 && po.auSol.x > 10 && po.arrets > 0 && po.remonte.x >= 10,
+      "rampes : masse sans rampe → on en descend en chutant vers le sol du niveau, on n'y remonte pas", po);
   }
   ["textures", "aplat"].forEach(function (t) {
     const m = R.budget[t];
@@ -3523,7 +3545,8 @@ async function capturesMasseSol(page) {
     ["creux-pilier", -28.5, 0.5, 130, true, true],
     ["creux-pilier-hd", -28.5, 0.5, 130, true, true, true],
     ["rampe-bas", -33, 0, 90, true, false, false, true], ["rampe-front", -25, -9, 180, true, false, false, true],
-    ["rampe-creux", -33, 0, 90, true, true, false, true]];
+    ["rampe-creux", -33, 0, 90, true, true, false, true], ["rampe-fin", -34, 0, 90, true, false, false, "fin"],
+    ["masse-piliers", -14, 0.3, 90, true, false, false, false, true]];
   for (const rendu of ["galerie", "mixte", "structures"]) {
     for (const q of vues) {
       await page.evaluate(async function (c) {
@@ -3536,13 +3559,20 @@ async function capturesMasseSol(page) {
         window.getAllEmbeddedStructures = vide;
         window.__v3dReleve.aligner();
         window._currentLoadedPlanId = PID;
-        window.setStructures(c.q[5] && c.rendu === "structures"
-          ? [{ uid: "st_ms_creux", type: "pilier-1", level: 0, points: rect(-26, 3, -24, 5) }] : []);
+        const pil = [];
+        if (c.q[5] && c.rendu === "structures") pil.push({ uid: "st_ms_creux", type: "pilier-1", level: 0, points: rect(-26, 3, -24, 5) });
+        // ¾ sans rampe, deux piliers dedans : pleine hauteur partout, à plat contre les piliers.
+        if (c.q[8]) {
+          pil.push({ uid: "st_ms_p1", type: "pilier-1", level: 0, points: rect(-6, -3, -4, -1) });
+          pil.push({ uid: "st_ms_p2", type: "pilier-1", level: 0, points: rect(-2, 1, 0, 3) });
+        }
+        window.setStructures(c.q[8] && c.rendu === "galerie" ? [] : pil);
         window.setEditorPoints([]);
         window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
         window.setZones([
           Object.assign({ uid: "zn_ms_d", type: "masse-sol", level: 0, comble: c.q[5] ? -0.5 : 0.5,
-            points: rect(-30, -6, -20, 6) }, c.q[7] ? { rampes: [{ bord: 3 }] } : {}),
+            points: rect(-30, -6, -20, 6) }, c.q[7] === "fin" ? { rampes: [{ bord: 3, fin: P(-27, 0) }] }
+            : c.q[7] ? { rampes: [{ bord: 3 }] } : {}),
           { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) }
         ]);
         window.setPlanHauteursNiveaux(PID, { "0": 2.4 });

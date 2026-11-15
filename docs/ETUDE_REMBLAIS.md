@@ -14,6 +14,15 @@ sur un même niveau, la hauteur de vide varie du tout au tout, et l'on marche tr
 remblai partiel par une pente douce, marcher dessus sous le ciel, ramper là où il reste peu de vide, et buter
 seulement là où il n'en reste plus.
 
+## Révision de KARMA (15/11/2026) — masse au sol à pleine hauteur, pentes posées
+
+Remplace le talus automatique à 30° des lots 4 et « talus honnête » : **sans rampe, une masse au sol est à pleine
+hauteur de son cran partout**, ses bords sont des **fronts verticaux** (positif comme négatif). Les pentes n'existent
+que là où l'utilisateur pose une **rampe** : bord bas, puis l'endroit où elle atteint le haut (`rampes: [{ bord, fin }]`,
+fin facultative : sans elle, jusqu'au bout de la zone ; au-delà, plat). En 3D, monter un front de plus de 0,2 m est
+bloqué ; le descendre fait **chuter**, seulement si l'on peut ressortir (arrivée sur le sol du niveau, ou dans une zone qui a une rampe) : sinon on bute, comme devant un mur (option 2 de KARMA, 15/11 : un creux sans rampe n'est pas un piège).
+L'itinéraire suit le même sol (`masseSol.js > sol`). Deux rampes face à face se rejoignent à mi-cran (validé par KARMA).
+
 ## Révision de KARMA (14/11/2026) — Comblé ne bloque plus, le tracé l'emporte
 
 Remplace le (a) ci-dessous et les questions 2 et 11 sur ce point. Raison : une zone Comblé mal comprise ou posée à

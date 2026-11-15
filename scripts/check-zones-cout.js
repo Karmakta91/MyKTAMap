@@ -448,17 +448,14 @@ async function route(w, opts) {
         proche(r.totalDistance, 200), r.erreur || r.cout);
     }
     {
-      // Talus (bords OUVERTS, aucune sonde simulée) : masse ¾ de 10 m de large (x 80-120) et 100 m de long ; la
-      // traversée au milieu ne voit que les bords gauche et droit. Sol = min(1,5 ; tan 30° × d), d = distance au bord.
-      // Vide ≥ 1,8 si d < 0,2 / tan 30° = 0,3464 m ; courbé jusqu'à d = 1 / tan 30° = 1,7321 m ; ramper au-delà
-      // (le vide descend à 0,5 m, jamais dessous). Par côté : 0,5 × (1,7321 − 0,3464) + 2 × (5 − 1,7321) = 7,2287 m ;
-      // deux côtés 14,457 m = 57,83 px de coût en plus (à l'échantillonnage de 0,1 m près). Une moyenne de la zone
-      // (vide 0,5 m partout → +80 px) serait fausse.
+      // Pleine hauteur sans rampe (révision du 15/11/2026, plus de talus automatique) : masse ¾ de 10 m de large (x 80-120)
+      // et 100 m de long, traversée au milieu : vide = ¼ × 2 m = 0,5 m partout, à plat ventre sur les 10 m (×3) → +80 px,
+      // comme la masse ¾ entière (aucune pente aux bords).
       const long = R("zn_long", "masse-sol", [[80, -200], [120, -200], [120, 200], [80, 200]], { comble: 0.75 });
       const w = bacM({ roads: [droite], zones: [long] }, null, true);
       const r = await route(w);
-      t("talus pris point par point : +57,8 px (14,46 m) au lieu de +80 px (moyenne)", !r.erreur &&
-        Math.abs(r.cout - 200 - 57.83) < 1.2 && proche(r.totalDistance, 200), r.erreur || r.cout - 200);
+      t("masse ¾ sans rampe : pleine hauteur partout (vide ¼ H), +80 px, aucune pente aux bords", !r.erreur &&
+        Math.abs(r.cout - 200 - 80) < 1.2 && proche(r.totalDistance, 200), r.erreur || r.cout - 200);
     }
     {
       const w = bacM({});

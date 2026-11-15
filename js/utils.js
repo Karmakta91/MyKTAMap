@@ -1156,7 +1156,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
            '</div>';
   }
   // Pentes (rampes) d'une masse au sol : une ligne par bord bas (« Pente 1 — bord 3 », ✕ pour la retirer), « Placer une
-  // pente » (zones.js > ktaArmerRampe) ; sans pente, le talus automatique est rappelé. Lecture seule : le nombre.
+  // pente » (zones.js > ktaArmerRampe) ; sans pente, la pleine hauteur est rappelée. Lecture seule : le nombre.
   // Sens de la montée d'une rampe (bord bas `b`) en flèche, dans le repère du plan (haut de l'image = ↑).
   function _sensRampe(o, b) {
     const sc = Number(window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
@@ -1179,10 +1179,18 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     return '<div class="kta-note-popup-rampes">' + titre +
       (bords.length ? bords.map(function (b, i) {
         const lib = window.I18n.t("masseSol.rampe.ligne", { n: i + 1, sens: _sensRampe(o, b) });
-        return '<div class="kta-note-popup-rampe"><span>' + _esc(lib) + '</span>' +
+        const r = (o.rampes || []).filter(function (q) { return q && q.bord === b; })[0], aFin = !!(r && r.fin);
+        // Fin : la poser ou la déplacer (un toucher), la retirer (la pente va alors jusqu'au bout de la zone).
+        return '<div class="kta-note-popup-rampe"><span>' + _esc(lib) +
+          (aFin ? ' <span class="kta-tx-muted">' + _esc(window.I18n.t("masseSol.rampe.avecFin")) + '</span>' : "") +
+          '</span><span class="kta-note-popup-rampe-boutons">' +
+          '<button class="kta-popup-btn kta-note-popup-rampe-fin" type="button" data-bord="' + b + '">' +
+          _esc(window.I18n.t(aFin ? "masseSol.rampe.finDeplacer" : "masseSol.rampe.finPlacer")) + '</button>' +
+          (aFin ? '<button class="kta-popup-btn kta-note-popup-rampe-sansfin" type="button" data-bord="' + b + '">' +
+            _esc(window.I18n.t("masseSol.rampe.finRetirer")) + '</button>' : "") +
           '<button class="kta-popup-btn kta-note-popup-rampe-retirer" type="button" data-bord="' + b + '" title="' +
           _esc(window.I18n.t("masseSol.rampe.retirer")) + '" aria-label="' +
-          _esc(window.I18n.t("masseSol.rampe.retirer")) + ' ' + _esc(lib) + '">' + croix + '</button></div>';
+          _esc(window.I18n.t("masseSol.rampe.retirer")) + ' ' + _esc(lib) + '">' + croix + '</button></span></div>';
       }).join("") : vide) +
       '<div class="kta-popup-actions kta-note-popup-actions">' +
         '<button class="kta-popup-btn kta-note-popup-rampe-placer" type="button">' +
@@ -1477,6 +1485,23 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           window.ktaArmerRampe(opts.convertir.obj);
         });
       }
+      popupRoot.querySelectorAll(".kta-note-popup-rampe-fin").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          if (!opts.convertir || typeof window.ktaArmerFinRampe !== "function") return;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          window.ktaArmerFinRampe(opts.convertir.obj, Number(bt.dataset.bord));
+        });
+      });
+      popupRoot.querySelectorAll(".kta-note-popup-rampe-sansfin").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.changerFinRampe) return;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          const ok = window.KtaConvertir.changerFinRampe(opts.convertir.obj, Number(bt.dataset.bord), null);
+          if (ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("masseSol.rampe.finRetiree"), "success");
+          }
+        });
+      });
       popupRoot.querySelectorAll(".kta-note-popup-rampe-retirer").forEach(function (bt) {
         bt.addEventListener("click", function () {
           if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.retirerRampe) return;
@@ -2521,7 +2546,7 @@ window.getAllEmbeddedZones = function() {
       if (Array.isArray(e.niveaux) && e.niveaux.length >= 2) out.niveaux = e.niveaux.slice();
       if (Number.isFinite(e.comble)) out.comble = e.comble;
       if (Array.isArray(e.rampes) && e.rampes.length) {
-        out.rampes = e.rampes.map(function (r) { return { bord: r.bord }; });
+        out.rampes = e.rampes.map(function (r) { return r.fin ? { bord: r.bord, fin: r.fin } : { bord: r.bord }; });
       }
       if (e.description) out.description = e.description;
       if (e.uid) out.uid = e.uid;
@@ -3136,7 +3161,9 @@ function ajouterPointsDepuisJSON(url, layer) {
             comble:          Number.isFinite(zone.comble) ? zone.comble : undefined,
             // Masse au sol : rampes (bords bas, masseSol.js > rampes), gardées telles quelles.
             rampes:          Array.isArray(zone.rampes) && zone.rampes.length
-                               ? zone.rampes.map(function (r) { return { bord: r.bord }; }) : undefined,
+                               ? zone.rampes.map(function (r) {
+                                   return r.fin ? { bord: r.bord, fin: { x: r.fin.x, y: r.fin.y } } : { bord: r.bord };
+                                 }) : undefined,
             description:     zone.description || undefined,
             uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,

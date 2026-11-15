@@ -845,7 +845,7 @@
       if (extra && Number.isFinite(extra.comble)) {
         parts.push('<Data name="mkm:comble"><value>' + extra.comble + '</value></Data>');
       }
-      // Masse au sol : rampes (bords bas, indices des sommets du contour : « 0,2 »).
+      // Masse au sol : rampes (bords bas, indices des sommets du contour : « 0,2 » ; fin en WGS84 : « 0:2.31;48.85 »).
       if (extra && Array.isArray(extra.rampes) && extra.rampes.length) {
         parts.push('<Data name="mkm:rampes"><value>' + extra.rampes.join(",") + '</value></Data>');
       }
@@ -913,7 +913,14 @@
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
       const extra = multi ? { niveaux: multi.niveaux, copie: multi.copie } : {};
       if (zone.type === "masse-sol" && Number.isFinite(zone.comble)) extra.comble = zone.comble;
-      if (zone.type === "masse-sol" && window.KtaMasseSol) extra.rampes = window.KtaMasseSol.rampesValides(zone);
+      if (zone.type === "masse-sol" && window.KtaMasseSol) {
+        extra.rampes = window.KtaMasseSol.rampesValides(zone).map(function (b) {
+          const r = (zone.rampes || []).filter(function (q) { return q && q.bord === b; })[0];
+          if (!r || !r.fin || !Number.isFinite(r.fin.x) || !Number.isFinite(r.fin.y)) return String(b);
+          const ll = planToGps(t, r.fin.x, r.fin.y);
+          return b + ":" + Number(ll.lng.toFixed(8)) + ";" + Number(ll.lat.toFixed(8));
+        });
+      }
       const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null, extra);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +

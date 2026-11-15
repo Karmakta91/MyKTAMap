@@ -116,7 +116,8 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         { uid: "zn_n50", type: "masse-sol", comble: -0.5, points: r(1, 40) },
         { uid: "zn_n75", type: "masse-sol", comble: -0.75, points: r(2, 40) },
         // Hauteur atteinte : bande de 2 m de large à ¾ (le talus n'atteint pas le cran), carré de 30 m à ¼ (atteint).
-        { uid: "zn_court", type: "masse-sol", comble: 0.75, points: m(0, 80, 20, 2) },
+        // Hauteur atteinte : bande de 2 m à ¾ avec deux rampes opposées (le sommet est à mi-cran) ; carré à rampe seule.
+        { uid: "zn_court", type: "masse-sol", comble: 0.75, points: m(0, 80, 20, 2), rampes: [{ bord: 0 }, { bord: 2 }] },
         { uid: "zn_long", type: "masse-sol", comble: 0.25, points: m(0, 80 + 4 * sc, 30, 30), rampes: [{ bord: 3 }] }
       ]);
       window.map.fitBounds([[H - y0 - 80, x0 - 10], [H - y0 + 10, x0 + 300]], { animate: false });
@@ -382,6 +383,13 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     await page.waitForTimeout(200);
     const loin = await page.evaluate(function () { return !!document.getElementById("kta-rampe-floater"); });
     await toucher(zrp.x0 + 0.2 * zrp.sc, zrp.y0 + 5 * zrp.sc);
+    await page.waitForTimeout(300);
+    // 2e toucher : la fin de la pente, à 8 m du bord ouest (au-delà : plat au cran).
+    const bandeauFin = await page.evaluate(function () {
+      const fl = document.getElementById("kta-rampe-floater");
+      return fl ? fl.textContent : null;
+    });
+    await toucher(zrp.x0 + 8 * zrp.sc, zrp.y0 + 5 * zrp.sc);
     await page.waitForTimeout(500);
     const pose = await page.evaluate(function () {
       const z = window.getZones().filter(function (q) { return q.uid === "zn_rp"; })[0];
@@ -389,10 +397,13 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         bandeau: !!document.getElementById("kta-rampe-floater"),
         chevrons: window.__ktaChevrons() };
     });
-    verifier(f0.bouton && /talus/.test(f0.aucune) && /bord bas/.test(arme.bandeau || "") && arme.clicCarte && loin &&
-      pose.rampes === JSON.stringify([{ bord: 3 }]) && !pose.bandeau && pose.chevrons > 0,
-      "rampes : « Placer une pente », bandeau, toucher loin d'un bord ignoré, toucher sur le bord ouest → rampe posée, " +
-      "chevrons dessinés", { f0: f0, arme: arme, loin: loin, pose: pose });
+    const r2 = function (v) { return Math.round(v * 100) / 100; };
+    const finAtt = JSON.stringify([{ bord: 3, fin: { x: r2(zrp.x0 + 8 * zrp.sc), y: r2(zrp.y0 + 5 * zrp.sc) } }]);
+    verifier(f0.bouton && /pleine hauteur/.test(f0.aucune) && /bord bas/.test(arme.bandeau || "") && arme.clicCarte &&
+      loin && /atteint le haut/.test(bandeauFin || "") && /Sans fin/.test(bandeauFin || "") && pose.rampes === finAtt &&
+      !pose.bandeau && pose.chevrons > 0,
+      "rampes : « Placer une pente », toucher loin d'un bord ignoré, bord ouest puis fin à 8 m → rampe posée avec sa " +
+      "fin, chevrons et trait de fin", { f0: f0, arme: arme, loin: loin, bandeauFin: bandeauFin, pose: pose });
     await capture(page, "6-carte-rampe-chevrons");
     await page.evaluate(function () { window.map.setZoom(window.map.getZoom() - 2, { animate: false }); });
     await page.waitForTimeout(500);
@@ -436,8 +447,8 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
       const z = window.getZones().filter(function (q) { return q.uid === "zn_rp"; })[0];
       return z && z.rampes ? JSON.stringify(z.rampes) : null;
     });
-    verifier(lst.length === 1 && /→/.test(lst[0]) && !ret.rampes && annule === JSON.stringify([{ bord: 3 }]),
-      "rampes : la fiche liste la pente (monte vers →), ✕ la retire (talus automatique), ⏪ la remet", { lst, ret, annule });
+    verifier(lst.length === 1 && /→/.test(lst[0]) && /avec fin/.test(lst[0]) && !ret.rampes && annule === finAtt,
+      "rampes : la fiche liste la pente (monte vers →), ✕ la retire (pleine hauteur), ⏪ la remet", { lst, ret, annule });
 
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 3));
   } catch (e) {

@@ -1412,46 +1412,41 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   ci-dessous) suivent
   la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
   rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
-- **Masse au sol** (zone `masse-sol`, remblai partiel ; décision produit, `docs/ETUDE_REMBLAIS.md` § 6-7) : hors de
-  `ZONES_BOUCHENT`, règle **par point**. Hauteur H = `ktaCombleZone` × hauteur du niveau. Son dessus monte en **talus
-  à 30°** depuis ses bords **ouverts** : sol = min(|H|, tan 30° × distance au bord ouvert le plus proche), signé comme H.
-  ⚠️ contrat : formule, découpe et sonde des bords vivent dans **`js/masseSol.js`** (`KtaMasseSol.sol`, `bords`,
-  `atteinte` ; `m.pente` y est le point d'entrée d'une pente par zone) ; la vue 3D (sonde `_bloqueSonde` et
-  `_bloqueSonde.structure`) et la fiche de la carte (`atteinteZone`, sonde `bloqueCarte` : mêmes appels, structures
-  du niveau par contour) lisent la même règle. **Bord ouvert = vraie extrémité** (le remblai s'arrête dans la galerie
-  libre) ; il est **fermé** (sol à plat contre lui, comme contre une paroi) si, depuis le milieu de chaque morceau de
-  0,5 m : la sonde courte (35 cm) ou longue (1,2 m) droit devant est arrêtée par la règle du pas du rendu (roche, paroi
-  de tube, structure, zone qui bouche) ; une sonde longue droit devant ou à ±45° recoupe le contour lui-même (encoche
-  autour d'un pilier) ou, à ±45°, touche une structure ; ou le bout de la sonde courte est dans une autre masse au sol
-  du niveau (masses jointives = un seul remblai). Un pilier, un mur ou un front dans la zone n'est donc jamais un bord
-  ouvert.
-  **Rampes** (`zone.rampes` = bords bas ; `KtaMasseSol.rampes`) : la zone n'a plus de talus automatique ; chaque rampe
-  monte linéairement de son bord bas (0) au point du contour le plus loin dans l'axe perpendiculaire (|H|), le sol est
-  le **minimum** des profils, plafonné au cran (on monte par n'importe laquelle, les profils se rejoignent sans marche ;
-  négatif : même chose en descente). Les autres bords sont des **fronts** : `_masseBloque` arrête le pas quand le sol
-  MONTE de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à `MASSE.pasFront` (5 cm), jusqu'à un corps
-  devant ; le DESCENDRE est permis, quelle que soit la hauteur : on **chute** (`_pas` lance `e.chute`, `_solAffiche`
-  fait tomber la caméra du sol de départ au nouveau sol en `MASSE.chute` = 0,3 à 0,5 s, accélération simple, amorti
-  de `MASSE.amorti` à l'arrivée ; aucun pas ni rotation pendant la chute, `_enChute`) ; on ressort par une rampe ou un
-  talus. Même règle au bord commun de deux masses de hauteurs différentes ; une rampe, si raide
-  soit-elle, reste praticable, ralentie au-delà de 15°. La masse est refaite quand ses rampes changent (`m.sigRampes`).
-  Carte : chevrons de pente pointés vers le haut, à la couleur du contour sur un liseré clair (`zones.js >
-  ktaChevronsRampes`, `masseSol.js > chevrons`, zones de session et calques) ; légende : une ligne « Pente » quand une
-  zone en porte ; fiche : liste (sens de la montée en flèche), ✕ par pente, « Placer une pente » (`ktaArmerRampe` :
-  bandeau `.kta-iti-floater`, un toucher près d'un bord, tolérance de fermeture × 2).
+- **Masse au sol** (zone `masse-sol`, remblai partiel ; décision produit, révision du 15/11/2026, `docs/ETUDE_REMBLAIS.md`) :
+  hors de `ZONES_BOUCHENT`, règle **par point**. Hauteur H = `ktaCombleZone` × hauteur du niveau. ⚠️ contrat : SANS
+  rampe, la masse est à **pleine hauteur** partout (sol = H dans tout le contour, plus de talus automatique), ses bords
+  sont des **fronts** verticaux. Les pentes n'existent que là où l'utilisateur pose une **rampe** (`zone.rampes` =
+  [{ bord, fin? }] ; `KtaMasseSol.rampes`) : elle monte linéairement de son bord bas (0) jusqu'à sa **fin** (|H|) — la
+  projection de `fin` (px du plan) sur l'axe perpendiculaire au bord, sinon le point du contour le plus loin — puis
+  reste plate au cran ; plusieurs rampes : le **minimum** des profils, plafonné au cran (on monte par n'importe
+  laquelle) ; négatif : même chose en descente. Formule partagée dans **`js/masseSol.js`** (`sol`, `atteinte`,
+  `masseCarte` ; aucune sonde de bord) avec la fiche de la carte et l'itinéraire (`pathfinder.js`). Fronts :
+  `_masseBloque` arrête le pas quand le sol MONTE de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à
+  `MASSE.pasFront` (5 cm), jusqu'à un corps devant ; le DESCENDRE est permis, quelle que soit la hauteur : on **chute**
+  (`_pas` lance `e.chute`, `_solAffiche` fait tomber la caméra du sol de départ au nouveau sol en `MASSE.chute` = 0,3 à
+  0,5 s, accélération simple, amorti de `MASSE.amorti` à l'arrivée ; aucun pas ni rotation pendant la chute,
+  `_enChute`) ; on ressort par une rampe. ⚠️ contrat (décision produit) : la chute n'est permise que si l'on peut
+  ressortir — arrivée sur le sol du niveau, ou dans une masse qui a au moins une rampe (`_masseSous`) ; sinon on bute,
+  comme devant un mur (un creux sans rampe n'est jamais un piège). Même règle au bord commun de deux masses de hauteurs différentes ; une rampe, si raide soit-elle, reste
+  praticable, ralentie au-delà de 15°. La masse est refaite quand ses rampes ou leurs fins changent (`m.sigRampes`).
+  Carte : chevrons de pente pointés vers le haut sur la seule longueur de pente, trait de fin, à la couleur du contour
+  sur un liseré clair (`zones.js > ktaChevronsRampes`, `masseSol.js > chevrons`, zones de session et calques) ;
+  légende : une ligne « Pente » quand une zone en porte ; fiche : liste (sens de la montée en flèche), « Placer / Déplacer
+  la fin », « Jusqu'au bout », ✕ par pente, « Placer une pente » (`ktaArmerRampe` : bandeau `.kta-iti-floater`, un
+  toucher près d'un bord, tolérance de fermeture × 2, puis la fin ou « Sans fin » ; `ktaArmerFinRampe`).
   ⚠️ contrat : le sol sous les pieds vient de cette **formule** (`_solMasse`, appelée par `_solPlace` après la galerie
   inclinée : une jonction posée sur une masse l'emporte), jamais du maillage. Vide = hauteur du niveau − sol :
   ≥ 1,8 m debout ; 1 à 1,8 m œil abaissé à vide − 0,2 m ; sous 1 m on rampe (œil `CHATIERE.oeil`, transition lissée sur
   0,3 m de vide, `_oeilMasse`, sans saut) ; sous 0,5 m le pas s'arrête (`_masseBloque` dans `_pas`, au centre et à un
-  corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Sur le
-  talus, la **marche ralentit** au-delà de 15° de pente du sol sous les pieds dans le sens du pas (`_ralentiMasse` :
+  corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Sur une
+  rampe, la **marche ralentit** au-delà de 15° de pente du sol sous les pieds dans le sens du pas (`_ralentiMasse` :
   1 jusqu'à `MASSE.lent`, puis jusqu'à `MASSE.lentPlancher` = ½ à 30°, montée comme descente, sol abaissé compris ;
   1 dans une galerie inclinée ou une zone jonction, et en vue plongeante). La fiche dit « Hauteur atteinte : … sur … »
-  (« Profondeur » pour un sol abaissé) quand la zone est trop courte pour que le talus atteigne son cran
+  (« Profondeur » pour un sol abaissé) quand ses rampes n'atteignent pas le cran (deux rampes face à face)
   (`utils.js > _texteAtteinteComble`). Plafond inchangé.
   **Part négative = sol abaissé** (creusement dans la roche) : même formule, le sol descend vers l'intérieur, le vide
   grandit (rien n'arrête, on descend debout) ; le sol du niveau (ou du voisin construit, `e.bitsPlans`) est troué sur
-  son contour par le gabarit, comme la bouche d'un puits ; fond, talus et pans prennent le **sol de pierre du niveau**
+  son contour par le gabarit, comme la bouche d'un puits ; fond, pentes et pans prennent le **sol de pierre du niveau**
   (matériau des sols des galeries sans gabarit, `_matsPente`, coordonnées en m / `SOL.m`, grain HD compris) ; en
   galerie, le fond passe sous les parois jusqu'au contour. ⚠️ contrat : jamais plus bas que le plafond du niveau du
   dessous + `MASSE.margeDessous` (0,3 m) (`_fondMasse`, `m.borne` ; sans niveau dessous, une hauteur de niveau).
@@ -1461,7 +1456,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   Dessin (`_maillageMasse`) : grille de 0,5 m découpée au contour, pas élargi pour tenir ≤ 2 000 triangles par zone
   (`MASSE.triMax`, pans compris ; une zone est dessinée dans la tuile de son centre) ; en galerie, une case toute dans
   la roche n'est pas dessinée (sauf sol abaissé) ; remblai 🧱 : terre et cailloux (`REMBLAIS.m`), sinon la couleur de
-  la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, talus à 30° et pans à 0,4).
+  la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
   **Posés sur le sol local** (`_solMasse`) : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m
   inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
   du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, chatière, véhicule, porte… :

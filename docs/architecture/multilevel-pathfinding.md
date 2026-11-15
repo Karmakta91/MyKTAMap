@@ -773,14 +773,14 @@ Décision de KARMA (QCM du 11/11/2026, `docs/ETUDE_REMBLAIS.md` § 8 et 11, lot 
   pour tous (ni la case « Respecter… » ni la passe 2 ne le lèvent). Sol abaissé (part < 0) : ×1. Mêmes seuils que la
   vue 3D (`vue3d.js > MASSE`) ; `Pathfinder.MASSE_VIDE`, `Pathfinder.facteurVide(v)`.
 - **Sol local** : `masseSol.js > masseCarte(zone)` construit la masse par `masse(…)` (hauteur du niveau via
-  `ktaMetresComble`, rendu choisi du plan, sonde de la carte `bloqueCarte`, masses voisines jointives), puis
-  `sol(m, x / sc, y / sc)` — la fonction de hauteur de la 3D et de la fiche, jamais une copie (les rampes y vivront).
+  `ktaMetresComble` ; pleine hauteur sans rampe, pentes des rampes avec leur fin), puis
+  `sol(m, x / sc, y / sc)` — la fonction de hauteur de la 3D et de la fiche, jamais une copie.
   Plusieurs masses sous un point : le plus haut des remblais compte (comme `vue3d.js > _solMasse`). Construite à la
   première arête qui touche la zone, puis gardée en cache par contour (`_cacheMasses`, clé part / niveau / hauteur /
-  rendu / échelle, vidé à chaque `kta:donneesPlanChange`) : ~4 ms par masse, et la sortie d'urgence enchaîne jusqu'à
+  rendu / échelle, vidé à chaque `kta:donneesPlanChange`) : la sortie d'urgence enchaîne jusqu'à
   15 calculs. Sans échelle du plan : aucune masse ne compte.
 - **Point par point** : chaque arête est coupée aux contours des masses de son niveau, puis chaque morceau intérieur
-  est échantillonné tous les `PAS_MASSE_M` (0,1 m) ; le talus des bords ouverts est donc suivi, jamais une moyenne de
+  est échantillonné tous les `PAS_MASSE_M` (0,1 m) ; les pentes des rampes sont donc suivies, jamais une moyenne de
   la zone. Une arête qui touche un passage sous 0,5 m n'est pas posée (`_addEdge`) ; un morceau découpé hors du
   passage bas (croisement, calage) garde la sienne : on avance jusqu'au bord, pas au travers.
 - **Coût, pas distance** : le surcoût s'ajoute à `weight`, jamais à `len` — `totalDistance` reste la vraie longueur,

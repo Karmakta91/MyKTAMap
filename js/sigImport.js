@@ -584,19 +584,33 @@
   // Part comblée d'une masse au sol lue dans la colonne `cle` (facultative) : « 0,5 » ou 0.5 = part ; « 50 % » ou un
   // nombre de 1 à 100 = pourcentage ; signe moins = sol abaissé (« -0,5 », « -50 % »). Vide, illisible, nulle, sous
   // −1 ou ≥ 1 (un Comblé) → null : la zone garde le défaut (½).
-  // Rampes d'une masse au sol (colonne `rampes` de l'export GeoJSON de l'app) : liste d'entiers ou « 0,2 » → [{ bord }]
-  // (bords dans [0, n[, chacun une fois) ; rien de lisible → null.
-  function rampesDe(props, n) {
+  // Rampes d'une masse au sol (colonne `rampes` de l'export GeoJSON de l'app) : liste d'entiers, de { bord, fin: [lng,
+  // lat] } (fin en WGS84, reprojetée par `g2p(lat, lng)`) ou « 0,2 » → [{ bord, fin? }] (bords dans [0, n[, chacun une
+  // fois) ; rien de lisible → null.
+  function rampesDe(props, n, g2p) {
     const k = props ? _trouverCle(props, "rampes") : null;
     if (!k || props[k] == null) return null;
     const brut = Array.isArray(props[k]) ? props[k] : String(props[k]).split(/[,;\s]+/);
     const vus = {};
-    const l = brut.map(Number).filter(function(b) {
-      if (!Number.isInteger(b) || b < 0 || b >= n || vus[b]) return false;
-      vus[b] = true;
+    const l = brut.map(function(e) {
+      if (e && typeof e === "object") {
+        const r = { bord: Number(e.bord) };
+        if (Array.isArray(e.fin) && e.fin.length >= 2 && typeof g2p === "function" &&
+            Number.isFinite(Number(e.fin[0])) && Number.isFinite(Number(e.fin[1]))) {
+          const xy = g2p(Number(e.fin[1]), Number(e.fin[0]));
+          if (xy && Number.isFinite(xy.x) && Number.isFinite(xy.y)) {
+            r.fin = { x: Math.round(xy.x * 100) / 100, y: Math.round(xy.y * 100) / 100 };
+          }
+        }
+        return r;
+      }
+      return { bord: Number(e) };
+    }).filter(function(r) {
+      if (!Number.isInteger(r.bord) || r.bord < 0 || r.bord >= n || vus[r.bord]) return false;
+      vus[r.bord] = true;
       return true;
-    }).sort(function(a, b) { return a - b; });
-    return l.length ? l.map(function(b) { return { bord: b }; }) : null;
+    }).sort(function(a, b) { return a.bord - b.bord; });
+    return l.length ? l : null;
   }
 
   function combleDe(props, cle) {
@@ -903,7 +917,7 @@
       if (rZ.type === "masse-sol") {
         const c = combleDe(z.props, cleComble);
         if (c !== null) o.comble = c;
-        const rp = rampesDe(z.props, pts.length);
+        const rp = rampesDe(z.props, pts.length, g2p);
         if (rp) o.rampes = rp;
       }
       const lvl = _niveauDe(z.props);
