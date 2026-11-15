@@ -6661,5 +6661,7 @@
   "bienvenue.pied": "© Flavien VIDAL (KARMA) · Licence CC BY-NC-SA 4.0, usage non commercial",
   "bienvenue.pied.prive": "Installation privée : le code d'accès se demande à la personne qui la gère.",
   "bienvenue.github": "Code source sur GitHub",
-  "bienvenue.urgence": "Sortie d'urgence : revenir en haut de la page"
+  "bienvenue.urgence": "Sortie d'urgence : revenir en haut de la page",
+  "stockage.refuse.message": "Ton navigateur refuse d'enregistrer les données de MyKTAMap : l'acceptation des conditions, tes plans et tes sessions ne seront pas gardés. Autorise les cookies et données du site (Chrome › Paramètres des sites) ou libère de l'espace sur l'appareil, puis rouvre l'app.",
+  "stockage.refuse.titre": "Données non enregistrées"
 }

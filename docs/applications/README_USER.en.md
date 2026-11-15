@@ -1645,6 +1645,8 @@ In this order, keeping your data:
 
 These tools delete **no** data (stored maps, sessions, photos, logbook, preferences). As a precaution, **📤 Export my profile** first.
 
+**The app asks for the terms of use every time it opens**, or shows “Data not saved”: your browser refuses to save the site's data. In Chrome: padlock left of the address › **Site settings** › allow **Cookies and site data** (or Settings › Site settings); or free up space on the device. Then reopen the app. As long as it is refused, the app stays usable, but nothing is kept from one opening to the next.
+
 ### 💥 Reset everything
 
 **⚙️ Configuration → 🔧 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).

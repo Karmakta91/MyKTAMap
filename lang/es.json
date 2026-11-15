@@ -6661,5 +6661,7 @@
   "bienvenue.pied": "© Flavien VIDAL (KARMA) · Licencia CC BY-NC-SA 4.0, uso no comercial",
   "bienvenue.pied.prive": "Instalación privada: el código de acceso se pide a la persona que la gestiona.",
   "bienvenue.github": "Código fuente en GitHub",
-  "bienvenue.urgence": "Salida de emergencia: volver al principio de la página"
+  "bienvenue.urgence": "Salida de emergencia: volver al principio de la página",
+  "stockage.refuse.message": "Tu navegador se niega a guardar los datos de MyKTAMap: la aceptación de las condiciones, tus planos y tus sesiones no se conservarán. Permite las cookies y los datos del sitio (Chrome › Configuración de sitios) o libera espacio en el dispositivo y vuelve a abrir la app.",
+  "stockage.refuse.titre": "Datos no guardados"
 }

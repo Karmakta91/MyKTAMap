@@ -1189,11 +1189,12 @@ function planRowHTML(plan) {
       // Filtre « Afficher plans serveur » (localStorage).
       const LS_SHOW_SERVER = "myktamap_loader_show_server_plans";
       function _loaderShowServerPlans() {
-        // Vrai par défaut ; faux seulement si l'utilisateur a décoché.
-        return localStorage.getItem(LS_SHOW_SERVER) !== "false";
+        // Vrai par défaut ; faux seulement si l'utilisateur a décoché. 🩸 Stockage refusé par le navigateur
+        // (utils.js > ktaStockageIndispo) : l'accès lève, la liste des plans ne doit pas tomber avec lui.
+        try { return localStorage.getItem(LS_SHOW_SERVER) !== "false"; } catch (e) { return true; }
       }
       function _loaderSetShowServerPlans(value) {
-        localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
+        try { localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false"); } catch (e) { /* stockage refusé */ }
       }
 
       // Pref « ne pas charger les plans serveur » : pas de découverte `data/index.json` au démarrage, toggle

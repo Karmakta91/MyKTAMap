@@ -1645,6 +1645,8 @@ Por este orden, conservando tus datos:
 
 Estas herramientas no borran **ningún** dato (mapas memorizados, sesiones, fotos, cuaderno, preferencias). Por precaución, **📤 Exportar mi perfil** antes.
 
+**La app vuelve a pedir las condiciones de uso cada vez que se abre**, o muestra «Datos no guardados»: tu navegador se niega a guardar los datos del sitio. En Chrome: candado a la izquierda de la dirección › **Configuración del sitio** › permite **Cookies y datos de sitios** (o Configuración › Configuración de sitios); o libera espacio en el dispositivo. Luego vuelve a abrir la app. Mientras se niegue, la app sigue siendo utilizable, pero no se guarda nada de una apertura a otra.
+
 ### 💥 Reiniciar todo
 
 **⚙️ Configuración → 🔧 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de mapas y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).

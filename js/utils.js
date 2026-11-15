@@ -665,6 +665,48 @@ window.ktaAlerte = function(message, opts) {
   }
 };
 
+// ── Stockage du site refusé ──────────
+// 🩸 Navigateur qui refuse d'écrire (Chrome : « Cookies et données des sites » bloqués → SecurityError ; mémoire
+// pleine → QuotaExceededError) : sans détection, « J'accepte » ne s'enregistrait pas et les conditions revenaient
+// en boucle derrière la descente de l'écran Bienvenue. Clé témoin écrite, relue et retirée au chargement.
+// window.ktaStockageIndispo : null si le stockage marche, sinon la raison ("absent" | nom de l'erreur). Les
+// conditions et l'écran Bienvenue passent alors en mémoire pour la session (LegalGate, UnlockGate).
+// window.ktaEcrireStockage(clé, valeur) → true si l'écriture est relue telle quelle, false sinon (jamais d'exception).
+// window.ktaSignalerStockageIndispo() → Promise : le message, une fois par page.
+// ⚠️ Ne bloque jamais l'app, n'efface rien.
+window.ktaStockageIndispo = (function() {
+  const CLE = "myktamap_temoin_ecriture";
+  try {
+    if (typeof localStorage === "undefined" || !localStorage) return "absent";
+    const v = String(Date.now());
+    localStorage.setItem(CLE, v);
+    const ok = localStorage.getItem(CLE) === v;
+    localStorage.removeItem(CLE);
+    return ok ? null : "relecture";
+  } catch (e) {
+    return (e && e.name) || "erreur";
+  }
+})();
+if (window.ktaStockageIndispo) console.warn("[Stockage] écriture refusée par le navigateur :", window.ktaStockageIndispo);
+
+window.ktaEcrireStockage = function(cle, valeur) {
+  try {
+    localStorage.setItem(cle, valeur);
+    return localStorage.getItem(cle) === String(valeur);
+  } catch (e) {
+    console.warn("[Stockage] écriture refusée :", cle, e && e.name);
+    return false;
+  }
+};
+
+let _ktaStockageSignale = null;
+window.ktaSignalerStockageIndispo = function() {
+  if (_ktaStockageSignale) return _ktaStockageSignale;
+  const t = function(k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
+  _ktaStockageSignale = window.ktaAlerte(t("stockage.refuse.message"), { titre: t("stockage.refuse.titre") });
+  return _ktaStockageSignale;
+};
+
 // Branche les boutons « 📋 Copier » du bandeau de cohérence. Idempotent ; à appeler après insertion du HTML.
 function attacherBoutonCopierEchelleGps(container) {
   if (!container || !container.querySelectorAll) return;

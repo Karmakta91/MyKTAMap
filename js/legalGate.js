@@ -103,15 +103,26 @@
   function _esc(s) { return window.ktaEsc(s); }   // échappeur unique (js/langManager.js)
 
   // ── État ──
+  // 🩸 Stockage refusé par le navigateur (utils.js > ktaStockageIndispo) : l'acceptation est gardée EN MÉMOIRE
+  // pour la page, sinon le filet de firstRunFlow reposait la question en boucle. Redemandée au prochain lancement.
+  let _accepteeEnMemoire = false;
   function isAccepted() {
+    if (_accepteeEnMemoire) return true;
     try {
-      const v = parseInt(localStorage.getItem(LS_KEY), 10);
+      const v = Number.parseInt(localStorage.getItem(LS_KEY), 10);
       return v >= TERMS_VERSION;
     } catch(e) { return false; }
   }
+  // → true si l'acceptation est relue sur l'appareil, false si elle n'est gardée que pour la session (message).
   function _markAccepted() {
-    try { localStorage.setItem(LS_KEY, String(TERMS_VERSION)); }
-    catch(e) { console.warn("[LegalGate] _markAccepted :", e); }
+    // utils.js (defer) est chargé avant ce module : ktaEcrireStockage existe.
+    const ok = window.ktaEcrireStockage(LS_KEY, String(TERMS_VERSION));
+    if (!ok) {
+      _accepteeEnMemoire = true;
+      console.warn("[LegalGate] acceptation non enregistrée par le navigateur : gardée pour cette session");
+      if (typeof window.ktaSignalerStockageIndispo === "function") window.ktaSignalerStockageIndispo();
+    }
+    return ok;
   }
 
   // ── Sous-modale : texte intégral (FR seulement) ──

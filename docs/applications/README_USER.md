@@ -1646,6 +1646,8 @@ Dans l'ordre, en gardant tes données :
 
 Ces outils ne suppriment **aucune** donnée (plans mémorisés, sessions, photos, carnet, préférences). Par précaution, **📤 Exporter mon profil** avant.
 
+**L'app redemande les conditions d'utilisation à chaque ouverture**, ou annonce « Données non enregistrées » : ton navigateur refuse d'enregistrer les données du site. Dans Chrome : cadenas à gauche de l'adresse › **Paramètres du site** › autorise **Cookies et données des sites** (ou Paramètres › Paramètres des sites) ; ou libère de l'espace sur l'appareil. Puis rouvre l'app. Tant que c'est refusé, l'app reste utilisable, mais rien n'est gardé d'une ouverture à l'autre.
+
 ### 💥 Tout réinitialiser
 
 **⚙️ Configuration → 🔧 Dépannage → 💥 Tout réinitialiser** remet l'app à l'état d'un premier lancement. **Irréversible** : il efface ta liste de plans et leurs archives, tes sessions et leurs sauvegardes, les photos, le carnet et les PDF d'histoire, ton profil (rang, hauts faits, avatar, fond d'écran), les scénarios du Mode Secours, tes préférences, ton PIN, et l'app elle-même (à retélécharger).

@@ -172,7 +172,7 @@ jamais l'afficher** ; sans mot de passe d'instance, rien à prévenir (l'écran 
   doc ou `version.json` (le dépôt est public : l'ancien code et sa valeur en clair restent dans
   l'historique Git — il ne protège plus rien).
 - **Ne JAMAIS** réintroduire un bouton reset depuis le verrou.
-- **Ne PAS** écrire dans `localStorage` depuis `isUnlocked()` (appelée avant la revalidation).
+- **Ne PAS** écrire dans `localStorage` depuis `isUnlocked()` (appelée avant la revalidation). Elle lit d'abord la mémoire de session (`_ouvertEnMemoire`, stockage refusé : § 87.2).
 - **Ne JAMAIS** mémoriser `libre-v1` depuis l'écran d'une instance protégée, ni résoudre la gate sans code juste :
   son `surEntree` ne fait que noter la visite, son `surFin` ne résout que si `_codeAccepte` (sinon l'écran revient).
 - **Ne PAS** dupliquer la vérification dans `bienvenue.js` : il reçoit `code.essayer` / `code.etat`, rien d'autre.
@@ -1429,6 +1429,7 @@ Chaque module expose un **signal de fin** (Promise ou callback `onClose`/`onDone
 - **Sous-modale « texte intégral »** (z-index 100001) : arrêté du 2 novembre 1955 + question écrite Sénat n° 03710 (réponse du 05/06/2025), **constantes verbatim** dans le module (`ARRETE_1955`, `SENAT_QUESTION`, `SENAT_REPONSE`), précédées des trois clauses détaillées (traduites). Actes officiels → **hors droit d'auteur** (CPI L.122-5 2°).
 - **i18n** : cadrage général `legal.*` traduit **fr / en / es** ; les **textes de loi restent en FR** (droit français, non traduits — décision KARMA). Mirror offline `docs/applications/CGU.md`.
 - **Incognito** : le séquenceur **saute** la gate bloquante en incognito (le flag `localStorage` est shimé et ne persiste pas → sinon re-prompt à chaque session). Consultation footer reste dispo.
+- **Stockage refusé par le navigateur** (Chrome : « Cookies et données des sites » bloqués → `SecurityError` à l'accès ; mémoire pleine → `QuotaExceededError`) : `utils.js` écrit, relit et retire une clé témoin au chargement → `window.ktaStockageIndispo` (raison, ou `null`) ; `main.js > initApp` le dit AVANT les conditions (`window.ktaSignalerStockageIndispo`, `ktaAlerte` une fois par page, clés `stockage.refuse.*`). `_markAccepted()` passe par `window.ktaEcrireStockage` (écriture **relue**) et rend `true` / `false` ; en échec, l'acceptation est gardée **en mémoire** pour la page (`isAccepted()` vrai), sinon le filet de `firstRunFlow` reposait la question en boucle derrière la descente de l'écran Bienvenue. Même règle dans `UnlockGate` (`_verifierMemoire` après chaque écriture de `myktamap_unlock_v1`). Rien n'est bloqué ni effacé ; au lancement suivant, conditions et entrée sont redemandées une fois. Garde-fou : `checkup-stockage-refuse.js`.
 
 #### 87.3 À NE PAS faire
 
