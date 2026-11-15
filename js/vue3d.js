@@ -1098,11 +1098,15 @@
     // on chute, _pas, _solAffiche) n'est permis que si l'on peut ressortir : arrivée sur le sol du niveau, ou dans une
     // masse qui a au moins une rampe ; sinon (creux sans rampe, masse plus basse sans rampe) on bute, comme devant un mur.
     // Une pente, si raide soit-elle, reste praticable (le saut est mesuré sur 5 cm) ; ralentie au-delà de 15°.
+    // ⚠️ contrat (décision produit : « il y a un tracé, ça passe ») : un front à MONTER se franchit sur un tracé du
+    // niveau affiché (_surTrace : axe à moins de RAYON_CORPS du point du saut), quelle que soit sa hauteur et qu'une
+    // rampe soit posée ou non ; on est hissé sur le dessus (_pas). Rien d'autre ne change (descente, creux sans rampe,
+    // vide sous MASSE.ramper sur le dessus), ni la géométrie, ni l'itinéraire.
     const L = Math.hypot(x1 - x0, y1 - y0) / sc + RAYON_CORPS, n = Math.max(1, Math.ceil(L / MASSE.pasFront));
     let sp = _solMasse(x0 / sc, y0 / sc);
     for (let k = 1; k <= n; k++) {
-      const d = L * k / n, q = _masseSous(x0 / sc + ux * d, y0 / sc + uy * d), s = q.sol;
-      if (s - sp > MASSE.marche) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
+      const d = L * k / n, qx = x0 / sc + ux * d, qz = y0 / sc + uy * d, q = _masseSous(qx, qz), s = q.sol;
+      if (s - sp > MASSE.marche && !_surTrace(qx, qz)) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
       if (sp - s > MASSE.marche && q.m && !(q.m.rampes && q.m.rampes.length)) {
         e.frontsMasse = (e.frontsMasse || 0) + 1;
         return true;
@@ -1113,6 +1117,14 @@
     const v1 = Math.min(_videMasse(x1 / sc, y1 / sc),
       _videMasse((x1 + ux * RAYON_CORPS * sc) / sc, (y1 + uy * RAYON_CORPS * sc) / sc));
     return v1 < MASSE.ramper && v1 < v0 - 1e-6;
+  }
+
+  // Sur un tracé du niveau affiché en (x, z) m : axe le plus proche à moins de RAYON_CORPS (plusProche du modèle du
+  // rendu ; en structures, le modèle galerie du niveau).
+  function _surTrace(x, z) {
+    const e = _e, G = window.KtaGalerie, niv = e.niveau === null ? undefined : e.niveau;
+    const m = e.galerie || e.mixte || (G && typeof G.modele === "function" ? G.modele(niv) : null);
+    return !!m && !!m.plusProche(x * e.sc, z * e.sc, RAYON_CORPS * e.sc);
   }
 
   // Dessus de la masse `m` dans le lot (grille découpée au contour, MASSE.pas m, plus large si la zone dépasserait
@@ -9420,7 +9432,9 @@
   // n'arrêtaient rien.
   // ⚠️ contrat (décision produit) : un pas qui fait descendre le sol de plus de MASSE.marche (front d'une masse au sol)
   // déclenche une CHUTE : la caméra tombe du sol de départ au nouveau sol en MASSE.chute (0,3 à 0,5 s : accélération
-  // simple, petit amorti à l'arrivée, jamais d'écran noir) ; pendant la chute, aucun pas ni rotation n'est pris.
+  // simple, petit amorti à l'arrivée, jamais d'écran noir) ; pendant la chute, aucun pas ni rotation n'est pris. Un
+  // pas qui le fait MONTER de plus de MASSE.marche (front franchi sur un tracé, _masseBloque) = la chute à l'envers :
+  // hissé sur le dessus en MASSE.chute (lissé, sans amorti), compté dans e.montees.
   function _pas(m, angle) {
     const e = _e;
     if (_enChute()) return false;
@@ -9434,6 +9448,12 @@
         e.chutes = (e.chutes || 0) + 1;
         e.derniereChute = { h: +h.toFixed(3), d: +d.toFixed(3) };
         e.sale = true;
+      } else if (s1 - s0 > MASSE.marche) {
+        const h = s1 - s0, d = Math.max(MASSE.chute[0], Math.min(MASSE.chute[1], MASSE.chute[0] + 0.1 * h));
+        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, monte: true };
+        e.montees = (e.montees || 0) + 1;
+        e.derniereMontee = { h: +h.toFixed(3), d: +d.toFixed(3) };
+        e.sale = true;
       }
     }
     return ok;
@@ -9445,7 +9465,7 @@
     if (!c) return false;
     if (performance.now() - c.t0 >= c.d * 1000) {
       e.chute = null;
-      e.atterri = performance.now();
+      if (!c.monte) e.atterri = performance.now();
       e.sale = true;
       return false;
     }
@@ -9459,6 +9479,7 @@
     if (_enChute()) {
       const c = e.chute, dt = (t - c.t0) / 1000;
       e.sale = true;
+      if (c.monte) return c.de + (c.vers - c.de) * _lisse(dt / c.d);
       return Math.max(c.vers, c.de - 0.5 * c.g * dt * dt);
     }
     if (e.atterri) {
@@ -15274,6 +15295,7 @@
         fonds: (e.masses || []).map(function (m) { return +m.H.toFixed(3); }),
         rampes: (e.masses || []).map(function (m) { return (m.rampes || []).map(function (r) { return r.bord; }); }),
         chute: !!e.chute, chutes: e.chutes || 0, derniereChute: e.derniereChute || null,
+        montees: e.montees || 0, derniereMontee: e.derniereMontee || null,
         fronts: e.frontsMasse || 0,
         bornes: (e.masses || []).map(function (m) { return !!m.borne; }), pieds: e.piedsMasse || 0 },
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {

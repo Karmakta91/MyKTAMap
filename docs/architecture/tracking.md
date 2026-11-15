@@ -1435,7 +1435,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   laquelle) ; négatif : même chose en descente. Formule partagée dans **`js/masseSol.js`** (`sol`, `atteinte`,
   `masseCarte` ; aucune sonde de bord) avec la fiche de la carte et l'itinéraire (`pathfinder.js`). Fronts :
   `_masseBloque` arrête le pas quand le sol MONTE de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à
-  `MASSE.pasFront` (5 cm), jusqu'à un corps devant ; le DESCENDRE est permis, quelle que soit la hauteur : on **chute**
+  `MASSE.pasFront` (5 cm), jusqu'à un corps devant — sauf **sur un tracé** (décision produit : « il y a un tracé, ça
+  passe », comme le Comblé ; `_surTrace` : axe du modèle du rendu à moins de `RAYON_CORPS` du point du saut, quelle
+  que soit la hauteur, rampe ou non) : on est **hissé** sur le dessus, la chute à l'envers (`_pas` : `e.chute` avec
+  `monte`, lissée en `MASSE.chute`, sans amorti, `etat().masses.montees`) ; à côté du tracé, le front reste un mur ;
+  la descente, le creux sans rampe et la règle du vide (< `MASSE.ramper`) ne changent pas, ni la géométrie ni
+  l'itinéraire (checkup `sectionFrontTrace`, `KTA_V3D_SEUL=fronttrace`) ; le DESCENDRE est permis, quelle que soit la hauteur : on **chute**
   (`_pas` lance `e.chute`, `_solAffiche` fait tomber la caméra du sol de départ au nouveau sol en `MASSE.chute` = 0,3 à
   0,5 s, accélération simple, amorti de `MASSE.amorti` à l'arrivée ; aucun pas ni rotation pendant la chute,
   `_enChute`) ; on ressort par une rampe. ⚠️ contrat (décision produit) : la chute n'est permise que si l'on peut
