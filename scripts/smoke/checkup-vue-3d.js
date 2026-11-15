@@ -4250,6 +4250,126 @@ async function sectionMurPlafond(page) {
   }
 }
 
+// ── Montée et chute relevées image par image (KTA_V3D_SEUL=monteecamera ; vue3d.js > _pas, _solAffiche,
+// _placerCamera) : masses ½ et ¾ sans rampe traversées par un tracé, flèche ↑ tenue (clavier) puis joystick tenu vers
+// l'avant ; la hauteur de la caméra est lue à CHAQUE image pendant la marche. Montée : jamais en haut avant la fin de
+// l'animation (aucune image à la hauteur d'arrivée avant la dernière image de montée), hauteur croissante pendant la
+// montée. Chute (demi-tour depuis le dessus) : décroissante, jamais en bas avant la fin. ──
+async function sectionMonteeCamera(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-montee-camera";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setStructures([]);
+    window.setEditorPoints([]);
+    window.setRoads([{ uid: "rd_mc", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([
+      { uid: "zn_mc_d", type: "masse-sol", level: 0, comble: 0.5, points: rect(-10, -6, 2, 6) },
+      { uid: "zn_mc_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(20, -6, 32, 6) }
+    ]);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    // Relevé à chaque image pendant `ms` : hauteur de caméra, sol de la place, animation en cours.
+    const relever = async function (ms) {
+      const out = [], t0 = performance.now();
+      while (performance.now() - t0 < ms) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+        const e = K.etat();
+        out.push({ cam: e.cameraY, sol: e.masses.sol, anim: e.masses.chute, x: +(e.pos.x / sc - ox).toFixed(2) });
+      }
+      return out;
+    };
+    const touche = function (type, key) {
+      window.dispatchEvent(new KeyboardEvent(type, { key: key, code: key, bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent(type, { key: key, code: key, bubbles: true }));
+    };
+    const out = {};
+    for (const cmd of ["pave", "joystick"]) {
+      for (const m of [["d", -14, 90, -8.5], ["t", 16, 90, 21.5]]) {
+        await K.ouvrir({ depart: Object.assign(P(m[1], 0), { cap: m[2] }), commandes: cmd, tuiles: false });
+        await pause(300);
+        // Marche vers l'est (front à x0 de la masse), 2,6 s ; puis demi-tour et retour vers l'ouest (chute).
+        const tenir = async function (ms) {
+          if (cmd === "pave") {
+            touche("keydown", "ArrowUp");
+            const r = await relever(ms);
+            touche("keyup", "ArrowUp");
+            return r;
+          }
+          const z = document.querySelector("#kta-vue3d .kta-v3d-stick-zone"), zr = z.getBoundingClientRect();
+          const x0 = zr.left + 100, y0 = zr.top + zr.height / 2;
+          const ev = function (type, x, y) {
+            z.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch",
+              isPrimary: true, clientX: x, clientY: y }));
+          };
+          ev("pointerdown", x0, y0); ev("pointermove", x0, y0 - 60);
+          const r = await relever(ms);
+          ev("pointerup", x0, y0 - 60);
+          return r;
+        };
+        const montee = await tenir(3500);
+        await pause(300);
+        // Chute : replacé sur le dessus, à 1,5 m du front ouest, tourné vers lui.
+        const h = P(m[3], 0);
+        K.placer(h.x, h.y, 270);
+        await pause(300);
+        const chute = await tenir(2500);
+        out[cmd + "-" + m[0]] = { montee: montee, chute: chute };
+        await K.fermer();
+      }
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ montée et chute relevées image par image");
+  // Fenêtre de l'animation : des images avant la première image animée jusqu'à la stabilisation au sol d'arrivée.
+  const juger = function (l, monte) {
+    const i0 = l.findIndex(function (q) { return q.anim; });
+    if (i0 < 0) return { anim: false };
+    let i1 = i0;
+    while (i1 + 1 < l.length && l[i1 + 1].anim) i1++;
+    const avant = l[Math.max(0, i0 - 1)].cam, fin = l[Math.min(l.length - 1, i1 + 3)].cam;
+    const seg = l.slice(Math.max(0, i0 - 1), Math.min(l.length, i1 + 4)).map(function (q) { return q.cam; });
+    const sens = monte ? 1 : -1, tol = 1e-3;
+    const monotone = seg.every(function (y, i) { return !i || sens * (y - seg[i - 1]) >= -tol; });
+    // Aucune image à la hauteur d'arrivée (ou au-delà) avant la dernière image animée (seg[i1 − i0 + 1]).
+    const dern = i1 - Math.max(0, i0 - 1);
+    const tot = seg.slice(0, dern).filter(function (y) { return sens * (y - fin) >= -1e-3; }).length;
+    return { anim: true, images: i1 - i0 + 1, avant: +avant.toFixed(3), fin: +fin.toFixed(3), monotone: monotone,
+      enAvance: tot, seg: seg.map(function (y) { return +y.toFixed(3); }) };
+  };
+  Object.keys(R).forEach(function (k) {
+    const m = juger(R[k].montee, true), c = juger(R[k].chute, false);
+    verifier(m.anim && m.fin > m.avant + 0.5 && m.monotone && m.enAvance === 0 && m.images >= 5,
+      "montée relevée image par image, " + k + " : de " + m.avant + " à " + m.fin + " m en " + m.images +
+      " images, croissante, jamais en haut avant la fin", m);
+    verifier(c.anim && c.fin < c.avant - 0.5 && c.monotone && c.enAvance === 0,
+      "chute relevée image par image, " + k + " : de " + c.avant + " à " + c.fin + " m, décroissante, jamais en " +
+      "bas avant la fin", c);
+  });
+}
+
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -17023,6 +17143,11 @@ async function sectionCaseBoutonsZoom(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionMurPlafond(page);
+    } else if (SEUL === "monteecamera") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMonteeCamera(page);
     } else if (SEUL === "fronttrace") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -20662,6 +20787,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionChatiereMasse(page);
       await sectionCacheNiveaux(page);
       await sectionFrontTrace(page);
+      await sectionMonteeCamera(page);
       await sectionMurPlafond(page);
       await sectionComble(page);
       await sectionFormesPoi(page);

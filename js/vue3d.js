@@ -8912,7 +8912,17 @@
       e.ramper = Math.max(e.ramper, om.ramper);
     }
     // Geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume ; galerie inclinée : sur sa pente.
-    const sol = _solAffiche(_solPlace()), dy = (e.dy || 0) - baisse + sol;
+    const sol = _solAffiche(_solPlace());
+    // 🩸 Chute ou montée en cours (_pas) : l'abaissement de l'œil (vide de la place d'ARRIVÉE) suit la même fraction
+    // que le sol affiché, depuis celui du départ (ch.b0) ; appliqué d'un coup, l'œil plongeait (ou se redressait)
+    // avant que la caméra ne monte (ou ne tombe) : la hauteur de la caméra est monotone sur toute l'animation.
+    const ch = e.chute;
+    if (ch && Math.abs(ch.vers - ch.de) > 1e-6) {
+      const fr = Math.max(0, Math.min(1, (sol - ch.de) / (ch.vers - ch.de)));
+      baisse = ch.b0 + (baisse - ch.b0) * fr;
+    }
+    e.baisse = baisse;
+    const dy = (e.dy || 0) - baisse + sol;
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(c.x, 0, c.z);
@@ -9468,13 +9478,13 @@
       const s1 = _solPlace();
       if (s0 - s1 > MASSE.marche) {
         const h = s0 - s1, d = Math.max(MASSE.chute[0], Math.min(MASSE.chute[1], Math.sqrt(2 * h / 9.81)));
-        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, g: 2 * h / (d * d) };
+        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, g: 2 * h / (d * d), b0: e.baisse || 0 };
         e.chutes = (e.chutes || 0) + 1;
         e.derniereChute = { h: +h.toFixed(3), d: +d.toFixed(3) };
         e.sale = true;
       } else if (s1 - s0 > MASSE.marche) {
         const h = s1 - s0, d = Math.max(MASSE.chute[0], Math.min(MASSE.chute[1], MASSE.chute[0] + 0.1 * h));
-        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, monte: true };
+        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, monte: true, b0: e.baisse || 0 };
         e.montees = (e.montees || 0) + 1;
         e.derniereMontee = { h: +h.toFixed(3), d: +d.toFixed(3) };
         e.sale = true;
