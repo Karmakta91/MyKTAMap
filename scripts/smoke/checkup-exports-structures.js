@@ -4,9 +4,9 @@
 // checkup-exports-structures.js — checkup (Playwright, pas un hook pré-commit) : ce que les exports emportent
 // =====================================================================
 // Le relevé fictif devient un plan LOCAL (ZIP construit dans la page) auquel on ajoute un calque de données
-// fabriqué : 6 structures intégrées (arc de soutènement compris), une structure personnalisée en LIGNE et une en
-// polygone (`cust-…`, légende du plan), deux structures au type brut sans entrée de légende (une ouverte, une
-// fermée), et de même pour tracés et zones ; des points de chaque tag du catalogue, un point sans tag, un point au
+// fabriqué (objets notés « ck-… », reconnus parmi ceux du relevé) : 6 structures intégrées (arc de soutènement
+// compris), une structure personnalisée en LIGNE et une en polygone (`cust-…`, légende du plan), deux structures
+// au type brut sans entrée de légende (une ouverte, une fermée), et de même pour tracés et zones ; des points de chaque tag du catalogue, un point sans tag, un point au
 // tag inconnu. Puis :
 //   • KMZ (par la fenêtre d'export) : Placemarks par famille = objets du calque, ligne personnalisée en
 //     LineString avec son <Style> à la couleur de la légende ; arc en LineString au trait bleu du canon (les
@@ -87,7 +87,7 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
         { type: "cust-ckpil", points: carre(0, 1) }, { type: "cust-ckfront", points: trait(1, 1) },
         { type: "ckbrut", points: carre(2, 1).concat([carre(2, 1)[0]]) },
         { type: "ckbrut", points: trait(3, 1).concat([{ x: x0 + 3 * pas + Math.floor(pas * 0.8), y: y0 + pas + Math.floor(pas * 0.5) }]) }
-      ].map(function (s) { s.level = 0; return s; });
+      ].map(function (s, i) { s.level = 0; s.description = "ck-s-" + i; return s; });
       const roads = [
         { type: "principal", points: trait(0, 3) }, { type: "cust-cktrace", points: trait(1, 3) }, { type: "ckbrut", points: trait(2, 3) }
       ].map(function (s) { s.level = 0; return s; });
@@ -128,6 +128,7 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
       function du(arr) { return (arr || []).filter(function (o) { return o.layerId === "ck-calque"; }).length; }
       return {
         structures: du(window.getAllEmbeddedStructures()), roads: du(window.getAllEmbeddedRoads()),
+        structuresPlan: (window.getAllEmbeddedStructures() || []).length,
         zones: du(window.getAllEmbeddedZones()),
         points: (window._ktaDataMarkers || []).filter(function (m) { return m._ktaLayerId === "ck-calque"; }).length
       };
@@ -232,7 +233,10 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
         if (!fam) return;
         Array.from(f.children).filter(function (c) { return c.tagName === "Placemark"; }).forEach(function (pm) {
           const st = (pm.getElementsByTagName("styleUrl")[0] || {}).textContent || "";
-          (familles[fam] = familles[fam] || []).push({ style: st.slice(1), geom: pm.querySelector("LineString") ? "ligne" : pm.querySelector("Polygon") ? "polygone" : "point", nom: pm.getElementsByTagName("name")[0].textContent });
+          const desc = (pm.getElementsByTagName("description")[0] || {}).textContent || "";
+          (familles[fam] = familles[fam] || []).push({ style: st.slice(1),
+            geom: pm.querySelector("LineString") ? "ligne" : pm.querySelector("Polygon") ? "polygone" : "point",
+            nom: pm.getElementsByTagName("name")[0].textContent, desc: desc });
         });
       });
       function styleDe(id) {
@@ -260,9 +264,17 @@ function verifier(c, msg, detail) { if (c) ok(msg); else pb(msg + (detail !== un
     });
     function compte(fam, pred) { return (k.familles[fam] || []).filter(pred).length; }
     function ck(st) { return /(^|_)(cust-ck|ckbrut)/.test(st); }
+    // Le relevé fictif apporte ses propres structures : celles du calque se reconnaissent à leur note « ck-s-i »,
+    // chacune attendue une fois et une seule ; le total exporté égale celui du plan (aucune perdue ni doublée).
     const sAtt = A.structures;
+    const notesCk = (k.familles.structures || []).map(function (x) { return (/ck-s-\d+/.exec(x.desc) || [""])[0]; })
+      .filter(Boolean);
+    const notesUniques = Array.from(new Set(notesCk));
+    verifier(notesCk.length === sAtt && notesUniques.length === sAtt,
+      "KMZ : " + sAtt + " structures du calque exportées, une fois chacune (vu " + notesCk.length + ")", notesCk);
     const sVu = compte("structures", function () { return true; });
-    verifier(sVu === sAtt, "KMZ : " + sAtt + " structures du calque exportées (vu " + sVu + ")", (k.familles.structures || []).map(function (x) { return x.style; }));
+    verifier(sVu === charge.structuresPlan, "KMZ : toutes les structures du plan exportées (" + charge.structuresPlan +
+      ", vu " + sVu + ")");
     const frontCk = (k.familles.structures || []).find(function (x) { return x.style === "structure_cust-ckfront"; });
     verifier(!!frontCk && frontCk.geom === "ligne", "KMZ : structure personnalisée en ligne = LineString", frontCk);
     verifier(!!frontCk && frontCk.nom === "Front checkup", "KMZ : nom = libellé de la légende", frontCk && frontCk.nom);
