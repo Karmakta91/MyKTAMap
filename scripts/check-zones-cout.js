@@ -13,7 +13,9 @@
  *   • `inaccessible` reste dure ; une zone d'un autre niveau ne coûte rien ; le Secours / Perdu (computeReachable)
  *     les ignore ; l'inter-plans (computeRouteOnRoads) suit la même règle ;
  *   • « Vérifier le plan » : C12 range le tracé qui en traverse une en « revoir », jamais en bloquant ni en C1 ;
- *   • tables uniques (TYPES_ZONES_COUT), brancard sans Comblé coché.
+ *   • tables uniques (TYPES_ZONES_COUT), brancard sans Comblé coché ;
+ *   • tolérance d'1 m : traversée continue de 0,5 m ignorée (itinéraire et C12), 1,5 m pénalisée et dite, tracé dense
+ *     toujours évité (mesure par traversée, pas par arête), deux passages courts ignorés, sans échelle : strict.
  *
  * Usage : node scripts/check-zones-cout.js   (exit 1 si un contrôle échoue)
  */
@@ -227,6 +229,57 @@ async function route(w, opts) {
     t("C12 : clé = C12|uid du tracé|uid de la zone", c12.some(c => c.cle === "C12|rd_droit|zn_remblais"));
     t("C12 : même mesure que le graphe (zonesCoutDe = forme du graphe)",
       w.Pathfinder.controle.zonesCoutDe([zone("remblais"), zone("eau")]).length === 1);
+  }
+
+  // ── 9. Tolérance : une traversée continue de moins d'1 m est ignorée (contour un peu large) ──
+  // À 4 px/m : 1 m = 4 px. Zone de 2 px (0,5 m) et de 6 px (1,5 m) en travers de la droite.
+  {
+    const bande = (larg, extra) => R("zn_bande", "remblais",
+      [[100 - larg / 2, -20], [100 + larg / 2, -20], [100 + larg / 2, 20], [100 - larg / 2, 20]], extra);
+    const C = bac({}).Pathfinder.controle;
+    t("tolérance : une seule constante, 1 m (TOLERANCE_ZONE_COUT_M)", C.TOLERANCE_ZONE_COUT_M === 1);
+    t("tolérance : 1 m = 4 px à 4 px/m, 0 sans échelle (repli strict)",
+      C.toleranceZonePx(4) === 4 && bac({}, { scale: 0 }).Pathfinder.controle.toleranceZonePx(0) === 0);
+
+    let w = bac({ roads: [droite, detour], zones: [bande(2)] });
+    let r = await route(w);
+    t("0,5 m traversé : ignoré, la droite est prise (200 px), rien n'est dit", !r.erreur &&
+      Math.round(r.totalDistance) === 200 && r.zonesTraversees.length === 0,
+      r.erreur || [r.totalDistance, r.zonesTraversees]);
+    let c12 = w.KtaVerifierPlan.analyser().liste.filter(c => c.controle === "C12");
+    t("0,5 m traversé : pas de C12 (ni « au bord »)", c12.length === 0, c12.map(c => c.cle));
+
+    w = bac({ roads: [droite, detour], zones: [bande(6)] });
+    r = await route(w);
+    t("1,5 m traversé + détour : le détour est pris (400 px)", !r.erreur && Math.round(r.totalDistance) === 400,
+      r.erreur || r.totalDistance);
+    w = bac({ roads: [droite], zones: [bande(6)] });
+    r = await route(w);
+    t("1,5 m traversé, seul chemin : pénalisé et dit (6 px)", !r.erreur && r.cout > r.totalDistance &&
+      r.zonesTraversees.length === 1 && Math.abs(r.zonesTraversees[0].longueurPx - 6) < 0.01,
+      r.erreur || r.zonesTraversees);
+    c12 = w.KtaVerifierPlan.analyser().liste.filter(c => c.controle === "C12");
+    t("1,5 m traversé : C12 signalé", c12.length === 1 && Math.abs(c12[0].longueurPx - 6) < 0.01, c12.map(c => c.cle));
+
+    // 🩸 Tracé dense (un sommet par pixel) dans la zone de 10 m : chaque arête < 1 m, la traversée reste de 10 m.
+    const dense = R("rd_dense", "principal", Array.from({ length: 201 }, (_, i) => [i, 0]));
+    w = bac({ roads: [dense, detour], zones: [zone("remblais")] });
+    r = await route(w);
+    t("tracé dense (arêtes de 1 px) à travers 10 m : toujours évité (mesure par traversée, pas par arête)",
+      !r.erreur && Math.round(r.totalDistance) === 400, r.erreur || r.totalDistance);
+
+    // Deux passages de 0,5 m chacun sur le même tracé : chacun ignoré (la tolérance est par traversée).
+    const deux = R("zn_deux", "remblais", [[60, -20], [62, -20], [62, 20], [60, 20]]);
+    const deux2 = R("zn_deux2", "remblais", [[140, -20], [142, -20], [142, 20], [140, 20]]);
+    w = bac({ roads: [droite, detour], zones: [deux, deux2] });
+    r = await route(w);
+    t("deux traversées de 0,5 m : ignorées toutes deux (droite prise)",
+      !r.erreur && Math.round(r.totalDistance) === 200, r.erreur || r.totalDistance);
+
+    w = bac({ roads: [droite, detour], zones: [bande(2)] }, { scale: 0 });
+    r = await route(w);
+    t("sans échelle : aucune tolérance, la bande de 2 px est évitée (repli strict)", !r.erreur &&
+      Math.round(r.totalDistance) === 400, r.erreur || r.totalDistance);
   }
 
   console.log(ko ? "\n❌ check-zones-cout : " + ko + " échec(s)" : "\n✅ check-zones-cout : zones à coût conformes");

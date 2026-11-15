@@ -739,6 +739,15 @@ jamais casser un itinéraire, et un tracé posé exprès à travers dit que ça 
   connu ou déduit des nœuds ; une arête de puits ou de milieu de jonction (en l'air) ne paie rien, une arête qui touche
   seulement le bord non plus. Effet : **tout autre chemin l'emporte** (un détour 10⁶ fois plus long que la traversée),
   mais le coût reste fini — sans autre chemin, l'itinéraire passe.
+- **Tolérance d'1 m** (décision produit, `TOLERANCE_ZONE_COUT_M`, exposée `Pathfinder.controle.toleranceZonePx` /
+  `traverseesTrace`) : une traversée **continue** d'un tracé dans une zone à coût de moins d'1 m (à l'échelle du plan,
+  celle du réseau en inter-plans) est ignorée — ni pénalité, ni mention, ni C12 : c'est un contour dessiné un peu
+  large. `_buildGraph` mesure les traversées par tracé (`_traverseesTrace` : la traversée se poursuit tant que le
+  sommet commun est dans la zone) et garde les segments des traversées courtes (`graph.zonesCout.courtes`) ;
+  `_coutZonesArete` exempte une arête dont un point intérieur (`_pointInterieur`, coupé aux intersections du
+  contour) est sur l'un d'eux. 🩸 Jamais par arête : un tracé dense découperait une longue traversée en arêtes de
+  quelques pixels, toutes sous le seuil. Sans échelle du plan : aucune tolérance (repli strict). Même seuil pour
+  l'itinéraire, la sortie d'urgence, l'inter-plans et C12 (`verifierPlan.js > _c12`).
 - 🩸 **Le coût n'est pas la distance** : `_dijkstra` ordonne sur le coût et suit la longueur à côté (`lg`) ;
   `totalDistance` = la vraie longueur, `cout` = le coût. Sans zone à coût, ce sont les mêmes additions dans le même
   ordre : chemins et distances inchangés au bit près. `computeReachable` (Secours / Perdu) n'en a pas : le périmètre

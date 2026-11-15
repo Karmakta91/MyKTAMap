@@ -129,10 +129,24 @@ window.KtaVerifierPlan = (function () {
   // ── C12 : tracé qui traverse une zone à coût (Comblé, effondrement) ──────────
   // Mêmes paires et même mesure que C1, sur les zones à coût que lit le graphe : l'itinéraire les évite quand il peut
   // et dit quand il y passe ; ici on confirme le tracé (galerie creusée dans le remblai) ou on corrige la zone.
+  // ⚠️ contrat : même tolérance que le graphe (Pathfinder.controle.toleranceZonePx, traverseesTrace) — une traversée
+  // continue de moins d'1 m est un contour un peu large, ignoré ici comme par l'itinéraire.
   function _c12(d) {
     const C = _ctl();
     if (!C || typeof C.zonesCoutDuPlan !== "function") return [];
-    return _traversees(d, null, "C12", d.planOuvert ? C.zonesCoutDuPlan() : C.zonesCoutDe(d.zones));
+    const paires = _traversees(d, null, "C12", d.planOuvert ? C.zonesCoutDuPlan() : C.zonesCoutDe(d.zones));
+    const tol = typeof C.toleranceZonePx === "function" ? C.toleranceZonePx(d.echelle) : 0;
+    if (!(tol > 0)) return paires;
+    const bord = seuilBordPx(d.echelle);
+    return paires.filter(function (e) {
+      const zone = e.autre && Array.isArray(e.autre.points) ? e.autre.points : null;
+      if (!zone || !e.objet || !Array.isArray(e.objet.points)) return true;
+      const gardees = C.traverseesTrace(e.objet.points, zone).filter(function (t) { return t.px >= tol; });
+      if (!gardees.length) return false;
+      e.longueurPx = gardees.reduce(function (s, t) { return s + t.px; }, 0);
+      e.auBord = e.longueurPx < bord;
+      return true;
+    });
   }
 
   // Paires (tracé, obstacle) d'un contrôle de traversée (C1, C12).

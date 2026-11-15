@@ -28,6 +28,9 @@ effondrée ni inaccessible, considère que ça passe.
 - **Vérifier le plan** signale chaque tracé qui traverse un Comblé (à vérifier, pas une erreur).
 - **Effondrement : même règle que Comblé** (révision du 14/11) : évité s'il existe un autre chemin, sinon l'itinéraire
   passe et le dit ; obstacle 3D sauf le long d'un tracé qui le traverse ; signalé par Vérifier le plan.
+- **Tolérance d'1 m** (option 3, 15/11) : l'évitement strict est gardé, mais une traversée continue de **moins
+  d'1 m** dans un Comblé ou un effondrement est ignorée (ni coût, ni message, ni « Vérifier le plan ») : elle évite
+  les faux détours d'un contour dessiné un peu large. Mesurée à l'échelle du plan ; sans échelle, pas de tolérance.
 - **Seule la zone « Inaccessible » bloque tout passage, même avec un tracé** : itinéraire coupé et obstacle 3D, sans
   exception (posée exprès pour dire « interdit »).
 - **Ordre** : la masse au sol (lots 2 → 4) passe avant Comblé.

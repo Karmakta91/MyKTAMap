@@ -109,6 +109,34 @@
   const TYPES_ZONES_COUT = ["remblais", "effondrement"];
   const PENALITE_ZONE_COUT = 1e6;
   function _estZoneCout(type) { return TYPES_ZONES_COUT.indexOf(type) >= 0; }
+  // ⚠️ contrat (décision produit) : une traversée CONTINUE d'un tracé dans une zone à coût de moins de
+  // TOLERANCE_ZONE_COUT_M mètres est ignorée — ni pénalité, ni mention, ni C12 — : c'est un contour dessiné un peu
+  // large, pas un passage dans le remblai. Même seuil partout (itinéraire, sortie d'urgence, inter-plans, Vérifier le
+  // plan), lu par toleranceZonePx. Sans échelle du plan : aucune tolérance (repli strict, rien n'est supposé).
+  // 🩸 Mesurée par traversée du TRACÉ (_traverseesTrace), jamais par arête : un tracé dense découpe une longue
+  // traversée en arêtes de quelques pixels, qui passeraient toutes sous le seuil.
+  const TOLERANCE_ZONE_COUT_M = 1;
+  function _toleranceZonePx(echelle) {
+    const e = _echelleReseau(echelle, 0);
+    return e > 0 ? TOLERANCE_ZONE_COUT_M * e : 0;
+  }
+  // Traversées continues des points d'un tracé dans un polygone → [{ px, segs: [indices des segments] }], dans
+  // l'ordre du tracé. Une traversée se poursuit tant que le sommet commun est dans le polygone.
+  function _traverseesTrace(pts, poly) {
+    const out = [];
+    let cur = null;
+    for (let i = 1; i < pts.length; i++) {
+      const l = _longueurDansPolygone(pts[i - 1], pts[i], poly);
+      if (l > 1e-6) {
+        if (!cur) cur = { px: 0, segs: [] };
+        cur.px += l;
+        cur.segs.push(i);
+        if (!_pointInPolygon(pts[i], poly)) { out.push(cur); cur = null; }
+      } else if (cur) { out.push(cur); cur = null; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
 
   // Ray-casting standard, O(n).
   function _pointInPolygon(p, poly) {
@@ -552,8 +580,59 @@
     return out;
   }
 
+  // Traversées courtes (sous la tolérance) de chaque zone à coût par les tracés du réseau → Map(zone → [{a, b}]) : les
+  // segments des tracés qui ne la traversent que sur moins de TOLERANCE_ZONE_COUT_M. Seuil 0 (sans échelle) : vide.
+  function _traverseesCourtes(roads, polys, seuilPx) {
+    const out = new Map();
+    if (!(seuilPx > 0) || !polys || !polys.length) return out;
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    (roads || []).forEach(function(road) {
+      if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
+      if (road.type === "itinerary" || road.type === "jonction") return;   // jonction : segments en l'air
+      const lvl = Number.isInteger(road.level) ? road.level : 0;
+      polys.forEach(function(z) {
+        if (mlOn && z.niveaux.indexOf(lvl) < 0) return;
+        _traverseesTrace(road.points, z.points).forEach(function(t) {
+          if (t.px >= seuilPx) return;
+          let l = out.get(z);
+          if (!l) out.set(z, l = []);
+          t.segs.forEach(function(i) { l.push({ a: road.points[i - 1], b: road.points[i] }); });
+        });
+      });
+    });
+    return out;
+  }
+  // L'arête p1→p2 ne fait-elle, dans la zone z, que suivre une traversée courte ? Un point de sa partie intérieure
+  // est cherché sur les segments exemptés (les arêtes découpées aux croisements restent sur leur tracé).
+  function _areteExemptee(courtes, z, p1, p2) {
+    const segs = courtes && courtes.get(z);
+    if (!segs) return false;
+    const p = _pointInterieur(p1, p2, z.points);
+    return !!p && segs.some(function(s) { return _projectOnSegment(p, s.a, s.b).dist < 0.5; });
+  }
+  // Milieu du premier morceau de p1→p2 dans le polygone (coupé à ses intersections avec le contour), ou null.
+  // 🩸 Pas d'échantillonnage régulier : une bande de 2 px tombe entre deux échantillons d'une arête de 100 px.
+  function _pointInterieur(p1, p2, poly) {
+    const L = _dist(p1, p2);
+    if (L < 1e-9) return null;
+    const ts = [0, 1];
+    for (let i = 0; i < poly.length; i++) {
+      const ip = _segmentIntersection(p1, p2, poly[i], poly[(i + 1) % poly.length]);
+      if (ip) ts.push(_dist(p1, ip) / L);
+    }
+    ts.sort(function(a, b) { return a - b; });
+    for (let i = 1; i < ts.length; i++) {
+      if (ts[i] - ts[i - 1] <= 1e-9) continue;
+      const tm = (ts[i] + ts[i - 1]) / 2;
+      const p = { x: p1.x + tm * (p2.x - p1.x), y: p1.y + tm * (p2.y - p1.y) };
+      if (_pointInPolygon(p, poly)) return p;
+    }
+    return null;
+  }
+
   // Zones à coût que l'arête a→b traverse → { px: longueur dedans, zones: Map(zone → px) } | null. Même test que les
-  // zones dures (_zonesQuiBloquent), puis la longueur dedans : une arête qui touche seulement le bord ne paie rien.
+  // zones dures (_zonesQuiBloquent), puis la longueur dedans : une arête qui touche seulement le bord ne paie rien,
+  // une arête qui suit une traversée courte non plus (TOLERANCE_ZONE_COUT_M).
   function _coutZonesArete(graph, a, b, niveau) {
     const g = graph.zonesCout;
     if (!g || g.polys.length === 0) return null;
@@ -566,6 +645,7 @@
         if (zones && zones.has(z)) return;
         const l = _longueurDansPolygone(p1, p2, z.points);
         if (l <= 1e-6) return;
+        if (_areteExemptee(g.courtes, z, p1, p2)) return;
         if (!zones) zones = new Map();
         zones.set(z, l);
         px += l;
@@ -641,7 +721,11 @@
     avoidZones  = avoidZones  || [];   // zones à éviter (souple), même test géométrique que les inaccessibles
     const obstacles = _preparerObstacles(zonesInacc);   // zones inaccessibles + murs en ligne (DUR)
     const graph = _newGraph();
-    if (Array.isArray(zonesCout) && zonesCout.length) graph.zonesCout = _grilleZones(zonesCout);
+    if (Array.isArray(zonesCout) && zonesCout.length) {
+      graph.zonesCout = _grilleZones(zonesCout);
+      graph.zonesCout.courtes = _traverseesCourtes(roads, graph.zonesCout.polys,
+        _toleranceZonePx(ctxPoids && ctxPoids.echelle));
+    }
 
     for (let r = 0; r < roads.length; r++) {
       const road = roads[r];
@@ -2123,6 +2207,10 @@
       zonesQuiBloquent: function(p1, p2, niveau, polys) { return _zonesQuiBloquent(p1, p2, niveau, polys, true); },
       mursQuiCoupent: function(p1, p2, niveau, grille) { return _mursQuiCoupent(p1, p2, niveau, grille, true); },
       longueurDansPolygone: _longueurDansPolygone,
+      // Tolérance des zones à coût (TOLERANCE_ZONE_COUT_M) : seuil en px à une échelle, traversées d'un tracé.
+      TOLERANCE_ZONE_COUT_M: TOLERANCE_ZONE_COUT_M,
+      toleranceZonePx: _toleranceZonePx,
+      traverseesTrace: _traverseesTrace,
       projeter: _projectOnSegment
     },
     computeRoute:      computeRoute,
