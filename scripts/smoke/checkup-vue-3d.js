@@ -3798,6 +3798,251 @@ async function capturesChatiereMasse(page) {
   });
 }
 
+// ── Changement de niveau sur un relevé lourd (KTA_V3D_SEUL=cacheniveaux ; vue3d.js > _cacheNiveau) : relevé FICTIF
+// en mémoire, 3 niveaux de piliers (≈ 13 000 structures, couloirs libres le long des tracés), plaques loin des tubes
+// (faces des structures lues), puits 0 ↔ 1 au départ, niveaux voisins montrés ; processeur ralenti × 4 (Chromium).
+// Allers-retours 0 ↔ 1 mesurés caches coupés (ouvrir({ cacheNiveaux: false }) : l'avant) puis allumés ; à chaud,
+// aucun recalcul (ratés du cache constants, voisins repris). Piège du cache : un pilier DÉPLACÉ au niveau 1 (même
+// nombre de structures) pendant qu'on est au 0 barre le pas en y revenant, remis à sa place il ne barre plus ; un
+// pilier ajouté puis retiré se compte dans la scène et dans l'index du voisin. ──
+async function sectionCacheNiveaux(page) {
+  let cdp = null;
+  try {
+    if (page.context().browser().browserType().name() === "chromium") cdp = await page.context().newCDPSession(page);
+  } catch (err) { cdp = null; }
+  const prep = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-cache-niveaux";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    window.__cnAv = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, smart: C.smartNav,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(),
+      vus: typeof window.getVue3DNiveauxVus === "function" ? window.getVue3DNiveauxVus() : null };
+    window.__cnP = P; window.__cnRect = rect;
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    if (K.etat().ouvert !== false) await K.fermer();
+    C.multiLevel = true; C.availableLevels = [-1, 0, 1]; C.visibleLevels = [-1, 0, 1]; C.activeLevel = 0;
+    C.smartNav = false;
+    const st = [], roads = [], pts = [];
+    [-1, 0, 1].forEach(function (n) {
+      for (let i = 0; i < 70; i++) {
+        for (let j = 0; j < 70; j++) {
+          const x = -210 + i * 6 + 2, z = -210 + j * 6 + 2;
+          // Couloirs libres de 6 m le long des tracés (x = 1 et z = 1) : on y marche.
+          if ((z < 4 && z + 2 > -2) || (x < 4 && x + 2 > -2)) continue;
+          st.push({ uid: "st_cn_" + n + "_" + i + "_" + j, type: "pilier-1", level: n, points: rect(x, z, x + 2, z + 2) });
+        }
+      }
+      roads.push({ uid: "rd_cn_x" + n, type: "principal", level: n, points: [P(-210, 1), P(210, 1)] });
+      roads.push({ uid: "rd_cn_z" + n, type: "principal", level: n, points: [P(1, -210), P(1, 210)] });
+      for (let k = 0; k < 12; k++) {
+        const x = -150 + k * 25 + 1, z = 40 + (k % 3) * 18 + 1;
+        pts.push({ id: "pt_cn_pl_" + n + "_" + k, uid: "pt_cn_pl_" + n + "_" + k, nom: "Plaque fictive " + k,
+          level: n, tags: ["plaque"], updatedAt: 1000, x: P(x, z).x, y: P(x, z).y });
+      }
+    });
+    pts.push({ id: "pt_cn_puits", uid: "pt_cn_puits", nom: "Puits fictif", level: 0, tags: ["jpe"], updatedAt: 1000,
+      x: P(1, 1).x, y: P(1, 1).y, niveaux: [0, 1], accroches: [{ level: 1, x: P(1, 1).x, y: P(1, 1).y }] });
+    window.setStructures(st);
+    window.setRoads(roads);
+    window.setZones([]);
+    window.setEditorPoints(pts);
+    window.effacerReglagesNiveaux(PID);
+    window.ktaSetActiveLevel(0);
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    return { structures: st.length, parNiveau: st.length / 3 };
+  });
+  // Allers-retours : passage 1 (froid) puis 6 ; durée du passage (changerNiveau, synchrone sans geste), étapes de
+  // _reindexer (etat().reindex), pire image des 40 suivantes (tuiles des voisins construites quelques-unes par image).
+  const allersRetours = async function (avecCache) {
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const r = await page.evaluate(async function (avec) {
+      const K = window.KtaVue3D, P = window.__cnP;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const images = async function (n) {
+        for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      const d = P(1.5, 1);
+      if (K.etat().ouvert !== false) await K.fermer();
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "pave", tuiles: true, distanceVue: 30,
+        cacheNiveaux: avec });
+      K.reglerNiveauxVus("voisins");
+      K.gesteAnime(false);
+      await pause(400);
+      await images(10);
+      const pas = [];
+      for (let i = 0; i < 7; i++) {
+        const sens = i % 2 === 0 ? "haut" : "bas";
+        const t0 = performance.now();
+        const fait = K.changerNiveau(sens);
+        const ms = performance.now() - t0;
+        const e = K.etat();
+        K.placer(d.x, d.y, 90);
+        let lourdes = 0, pire = 0, avant = performance.now();
+        for (let k = 0; k < 40; k++) {
+          await images(1);
+          const now = performance.now();
+          pire = Math.max(pire, now - avant);
+          if (now - avant > 50) lourdes++;
+          avant = now;
+        }
+        pas.push({ sens: sens, fait: fait, niveau: e.niveau, ms: Math.round(ms), reindex: e.reindex,
+          imagePire: Math.round(pire), imagesLourdes: lourdes, cache: K.etat().cacheNiveaux });
+        await pause(200);
+      }
+      return { pas: pas, geometries: K.etat().geometries };
+    }, avecCache);
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }).catch(function () { /* fermée */ });
+    // Tas JS exact, vue encore ouverte au niveau 1 (caches remplis s'ils sont allumés), après un ramasse-miettes.
+    if (cdp) {
+      await cdp.send("HeapProfiler.enable").catch(function () { /* non pris en charge */ });
+      await cdp.send("HeapProfiler.collectGarbage").catch(function () { /* non pris en charge */ });
+      const u = await cdp.send("Runtime.getHeapUsage").catch(function () { return null; });
+      r.tas = u ? u.usedSize : null;
+    }
+    await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+    return r;
+  };
+  const SANS = await allersRetours(false);
+  const AVEC = await allersRetours(true);
+  // Piège du cache (processeur normal).
+  const I = await page.evaluate(async function () {
+    const K = window.KtaVue3D, P = window.__cnP, rect = window.__cnRect;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const d = P(1.5, 1);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "pave", tuiles: true, distanceVue: 30 });
+    K.reglerNiveauxVus("voisins");
+    K.gesteAnime(false);
+    await pause(300);
+    const attendre = async function (n0) {
+      for (let i = 0; i < 40; i++) {
+        await pause(50);
+        const e = K.etat();
+        if (!e.donnees.attente && e.donnees.refaites > n0) break;
+      }
+      await pause(100);
+      await images(4);
+    };
+    const changer = async function (liste) {
+      const n0 = K.etat().donnees.refaites;
+      window.setStructures(liste);
+      if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan();
+      await attendre(n0);
+    };
+    // Au puits d'abord (un passage se prend de près), puis le passage.
+    const aller = async function (sens) {
+      K.placer(d.x, d.y, 90);
+      await images(2);
+      K.changerNiveau(sens);
+      K.placer(d.x, d.y, 90);
+      await pause(150);
+      await images(6);
+    };
+    // Marche vers l'est le long du tracé du niveau 1 depuis le puits : x atteint (m, relatif) après 4 m demandés.
+    const marche = async function () {
+      K.placer(d.x, d.y, 90);
+      await images(2);
+      for (let i = 0; i < 40; i++) { K.avancer(0.1); await images(1); }
+      return +(K.etat().pos.x / window.APP_CONFIG.scale - (d.x / window.APP_CONFIG.scale - 1.5)).toFixed(2);
+    };
+    const voisin1 = function () {
+      const q = (K.etat().cacheNiveaux.voisinsStructures || []).filter(function (x) { return x[0] === 1; })[0];
+      return q ? q[1] : null;
+    };
+    const out = {};
+    // Chauffe : 0 → 1 → 0 (caches remplis), marche libre au 1.
+    await aller("haut");
+    out.n1 = K.etat().compte.structures;
+    out.marcheLibre = await marche();
+    await aller("bas");
+    out.v1Avant = voisin1();
+    const base = window.getStructures().slice();
+    const cible = base.filter(function (q) { return q.level === 1; })[0];
+    // Déplacé en travers du couloir du niveau 1, à 5 m du puits (même nombre de structures).
+    const purges0 = K.etat().cacheNiveaux.purges;
+    await changer(base.map(function (q) {
+      return q === cible ? Object.assign({}, q, { points: rect(4.5, -2, 6.5, 4) }) : q;
+    }));
+    out.auZeroDeplace = { niveau: K.etat().niveau, purges: K.etat().cacheNiveaux.purges - purges0, v1: voisin1() };
+    await aller("haut");
+    out.n1Deplace = K.etat().compte.structures;
+    out.marcheBarree = await marche();
+    await aller("bas");
+    await changer(base);
+    await aller("haut");
+    out.marcheRemise = await marche();
+    await aller("bas");
+    // Ajouté puis retiré.
+    await changer(base.concat([{ uid: "st_cn_neuf", type: "pilier-1", level: 1, points: rect(-30, 10, -28, 12) }]));
+    out.v1Ajout = voisin1();
+    await aller("haut");
+    out.n1Ajout = K.etat().compte.structures;
+    await aller("bas");
+    await changer(base);
+    out.v1Retrait = voisin1();
+    await aller("haut");
+    out.n1Retrait = K.etat().compte.structures;
+    out.erreurs = 0;
+    await K.fermer();
+    const av = window.__cnAv, C = window.APP_CONFIG;
+    window.effacerReglagesNiveaux("v3d-checkup-cache-niveaux");
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    if (av.vus && typeof window.setVue3DNiveauxVus === "function") window.setVue3DNiveauxVus(av.vus);
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ changement de niveau sur un relevé lourd (" + prep.structures + " structures fictives, × 4)");
+  const med = function (l) { const s = l.slice().sort(function (a, b) { return a - b; }); return s[Math.floor(s.length / 2)]; };
+  const chauds = function (R) { return R.pas.slice(2); };
+  [["caches coupés", SANS], ["caches", AVEC]].forEach(function (q) {
+    q[1].pas.forEach(function (p, i) {
+      console.log("  📏 " + q[0] + ", passage " + (i + 1) + " → " + p.niveau + " : " + p.ms + " ms, pire image ensuite " +
+        p.imagePire + " ms " + JSON.stringify(p.reindex));
+    });
+  });
+  const mSans = med(chauds(SANS).map(function (p) { return p.ms; })), mAvec = med(chauds(AVEC).map(function (p) { return p.ms; }));
+  const iSans = med(chauds(SANS).map(function (p) { return p.imagePire; })), iAvec = med(chauds(AVEC).map(function (p) { return p.imagePire; }));
+  ok("mesure (info) : aller-retour 0 ↔ 1 à chaud, médiane " + mSans + " ms caches coupés → " + mAvec +
+    " ms ; pire image qui suit " + iSans + " → " + iAvec + " ms ; tas JS (après ramasse-miettes) " +
+    (SANS.tas && AVEC.tas ? (SANS.tas / 1048576).toFixed(1) + " → " + (AVEC.tas / 1048576).toFixed(1) + " Mo" : "non mesuré") +
+    " ; géométries GPU " + SANS.geometries + " → " + AVEC.geometries);
+  verifier(SANS.pas.concat(AVEC.pas).every(function (p) { return p.fait; }) &&
+    AVEC.pas.every(function (p, i) { return p.niveau === (i % 2 === 0 ? 1 : 0); }),
+    "cache par niveau : 7 passages par le puits, 0 → 1 → 0 …", AVEC.pas.map(function (p) { return p.niveau; }));
+  const ch = chauds(AVEC);
+  verifier(ch.every(function (p) { return p.cache.rates === ch[0].cache.rates && p.reindex.faces === 0; }) &&
+    ch[ch.length - 1].cache.voisinsRepris - ch[0].cache.voisinsRepris >= ch.length - 1,
+    "cache par niveau : à chaud, un aller-retour ne recalcule rien (ratés constants à " + ch[0].cache.rates +
+    ", faces 0 ms, voisins repris à chaque passage)", ch.map(function (p) { return p.cache; }));
+  verifier(mAvec < mSans * 0.6, "cache par niveau : passage à chaud plus court (" + mSans + " → " + mAvec + " ms)",
+    { sans: mSans, avec: mAvec });
+  verifier(I.marcheLibre > 5.3 && I.marcheBarree < 4.6 && I.marcheRemise > 5.3 && I.n1Deplace === I.n1 &&
+    I.auZeroDeplace.purges >= 1,
+    "cache par niveau : pilier DÉPLACÉ au niveau 1 depuis le 0 (même nombre de structures) → il barre le pas en y " +
+    "revenant (" + I.marcheLibre + " → " + I.marcheBarree + " m), remis → libre (" + I.marcheRemise + " m)", I);
+  verifier(Number.isInteger(I.v1Avant) && I.auZeroDeplace.niveau === 0 && I.v1Ajout === I.v1Avant + 1 &&
+    I.n1Ajout === I.n1 + 1 && I.v1Retrait === I.v1Avant && I.n1Retrait === I.n1,
+    "cache par niveau : pilier ajouté au niveau 1 depuis le 0 → dans l'index du voisin (" + I.v1Avant + " → " +
+    I.v1Ajout + ") et dans la scène en y montant ; retiré → absent des deux", I);
+}
+
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -16561,6 +16806,16 @@ async function sectionCaseBoutonsZoom(nav) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionMasseSol(page);
       if (CAPTURES) await capturesMasseSol(page);
+    } else if (SEUL === "tuilecolonne") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await sectionTuileColonne(page);
+      await sectionNiveauEdition(page);
+    } else if (SEUL === "cacheniveaux") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionCacheNiveaux(page);
     } else if (SEUL === "chatieremasse") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -20188,6 +20443,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPenteLargeur(page);
       await sectionMasseSol(page);
       await sectionChatiereMasse(page);
+      await sectionCacheNiveaux(page);
       await sectionComble(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);

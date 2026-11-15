@@ -2683,6 +2683,23 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).
   Mesures : `ETUDE_VUE_3D.md` § Niveaux voisins. Relevé : `etat().voisins` ; checkup `checkup-vue-3d.js` § 44
   (`KTA_V3D_SEUL=voisins`, `KTA_V3D_PERF=voisins` pour le plan lourd).
+- **Caches par niveau** (`_cacheNiveau`, `_cleNiveau`, décision produit : un aller-retour de niveau ne recalcule
+  rien) : faces des structures (`_facesStructures`), volumes d'un niveau (`_volumesDuNiveau` : modèles intacts, rendus
+  en copies neuves, places de panneau et POI retrouvés dans les données relues — 🩸 les calques rendent des objets neufs
+  à chaque lecture), grille des structures (`_grilleVolumes`), et **tuiles d'un voisin quitté**, gardées cachées
+  (`_garderVoisin`, `CACHE_VOISINS` = 3 : -1, +1 et le niveau quitté, de quoi faire 0 ↔ 1 sans rien reconstruire) ;
+  structures et zones filtrées et niveaux occupés (`ktaNiveauxOccupes`) relus seulement quand les données changent.
+  Clé : niveau de la scène, contexte (actif / voisin), hauteur et altitude de chaque niveau (réglages écart / hauteur),
+  `_sigVoisins` (empreinte des données de `_majDonnees`, filtres ≡, calques, niveaux visibles, rendu, 🧱, HD). 🩸 Toute
+  modification change l'empreinte : la clé ne correspond plus et **tout** est vidé (`_purgerCachesNiveau`, voisins
+  gardés libérés) — jamais une scène périmée ; « tout » refait (hauteur, 🧱) vide aussi. `CACHE_NIVEAUX` = 6 entrées
+  par cache, dans `_e` (vidés à la fermeture). Mesuré (relevé fictif de 14 283 structures sur 3 niveaux, processeur
+  × 4) : passage 0 ↔ 1 à chaud 370 → 58 ms, pire image qui suit 56 → 35 ms ; coût +18 Mo de tas JS et +32 géométries
+  GPU (tuiles des voisins gardées). Ce qui reste : tuiles du niveau actif (~13 ms), signature de `KtaGalerie.modele`
+  (~12 ms). `etat().reindex` (étapes de `_reindexer`), `etat().cacheNiveaux` ; `ouvrir({ cacheNiveaux: false })` coupe
+  les caches (mesure avant / après). Checkup `sectionCacheNiveaux` (`KTA_V3D_SEUL=cacheniveaux`) : zéro recalcul à
+  chaud, pilier déplacé au niveau 1 depuis le 0 qui barre le pas en y revenant, ajouté / retiré dans la scène et
+  dans l'index du voisin.
 
 ### Niveaux entremêlés et zones jonction (QCM du 08/11/2026, lot D du multi-niveau en 3D)
 

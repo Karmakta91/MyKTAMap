@@ -20,7 +20,7 @@
 //   checkup : sol en pente, niveaux entremêlés) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
-//   retourFocus,
+//   retourFocus, cacheNiveaux (false : caches par niveau coupés, checkup avant / après),
 //   commandes ("joystick" | "pave" : sinon joystick au téléphone, pavé au PC ou option ⚙️, _commandesVoulues) }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
@@ -656,6 +656,20 @@
     return out;
   }
 
+  // Structures et zones montrées par les filtres (tous niveaux), relues seulement quand _sigVoisins change (données :
+  // empreinte de _majDonnees, filtres ≡, calques, niveaux visibles, rendu) : un changement de niveau ne refiltre pas
+  // tout le plan. ⚠️ contrat : listes partagées, jamais modifiées (_collecter en filtre des copies).
+  function _structuresZonesMontrees() {
+    const e = _e, type = function (o) { return o.type; };
+    const cle = e ? _sigVoisins() : null;
+    if (e && !e.sansCache && e.montresMemo && e.montresMemo.cle === cle) return e.montresMemo;
+    const m = { cle: cle,
+      structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type),
+      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type) };
+    if (e) e.montresMemo = m;
+    return m;
+  }
+
   // POI montrés par les filtres de la carte (session et calques), tous niveaux.
   function _pointsMontres() {
     return _filtrer(_tab(window.getEditorPoints), _tab(window.getAllEmbeddedPoints), "tags", _premierTag);
@@ -686,12 +700,11 @@
       .concat(!_permisGreffe("traces") ? [] : _filtrer(sessionRoads.filter(function (r) {
         return r.type !== "itinerary";
       }), embRoads, "roadTypes", type));
-    const points = _pointsDuNiveau(_pointsMontres(), niveau);
+    const points = _pointsDuNiveau(_pointsMontres(), niveau), sz = _structuresZonesMontrees();
     // Objet en cours de dessin depuis la vue : montré par l'aperçu seulement, jusqu'à sa fin (_horsTrace).
     return {
-      structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type)
-        .filter(ok).filter(_horsTrace),
-      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(function (z) {
+      structures: sz.structures.filter(ok).filter(_horsTrace),
+      zones: sz.zones.filter(function (z) {
         return z && Array.isArray(z.points) && _zoneSurNiveau(z, niveau);
       }).filter(_horsTrace),
       roads: roads.filter(ok).filter(_horsTrace),
@@ -4170,6 +4183,7 @@
     // Reprise du contexte : les voisins de l'ancienne scène ne sont jamais libérés sur la nouvelle (_voisinsPreparer
     // les refait au _reindexer qui suit).
     e.voisins = []; e.matsV = null; e.matsEstompes = null; e.matsPente = null; e.matsTrous = null; e.entreSig = undefined;
+    e.cachesNiveau = null;   // tuiles des voisins gardés : de l'ancien contexte
     e.panneaux = new Set();
     e.panneauxGen = 0;
     e.icones = new Map();
@@ -4522,11 +4536,14 @@
     e.niveau = _niveauCourant();
     _prendreHauteurDuNiveau();
     const d = _collecter(e.niveau);
+    // Coût de chaque étape (checkup : etat().reindex) ; ms depuis t0.
+    const mes = { collecter: performance.now() - t0 };
     e.rendu = _renduVoulu();
     e.galerie = e.mixte = null;
     if (e.rendu === "galerie") e.galerie = d.galerie = window.KtaGalerie.modele(e.niveau);
     if (e.rendu === "mixte") e.mixte = d.mixte = window.KtaGalerie.modele(e.niveau, true);
     const m = e.galerie || e.mixte;
+    mes.modele = performance.now() - t0 - mes.collecter;
     e.compte = { structures: d.structures.length, zones: d.zones.length, roads: d.roads.length,
       points: d.points.length, pieces: m ? m.pieces.length : 0, aretes: m ? m.aretes.length : 0,
       dalles: m ? m.dalles : 0, coudes: m ? m.coudes : 0, bouts: m ? m.bouts : 0,
@@ -4538,7 +4555,16 @@
     // Zones jonction du niveau : leurs structures des autres niveaux sont dessinées et bloquent avec lui.
     if (!e.galerie) d.structures = d.structures.concat(_structuresEmpruntees(e.niveau, e.pentes));
     e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
-    if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
+    let tg = performance.now();
+    // Grille des structures du niveau : par le cache (_cacheNiveau, lue seulement : _volumeContenant).
+    if (e.galerie) e.volumes = null;
+    else {
+      e.volumes = _cacheNiveau("grille", _cleNiveau("grille") + "|" + d.structures.length, function () {
+        _grilleVolumes(d.structures);
+        return e.volumes;
+      }).v;
+    }
+    mes.grille = performance.now() - tg;
     e.volumesNiveau = e.niveau;
     // Masses au sol du niveau (sol, talus, seuils) : après le modèle du rendu et la grille des structures (bords
     // fermés).
@@ -4550,12 +4576,16 @@
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
+    let tq = performance.now();
     e.volPassages = _volumesDuNiveau(d).concat(_puitsTraversants());
+    mes.volumes = performance.now() - tq; mes.faces = e.msFaces;
+    tq = performance.now();
     e.plaquesParoi = new Set(e.volPassages.filter(function (v) { return v.forme === "plaque" && v.point; })
       .map(function (v) { return v.point; }));
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
     const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
     e.tuiles = _indexer(Object.assign({}, d, { roads: plan }), e.sc, e.tuilesActives ? TUILE : 0);
+    mes.indexer = performance.now() - tq;
     if (reprise) {
       _reprendreTuiles(anciennes, reprise,
         niveauAvant === e.niveau && renduAvant === e.rendu && hauteurAvant === e.hauteur);
@@ -4573,7 +4603,9 @@
     if (e.scene && _distanceEnVigueur() !== e.distance) { e.distance = _distanceEnVigueur(); _appliquerPortee(); }
     _majEntreActif();
     _appliquerRendu();
+    tg = performance.now();
     _gererTuiles(true);
+    mes.tuiles = performance.now() - tg;
     _majMarqueursIti();
     _majItiPentes();
     _majRonds();
@@ -4585,8 +4617,16 @@
     _gererVolumes();
     _sceneGreffe();
     _majNiveauEdition();
+    tq = performance.now();
     _voisinsPreparer(false);
+    mes.voisinsPreparer = performance.now() - tq;
+    mes.voisinsNeufs = (e.mesVoisins || {}).neuf || 0; mes.voisinsVolumes = (e.mesVoisins || {}).volumes || 0;
+    tq = performance.now();
     _gererVoisins(false);
+    mes.gererVoisins = performance.now() - tq;
+    mes.total = performance.now() - t0;
+    Object.keys(mes).forEach(function (k) { mes[k] = Math.round(mes[k] * 10) / 10; });
+    e.mesReindex = mes;
   }
 
   // ── Niveaux voisins : les autres niveaux à leur altitude (tuile ⚙️ « Niveaux » : voisins, tous, le mien) ─────
@@ -4732,6 +4772,7 @@
     const e = _e, J = window.KtaPoiJonction, G = window.KtaGalerie, N0 = e.niveau;
     if (!J || !G || N0 === null) return [];
     const montres = [N0].concat(_niveauxMontres()), d = _collecter(v.niveau);
+    d.ctx = "voisin";
     const vols = _avecVoisin(v, _pentesDuNiveau(v.niveau, d.jonctions), function () { return _volumesDuNiveau(d); });
     const out = [];
     vols.forEach(function (vol) {
@@ -4782,18 +4823,72 @@
     if (_voisinEstompe(v)) _estomperObjet(vol.obj, _voisinEstompe(v));
   }
 
+  // Ce que le checkup lit des caches : touches, ratés, entrées par cache.
+  function _etatCacheNiveaux() {
+    const e = _e, c = e.cachesNiveau || {}, out = Object.assign({}, e.cacheStats);
+    // Structures dans l'index de chaque voisin montré (une structure à cheval sur deux tuiles compte deux fois).
+    out.voisinsStructures = (e.voisins || []).map(function (v) {
+      let n = 0;
+      v.tuiles.forEach(function (t) { n += t.s.length; });
+      return [v.niveau, n];
+    });
+    Object.keys(c).forEach(function (k) { out[k] = c[k].size; });
+    return out;
+  }
+
+  // Clé de l'index d'un voisin (_voisinNeuf) : sa signature (données, filtres, altitude, entremêlés) et le niveau de
+  // la scène (_horsZonesActives retire ce que les zones jonction du niveau actif dessinent).
+  function _cleVoisin(v) { return _e.niveau + "|" + v.niveau + "|" + v.sig; }
+
+  // Voisin quitté (_voisinsPreparer, plus montré ou niveau de la scène changé) : ses tuiles construites restent, cachées
+  // (sol et plafond d'un seul tenant retirés, volumes libérés), reprises telles quelles s'il revient avec la même clé
+  // (_voisinNeuf) ; CACHE_VOISINS au plus, le plus ancien libéré (_libererVoisin).
+  function _garderVoisin(v) {
+    const e = _e;
+    if (!v.cle || e.sansCache) { _libererVoisin(v); return; }
+    _purgerCachesNiveau(false);
+    v.tuiles.forEach(function (t) { if (t.obj) t.obj.visible = false; });
+    if (v.plans) { e.scene.remove(v.plans.sol, v.plans.plafond); v.plans = null; }
+    (v.volumes || []).forEach(_libererVolume);
+    v.volumes = []; v.volSig = null;
+    if (!e.cachesNiveau) e.cachesNiveau = {};
+    const m = e.cachesNiveau.voisins || (e.cachesNiveau.voisins = new Map());
+    if (m.has(v.cle) && m.get(v.cle) !== v) _libererVoisin(m.get(v.cle));
+    m.delete(v.cle);
+    m.set(v.cle, v);
+    while (m.size > CACHE_VOISINS) {
+      const k = m.keys().next().value;
+      _libererVoisin(m.get(k));
+      m.delete(k);
+    }
+    e.sale = true;
+  }
+
   function _voisinNeuf(n, sig) {
-    const e = _e, t0 = performance.now(), a = _altitudeVoisin(n), h = _hauteurDuNiveau(n), d = _collecter(n);
+    const e = _e, t0 = performance.now(), a = _altitudeVoisin(n), h = _hauteurDuNiveau(n);
     const entre = _entreDe(n, a.dy, h);
     const v = { niveau: n, dy: a.dy, dessus: a.dessus, hauteur: h, galerie: null, mixte: null, plans: null,
       sig: sig + "|" + a.dy + "|" + h + "|" + _sigEntre(entre), entre: entre, plansCaches: _plansCaches(entre, h) };
-    if (e.rendu === "galerie") v.galerie = d.galerie = window.KtaGalerie.modele(n);
-    if (e.rendu === "mixte") v.mixte = d.mixte = window.KtaGalerie.modele(n, true);
-    // Galeries inclinées du voisin (structures le long d'elles, zones jonction qu'il dessine), vues de son niveau.
-    v.pentes = _avecVoisin(v, null, function () { return _pentesDuNiveau(n, d.jonctions); });
-    _horsZonesActives(d, v.pentes);
-    const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
-    v.tuiles = _indexer(Object.assign({}, d, { roads: plan, points: [] }), e.sc, e.tuilesActives ? TUILE : 0);
+    v.cle = _cleVoisin(v);
+    _purgerCachesNiveau(false);
+    const m = e.cachesNiveau && e.cachesNiveau.voisins, g = m ? m.get(v.cle) : null;
+    if (g) {
+      // Tuiles déjà construites (cachées) : montrées par _gererVoisins, estompées par _estomperVoisins.
+      m.delete(v.cle);
+      v.galerie = g.galerie; v.mixte = g.mixte; v.pentes = g.pentes; v.tuiles = g.tuiles;
+      e.cacheStats.touches++;
+      e.cacheStats.voisinsRepris++;
+    } else {
+      const d = _collecter(n);
+      if (e.rendu === "galerie") v.galerie = d.galerie = window.KtaGalerie.modele(n);
+      if (e.rendu === "mixte") v.mixte = d.mixte = window.KtaGalerie.modele(n, true);
+      // Galeries inclinées du voisin (structures le long d'elles, zones jonction qu'il dessine), vues de son niveau.
+      v.pentes = _avecVoisin(v, null, function () { return _pentesDuNiveau(n, d.jonctions); });
+      _horsZonesActives(d, v.pentes);
+      const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
+      v.tuiles = _indexer(Object.assign({}, d, { roads: plan, points: [] }), e.sc, e.tuilesActives ? TUILE : 0);
+      e.cacheStats.rates++;
+    }
     // Mixte et structures : sol et plafond d'un seul tenant, comme ceux du niveau actif (en galerie, ceux des pièces).
     if (!v.galerie) {
       const M = _matsVoisins(a.dessus ? "haut" : "bas");
@@ -4811,17 +4906,23 @@
   // (hauteur, 🧱 : _refaireTuiles). Appelé par _reindexer et _refaireTuiles ; les tuiles viennent ensuite (_gererVoisins).
   function _voisinsPreparer(tout) {
     const e = _e, voulus = _niveauxMontres(), sig = _sigVoisins(), gardes = [];
+    // Réfection voulue (hauteur, 🧱, cartes) : rien de gardé ne resservira.
+    _purgerCachesNiveau(tout);
     (e.voisins || []).forEach(function (v) {
       const a = voulus.indexOf(v.niveau) >= 0 ? _altitudeVoisin(v.niveau) : null;
       const hv = a ? _hauteurDuNiveau(v.niveau) : 0;
       if (!tout && a && v.sig === sig + "|" + a.dy + "|" + hv + "|" + _sigEntre(_entreDe(v.niveau, a.dy, hv))) {
         v.dessus = a.dessus;
         gardes.push(v);
-      } else _libererVoisin(v);
+      } else if (tout) _libererVoisin(v);
+      else _garderVoisin(v);   // sa clé le refuse si les données ou l'altitude ont changé (et la purge le libère)
     });
+    const mv = { neuf: 0, volumes: 0 };
+    let tv = performance.now();
     voulus.forEach(function (n) {
       if (!gardes.some(function (v) { return v.niveau === n; })) gardes.push(_voisinNeuf(n, sig));
     });
+    mv.neuf = performance.now() - tv;
     e.voisins = gardes;
     if (e.matsV) { _matsVoisins("haut"); _matsVoisins("bas"); }
     // Niveaux montrés changés (réglage, côté) : les tuiles du niveau actif portent les trous et coupes de l'union des
@@ -4833,7 +4934,10 @@
       (e.volPassages || []).forEach(function (v) { if (v.genre === "pente") _libererVolume(v); });
       _gererVolumes();
     }
+    tv = performance.now();
     gardes.forEach(_volumesVoisinAJour);
+    mv.volumes = performance.now() - tv;
+    e.mesVoisins = mv;
     // Puits ouverts d'un niveau du dessous (_puitsTraversants) : leur pied et les sols troués suivent les niveaux
     // montrés.
     const cleTrav = voulus.join(",");
@@ -6108,15 +6212,116 @@
   // plafond par le gabarit (_materiaux). Un puits ouvert au jour d'un niveau du dessous traverse le niveau de la
   // scène (_puitsTraversants).
 
+  // ── Caches par niveau (aller-retour de niveau sans rien recalculer) ─────────────────────────────────────────────
+  // ⚠️ contrat : faces des structures (_facesStructures), volumes d'un niveau (_volumesDuNiveau) et index des tuiles
+  // d'un voisin quitté (_voisinNeuf) sont gardés par clé _cleNiveau : niveau de la scène, données (empreinte de
+  // _majDonnees), filtres de la carte, rendu, 🧱, HD (_sigVoisins), hauteur et altitude de chaque niveau (réglages
+  // écart / hauteur). 🩸 Toute modification change l'empreinte, donc la clé : jamais une scène périmée (checkup :
+  // pilier ajouté puis retiré au niveau 1 pendant qu'on est au 0) ; de plus, tout est vidé dès que _sigVoisins change
+  // (_purgerCachesNiveau : aucune entrée d'un état passé ne reste en mémoire). Vivent dans _e (vidés à la fermeture),
+  // CACHE_NIVEAUX entrées au plus par cache, la plus ancienne sort. Seul le cache des voisins garde de la géométrie :
+  // les tuiles d'un voisin quitté, cachées (CACHE_VOISINS au plus, de quoi faire un aller-retour 0 ↔ 1 sans rien
+  // reconstruire), libérées quand elles sortent du cache.
+  const CACHE_NIVEAUX = 6, CACHE_VOISINS = 3;
+
+  // Caches vidés si l'état qu'ils supposent a changé (données, filtres, rendu, 🧱, HD) ou si `force` ; voisins gardés
+  // libérés (GPU).
+  function _purgerCachesNiveau(force) {
+    const e = _e, sig = _sigVoisins();
+    if (!force && e.cacheSig === sig) return;
+    e.cacheSig = sig;
+    const c = e.cachesNiveau;
+    if (!c) return;
+    if (c.voisins) c.voisins.forEach(_libererVoisin);
+    e.cachesNiveau = null;
+    e.cacheStats.purges++;
+  }
+
+  function _cleNiveau(ctx) {
+    const e = _e, c = window.APP_CONFIG || {}, G = window.KtaGalerie;
+    const niv = (Array.isArray(c.availableLevels) ? c.availableLevels : []).map(function (n) {
+      const dy = G && typeof G.denivele === "function" && e.niveau !== null ? G.denivele(e.niveau, n) : 0;
+      return n + ":" + _hauteurDuNiveau(n) + ":" + dy;
+    }).join(",");
+    return ctx + "|" + e.niveau + "|" + e.hauteur + "|" + niv + "|" + _sigVoisins();
+  }
+
+  // Valeur du cache « nom » à la clé « cle », calculée par « calcul » si absente → { v, neuf }.
+  function _cacheNiveau(nom, cle, calcul) {
+    const e = _e;
+    _purgerCachesNiveau(false);
+    if (e.sansCache) { e.cacheStats.rates++; return { v: calcul(), neuf: true }; }
+    if (!e.cachesNiveau) e.cachesNiveau = {};
+    const m = e.cachesNiveau[nom] || (e.cachesNiveau[nom] = new Map());
+    if (m.has(cle)) {
+      const v = m.get(cle);
+      m.delete(cle);
+      m.set(cle, v);
+      e.cacheStats.touches++;
+      return { v: v, neuf: false };
+    }
+    const v = calcul();
+    m.set(cle, v);
+    while (m.size > CACHE_NIVEAUX) m.delete(m.keys().next().value);
+    e.cacheStats.rates++;
+    return { v: v, neuf: true };
+  }
+
+  // Volumes du niveau (_calculerVolumesDuNiveau) par le cache : modèles intacts gardés (copies faites avant toute
+  // construction), rendus en copies neuves ; les places de panneau (e.placesPassage) reposées sur les POI de `d`, et
+  // le POI de chaque volume retrouvé dans `d` (🩸 les calques rendent des objets neufs à chaque lecture : même uid,
+  // sinon _memeObjet). `d.ctx` : "voisin" depuis _volumesVoisin (sans structures empruntées).
   function _volumesDuNiveau(d) {
+    const e = _e, cle = _cleNiveau(d.ctx || "actif") + "|" + d.structures.length + "|" + d.points.length;
+    let vivants = null;
+    const r = _cacheNiveau("volumes", cle, function () {
+      vivants = _calculerVolumesDuNiveau(d);
+      const places = [];
+      e.placesPassage.forEach(function (val, p) { places.push([p._v3dJonction || p, val]); });
+      return { vols: vivants.map(function (v) { return Object.assign({}, v); }), places: places,
+        msFaces: e.msFaces, faces: e.facesStructures };
+    });
+    if (r.neuf) return vivants;
+    e.msFaces = 0; e.facesStructures = r.v.faces;
+    const parOrig = new Map(), parUid = new Map(), origs = [];
+    d.points.forEach(function (p) {
+      const o = p._v3dJonction || p;
+      parOrig.set(o, p);
+      origs.push(o);
+      if (o.uid) parUid.set(o.uid, o);
+    });
+    const retrouver = function (o) {
+      if (!o || parOrig.has(o)) return o;
+      if (o.uid) return parUid.get(o.uid) || o;
+      for (let i = 0; i < origs.length; i++) { if (_memeObjet(origs[i], o)) return origs[i]; }
+      return o;
+    };
+    r.v.places.forEach(function (q) {
+      const p = parOrig.get(retrouver(q[0]));
+      if (p) e.placesPassage.set(p, q[1]);
+    });
+    return r.v.vols.map(function (v) {
+      const c = Object.assign({}, v);
+      if (c.point) c.point = retrouver(c.point);
+      return c;
+    });
+  }
+
+  function _calculerVolumesDuNiveau(d) {
     const e = _e, J = window.KtaPoiJonction, N = e.niveau, out = [];
     e.msFaces = 0; e.facesStructures = 0;
     if (!J) return out;
     let F = null;
-    // Faces des structures dessinées, indexées une fois, seulement si une forme murale n'a pas de paroi de tube.
+    // Faces des structures dessinées, indexées une fois par niveau et par état des données (_cacheNiveau), seulement
+    // si une forme murale n'a pas de paroi de tube.
     const surStructure = function (pl, forme) {
       const t0 = performance.now();
-      if (!F) { F = _facesStructures(d.structures); e.facesStructures = F.faces.length; }
+      if (!F) {
+        F = _cacheNiveau("faces", _cleNiveau("faces") + "|" + d.structures.length, function () {
+          return _facesStructures(d.structures);
+        }).v;
+        e.facesStructures = F.faces.length;
+      }
       const r = _surStructure(F, pl.x, pl.y, forme);
       e.msFaces += performance.now() - t0;
       return r;
@@ -9523,7 +9728,15 @@
   function _niveauxEdition() {
     const e = _e, c = window.APP_CONFIG || {};
     if (c.multiLevel !== true || !Number.isInteger(e.niveau)) return [];
-    const l = _tab(window.ktaNiveauxOccupes).filter(Number.isInteger);
+    // Niveaux occupés (main.js > ktaNiveauxOccupes parcourt tout le plan) : relus quand les données changent
+    // (empreinte de _majDonnees) ou la source elle-même (fonction remplacée) ; _niveauxMontres les demande plusieurs
+    // fois par passage.
+    const cle = (e.donnees ? e.donnees.empreinte : "") + "|" + (window._ktaImageOverlays || []).length;
+    const src = window.ktaNiveauxOccupes, M = e.occupesMemo;
+    if (e.sansCache || !M || M.cle !== cle || M.src !== src) {
+      e.occupesMemo = { cle: cle, src: src, l: _tab(src).filter(Number.isInteger) };
+    }
+    const l = e.occupesMemo.l.slice();
     if (l.indexOf(e.niveau) < 0) l.push(e.niveau);
     return l.filter(function (v, i) { return l.indexOf(v) === i; }).sort(function (a, b) {
       return _auDessus(a, b) ? -1 : _auDessus(b, a) ? 1 : 0;
@@ -14637,7 +14850,7 @@
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         pentes: [], jonctions: [], pentesFranchies: 0, itiPentes: null, nItiPentes: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, zonesCreusees: 0, rubans: {}, liseres: {},
-        filtresChanges: false, reindexations: 0, itiRefaits: 0, msIti: 0, compteIti: 0,
+        filtresChanges: false, reindexations: 0, cacheStats: { touches: 0, rates: 0, purges: 0, voisinsRepris: 0 }, cachesNiveau: null, itiRefaits: 0, msIti: 0, compteIti: 0,
         donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
           msEmpreinte: 0 },
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
@@ -14650,7 +14863,7 @@
         stickLibres: 0, toucheNom: null, itiChevrons: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
         rondsChange: false, distTot: null, distTotChange: false, listeDistTot: null, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
         retourFocus: o.retourFocus || document.activeElement || null,
-        attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
+        attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE, sansCache: o.cacheNiveaux === false
       };
       // 🩸 Ouverte en libre sur la place du tracker, la vue prend aussi son niveau : un « Je suis ici » sur un POI
       // du −1 visible depuis le 0 laisse le niveau actif de la carte au 0, et la scène du 0 entourerait le tracker.
@@ -14728,6 +14941,8 @@
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
       (e.voisins || []).forEach(_libererVoisin);
+      if (e.cachesNiveau && e.cachesNiveau.voisins) e.cachesNiveau.voisins.forEach(_libererVoisin);
+      e.cachesNiveau = null;
       if (e.matsV) {
         Object.keys(e.matsV).forEach(function (c) {
           Object.keys(e.matsV[c]).forEach(function (k) { e.matsV[c][k].dispose(); });
@@ -14957,7 +15172,9 @@
         libelle: e.boussole ? e.boussole.getAttribute("aria-label") : "",
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, niveauLibre: Number.isInteger(e.niveauLibre) ? e.niveauLibre : null,
-      reindexations: e.reindexations, itiRefaits: e.itiRefaits, msIti: +e.msIti.toFixed(1),
+      reindexations: e.reindexations, reindex: e.mesReindex || null, cacheNiveaux: _etatCacheNiveaux(),
+      itiRefaits: e.itiRefaits,
+      msIti: +e.msIti.toFixed(1),
       donnees: { signaux: e.donnees.signaux, verifs: e.donnees.verifs, refaites: e.donnees.refaites,
         degagees: e.donnees.degagees, attente: !!e.donnees.signal, ms: +e.donnees.ms.toFixed(1),
         msEmpreinte: +e.donnees.msEmpreinte.toFixed(2) },

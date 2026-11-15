@@ -233,7 +233,7 @@ function charger(win, fichiers) {
       !G.dansZone(100, 100, -1, "structures") && G.dansZone(100, 100, 0, "structures"));
     const v3d = lire("js/vue3d.js");
     t("3D (scène) : les zones dessinées du niveau passent par _zoneSurNiveau (ktaNiveauxObjet)",
-      /zones: _filtrer\([\s\S]{0,200}_zoneSurNiveau\(z, niveau\)/.test(v3d) &&
+      /zones: (?:_filtrer\(|sz\.zones\.filter\()[\s\S]{0,200}_zoneSurNiveau\(z, niveau\)/.test(v3d) &&
       /function _zoneSurNiveau\(z, niveau\) \{[\s\S]{0,200}ktaNiveauxObjet\(z\)/.test(v3d));
     zones[0].niveaux = [-1, 0]; zones[1].niveaux = [-1, 0];
     w.APP_CONFIG.activeLevel = -1;
