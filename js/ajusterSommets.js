@@ -108,8 +108,11 @@ window.KtaAjusterSommets = (function () {
     return s > 0 ? px / s : 0;
   }
 
-  // Sommet le plus proche dans le rayon, sinon milieu de segment le plus proche ; parmi les prises seulement.
-  // `garder(famille, o)` facultatif : ce que l'appelant montre (vue 3D : son niveau, ses filtres).
+  // Sommet le plus proche dans le rayon, sinon le point du contour le plus proche (genre "milieu" : un sommet y naît) ;
+  // parmi les prises seulement. `garder(famille, o)` facultatif : ce que l'appelant montre (vue 3D : son niveau, ses
+  // filtres). 🩸 Distance au SEGMENT (projection), pas à son milieu : sur une grande zone aux côtés longs, toucher le
+  // contour loin du milieu ne trouvait rien, alors qu'un pilier (côtés courts) répondait partout. `tol` en unités plan
+  // = RAYON_PX d'écran, quel que soit le trait (fin, tireté) ou le motif de la forme.
   function _chercher(m, x, y, tol, garder) {
     const reg = window.ktaFormesAjustables || {};
     const annotations = !window.layerEditor || m.hasLayer(window.layerEditor), seule = _mesureSeule();
@@ -132,7 +135,9 @@ window.KtaAjusterSommets = (function () {
         const nSeg = (n >= 3 && a.ferme(o)) ? n : n - 1;
         for (let i = 0; i < nSeg; i++) {
           const p = pts[i], q = pts[(i + 1) % n];
-          const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, d = Math.hypot(mx - x, my - y);
+          const dx = q.x - p.x, dy = q.y - p.y, L2 = dx * dx + dy * dy;
+          const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / L2)) : 0;
+          const mx = p.x + t * dx, my = p.y + t * dy, d = Math.hypot(mx - x, my - y);
           if (d <= tol && (!mi || d < mi.d)) mi = { genre: "milieu", f: f, a: a, o: o, i: i + 1, x: mx, y: my, d: d };
         }
       }

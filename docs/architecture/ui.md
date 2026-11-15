@@ -2530,8 +2530,10 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 - **Déplacer un sommet** : appui long (`APPUI_MS`, 500 ms) sur le sommet, puis glisser ; aperçu en pointillé doré
   pendant le glisser (SVG, classes `.kta-ajuster-apercu` / `.kta-ajuster-poignee`, jetons `--kta-accent`), objet
   écrit au lâcher.
-- **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
-  naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
+- **Ajouter** : appui long n'importe où sur un segment (segment de fermeture compris pour une forme fermée), à moins
+  de `RAYON_PX` d'écran du trait ; le sommet naît au point touché et se glisse aussitôt ; lâché sans bouger, il reste
+  là. 🩸 La distance se mesure au SEGMENT (projection, `_chercher`), pas à son milieu : sur une grande zone aux côtés
+  longs, toucher le contour loin du milieu ne trouvait rien. Garde-fou : `checkup-ajuster-zone-vaste.js`.
 - **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point, à côté de **＋**
   (marqueur Leaflet, `htmlMenu` : cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
   retiré seul après 6 s ou au premier toucher ailleurs ; ce toucher est avalé — ni fiche, ni outil — mais 🩸 pas son
