@@ -916,6 +916,10 @@
           // Part comblée : texte du cran (« ½ ») ; absente → la valeur par défaut, dite comme telle.
           contenu = _escapeHtml(Number.isFinite(v) && v !== 0 ? window.ktaTexteComble(v)
             : window.I18n.t("tabledit.col.combleDefaut", { part: window.ktaTexteComble(0.5) }));
+          // Sorte : dite seulement pour une masse non exploitée (elle se change dans la fiche de la zone).
+          if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(p)) {
+            contenu += " · " + _escapeHtml(window.I18n.t("masseSol.nature.nonExploitee"));
+          }
         } else if (col === "rampes") {
           // Rampes d'une masse au sol : posées depuis la fiche de la zone (bord bas), jamais saisies ici.
           const n = Array.isArray(v) ? v.length : 0;

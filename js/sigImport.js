@@ -613,6 +613,16 @@
     return l.length ? l : null;
   }
 
+  // Masse non exploitée : colonne « nature » = « non-exploitee » (export GeoJSON de MyKTAMap), sans casse ni accents,
+  // espace ou tiret au choix. Toute autre valeur = remblai (rien n'est écrit). Ignorée pour une part négative.
+  function natureDe(props) {
+    const k = props ? _trouverCle(props, "nature") : null;
+    if (!k || props[k] == null) return false;
+    const v = String(props[k]).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\s_]+/g, "-");
+    return v === "non-exploitee";
+  }
+
   function combleDe(props, cle) {
     if (!cle || !props) return null;
     const k = _trouverCle(props, cle);
@@ -917,6 +927,7 @@
       if (rZ.type === "masse-sol") {
         const c = combleDe(z.props, cleComble);
         if (c !== null) o.comble = c;
+        if (natureDe(z.props) && !(c !== null && c < 0)) o.nature = "non-exploitee";
         const rp = rampesDe(z.props, pts.length, g2p);
         if (rp) o.rampes = rp;
       }
@@ -1227,6 +1238,7 @@
     valeursParFamille:  valeursParFamille,
     proposerMapping:    proposerMapping,
     combleDe:           combleDe,   // part comblée lue dans la colonne de hauteur (masse au sol)
+    natureDe:           natureDe,   // masse non exploitée lue dans la colonne « nature »
     rampesDe:           rampesDe,   // rampes lues dans la colonne `rampes` (masse au sol, export GeoJSON de l'app)
     compterPolygonesDefaut: compterPolygonesDefaut,   // polygones rangés dans le type par défaut
     previsualiserEntreesNiveaux: previsualiserEntreesNiveaux,

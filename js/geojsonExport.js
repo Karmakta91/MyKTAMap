@@ -178,6 +178,10 @@
         if (z.type === "masse-sol") {
           props.comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z)
             : (Number.isFinite(z.comble) && z.comble > 0 ? z.comble : 0.5);
+          // Masse non exploitée : `nature` (absente = remblai ; relue par l'import SIG, colonne « nature »).
+          if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(z)) {
+            props.nature = "non-exploitee";
+          }
           // Rampes : indices des bords bas, ou { bord, fin: [lng, lat] } (fin en WGS84 quelle que soit la projection ;
           // relues par l'import SIG, colonne « rampes »).
           const rp = window.KtaMasseSol ? window.KtaMasseSol.rampesValides(z) : [];

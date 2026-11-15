@@ -57,9 +57,13 @@ t("jonction a son tirete", R("traces", "jonction").dashArray === "10 6");
   // Canvas factice qui compte les grains (arc) et les galets (ellipse) peints dans la tuile.
   const motifs = [];
   let grains = 0;
-  const ctx2d = { fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, fill() {},
+  let traits = 0;
+  const ctx2d = { fillRect() {}, beginPath() {}, moveTo() {}, lineTo() { traits++; }, stroke() {}, fill() {},
     arc() { grains++; }, ellipse() { grains++; },
-    createPattern(c) { const m = { motif: true, w: c.width, grains: grains }; grains = 0; motifs.push(m); return m; } };
+    createPattern(c) {
+      const m = { motif: true, w: c.width, grains: grains, traits: traits }; grains = 0; traits = 0; motifs.push(m);
+      return m;
+    } };
   const doc = { createElement: () => ({ getContext: () => ctx2d }) };
   const w3 = { console: { log(){}, warn(){} }, document: doc };
   w3.window = w3;
@@ -82,6 +86,36 @@ t("jonction a son tirete", R("traces", "jonction").dashArray === "10 6");
     getBorderColor: () => null };
   const ov = Rm(0.75);
   t("masse-sol override = aplat, plus de motif, opacité du repli", ov.fillColor === "#888800" && ov.fillOpacity === 0.5);
+  delete w3.LegendCustomization;
+  // Masse NON EXPLOITÉE : même sable, appareil de blocs (traits), AUCUN grain, un seul motif quelle que soit la part.
+  const ne = w3.ktaResolveStyle("zones", "masse-sol", { comble: 0.75, nonExploitee: true });
+  const ne2 = w3.ktaResolveStyle("zones", "masse-sol", { comble: 0.25, nonExploitee: true });
+  t("non exploitée : motif de blocs (tuile 48 px), aucun grain ni galet, des joints",
+    ne.fillColor && ne.fillColor.motif === true && ne.fillColor.w === 48 && ne.fillColor.grains === 0 &&
+    ne.fillColor.traits > 0 && ne.fillColor !== tq.fillColor);
+  t("non exploitée : un seul motif quelle que soit la part (¾ et ¼ identiques)", ne.fillColor === ne2.fillColor);
+  t("non exploitée : même contour que la masse au sol", ne.color === tq.color && ne.dashArray === tq.dashArray);
+  const nePlat = w3.ktaResolveStyle("zones", "masse-sol", { flat: true, nonExploitee: true });
+  const rePlat = w3.ktaResolveStyle("zones", "masse-sol", { flat: true });
+  t("non exploitée sans motif (export, KMZ) : même sable, aplat plus dense (85 % contre 50 %)",
+    nePlat.fillColor === rePlat.fillColor && nePlat.fillOpacity === 0.85 && rePlat.fillOpacity === 0.5);
+  t("aucun champ interne ne fuit (_flatFillOpacityNe)",
+    !("_flatFillOpacityNe" in ne) && !("_flatFillOpacityNe" in nePlat));
+  t("nonExploitee sans effet sur un autre type",
+    w3.ktaResolveStyle("zones", "eau", { flat: true, nonExploitee: true }).fillOpacity ===
+    w3.ktaResolveStyle("zones", "eau", { flat: true }).fillOpacity);
+  // Getter unique (contrat lu aussi par la vue 3D) : part > 0 ET nature === "non-exploitee".
+  const N = w3.ktaMasseNonExploitee;
+  t("ktaMasseNonExploitee : vrai seulement pour une part > 0 et nature non-exploitee",
+    N({ type: "masse-sol", comble: 0.5, nature: "non-exploitee" }) === true &&
+    N({ type: "masse-sol", nature: "non-exploitee" }) === true &&
+    N({ type: "masse-sol", comble: -0.5, nature: "non-exploitee" }) === false &&
+    N({ type: "masse-sol", comble: 0.5 }) === false &&
+    N({ type: "masse-sol", comble: 0.5, nature: "autre" }) === false &&
+    N({ type: "remblais", nature: "non-exploitee" }) === false && N(null) === false);
+  t("ktaStyleOptsZone : part et nature d'une masse, rien pour un autre type",
+    JSON.stringify(w3.ktaStyleOptsZone({ type: "masse-sol", comble: 0.25, nature: "non-exploitee" })) ===
+    JSON.stringify({ comble: 0.25, nonExploitee: true }) && w3.ktaStyleOptsZone({ type: "eau" }) === undefined);
 }
 
 // ── 🩸 Objet NEUF à chaque appel : un consommateur qui mute ne doit contaminer personne ──

@@ -14,6 +14,22 @@ sur un même niveau, la hauteur de vide varie du tout au tout, et l'on marche tr
 remblai partiel par une pente douce, marcher dessus sous le ciel, ramper là où il reste peu de vide, et buter
 seulement là où il n'en reste plus.
 
+## Décision de KARMA (15/11/2026, soir) — masse non exploitée
+
+QCM du 15/11 au soir (1a 2a 3a 4a). Une masse au sol a désormais une **sorte** : **remblai** (défaut, ce qu'elle
+était) ou **masse non exploitée** (roche jamais extraite, laissée en place).
+- **Donnée** : `nature: "non-exploitee"` sur la zone `masse-sol`, champ facultatif ; absent = remblai, aucun plan
+  existant ne bouge. N'a de sens que pour une part > 0 (caché et jamais écrit en négatif). Getter unique
+  `ktaMasseNonExploitee(zone)`, lu par la 2D, le volume, la fiche, les exports et la 3D (data-formats.md).
+- **Volume** : une masse non exploitée est retirée du volume exploité **et** du vide, par paliers ; un remblai reste
+  dans l'exploité et ne réduit que le vide (inchangé) ; un **sol abaissé est ajouté au volume exploité et au vide**
+  (1a : avant, au vide seulement — l'incohérence corrigée). Chevauchement : la non exploitée l'emporte sur le
+  remblai ; le Comblé l'emporte toujours. Les surfaces (secteur, exploitée, taux) ne changent pas.
+- **2D** (3a) : même sable que la masse au sol, appareil de blocs sans grains ni galets (même motif quelle que soit la
+  part) ; aplat plus dense là où il n'y a pas de motif (export image, KMZ). Ligne de légende ajoutée quand le plan
+  en contient une.
+- **3D** : faite à part sur le même contrat.
+
 ## Révision de KARMA (15/11/2026) — masse au sol à pleine hauteur, pentes posées
 
 Remplace le talus automatique à 30° des lots 4 et « talus honnête » : **sans rampe, une masse au sol est à pleine
@@ -288,6 +304,8 @@ ramper sur ~X m » plus tard.
 **Reco** : Comblé retranché en entier (inchangé) ; masse au sol par sa part, exacte par paliers (hauteurs distinctes
 triées, `calculerAires` sur l'union des zones à au moins chaque palier), talus négligé et dit ; là où une masse
 chevauche un Comblé, le Comblé l'emporte. Deux lignes de plus dans la fenêtre (surface et volume de masse au sol).
+Révisé le 15/11 au soir (masse non exploitée, ci-dessus) : remblai et masse non exploitée sur des lignes distinctes ;
+la non exploitée est retirée aussi du volume exploité, le sol abaissé y est ajouté.
 
 ### 10. Effondrement
 

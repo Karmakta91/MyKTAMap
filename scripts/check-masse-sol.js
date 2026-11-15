@@ -163,7 +163,11 @@ function charger(win, fichiers) {
     const data = { editorPoints: [], roads: [], structures: [], zones: [
       { type: "masse-sol", comble: 0.75, points: carre(1000, 1000, 50), description: "MasseTroisQuarts" },
       { type: "masse-sol", points: carre(1500, 1000, 50), description: "MasseSansValeur" },
-      { type: "masse-sol", comble: -0.5, points: carre(2000, 1000, 50), description: "MasseCreuse" }
+      { type: "masse-sol", comble: -0.5, points: carre(2000, 1000, 50), description: "MasseCreuse" },
+      { type: "masse-sol", comble: 0.5, nature: "non-exploitee", points: carre(2500, 1000, 50),
+        description: "MasseNonExploitee" },
+      { type: "masse-sol", comble: -0.25, nature: "non-exploitee", points: carre(2500, 1500, 50),
+        description: "CreuxNatureIgnoree" }
     ] };
     const inc = { points: false, roads: false, zones: true, structures: false, jonctions: false, itineraire: false };
     const kml = KE.genererKml({ transform: tr, planName: "Test", include: inc, levels: null, data: data });
@@ -182,8 +186,18 @@ function charger(win, fichiers) {
     const fc = GJ.generer({ transform: tr, epsg: 4326, planName: "Test", include: inc, levels: null, data: data });
     const f = fc.features.filter(x => x.properties.type === "masse-sol");
     t("GeoJSON : propriété comble (¾, ½ pour la zone sans valeur, −½ signée)",
-      f.length === 3 && f.some(x => x.properties.comble === 0.75) && f.some(x => x.properties.comble === 0.5) &&
+      f.length === 5 && f.some(x => x.properties.comble === 0.75) && f.some(x => x.properties.comble === 0.5) &&
       f.some(x => x.properties.comble === -0.5));
+    // Masse non exploitée : `nature` transportée seulement pour une part > 0 (contrat ktaMasseNonExploitee).
+    t("KMZ : mkm:nature non-exploitee sur la masse non exploitée, absent sur un remblai et sur un creux",
+      pmDe("MasseNonExploitee").indexOf('mkm:nature"><value>non-exploitee<') >= 0 &&
+      pmDe("MasseTroisQuarts").indexOf("mkm:nature") < 0 && pmDe("CreuxNatureIgnoree").indexOf("mkm:nature") < 0);
+    t("KMZ relu : mkm:nature reposée sur une masse au sol de part positive seulement",
+      /name === "mkm:nature"/.test(ki) &&
+      /zoneType === "masse-sol" && _mkmData\.nature && !\(_mkmData\.comble < 0\)\) _zn\.nature/.test(ki));
+    const nat = f.filter(x => x.properties.nature === "non-exploitee");
+    t("GeoJSON : propriété nature sur la seule masse non exploitée de part positive",
+      nat.length === 1 && nat[0].properties.comble === 0.5);
   }
 
   // ── 5. Import SIG (sigImport.js) ──
@@ -220,6 +234,17 @@ function charger(win, fichiers) {
     t("part comblée lue sur les masses au sol (¼, ½), illisible = absente, jamais posée sur un Comblé",
       r.zones[0].comble === 0.25 && r.zones[1].comble === 0.5 && !("comble" in r.zones[2]) && !("comble" in r.zones[3]));
     t("compte du défaut : 2 polygones sans type reconnu (stats.zonesDefaut)", r.stats.zonesDefaut === 2);
+    // Colonne « nature » (export GeoJSON de MyKTAMap) : non-exploitee, sans casse ni accents ; autre = remblai.
+    t("SIG : nature « non-exploitee », « Non exploitée », « NON_EXPLOITEE » reconnues ; autre ou absente = remblai",
+      S.natureDe({ nature: "non-exploitee" }) && S.natureDe({ Nature: "Non exploitée" }) &&
+      S.natureDe({ NATURE: "NON_EXPLOITEE" }) && !S.natureDe({ nature: "remblai" }) && !S.natureDe({}));
+    const polyN = (h, nature) => ({ props: { type: "ms", h: h, nature: nature },
+      coords: [{ lat: 1, lng: 1 }, { lat: 1, lng: 2 }, { lat: 2, lng: 2 }, { lat: 2, lng: 1 }] });
+    const polysN = [polyN("0,5", "non-exploitee"), polyN("-0,5", "non-exploitee"), polyN("0,5", "remblai")];
+    const rNat = S.ingest({ points: [], lignes: [], polygones: polysN }, {},
+      { cleType: "type", mapZones: map, cleComble: "h" });
+    t("SIG : nature posée sur la masse positive, jamais sur un creux ni sur un remblai (aller-retour GeoJSON → SIG)",
+      rNat.zones[0].nature === "non-exploitee" && !("nature" in rNat.zones[1]) && !("nature" in rNat.zones[2]));
     t("écran de correspondance : même compte (compterPolygonesDefaut)", S.compterPolygonesDefaut(normalise, "type") === 2 &&
       S.compterPolygonesDefaut(normalise, null) === 4);
     const rN = S.ingest(normalise, {}, { cleType: "type", mapZones: map, cleNiveau: "niv", couleurParNiveau: true });
@@ -392,8 +417,12 @@ function charger(win, fichiers) {
     t("zone embarquée : registre et getAllEmbeddedZones gardent `rampes`, chevrons dessinés",
       /rampes:\s+Array\.isArray\(zone\.rampes\)/.test(u) && /out\.rampes = e\.rampes\.map/.test(u) &&
       /window\.ktaChevronsRampes\(zone, layer, style\.color\)/.test(u));
-    t("zone embarquée : style avec sa part, fiche même sans note",
-      /_ktaStyleMap\("zones", zone\.type, "remblais",\s*typeof window\.ktaCombleZone === "function" \? \{ comble: window\.ktaCombleZone\(zone\) \}/.test(u) &&
+    t("zone embarquée : registre et getAllEmbeddedZones gardent `nature` (masse non exploitée)",
+      /nature:\s+\(zone\.type === "masse-sol" && zone\.nature === "non-exploitee"\)/.test(u) &&
+      /if \(e\.nature\) out\.nature = e\.nature;/.test(u));
+    t("zone embarquée : style avec sa part et sa sorte (ktaStyleOptsZone), fiche même sans note",
+      /_ktaStyleMap\("zones", zone\.type, "remblais",\s*typeof window\.ktaStyleOptsZone === "function"/.test(u) &&
+      /\? window\.ktaStyleOptsZone\(zone\) : undefined\);/.test(u) &&
       /\|\| zone\.type === "masse-sol";/.test(u));
     const cc = lire("js/createConf.js");
     t("Générateur, import KMZ : masse au sol présélectionnée", /<option value="masse-sol" selected>/.test(cc) &&

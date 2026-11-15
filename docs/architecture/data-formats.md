@@ -126,6 +126,16 @@ les calques (registre `_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:comb
 colonne de hauteur facultative (`sigImport.js > combleDe` : 0,5 = part, 50 % ou 1-100 = pourcentage, signe moins =
 sol abaissé : « -0,5 », « -50 % ») ; KMZ et GeoJSON écrivent la valeur signée ; **défaut d'un
 polygone SIG non reconnu = `masse-sol`** (Générateur compris). Garde-fou : `scripts/check-masse-sol.js`.
+→ **Sorte d'une masse au sol** : `"nature": "non-exploitee"` = **masse non exploitée** (roche laissée en place) ;
+**absent ou toute autre valeur = remblai** (aucun plan existant ne change). N'a de sens que pour une part > 0 :
+jamais écrit pour une part négative, ignoré s'il s'y trouve. ⚠️ Lecture unique : `styleResolver.js >
+ktaMasseNonExploitee(zone)` (part > 0 ET `nature === "non-exploitee"`), carte, volume, fiche, exports et vue 3D ;
+personne ne relit le champ en direct. Fiche : `KtaConvertir.changerNature` (une entrée ⏪ ; « remblai » retire le
+champ) ; passer la part en négatif (fiche, Tableur) ou changer de type le retire. Gardé par la session, la fusion
+par uid, les calques (`_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:nature`), GeoJSON (propriété `nature`,
+écrite seulement pour une masse non exploitée) et l'import SIG (colonne `nature`, sans casse ni accents :
+`sigImport.js > natureDe`). Volume : `volumeExploite.js` (retirée du volume exploité et du vide). Garde-fous :
+`check-style-resolver.js`, `check-api-surface.js` (volume), `checkup-masse-non-exploitee.js`.
 → **Rampes d'une masse au sol** : `"rampes": [{ "bord": 3, "fin": { "x": 1250.5, "y": 840 } }, { "bord": 1 }]` = bords bas
 des pentes, `bord` = indice du segment `points[bord]` → `points[bord + 1]` (le dernier rejoint le premier), un bord au
 plus une fois, liste triée ; `fin` (facultative, px du plan) = l'endroit où la pente atteint le cran (au-delà : plat ;

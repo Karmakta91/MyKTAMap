@@ -18806,6 +18806,12 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
   width: 5em !important; flex: 0 0 auto; margin-top: 0 !important; padding: 2px 6px !important;
 }
 .kta-note-popup-comble-metres { margin-top: 4px; color: var(--kta-texte-3); }
+/* Sorte d'une masse au sol (utils.js > _natureHtml) : Remblai / Masse non exploitée, cachée pour une part négative. */
+.kta-note-popup-nature { margin-top: 8px; }
+.kta-note-popup-nature[hidden] { display: none; }
+.kta-note-popup-nature-choix { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; }
+.kta-note-popup-nature-option { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.kta-note-popup-nature-lue { margin-top: 2px; color: var(--kta-texte); }
 .kta-note-popup-rampes { margin-top: 8px; }
 .kta-note-popup-rampe { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .kta-note-popup-rampe .kta-popup-btn { min-width: 32px; min-height: 32px; padding: 4px; }

@@ -218,8 +218,37 @@ function charger(fichier, nomGlobal, prealables) {
     proche(r.videM2, 1250) && proche(r.videM3, 2500 - 625));
   // Sol abaissé −½ sur 100×20 px = 500 m² → 500 m³ AJOUTÉS : vide 5 000 + 500 = 5 500 m³.
   r = calc({ secteur: carre, zones: [msol(R(0, 0, 100, 20), -0.5)] });
-  t("volume : sol abaissé −½ (500 m²) → 500 m³ ajoutés au vide (5 500 m³), aucune masse retranchée",
-    r.abaisse && !r.masseSol && proche(r.abaisseM2, 500) && proche(r.abaisseM3, 500) && proche(r.videM3, 5500));
+  t("volume : sol abaissé −½ (500 m²) → 500 m³ ajoutés au vide (5 500 m³) ET au volume exploité (5 500 m³)",
+    r.abaisse && !r.masseSol && proche(r.abaisseM2, 500) && proche(r.abaisseM3, 500) && proche(r.videM3, 5500) &&
+    proche(r.volumeM3, 5500) && proche(r.exploiteM2, 2500));
+  // Sortes : remblai ½ x 0-40 y 0-50, NON EXPLOITÉE ½ x 60-100 y 0-50, creux −½ x 0-100 y 60-80 : chacune
+  // 2 000 px² = 500 m², ½ × 2 m → 500 m³. Exploité 2 500 m² (surface inchangée). Volume exploité
+  // 2 500 × 2 − 500 (non exploitée) + 500 (creux) = 5 000 m³ ; vide 5 000 − 500 − 500 + 500 = 4 500 m³.
+  const NE = { nature: "non-exploitee" };
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5), msol(R(60, 0, 100, 50), 0.5, NE),
+    msol(R(0, 60, 100, 80), -0.5)] });
+  t("volume : remblai ½ + non exploitée ½ + creux −½ → volume exploité 5 000 m³, vide 4 500 m³, surfaces inchangées",
+    proche(r.volumeM3, 5000) && proche(r.videM3, 4500) && proche(r.exploiteM2, 2500) && proche(r.tauxPct, 100) &&
+    proche(r.videM2, 2500));
+  t("volume : lignes distinctes — remblai 500 m² / 500 m³, non exploitée 500 m² / 500 m³, creux 500 m³",
+    r.remblai && proche(r.remblaiM2, 500) && proche(r.remblaiM3, 500) && r.nonExploitee &&
+    proche(r.nonExploiteeM2, 500) && proche(r.nonExploiteeM3, 500) && r.abaisse && proche(r.abaisseM3, 500) &&
+    proche(r.masseM3, 1000));
+  // Chevauchement : non exploitée ½ x 0-60, remblai ½ x 40-100 (y 0-50). Union 5 000 px² = 1 250 m² → 1 250 m³
+  // retranchés du vide (3 750 m³) ; non exploitée seule 3 000 px² = 750 m² → 750 m³ retranchés de l'exploité
+  // (4 250 m³) ; remblai = le reste, 500 m² / 500 m³ (la non exploitée l'emporte, rien compté deux fois).
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 60, 50), 0.5, NE), msol(R(40, 0, 100, 50), 0.5)] });
+  t("volume : non exploitée sur un remblai → elle l'emporte (exploité 4 250 m³, vide 3 750 m³, remblai 500 m³)",
+    proche(r.volumeM3, 4250) && proche(r.videM3, 3750) && proche(r.nonExploiteeM3, 750) &&
+    proche(r.remblaiM2, 500) && proche(r.remblaiM3, 500));
+  // Nature sur une part négative : ignorée (creux ordinaire, ajouté aux deux).
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 100, 20), -0.5, NE)] });
+  t("volume : nature non-exploitee sur un creux −½ ignorée → ajouté aux deux (5 500 m³)",
+    !r.nonExploitee && proche(r.volumeM3, 5500) && proche(r.videM3, 5500));
+  // Remblai seul : volume exploité inchangé (5 000 m³), comme avant.
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5)] });
+  t("volume : remblai seul → volume exploité inchangé (5 000 m³), seul le vide baisse (4 500 m³)",
+    proche(r.volumeM3, 5000) && proche(r.videM3, 4500) && !r.nonExploitee && r.remblai);
   // Pilier 20×20 px dans une masse ¾ de 100×40 px : 4 000 − 400 = 3 600 px² = 900 m² ; 900 × ¾ × 2 = 1 350 m³ ;
   // vide (2 500 − 100) × 2 − 1 350 = 3 450 m³.
   r = calc({ secteur: carre, structures: [pil(R(40, 10, 60, 30))], zones: [msol(R(0, 0, 100, 40), 0.75)] });

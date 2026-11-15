@@ -10,8 +10,10 @@
 //   Sans opts : style de la carte, `inaccessible` hachurée par un CanvasPattern (même canvas que les
 //   autres vecteurs : l'ordre d'empilement zones < structures tient). opts.flat = true → aplat de repli
 //   (export bitmap, KMZ, fond OSM, pastilles). opts.comble (−1 à 1, absent = ½) → densité des grains de `masse-sol`.
+//   opts.nonExploitee → masse non exploitée : même sable, appareil de blocs sans grains (aplat plus dense en flat).
 // · ktaStyleBuiltins(cat) → clés built-in · ktaSwatchColor · ktaTypeSwatchHtml · ktaLabelAvecPastille
 // · ktaCombleZone(zone) → part comblée d'une masse au sol (absent = ½) · KTA_ORDRE_ZONES (empilement des zones)
+// · ktaMasseNonExploitee(zone) → masse non exploitée ? · ktaStyleOptsZone(zone) → opts de ktaResolveStyle d'une zone
 // · Couleur liée : zones.pente (zone jonction) prend le trait de traces.jonction (`_couleurDe`).
 // · ktaAppliquerCouleurChoisie(cat, cle, style) : applique la couleur choisie par l'utilisateur
 //   (Légende → Modifier) à un style déjà construit — réservé aux deux palettes délibérées ci-dessous.
@@ -52,12 +54,17 @@
       // (jamais les tirets 10 6 de la jonction). Aplat de repli : le sable à 50 %. Décision produit (maquette B).
       // Part négative (sol abaissé) : même sable et même contour, sans galets, grains CLAIRS en creux (`creux`, ombre
       // `grain` décalée) dont le nombre suit |comble|.
+      // Masse NON EXPLOITÉE (`nature: "non-exploitee"`, part > 0 : ktaMasseNonExploitee) : même sable, appareil de
+      // blocs (`blocs`) au trait `grain`, sans grains ni galets, quelle que soit la part ; aplat plus dense
+      // (`_flatFillOpacityNe`) là où il n'y a pas de motif (export PNG, KMZ, fond OSM, pastille).
       "masse-sol": {
         color: "#6b5532", fillColor: "#c9b48c", fillOpacity: 1, weight: 3, opacity: 1, dashArray: "4 3",
         _flatFill: "#c9b48c", _flatFillOpacity: 0.5,
         _motif: { genre: "grains", fondOpacite: 0.5, grain: "#45361f", galet: "#efe6d0", creux: "#f7f1e3", tuile: 48,
           cases: [11, 10],
-          rGrain: 1.4, rGalet: 2.6, partGalets: 0.3, plafond: 0.85 }
+          rGrain: 1.4, rGalet: 2.6, partGalets: 0.3, plafond: 0.85,
+          blocs: { haut: 12, long: 24, trait: 1.3, opacite: 0.8 } },
+        _flatFillOpacityNe: 0.85
       },
       // Zone jonction (salle dont le sol monte d'un niveau à l'autre). ⚠️ contrat (décision produit) : sa couleur
       // EST celle du tracé jonction (`_couleurDe`, couleur choisie comprise) : changer l'une change l'autre. Les
@@ -199,7 +206,26 @@
       }
     }
   }
-  // `part` : genre "grains" seulement (_partGrains) ; la clé du cache la porte.
+  // Tuile de blocs (masse non exploitée) : rangées de `haut` px, joints verticaux tous les `long` px, décalés d'une
+  // demi-longueur d'une rangée à l'autre ; la tuile (m.tuile, multiple des deux) se raccorde sans couture.
+  function _tuileBlocs(c, g, fond, m) {
+    const T = m.tuile, b = m.blocs;
+    c.width = T; c.height = T;
+    g.globalAlpha = m.fondOpacite;
+    g.fillStyle = fond;
+    g.fillRect(0, 0, T, T);
+    g.globalAlpha = b.opacite;
+    g.strokeStyle = m.grain;
+    g.lineWidth = b.trait;
+    g.beginPath();
+    for (let y = 0, r = 0; y < T; y += b.haut, r++) {
+      g.moveTo(0, y + 0.5); g.lineTo(T, y + 0.5);
+      for (let x = (r % 2) * b.long / 2; x < T; x += b.long) { g.moveTo(x + 0.5, y); g.lineTo(x + 0.5, y + b.haut); }
+    }
+    g.stroke();
+    g.globalAlpha = 1;
+  }
+  // `part` : genre "grains" seulement (_partGrains) ; la clé du cache la porte ("ne" = blocs, masse non exploitée).
   function _motifCanvas(cle, fond, m, part) {
     const k = m.genre === "grains" ? cle + "@" + part : cle;
     if (Object.prototype.hasOwnProperty.call(_motifs, k)) return _motifs[k];
@@ -210,7 +236,7 @@
         const c = document.createElement("canvas");
         const g = c.getContext && c.getContext("2d");
         if (g && typeof g.createPattern === "function") {
-          _tuileGrains(c, g, fond, m, part);
+          if (part === "ne") _tuileBlocs(c, g, fond, m); else _tuileGrains(c, g, fond, m, part);
           motif = g.createPattern(c, "repeat");
         }
       } else if (typeof document !== "undefined" && document && typeof document.createElement === "function") {
@@ -245,15 +271,16 @@
   // Échantillon de légende d'un type à grains : la tuile du cran ½ en image (data:), OPAQUE — fond composé sur le
   // papier du plan : sur une surface sombre de l'interface, le sable translucide sortait brun foncé. null sans canvas.
   const _echantillons = {};
-  function _echantillonGrains(cle, fond, m) {
-    if (Object.prototype.hasOwnProperty.call(_echantillons, cle)) return _echantillons[cle];
+  function _echantillonGrains(cle, fond, m, ne) {
+    const k = ne ? cle + "@ne" : cle;
+    if (Object.prototype.hasOwnProperty.call(_echantillons, k)) return _echantillons[k];
     let url = null;
     try {
       if (typeof document !== "undefined" && document && typeof document.createElement === "function") {
         const c = document.createElement("canvas");
         const g = c.getContext && c.getContext("2d");
         if (g && typeof c.toDataURL === "function") {
-          _tuileGrains(c, g, fond, m, _partGrains(m, 0.5));
+          if (ne) _tuileBlocs(c, g, fond, m); else _tuileGrains(c, g, fond, m, _partGrains(m, 0.5));
           g.globalCompositeOperation = "destination-over";
           g.fillStyle = "#ffffff";
           g.fillRect(0, 0, c.width, c.height);
@@ -261,7 +288,7 @@
         }
       }
     } catch (e) { url = null; }
-    _echantillons[cle] = url;
+    _echantillons[k] = url;
     return url;
   }
 
@@ -331,6 +358,8 @@
         delete s._couleurDe;
         return s;
       }
+      const ne = !!(opts && opts.nonExploitee) && s._flatFillOpacityNe !== undefined;
+      if (ne) s._flatFillOpacity = s._flatFillOpacityNe;
       if (plat && s._flatFill) {
         s.fillColor   = s._flatFill;
         s.fillOpacity = (s._flatFillOpacity !== undefined) ? s._flatFillOpacity : s.fillOpacity;
@@ -339,7 +368,8 @@
       const fondCanon = s.fillColor;
       _appliquerOverride(categorie, cle, s);
       if (!plat && s._motif && s.fillColor === fondCanon) {
-        const part = s._motif.genre === "grains" ? _partGrains(s._motif, opts && opts.comble) : undefined;
+        const part = s._motif.genre !== "grains" ? undefined
+          : (ne && s._motif.blocs) ? "ne" : _partGrains(s._motif, opts && opts.comble);
         const motif = _motifCanvas(cle, fondCanon, s._motif, part);
         if (motif) {
           s.fillColor = motif;
@@ -348,7 +378,7 @@
           s.fillOpacity = s._flatFillOpacity;
         }
       }
-      delete s._flatFill; delete s._flatFillOpacity; delete s._motif;
+      delete s._flatFill; delete s._flatFillOpacity; delete s._flatFillOpacityNe; delete s._motif;
       return s;
     }
     if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
@@ -377,12 +407,13 @@
 
   // Image (data:) de l'échantillon d'un type à grains (masse au sol), opaque, cran ½ ; null pour tout autre type,
   // sans canvas, ou si la couleur canon est remplacée (Légende → Modifier : l'aplat choisi fait foi).
-  function ktaEchantillonType(categorie, cle) {
+  // `opts.nonExploitee` : l'appareil de blocs de la masse non exploitée.
+  function ktaEchantillonType(categorie, cle, opts) {
     const t = CANON[categorie] && CANON[categorie][cle];
     if (!t || !t._motif || t._motif.genre !== "grains") return null;
     const s = ktaResolveStyle(categorie, cle, { flat: true });
     if (!s || s.fillColor !== t._flatFill) return null;
-    return _echantillonGrains(cle, t.fillColor, t._motif);
+    return _echantillonGrains(cle, t.fillColor, t._motif, !!(opts && opts.nonExploitee) && !!t._motif.blocs);
   }
 
   // Pastille HTML résolue en direct (trait ou carré bordé), à la place d'un émoji de couleur
@@ -447,6 +478,17 @@
   };
   // ⚠️ contrat : valeur de `comble` acceptée à la saisie et à l'import (fiche, Tableur, KMZ, SIG) : [−1 ; 1[ sauf 0
   // (≥ 1 = un Comblé, < −1 = plus d'une hauteur de niveau sous le sol).
+  // ⚠️ contrat (lu par la carte, le volume, la fiche, les exports ET la vue 3D) : masse au sol NON EXPLOITÉE = type
+  // `masse-sol`, part > 0 et `nature === "non-exploitee"`. Champ absent ou autre valeur = remblai (plans existants
+  // inchangés) ; ignoré pour une part négative (sol abaissé). Personne ne relit `nature` en direct.
+  window.ktaMasseNonExploitee = function (zone) {
+    return !!zone && zone.type === "masse-sol" && zone.nature === "non-exploitee" && window.ktaCombleZone(zone) > 0;
+  };
+  // Options de ktaResolveStyle d'une zone (part et nature d'une masse au sol) : carte (zones.js) et exports.
+  window.ktaStyleOptsZone = function (zone) {
+    if (!zone || zone.type !== "masse-sol") return undefined;
+    return { comble: window.ktaCombleZone(zone), nonExploitee: window.ktaMasseNonExploitee(zone) };
+  };
   window.ktaCombleValide = function (v) { return Number.isFinite(v) && v !== 0 && v >= -1 && v < 1; };
   // Part comblée en texte : « ¼ », « ½ », « ¾ » (« −¼ »… pour un sol abaissé) pour les crans, sinon la valeur (0,9
   // en décimale locale).

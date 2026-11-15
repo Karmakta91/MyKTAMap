@@ -51,9 +51,8 @@ function _resolveZoneStyle(type, zone) {
     }
     return null;
   }
-  // Part comblée (masse au sol) : styleResolver.js > ktaCombleZone, chargé avant ce module dans l'app.
-  const opts = (zone && typeof window.ktaCombleZone === "function")
-    ? { comble: window.ktaCombleZone(zone) } : undefined;
+  // Part comblée et nature (masse au sol) : styleResolver.js > ktaStyleOptsZone, chargé avant ce module dans l'app.
+  const opts = (zone && typeof window.ktaStyleOptsZone === "function") ? window.ktaStyleOptsZone(zone) : undefined;
   return window.ktaResolveStyle("zones", type, opts);
 }
 

@@ -443,8 +443,9 @@
     delete neuf.toLevel;
     delete neuf.jonction;
     if (familleCible !== "zones") delete neuf.niveaux;   // plusieurs niveaux : propre aux zones (et aux POI)
-    if (typeCible !== "masse-sol") {   // part comblée et rampes : propres à la masse au sol
+    if (typeCible !== "masse-sol") {   // part comblée, sorte et rampes : propres à la masse au sol
       delete neuf.comble;
+      delete neuf.nature;
       delete neuf.rampes;
     }
     if (familleCible === "zones" && typeCible === "pente" && niv && Number.isInteger(niv.de) &&
@@ -685,11 +686,43 @@
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState("zones") : null;
     cible.comble = v;
+    // Sol abaissé : la sorte n'a pas de sens (styleResolver.js > ktaMasseNonExploitee).
+    if (v < 0) delete cible.nature;
     if (window.KtaUid) window.KtaUid.touch(cible);
     ecrire(liste);
     if (window.HistoryManager && avant && window.HistoryManager.record) {
       const part = window.ktaTexteComble ? window.ktaTexteComble(v) : v;
       window.HistoryManager.record(_t("masseSol.histoire", { part: part }), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
+  // ── Sorte d'une masse au sol : remblai (défaut, champ absent) / masse non exploitée ──────────
+  // ⚠️ contrat : `nature: "non-exploitee"` écrit seulement pour une part > 0 ; « remblai » RETIRE le champ (aucun
+  // plan existant ne change). Lecture : styleResolver.js > ktaMasseNonExploitee. Même objet muté (uid, touch).
+  function changerNature(obj, nature) {
+    // 🔒 lecture seule
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!obj || obj.type !== "masse-sol" || (nature !== "remblai" && nature !== "non-exploitee")) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") return false;
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx];
+    const comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(cible) : 0.5;
+    if (cible.type !== "masse-sol" || !(comble > 0)) return false;
+    const ne = nature === "non-exploitee";
+    if ((cible.nature === "non-exploitee") === ne) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    if (ne) cible.nature = "non-exploitee"; else delete cible.nature;
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      const lib = _t(ne ? "masseSol.nature.nonExploitee" : "masseSol.nature.remblai");
+      window.HistoryManager.record(_t("masseSol.nature.histoire", { nature: lib }), avant, "zones");
     }
     if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
     return true;
@@ -1049,6 +1082,9 @@
       if (op.type) obj = _versType(obj, op.type, famille);
       if (op.niveau !== null) _poserNiveau(obj, op.niveau);
       _normaliserNiveaux(obj);   // `niveaux` saisi au Tableur : `level` toujours inclus
+      // Part passée en négatif au Tableur : la sorte n'a plus de sens (styleResolver.js > ktaMasseNonExploitee).
+      if (obj.type === "masse-sol" && obj.nature !== undefined && typeof window.ktaCombleZone === "function" &&
+          !(window.ktaCombleZone(obj) > 0)) delete obj.nature;
       return obj;
     }).concat(session.filter(horsJeu));
     ecrire(liste);
@@ -1304,6 +1340,7 @@
     changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
     changerNiveauxZone: changerNiveauxZone,   // fiche d'une zone (niveaux en plus de `level`)
     changerComble: changerComble,   // fiche d'une masse au sol (part comblée)
+    changerNature: changerNature,   // fiche d'une masse au sol (remblai / masse non exploitée)
     ajouterRampe:  ajouterRampe,    // fiche d'une masse au sol : « Placer une pente » (bord bas)
     retirerRampe:  retirerRampe,    // fiche d'une masse au sol : ✕ d'une pente
     changerFinRampe: changerFinRampe,   // fiche d'une masse au sol : fin d'une pente (posée, déplacée, retirée)

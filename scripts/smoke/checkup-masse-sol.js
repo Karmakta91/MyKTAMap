@@ -194,7 +194,7 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     const c0 = await page.evaluate(function () {
       const bloc = document.querySelector(".leaflet-popup-content .kta-note-popup-comble");
       if (!bloc) return null;
-      const r = Array.from(bloc.querySelectorAll('input[type="radio"]'));
+      const r = Array.from(bloc.querySelectorAll('input[name="kta-comble"]'));
       return { crans: r.map(function (x) { return x.value; }), coche: (r.find(function (x) { return x.checked; }) || {}).value,
         metres: (bloc.querySelector(".kta-note-popup-comble-metres") || {}).textContent || "" };
     });

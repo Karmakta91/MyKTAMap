@@ -308,7 +308,7 @@
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
         const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null,
-          jonction: false, comble: null, rampes: null };
+          jonction: false, comble: null, rampes: null, nature: null };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -325,6 +325,11 @@
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
           // Masse au sol : part comblée (décimale signée : négative = sol abaissé), gardée si c'est un nombre non nul
           // d'au moins −1 (≥ 1 gardé : la fiche propose Comblé).
+          // Masse non exploitée : seule valeur reconnue (toute autre = remblai, rien n'est écrit).
+          if (name === "mkm:nature") {
+            if ((valEl.textContent || "").trim() === "non-exploitee") out.nature = "non-exploitee";
+            continue;
+          }
           if (name === "mkm:comble") {
             const c = Number((valEl.textContent || "").trim().replace(",", ".").replace("−", "-"));
             if (Number.isFinite(c) && c !== 0 && c >= -1) out.comble = c;
@@ -483,6 +488,7 @@
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
             if (zoneType === "masse-sol" && _mkmData.comble !== null) _zn.comble = _mkmData.comble;
+            if (zoneType === "masse-sol" && _mkmData.nature && !(_mkmData.comble < 0)) _zn.nature = _mkmData.nature;
             if (zoneType === "masse-sol" && _mkmData.rampes) {
               _zn.rampes = _mkmData.rampes.map(function(r) {
                 if (!r.finLL || !Number.isFinite(r.finLL.lat) || !Number.isFinite(r.finLL.lng)) return { bord: r.bord };

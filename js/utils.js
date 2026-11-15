@@ -1143,8 +1143,11 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.label")) + '</span>';
     const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>';
     if (!opts.convertir || mode === "readonly") {
+      const ne = typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(o);
       return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
-             '</strong>' + metres + _rampesHtml(o, false) + '</div>';
+             '</strong>' + (ne ? '<div class="kta-note-popup-nature-lue">' +
+               _esc(window.I18n.t("masseSol.nature.nonExploitee")) + '</div>' : "") +
+             metres + _rampesHtml(o, false) + '</div>';
     }
     const crans = [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75], autre = crans.indexOf(v) < 0;
     const radio = function (val, txt, coche) {
@@ -1164,8 +1167,24 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                '<button class="kta-popup-btn kta-note-popup-comble-appliquer" type="button">' +
                  _esc(window.I18n.t("masseSol.appliquer")) +
                '</button>' +
-             '</div>' + _rampesHtml(o, true) +
+             '</div>' + _natureHtml(o, v) + _rampesHtml(o, true) +
            '</div>';
+  }
+  // Sorte d'une masse au sol : Remblai (défaut) / Masse non exploitée, appliquée au choix (KtaConvertir.changerNature,
+  // une entrée ⏪). ⚠️ Cachée pour une part négative (sol abaissé : le champ n'a pas de sens), aussi en direct quand
+  // on coche une part négative avant d'appliquer.
+  function _natureHtml(o, v) {
+    const ne = typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(o);
+    const radio = function (val, cle, coche) {
+      return '<label class="kta-note-popup-nature-option"><input type="radio" name="kta-nature" value="' + val +
+             '"' + (coche ? " checked" : "") + '><span>' + _esc(window.I18n.t(cle)) + '</span></label>';
+    };
+    return '<div class="kta-note-popup-nature"' + (v > 0 ? "" : " hidden") + '>' +
+             '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.nature.titre")) +
+             '</span><div class="kta-note-popup-nature-choix">' +
+               radio("remblai", "masseSol.nature.remblai", !ne) +
+               radio("non-exploitee", "masseSol.nature.nonExploitee", ne) +
+             '</div></div>';
   }
   // Pentes (rampes) d'une masse au sol : une ligne par bord bas (« Pente 1 — bord 3 », ✕ pour la retirer), « Placer une
   // pente » (zones.js > ktaArmerRampe) ; sans pente, la pleine hauteur est rappelée. Lecture seule : le nombre.
@@ -1213,6 +1232,9 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     const mh = window.ktaMetresComble(o, v);
     const f = function (x) { return window.formatDistance(x, 1); };
     if (mh.m < 0) return window.I18n.t("masseSol.metresBas", { m: f(-mh.m), h: f(mh.h) });
+    if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(o)) {
+      return window.I18n.t("masseSol.metresNe", { m: f(mh.m), h: f(mh.h) });
+    }
     return window.I18n.t("masseSol.metres", { m: f(mh.m), h: f(mh.h) });
   }
 
@@ -1432,8 +1454,10 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (r.value !== "autre") return Number(r.value);
           return Number(String(cbAutre ? cbAutre.value : "").trim().replace(",", ".").replace("−", "-"));
         };
+        const natureBloc = popupRoot.querySelector(".kta-note-popup-nature");
         const majMetres = function () {
           const v = lireComble();
+          if (natureBloc) natureBloc.hidden = !(Number.isFinite(v) && v > 0);
           if (cbMetres && Number.isFinite(v) && v !== 0) {
             cbMetres.textContent = _texteMetresComble(opts.convertir.obj, v);
           }
@@ -1478,6 +1502,21 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           }
         });
       }
+      // Sorte d'une masse au sol : appliquée au choix ; popup fermée AVANT le setteur (il re-rend la famille).
+      popupRoot.querySelectorAll('.kta-note-popup-nature input[name="kta-nature"]').forEach(function (r) {
+        if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.changerNature) return;
+        r.addEventListener("change", function () {
+          if (!r.checked) return;
+          const obj = opts.convertir.obj;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNature(obj, r.value) && window.OOMGuard &&
+              typeof window.OOMGuard.showToast === "function") {
+            const cle = r.value === "non-exploitee" ? "masseSol.nature.nonExploitee" : "masseSol.nature.remblai";
+            window.OOMGuard.showToast(window.I18n.t("masseSol.nature.toast", { nature: window.I18n.t(cle) }),
+              "success");
+          }
+        });
+      });
       // Pentes d'une masse au sol : « Placer une pente » arme le toucher du bord bas (zones.js > ktaArmerRampe) ;
       // ✕ retire cette pente (une entrée ⏪), la fiche se ferme (la zone est redessinée).
       const rpPlacer = popupRoot.querySelector(".kta-note-popup-rampe-placer");
@@ -2532,9 +2571,9 @@ window.ktaZoneLue = function(z) {
   return c;
 };
 
-// Zones embarquées → [{type, points, level, niveaux?, comble?, layerId, description?, uid?, updatedAt?}], même format
-// que window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
-// Calque en modification exclu.
+// Zones embarquées → [{type, points, level, niveaux?, comble?, nature?, layerId, description?, uid?, updatedAt?}],
+// même format que window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement
+// la session. Calque en modification exclu.
 window.getAllEmbeddedZones = function() {
   if (!Array.isArray(window._ktaDataPolygons)) return [];
   const exclus = window.ktaCalquesEnModification();
@@ -2547,6 +2586,7 @@ window.getAllEmbeddedZones = function() {
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (Array.isArray(e.niveaux) && e.niveaux.length >= 2) out.niveaux = e.niveaux.slice();
       if (Number.isFinite(e.comble)) out.comble = e.comble;
+      if (e.nature) out.nature = e.nature;
       if (Array.isArray(e.rampes) && e.rampes.length) {
         out.rampes = e.rampes.map(function (r) { return r.fin ? { bord: r.bord, fin: r.fin } : { bord: r.bord }; });
       }
@@ -3107,7 +3147,7 @@ function ajouterPointsDepuisJSON(url, layer) {
         zonesTriees.forEach(function(zone) {
           if (!zone || !zone.points || zone.points.length < 3) return;
           const style = _ktaStyleMap("zones", zone.type, "remblais", 
-            typeof window.ktaCombleZone === "function" ? { comble: window.ktaCombleZone(zone) } : undefined);
+            typeof window.ktaStyleOptsZone === "function" ? window.ktaStyleOptsZone(zone) : undefined);
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
           // Masse au sol : fiche même sans note (elle seule dit sa part comblée).
           const hasNoteROZone = !!(zone.description && String(zone.description).trim()) || zone.type === "masse-sol";
@@ -3161,6 +3201,8 @@ function ajouterPointsDepuisJSON(url, layer) {
                                ? window.ktaNiveauxObjet(zone) : undefined,
             // Masse au sol : part comblée (une valeur pour tous ses niveaux), gardée telle quelle.
             comble:          Number.isFinite(zone.comble) ? zone.comble : undefined,
+            // Masse non exploitée : `nature` gardée telle quelle (lue par styleResolver.js > ktaMasseNonExploitee).
+            nature:          (zone.type === "masse-sol" && zone.nature === "non-exploitee") ? zone.nature : undefined,
             // Masse au sol : rampes (bords bas, masseSol.js > rampes), gardées telles quelles.
             rampes:          Array.isArray(zone.rampes) && zone.rampes.length
                                ? zone.rampes.map(function (r) {

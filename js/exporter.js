@@ -42,13 +42,16 @@
     return (s && s.rayures && s.rayures.color) || null;
   }
 
-  function _styleCanvas(categorie, type, repli) {
+  // `zone` (facultatif) : part et nature d'une masse au sol (styleResolver.js > ktaStyleOptsZone ; masse non
+  // exploitée = aplat plus dense, le canvas d'export ne peint pas de motif).
+  function _styleCanvas(categorie, type, repli, zone) {
     const R = window.ktaResolveStyle;
     if (typeof R !== "function") {
       console.error("[Export] window.ktaResolveStyle absent — styles indisponibles.");
       return null;
     }
-    return R(categorie, type, { flat: true }) ||
+    const o = (zone && typeof window.ktaStyleOptsZone === "function") ? window.ktaStyleOptsZone(zone) : null;
+    return R(categorie, type, Object.assign({ flat: true }, o || {})) ||
            (repli ? R(categorie, repli, { flat: true }) : null);
   }
 
@@ -1943,7 +1946,7 @@
       const filtreZ = opts.ann.zonesTypes ||
         { eau: true, "masse-sol": true, remblais: true, effondrement: true, inaccessible: true };
       // `inaccessible` en aplat rouge foncé (hachures SVG non portables au canvas) : repli de { flat: true }.
-      function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
+      function _styleZoneExp(type, zone) { return _styleCanvas("zones", type, "remblais", zone); }
       const triees = [...zones]
         .filter(function(z) {
           if (z.type === "pente") return !!opts.ann.roads;
@@ -1956,7 +1959,7 @@
         });
       for (const z of triees) {
         if (!z.points || z.points.length < 3) continue;
-        const s = _styleZoneExp(z.type);
+        const s = _styleZoneExp(z.type, z);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(sc(z.points[0].x), sc(z.points[0].y));
@@ -2208,7 +2211,7 @@
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
         if (z.type === "pente" && !jonctionGardee) return;
-        _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais")); });
+        _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais", z)); });
         _diagAdv.embZones++;
       });
 
@@ -2671,6 +2674,16 @@
             { label: window.I18n.t("imgexport.legLabel.effondrement"), fillColor: "#ff3333", borderColor: "#cc0000" },
             { label: window.I18n.t("imgexport.legLabel.inaccessible"), fillColor: "#7a0000", borderColor: "#5a0a0a" }
           ];
+      // Masse non exploitée : même sable, aplat plus dense (le canvas ne peint pas les blocs), seulement si une zone
+      // l'est (styleResolver.js > ktaMasseNonExploitee).
+      const _ne = (typeof window.ktaMasseNonExploitee === "function") &&
+        [].concat(window.getZones ? window.getZones() || [] : [],
+          window.getAllEmbeddedZones ? window.getAllEmbeddedZones() || [] : []).some(window.ktaMasseNonExploitee);
+      const _sNe = _ne ? window.ktaResolveStyle("zones", "masse-sol", { flat: true, nonExploitee: true }) : null;
+      if (_sNe && (!LC || LC.isVisible("zones", "masse-sol") !== false)) {
+        lignes.push({ label: window.I18n.t("masseSol.nature.nonExploitee"), fillColor: _sNe.fillColor,
+          borderColor: _sNe.color, fillOpacity: _sNe.fillOpacity });
+      }
       if (LC) {
         LC.listCustomEntries("zones")
           .filter(function(e) { return e.visible && e.fillColor; })
@@ -2933,7 +2946,7 @@
           } else if (l.fillColor) {
             ctx.save();
             ctx.fillStyle = l.fillColor;
-            ctx.globalAlpha = 0.7;
+            ctx.globalAlpha = Number.isFinite(l.fillOpacity) ? l.fillOpacity : 0.7;
             ctx.fillRect(xCol, yLine, ic, ic);
             ctx.globalAlpha = 1;
             if (l.borderColor) {

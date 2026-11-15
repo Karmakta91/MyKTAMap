@@ -290,6 +290,18 @@ function _ktaLegendeCorps(src, opts) {
   if (_avecRampe && _visible("zones", "masse-sol") && typeof window.ktaIcone === "function") {
     contenuZones += `<div class="kta-legende-ligne"><span class="kta-legende-trait kta-legende-rampe" style="${_echMasse ? `background:url(${_echMasse}) center/28px;` : ""} border:2px dashed ${_couleurTrait("zones", "masse-sol")}; color:${_couleurTrait("zones", "masse-sol")};">${window.ktaIcone("chevron-up")}</span><span class="kta-legende-label">${window.I18n.t("legendui.rampe")}</span></div>`;
   }
+  // Masse non exploitée (appareil de blocs, styleResolver.js > ktaEchantillonType { nonExploitee }) : seulement si une
+  // zone l'est (ktaMasseNonExploitee). Couleur remplacée par l'utilisateur : pas d'échantillon, pas de ligne
+  // (aplat commun).
+  const _echNe = typeof window.ktaEchantillonType === "function"
+    ? window.ktaEchantillonType("zones", "masse-sol", { nonExploitee: true }) : null;
+  const _avecNe = typeof window.ktaMasseNonExploitee === "function" &&
+    [].concat(typeof window.getZones === "function" ? (window.getZones() || []) : [],
+      typeof window.getAllEmbeddedZones === "function" ? (window.getAllEmbeddedZones() || []) : [])
+      .some(window.ktaMasseNonExploitee);
+  if (_echNe && _avecNe && _visible("zones", "masse-sol")) {
+    contenuZones += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:url(${_echNe}) center/28px; height:14px; border:2px dashed ${_couleurTrait("zones", "masse-sol")};"></span><span class="kta-legende-label">${window.I18n.t("masseSol.nature.nonExploitee")}</span></div>`;
+  }
   contenuZones += _ligneZone("remblais");
   contenuZones += _ligneZone("effondrement");
   // Inaccessible : fond hachuré, traité à part.
