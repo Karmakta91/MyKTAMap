@@ -4481,6 +4481,165 @@ async function sectionMonteeCamera(page) {
   });
 }
 
+// ── Masse non exploitée (KTA_V3D_SEUL=nonexploitee ; vue3d.js > _masseNonExploitee, _masseSol) : deux masses ½ côte
+// à côte, remblai et non exploitée (nature "non-exploitee"), traversées par le tracé. 🧱 allumé : remblai = dessus en
+// sol damé (solMasse) et fronts en terre (remblais), non exploitée = dessus au sol normal et fronts en roche ; 🧱 coupé :
+// non exploitée = fronts à la couleur du pilier. Même sol et même montée (hissé) pour les deux ; la nature changée
+// pendant la vue refait la scène (empreinte des données). Trois rendus. ──
+async function sectionMasseNonExploitee(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-non-exploitee";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setStructures([]);
+    window.setEditorPoints([]);
+    window.setRoads([{ uid: "rd_ne", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+    const Z = function (nature) {
+      return [
+        { uid: "zn_ne_r", type: "masse-sol", level: 0, comble: 0.5, points: rect(-14, -6, -2, 6) },
+        Object.assign({ uid: "zn_ne_n", type: "masse-sol", level: 0, comble: 0.5, points: rect(4, -6, 16, 6) },
+          nature ? { nature: nature } : {})
+      ];
+    };
+    window.setZones(Z("non-exploitee"));
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const out = {};
+    for (const rendu of ["mixte", "structures", "galerie"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      out[rendu] = {};
+      for (const tx of [true, false]) {
+        window.setVue3DTextures(tx);
+        window.KtaGalerie.invalider();
+        await K.ouvrir({ depart: Object.assign(P(-20, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+        await pause(250);
+        const asp = K.etat().masses.aspect;
+        const sol = function (x) { const p = P(x, 0); K.placer(p.x, p.y, 90); return K.etat().masses.sol; };
+        const r = { aspect: { r: asp.zn_ne_r || null, n: asp.zn_ne_n || null }, solR: sol(-8), solN: sol(10) };
+        if (tx && rendu === "mixte") {
+          // Montée identique : hissé sur chacune depuis l'ouest, sur le tracé.
+          const monter = async function (x) {
+            const p = P(x, 0);
+            K.placer(p.x, p.y, 90);
+            await pause(60);
+            const m0 = K.etat().masses.montees;
+            for (let i = 0; i < 40; i++) { K.avancer(0.1); await pause(20); }
+            await pause(600);
+            return { montees: K.etat().masses.montees - m0, sol: K.etat().masses.sol };
+          };
+          r.monteR = await monter(-16);
+          r.monteN = await monter(2);
+          // Nature retirée pendant la vue : la scène est refaite, la masse redevient un remblai.
+          const n0 = K.etat().donnees.refaites;
+          window.setZones(Z(null));
+          if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan();
+          for (let i = 0; i < 40 && K.etat().donnees.refaites === n0; i++) await pause(50);
+          await pause(150);
+          r.apresRetrait = K.etat().masses.aspect.zn_ne_n || null;
+          window.setZones(Z("non-exploitee"));
+          if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan();
+          const n1 = K.etat().donnees.refaites;
+          for (let i = 0; i < 40 && K.etat().donnees.refaites === n1; i++) await pause(50);
+          await pause(150);
+          r.apresRemise = K.etat().masses.aspect.zn_ne_n || null;
+        }
+        out[rendu][tx ? "textures" : "aplat"] = r;
+        await K.fermer();
+      }
+    }
+    window.setVue3DTextures(true);
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ masse non exploitée");
+  const pr = function (a, b) { return Number.isFinite(a) && Math.abs(a - b) <= 0.011; };
+  Object.keys(R).forEach(function (rendu) {
+    const T = R[rendu].textures, A = R[rendu].aplat, k = "masse non exploitée, " + rendu + " : ";
+    verifier(T.aspect.r && T.aspect.r.dessus === "solMasse" && T.aspect.r.fronts === "remblais" &&
+      T.aspect.n && T.aspect.n.dessus === "sol" && T.aspect.n.fronts === "roche",
+      k + "🧱 : remblai = sol damé + terre (inchangé), non exploitée = sol normal + roche", T.aspect);
+    verifier(A.aspect.r && A.aspect.r.fronts === "uni" && A.aspect.n && A.aspect.n.fronts === "pilier" &&
+      A.aspect.n.dessus === "uni",
+      k + "🧱 coupé : fronts de la non exploitée à la couleur du pilier, remblai inchangé", A.aspect);
+    verifier(pr(T.solR, 1.2) && pr(T.solN, 1.2) && pr(A.solR, 1.2) && pr(A.solN, 1.2),
+      k + "même sol pour les deux (1,2 m)", { t: [T.solR, T.solN], a: [A.solR, A.solN] });
+    if (T.monteR) {
+      verifier(T.monteR.montees === 1 && T.monteN.montees === 1 && pr(T.monteR.sol, 1.2) && pr(T.monteN.sol, 1.2),
+        k + "même montée (hissé sur chacune)", { r: T.monteR, n: T.monteN });
+      verifier(T.apresRetrait && T.apresRetrait.fronts === "remblais" && T.apresRemise && T.apresRemise.fronts === "roche",
+        k + "nature changée pendant la vue : scène refaite (remblai, puis roche à nouveau)",
+        { retrait: T.apresRetrait, remise: T.apresRemise });
+    }
+  });
+}
+
+async function capturesMasseNonExploitee(page) {
+  for (const tx of [true, false]) {
+    for (const rendu of ["mixte", "galerie"]) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-non-exploitee";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        window._currentLoadedPlanId = PID;
+        if (!window.__neAv) {
+          window.__neAv = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+            s: window.getAllEmbeddedStructures };
+        }
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.setStructures([]); window.setEditorPoints([]);
+        window.setRoads([{ uid: "rd_ne", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+        window.setZones([
+          { uid: "zn_ne_r", type: "masse-sol", level: 0, comble: 0.5, points: rect(-14, -6, -2, 6) },
+          { uid: "zn_ne_n", type: "masse-sol", level: 0, comble: 0.5, points: rect(4, -6, 16, 6), nature: "non-exploitee" }]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(c.tx);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        await K.ouvrir({ depart: Object.assign(P(1, 9), { cap: 0 }), commandes: "pave", tuiles: false });
+        K.basculerVue();
+        K.zoomer(1.6);
+        await new Promise(function (ok) { setTimeout(ok, 800); });
+      }, { tx: tx, rendu: rendu });
+      await capture(page, "non-exploitee-" + rendu + (tx ? "" : "-aplat"));
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.setVue3DTextures(true);
+    window.effacerReglagesNiveaux("v3d-checkup-non-exploitee");
+    window.setZones([]); window.setRoads([]);
+    const av = window.__neAv;
+    if (av) {
+      window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+      window.getAllEmbeddedStructures = av.s;
+      window.__neAv = null;
+    }
+  });
+}
+
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -17346,6 +17505,12 @@ async function sectionCaseBoutonsZoom(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await sectionTuileColonne(page);
       await sectionNiveauEdition(page);
+    } else if (SEUL === "nonexploitee") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMasseNonExploitee(page);
+      if (CAPTURES) await capturesMasseNonExploitee(page);
     } else if (SEUL === "murplafond") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -20997,6 +21162,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionFrontTrace(page);
       await sectionMonteeCamera(page);
       await sectionMurPlafond(page);
+      await sectionMasseNonExploitee(page);
       await sectionComble(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);

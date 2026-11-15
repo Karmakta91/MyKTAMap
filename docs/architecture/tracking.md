@@ -1478,6 +1478,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   niveau assombri (`_matsPente().solMasse`, carte du sol des galeries × `MASSE_SOL_SOMBRE`, grain HD suivi), fronts
   verticaux en terre et cailloux (`REMBLAIS.m`, la coupe du remblai : `_maillageMasse` > `pans`) ; 🧱 coupé, la couleur
   de la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
+  **Masse non exploitée** (`nature: "non-exploitee"`, part comblée > 0, getter `window.ktaMasseNonExploitee` ;
+  `_masseNonExploitee`, décision produit : la roche laissée en place, pas un remblai) : seul l'aspect change — 🧱, dessus
+  et rampes au sol normal du niveau (`_matsPente().sol`, comme le fond d'un creux), fronts en roche des piliers
+  (`ROCHE.m`, matériau `roche`) ; 🧱 coupé, fronts à la couleur du pilier (ombrés comme ceux du remblai). Pente, montée,
+  chute, vide, itinéraire et mini-carte sont ceux du remblai ; la nature est une donnée (empreinte de `_majDonnees` :
+  scène refaite, clés des caches par niveau changées). `etat().masses.aspect` (lot du dessus et des fronts par zone) ;
+  checkup `sectionMasseNonExploitee` (`KTA_V3D_SEUL=nonexploitee`).
   **Posés sur le sol local** (`_solMasse`) : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m
   inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
   du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, véhicule, porte… : tout le

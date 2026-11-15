@@ -1225,7 +1225,17 @@
   // sol damé du niveau un peu plus foncé (`lotDessus`, matériau _matsPente().solMasse : la même carte, grain HD suivi,
   // assombri de MASSE_SOL_SOMBRE) ; ses FRONTS verticaux gardent terre et cailloux (la coupe du remblai, `lotTex`).
   // 🧱 coupé : la couleur de la légende, ombrée selon la pente (le sol du niveau est noir en aplat).
-  function _masseSol(lotTex, lotUni, z, trous, lotCreux, lotDessus) {
+  // Masse NON EXPLOITÉE (contrat de la donnée : getter window.ktaMasseNonExploitee, part comblée > 0) : la roche laissée
+  // en place, pas un remblai. ⚠️ contrat (décision produit) : seul l'aspect change (dessus et rampes au sol normal du
+  // niveau, fronts en roche des piliers ; 🧱 coupé, fronts à la couleur du pilier) ; pente, montée, chute, vide et
+  // itinéraire sont ceux du remblai.
+  function _masseNonExploitee(z) {
+    if (typeof window.ktaMasseNonExploitee === "function") return !!window.ktaMasseNonExploitee(z);
+    const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;   // repli : même règle
+    return !!z && c > 0 && z.nature === "non-exploitee";
+  }
+
+  function _masseSol(lotTex, lotUni, z, trous, lotCreux, lotDessus, lotRoche) {
     const e = _e, t0 = performance.now(), m = _masseDe(z);
     if (!m) return;
     // Sol abaissé : le sol du niveau (ou du voisin construit) est troué sur le contour, comme la bouche d'un puits.
@@ -1233,14 +1243,29 @@
       const bit = (e.bitsPlans || { sol: GABARIT.sol }).sol;
       _dessus(trous[bit] || (trous[bit] = new Lot()), m.ring, 0, BLANC);
     }
-    const tex = e.textures === true;
+    const tex = e.textures === true, roche = m.H > 0 && _masseNonExploitee(z);
     let n;
     if (m.H < 0 && lotCreux) n = _maillageMasse(lotCreux, m, BLANC, true, SOL.m);
-    else if (tex && lotDessus) {
+    else if (roche && tex && lotCreux && lotRoche) {
+      // Non exploitée, 🧱 : dessus au sol normal du niveau (lot du sol des pentes), fronts en roche des piliers.
+      n = _maillageMasse(lotCreux, m, BLANC, true, SOL.m, { lot: lotRoche, col: BLANC, tex: true, motif: ROCHE.m });
+    } else if (roche && !tex) {
+      // 🧱 coupé : dessus à la couleur de la légende (ombré), fronts à la couleur du pilier.
+      n = _maillageMasse(lotUni, m, _couleur("zones", "masse-sol", "fillColor"), false, undefined,
+        { lot: lotUni, col: _couleur("structures", "pilier-1"), tex: false });
+    } else if (tex && lotDessus) {
       n = _maillageMasse(lotDessus, m, BLANC, true, SOL.m, { lot: lotTex, col: BLANC, tex: true, motif: REMBLAIS.m });
     } else n = _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
     e.trianglesMasses = (e.trianglesMasses || 0) + n;
     e.trianglesMasseMax = Math.max(e.trianglesMasseMax || 0, n);
+    // Ce que le checkup lit (etat().masses.aspect) : lot du dessus et des fronts de chaque masse dessinée.
+    if (z.uid && !e.dyContexte) {
+      e.masseAspect = e.masseAspect || {};
+      e.masseAspect[z.uid] = m.H < 0 ? { dessus: "sol", fronts: "sol" }
+        : roche ? (tex ? { dessus: "sol", fronts: "roche" } : { dessus: "uni", fronts: "pilier" })
+          : (tex ? (lotDessus ? { dessus: "solMasse", fronts: "remblais" } : { dessus: "remblais", fronts: "remblais" })
+            : { dessus: "uni", fronts: "uni" });
+    }
     e.msMasses = (e.msMasses || 0) + performance.now() - t0;
   }
 
@@ -2001,7 +2026,7 @@
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
       // Masse au sol : son dessus en talus (_masseSol), en chambre comme en tube ; ni prisme ni découpe aux parois.
-      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous, solPente, solMasse); continue; }
+      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous, solPente, solMasse, roche); continue; }
       const pz = _penteDeLaZone(z);
       if (pz) {
         _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
@@ -2242,8 +2267,9 @@
     }
     // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
     const tx = e.textures === true;
-    const solCreux = new Lot(), solMasse = new Lot();
-    const lots = { trous: trous, solCreux: solCreux, solMasse: solMasse, opaque: opaque, eau: eau, hachSol: hachSol,
+    const solCreux = new Lot(), solMasse = new Lot(), rocheMasse = new Lot();
+    const lots = { trous: trous, solCreux: solCreux, solMasse: solMasse, rocheMasse: rocheMasse, opaque: opaque, eau: eau,
+      hachSol: hachSol,
       hachRideau: hachRideau,
       remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
@@ -2271,6 +2297,7 @@
     ajouter(sol, e.mats.solGalerie, ORDRE_SOL, "sol");
     if (solCreux.p.length) ajouter(solCreux, _matsPente().sol, ORDRE_SOL, "sol");
     if (solMasse.p.length) ajouter(solMasse, _matsPente().solMasse, 0, "remblais");
+    if (rocheMasse.p.length) { _matsTextures(); ajouter(rocheMasse, _e.mats.roche, 0, "opaque"); }
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
@@ -2346,7 +2373,7 @@
     if (ring.length < 3) return;
     // Masse au sol : entière (les parois du tube cachent ce qui est dans la roche), pas découpée par pièce.
     if (z.type === "masse-sol") {
-      _masseSol(lots.remblais, lots.opaque, z, lots.trous, lots.solCreux, lots.solMasse);
+      _masseSol(lots.remblais, lots.opaque, z, lots.trous, lots.solCreux, lots.solMasse, lots.rocheMasse);
       return;
     }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -15343,6 +15370,7 @@
         fermes: (e.masses || []).map(function (m) { return m.fermes; }),
         fonds: (e.masses || []).map(function (m) { return +m.H.toFixed(3); }),
         rampes: (e.masses || []).map(function (m) { return (m.rampes || []).map(function (r) { return r.bord; }); }),
+        aspect: Object.assign({}, e.masseAspect || {}),
         chute: !!e.chute, chutes: e.chutes || 0, derniereChute: e.derniereChute || null,
         montees: e.montees || 0, derniereMontee: e.derniereMontee || null,
         fronts: e.frontsMasse || 0,
