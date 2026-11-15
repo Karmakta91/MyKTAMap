@@ -35,7 +35,7 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 
 **Règle** : aucun module ne lit ni n'écrit `myktamap_session_v1_<planId>` directement — toujours `window.KtaSessionStore` (ou `SessionPersist.getSaved(planId)`).
 
-**Stratégie** : **une session PAR PLAN**, polling 1.5s, comparaison de hash pour détecter les modifs, save **forcé** (avec tampon de fermeture, cf §9.0) sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
+**Stratégie** : **une session PAR PLAN**, tick de 1,5 s qui ne sérialise que la session **sale** (cf « Session sale » plus bas), comparaison de hash pour détecter les modifs, save **forcé** (avec tampon de fermeture, cf §9.0) sur `beforeunload` + `pagehide` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
 
 - **Phase 1 (immédiate)** au `onPlanLoaded` : restore de toutes les roads SAUF itinéraires + tous les autres calques (editor, zones, measure). L'user voit son contexte de travail apparaître.
 - **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session (via `setRoads(getRoads().concat(itineraires))`). 1500ms est le compromis qui laisse Leaflet finir son `fitBounds` initial + les tuiles V2 se placer + les autres modules s'initialiser (Pathfinder, label distance, etc.).
@@ -54,7 +54,7 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 1. Plan chargé → `_currentLoadedPlanId` set dans `chargerPlanServeur` ou `startImportedPlan`
 2. `lancerApplication()` finit, appelle `SessionPersist.onPlanLoaded(window._currentLoadedPlanId)`
 3. Si match → restore via setters (`setEditorPoints`, `resetRoads + setRoads`, `resetZones + setZones`, `setMeasurePoints`) + toast "Session restaurée"
-4. Polling auto-save démarre (1.5s)
+4. Tick d'auto-save démarre (1,5 s, sérialise seulement la session sale)
 5. Fin de `lancerApplication()` : `KtaExtensions.planCharge(id)` → le plan est « prêt » pour une extension
    (événement `mktm:plan-pret`). 🩸 Avant ce point, la mémoire tient encore les objets du plan quitté (ou rien) et
    `initEditor` / la restauration les remplacent : `appliquerChangements` y refuse tout lot (`null`) et
@@ -108,7 +108,30 @@ de répondre). 🔒 **Plan d'extension en lecture seule** (`ktaEditionRefusee`) 
 { "version": 1, "planId": "...", "savedAt": "ISO", "editorPoints": [...], "roads": [...], "zones": [...], "measure": [...] }
 ```
 
-**Pourquoi polling et pas hooks ?** : pas besoin de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible. Risque zéro d'oublier un point de modification.
+**Session sale** (`sessionPersist.js > _tick`, `_marquerSale`, `_signatureLegere`) : sérialiser (`_gatherState` +
+`JSON.stringify` + empreinte) coûte ~13 ms par tick sur un plan chargé à CPU ×4 (plus sur un vrai relevé) ; à vide, le
+tick n'en paie plus que ~0,2 ms. Il sérialise si l'un de ces signaux est vrai, sinon il saute :
+- **rendu des données** : `kta:donneesPlanChange` (`utils.js > ktaSignalerDonneesPlan`, émis par renderRoads /
+  renderZones / renderStructures / renderEditorPoints et CalqueSession) — toute écriture d'objet finit par un rendu :
+  setters, fiche, ajuster, convertir, Tableur, import, synchro d'une extension, phase 2 de la restauration ;
+- **historique** : `HistoryManager.onChange` (enregistrement, ⏪, ↪, remise à zéro) ;
+- **geste de l'utilisateur** : `pointerup`, `click`, `keydown`, `input`, `change`, `drop` (capture sur window) rendent
+  la session sale pendant `FENETRE_GESTE_MS` (4 s) — mesure 📐 posée au clic, légende, filtres, mode de mesure, et
+  les suites asynchrones d'un geste (fichier lu, confirmation). Ni `pointermove` ni molette : déplacer la carte ne
+  salit rien ;
+- **empreinte légère changée** (`_signatureLegere`, sans copie ni JSON de la session) : nombres de points / tracés /
+  zones / structures / points de mesure, mode de mesure, longueur et dernier pas de la timeline du suivi, début du
+  suivi, nombres de traces, filtres. Attrape les ajouts sans geste (pas du podomètre, `devicemotion`).
+
+Les modules qui appellent `SessionPersist.save()` eux-mêmes (ajuster, calques, convertir, éditeur, historique,
+légende, extensions, mise à jour du plan, photos, POI précis, raccords, sélection, utils…) sérialisent toujours,
+sans passer par le tick. 🩸 **Filet** : un chemin qui modifierait la session en place sans rendu, sans historique,
+sans geste et sans changer de nombre (aucun connu aujourd'hui) est sérialisé au plus tard après `FILET_MS` (30 s),
+et aussitôt à la fermeture ou à la mise en arrière-plan. Un échec d'écriture resalit la session (le tick suivant
+réessaie). `SessionPersist.marquerSale()` : signal neutre pour un futur chemin sans rendu. Diagnostic :
+`SessionPersist.etatTick()` (`sautes`, `complets`, `sale`, `geste`). Hors du slot de session, donc hors de ce tick :
+photos (IndexedDB des photos), favoris, carnet des sorties (leur propre stockage). Garde-fou :
+`checkup-session-sale.js` (repos sans sérialisation, chaque type modifié sans geste, filets, onglet tué).
 
 #### 9.1 Import d'un fichier de session (`interfaceImportExport.js > ouvrirImportSession`)
 
@@ -553,7 +576,7 @@ _creerGroupeAccordeon({
 
 #### 47.9 Save SessionPersist forcé après undo/redo
 
-Le polling auto-save (1.5s) ne se déclenche que sur mutation détectée. Or après un undo, l'état change MAIS pourrait revenir avant la prochaine fenêtre de polling → perte si reload. D'où le force-save explicite dans `undo()` et `redo()` :
+Le tick d'auto-save (1,5 s) n'écrit que sur mutation détectée. Or après un undo, l'état change MAIS pourrait revenir avant la prochaine fenêtre de polling → perte si reload. D'où le force-save explicite dans `undo()` et `redo()` :
 ```js
 function _saveSession() {
   if (window.SessionPersist?.save) {

@@ -9,8 +9,9 @@
 //   getLastSaveInfo, normNomPlan).
 // Slot `myktamap_session_v1_<planId>` via window.KtaSessionStore (js/sessionStore.js : lecture synchrone
 // en mémoire, écriture IndexedDB en arrière-plan, repli localStorage). Changer de plan n'efface rien : la
-// session de chaque plan reste dans son slot. Polling par empreinte + save forcé sur beforeunload et
-// visibilitychange. Restauration appelée par main.js via onPlanLoaded(planId).
+// session de chaque plan reste dans son slot. Tick (_tick) qui ne sérialise que la session « sale » (_sale :
+// rendu des données, historique, geste de l'utilisateur, empreinte légère changée) + filet toutes les 30 s +
+// save forcé sur beforeunload, pagehide et visibilitychange. Restauration : main.js via onPlanLoaded(planId).
 // Le tracé visible du tracker n'est pas persisté (seule sa timeline l'est).
 // ⚠️ Plan partagé par une extension (KtaExtensions.effacementPartage) : « Effacer la session » fait choisir entre
 //   vider l'appareil (tout revient de la synchro), supprimer mes ajouts ou tout supprimer pour l'organisation
@@ -38,6 +39,13 @@
   const STORAGE_KEY_LEGACY = "myktamap_session_v1";
   const POLL_INTERVAL_MS      = 1500;
   const POLL_INTERVAL_SLOW_MS = 30000;  // PerfUltra.slowSave
+  // Session « sale » : le tick ne sérialise (_gatherState + JSON + empreinte, ~100 ms à CPU ×4 sur un plan chargé)
+  // que si une modification a pu avoir lieu. ⚠️ contrat : tout chemin qui modifie la session passe par l'un des
+  // signaux de _marquerSale (rendu `kta:donneesPlanChange`, HistoryManager, geste de l'utilisateur dans les
+  // FENETRE_GESTE_MS, empreinte légère changée) ou appelle SessionPersist.save() lui-même. 🩸 Un chemin oublié
+  // n'est jamais perdu : le filet sérialise au plus tard après FILET_MS, et à la fermeture / mise en arrière-plan.
+  const FENETRE_GESTE_MS = 4000;
+  const FILET_MS         = 30000;
 
   function _currentPollInterval() {
     if (window.PerfUltra && window.PerfUltra.get("slowSave")) {
@@ -60,6 +68,11 @@
   // 🩸 Phase 2 de restauration (itinéraire différé) : à annuler sur « Effacer la session » ou changement de
   // plan, sinon l'itinéraire réapparaît 1,5 s plus tard.
   let _phase2TimeoutId = null;
+  let _sale = true;            // une modification a pu avoir lieu depuis la dernière sérialisation
+  let _saleJusqua = 0;         // geste de l'utilisateur : sale jusqu'à cette date (suites asynchrones)
+  let _signature = null;       // empreinte légère de la dernière sérialisation
+  let _dernierComplet = 0;     // date de la dernière sérialisation (filet)
+  const _ticks = { sautes: 0, complets: 0 };
   function _annulerPhase2() {
     if (_phase2TimeoutId !== null) {
       clearTimeout(_phase2TimeoutId);
@@ -219,6 +232,36 @@
     return (performance.now() - t0) > 5;
   }
 
+  function _marquerSale() { _sale = true; }
+  function _len(f) {
+    try { const a = typeof f === "function" ? f() : null; return a ? a.length : 0; } catch(e) { return -1; }
+  }
+  // ⚠️ Lectures sans copie ni JSON de la session : nombres d'objets, suivi (longueur + dernier pas), traces, mode de
+  // mesure, filtres (petits ensembles). Attrape un ajout / retrait hors geste (pas du suivi, synchro) ; une édition
+  // en place passe par un rendu, l'historique ou un geste.
+  function _signatureLegere() {
+    const tl = (typeof window.getTrackingTimeline === "function") ? (window.getTrackingTimeline() || []) : [];
+    const der = tl.length ? tl[tl.length - 1] : null;
+    const U = window.KtaUid;
+    return [_len(window.getEditorPoints), _len(window.getRoads), _len(window.getZones), _len(window.getStructures),
+      _len(window.getMeasurePoints), _len(window.getMeasurePointsSurface),
+      (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "",
+      tl.length, der ? der.t : 0,
+      (typeof window.getTrackingStartTs === "function") ? (window.getTrackingStartTs() || 0) : 0,
+      U ? _len(U.getTombstones) : 0, (U && typeof U.getTracesCopie === "function") ? _len(U.getTracesCopie) : 0,
+      JSON.stringify(_serializeRuntimeFilters())].join("|");
+  }
+  // Tick du polling : rien de sale, empreinte légère inchangée, filet pas échu → aucune sérialisation.
+  function _tick() {
+    if (!_currentPlanId || _decisionEnAttente) return false;
+    const now = Date.now();
+    if (!_sale && now >= _saleJusqua && now - _dernierComplet < FILET_MS && _signatureLegere() === _signature) {
+      _ticks.sautes++;
+      return false;
+    }
+    return save();
+  }
+
   function save(opts) {
     if (!_currentPlanId) return false;
     if (_decisionEnAttente) return false;
@@ -232,6 +275,11 @@
     _lastForceSave = 0;
 
     if (window.KtaUid) window.KtaUid.purge();   // traces > 90 jours
+    // Sérialisation complète : la session est propre jusqu'au prochain signal (un échec d'écriture la resalit).
+    _signature = _signatureLegere();
+    _sale = false;
+    _dernierComplet = Date.now();
+    _ticks.complets++;
     const state = _gatherState();
     const hash  = _hashState(state);
     if (hash === _lastHash) return false;
@@ -313,6 +361,7 @@
     // (en localStorage, c'est l'événement mktm:stockage-plein qui s'en charge).
     if (isQuota && _store().mode() === "idb") _verifierMemoire(true);
     _lastSaveKo = true;   // l'écran de détails le dit en rouge
+    _sale = true;         // le tick suivant réessaie
   }
 
   // Résultat (asynchrone) d'une écriture IndexedDB. Échec → l'empreinte est oubliée :
@@ -917,7 +966,7 @@
   function _startPolling() {
     if (_pollTimer) return;
     const interval = _currentPollInterval();
-    _pollTimer = setInterval(save, interval);
+    _pollTimer = setInterval(_tick, interval);
     if (interval !== POLL_INTERVAL_MS) {
       console.log("[SessionPersist] 🚀 PerfUltra.slowSave actif → polling " + (interval/1000) + "s");
     }
@@ -960,12 +1009,15 @@
   // Appelé par main.js > lancerApplication() après l'init : migre l'ancien slot, restaure le slot du plan
   // s'il existe (modale), démarre le polling.
   function onPlanLoaded(planId) {
+    _abonnerHistorique();
     _stopPolling();
     _slotAssume = false;
     _decisionEnAttente = false;
     _annulerPhase2();   // sinon l'itinéraire de l'ancien plan arrive sur le nouveau
     _currentPlanId = planId || null;
     _lastHash = null;
+    _sale = true;
+    _dernierComplet = 0;
 
     _migrerAncienSlotUniqueSiBesoin();
 
@@ -1077,12 +1129,37 @@
   // ── Filets : fermeture et arrière-plan ──────────────
   // Forcés (pas de throttle) : pas de seconde chance, iOS peut tuer l'onglet en arrière-plan.
   window.addEventListener("beforeunload", function() { save({ force: true }); });
+  // 🩸 iOS ne garantit ni beforeunload ni toujours visibilitychange quand l'onglet est fermé ou tué.
+  window.addEventListener("pagehide", function() { save({ force: true }); });
+
+  // ── Signaux « sale » ──────────────
+  // Rendu des données (toute écriture d'objet finit par un rendu, couleurs de légende et calques compris).
+  window.addEventListener("kta:donneesPlanChange", _marquerSale);
+  // Geste de l'utilisateur : sale pendant FENETRE_GESTE_MS (suites asynchrones : fichier lu, confirmation, calcul).
+  // Ni pointermove ni molette : un déplacement de la carte ne modifie pas la session.
+  ["pointerup", "click", "keydown", "input", "change", "drop"].forEach(function(t) {
+    window.addEventListener(t, function() { _saleJusqua = Date.now() + FENETRE_GESTE_MS; },
+      { capture: true, passive: true });
+  });
+  // Historique (enregistrement, ⏪, ↪) : abonné ici (historyManager.js est chargé avant) ou au premier plan.
+  function _abonnerHistorique() {
+    const H = window.HistoryManager;
+    if (_abonnerHistorique.fait || !H || typeof H.onChange !== "function") return;
+    _abonnerHistorique.fait = true;
+    H.onChange(_marquerSale);
+  }
+  _abonnerHistorique();
 
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState === "hidden") save({ force: true });
   });
 
   window.SessionPersist = {
+    // Signal neutre : un module qui modifie la session sans rendu ni geste peut le dire (sinon le filet suffit).
+    marquerSale:  _marquerSale,
+    // Diagnostic (checkup) : ticks sautés / sérialisations complètes, état sale.
+    etatTick:     function() { return { sautes: _ticks.sautes, complets: _ticks.complets, sale: _sale,
+      geste: Date.now() < _saleJusqua }; },
     onPlanLoaded: onPlanLoaded,
     onPlanUnload: onPlanUnload,
     save:         save,

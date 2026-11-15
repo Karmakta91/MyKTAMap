@@ -717,6 +717,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-secours-une-intervention.js` | Une seule intervention Secours active à la fois sur un plan |
 | `smoke/checkup-stockage-refuse.js` | Premier lancement avec le stockage du site refusé (écriture ou accès qui lève) : message une fois, conditions une fois, accueil atteint ; cas normal inchangé |
 | `smoke/checkup-session-repli.js` | Sections repliables de la modale Détails de la session sur une grosse session |
+| `smoke/checkup-session-sale.js` | Session sérialisée seulement après une modification : repos sans sérialisation, chaque type de donnée modifié sans geste sauvegardé au tick suivant, filets (geste, pagehide, 30 s), onglet tué puis rouvert sans perte |
 | `smoke/checkup-sans-collision.js` | Image de collision : ni champ ni écriture au Générateur, ancien plan-config qui la porte ouvert sans la charger ni la demander (Chromium et WebKit) |
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
 | `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
@@ -858,6 +859,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - 🛡️ `check-zones-cout.js` § 10 : 28 contrôles de plus (¼ ½ ¾ calculés à la main, cache, coupure, case et passe 2, détour, brancard, sortie d'urgence réelle, sol abaissé, talus point par point, inter-plans, guidage, Comblé / effondrement / inaccessible inchangés), falsifié ; `checkup-comble-itineraire.js` : section masse au sol (vrais registres, sortie d'urgence au brancard, temps du guidage).
 - **Ajuster les sommets d'une grande zone** (`js/ajusterSommets.js > _chercher`, `checkup-ajuster-zone-vaste.js`) : sur une zone vaste (masse au sol, eau…), toucher le contour entre deux sommets pour y insérer un point ne marchait que près du milieu du côté ; la recherche visait le milieu des côtés au lieu du côté entier (un pilier, aux côtés courts, répondait partout). Le point naît maintenant là où l'on touche, dans le même rayon que les sommets, toutes familles.
 - **Appui sur la carte plus léger** (`js/ajusterSommets.js > _viser`, `ui.md` § Ajuster une forme) : chaque appui sur la carte cherchait aussitôt le sommet le plus proche parmi tous les objets du plan et relisait la mise en page ; la recherche attend maintenant l'apparition de la poignée (150 ms) ou l'appui long. Un tap ou un début de pan coûte ~4 fois moins sur un plan chargé (tâche de l'appui ≈ 22 → 6 ms à CPU ×4).
+- **Sauvegarde de session sans travail à vide** (`js/sessionPersist.js > _tick`, `session-data.md` § Session sale, `checkup-session-sale.js`) : toutes les 1,5 s, la session entière était relue, convertie en texte et comparée, même sans rien changer. Elle ne l'est plus qu'après une modification (rendu des données, historique, geste, nombre d'objets ou pas du suivi changé), avec un filet toutes les 30 s et à la fermeture (`pagehide` ajouté). Tick à vide ≈ 13 → 0,2 ms (plan fictif + 1 600 objets, CPU ×4) ; aucun format changé.
 
 #### Pas encore publié (après v2.27.0, branche `Karma_dev`)
 
