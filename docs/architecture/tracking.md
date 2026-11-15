@@ -1530,7 +1530,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   − / + ne s'ouvre pas (`_hauteurFigee`) : changée seule depuis la 3D, elle recalculait les pentes des jonctions sans
   montrer les autres niveaux. Table fermée : `_reindexer` (hauteurs, sols, pentes) puis marqueurs d'itinéraire. `reglerHauteur` (API) suit la même règle : sans effet, rend la
   hauteur courante ; ⛏️ Volume exploité n'écrit rien non plus (champ de calcul seulement). Les tuiles sont refaites sur place (`_refaireTuiles` : même
-  index, position, cap, niveau, rendu) : structures, murs à 98 %, Comblé jusqu'au ciel et effondrements à 60 %, rideaux, tubes, plafond, œil
+  index, position, cap, niveau, rendu) : structures, murs au plafond (98 % en vue d'édition), Comblé jusqu'au ciel et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
 - **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
   posé par-dessus ; un seul état : masquer en 3D masque en 2D, et inversement. ⚠️ contrat : la vue dessine ce que
@@ -2146,9 +2146,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
   d'une galerie une chambre (`galerieEmprise.js > _indexStructures`).
-- **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
-  matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
-  c'est le pilier ou le front qui se voit, sans scintillement.
+- **Murs jusqu'au plafond, sous les piliers vus d'en haut** (décision produit) : un mur (polygone ou `mur-ligne`) est
+  construit à la hauteur du niveau et monte jusqu'au plafond quand la vue en a un (hauteur d'yeux, suivi : aucun jour
+  sous le plafond) ; en vue d'édition, sans plafond, il est ramené à `HAUTEUR_MUR` (98 %) par l'échelle verticale de
+  ses maillages (`_echelleMurs`, famille « murs », depuis y = 0 : aucune reconstruction au changement de vue, rien
+  dans la clé des caches par niveau) ; son matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un
+  pilier ou un front de son niveau, c'est le pilier ou le front qui se voit, sans scintillement. `etat().yMax.murs` =
+  la hauteur montrée. Checkup `sectionMurPlafond` (`KTA_V3D_SEUL=murplafond`).
 - **Textures des structures et des parois** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif
   par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : couleur de légende du
   tracé) ;
@@ -2211,7 +2215,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par image. Jamais mesuré sur la carte graphique d'un vrai téléphone.
 - **Mur tracé en ligne en pierre de taille** (même interrupteur 🧱 ; décision produit : la surface fermée garde le
   parpaing, le tracé est bâti en pierre ; la forme est portée par le type, `isStructurePolylineType`) : le
-  `mur-ligne` (épaisseur `EPAISSEUR_MUR_LIGNE`, 98 % de la hauteur) prend la carte et le relief de la pierre de
+  `mur-ligne` (épaisseur `EPAISSEUR_MUR_LIGNE`, jusqu'au plafond) prend la carte et le relief de la pierre de
   taille des parois (`PIERRE`, `e.texPierre`) — même teinte, sans nuance par structure, ombre de contact au pied,
   Textures HD suivies. Lot à lui dans la tuile (`pierreMur`), matériau `murPierre` (`_matMurPierre`) : celui des
   parois ne convient pas tel quel, un mur passe sous un pilier ou un front et doit être reculé en profondeur
@@ -2753,7 +2757,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 - **Structures en pente** (`_structurePente`, `_structureSurPente`) : piliers, murs et fronts dont le centre est dans
   une zone jonction, et murs et fronts (polygones `mur`, lignes) dont tous les sommets sont à moins de `ENTRE.longe`
   (1 m) du bord d'une galerie inclinée : contour coupé à 1 m, prisme plat puis sommets relevés (`_releverPente` :
-  y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur garde sa part `HAUTEUR_MUR`). Emprise relevée
+  y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur comme un pilier, ramené en vue d'édition par `_echelleMurs`). Emprise relevée
   (`entremeles().structures`). La règle du pas reste celle de la 2D (contour au sol).
 - **Structures dans une trémie** (décision produit, `_structureSurTremie`, `_prolongerDansZone`) : une structure qui
   n'est pas posée sur la pente (centre hors de la zone) mais dont l'emprise déborde sur une zone jonction n'est jamais
@@ -2761,7 +2765,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   niveau) jusqu'à l'appui : le plafond de la zone là où il passe sous la base (la roche qui porte), sinon son sol (la
   base serait dans le vide de la zone) ; rien là où le sol de la zone est déjà au-dessus de la base. Elle **monte** de
   son sommet jusqu'au plafond de la zone là où ce sommet est dans le vide de la zone (sol dessous, plafond dessus) :
-  le niveau du bas vu en montant ; un mur garde son retrait sous le plafond (`HAUTEUR_MUR`). Faces latérales seules,
+  le niveau du bas vu en montant ; un mur comme un pilier (ramené en vue d'édition, `_echelleMurs`). Faces latérales seules,
   coupées aux bords de la zone (dehors, c'est la roche ; un prolongement qui en sortirait passerait sous le sol ou
   au-dessus du plafond, dans la tranche d'un niveau entremêlé), tous les `ENTRE.pas` m et là où une borne change de
   règle. Même règle pour le niveau actif et pour un voisin (`e.pentes` du voisin dans sa tuile), en mixte et en
@@ -2872,7 +2876,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   avant un pas, une remise puis rien à l'arrêt, ≤ 1 remise par 0,5 m en marchant, rien sous 10° de rotation,
   `null` en suivi et à la fermeture, tracker inchangé, membre « en 3D » marqué ; sortie : carte au niveau et à la place de la 3D (libre,
   après Non, en suivi), Oui recale aussi le niveau. Hauteur ⛏️ (structures et galerie) : réglée à 3 m → piliers,
-  murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getHauteurNiveau(niveau de la vue)` = 3, relue à la
+  murs, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getHauteurNiveau(niveau de la vue)` = 3, relue à la
   réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 20 m ; par niveau : niveau actif changé pendant
   la vue → hauteur de ce niveau reprise, `setHauteurNiveau` (Réglages) pour lui seul, `reglerHauteur` sans effet ;
   ⛏️ grisé sur le relevé fictif (multi-niveau), titre, toucher sans effet ; − / +, Échap et le réglage à 3 m contrôlés

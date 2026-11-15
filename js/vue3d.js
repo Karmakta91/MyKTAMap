@@ -188,7 +188,7 @@
   // À hauteur d'yeux, seuls les panneaux à plus de `loinYeux` m peuvent être masqués (ceux de près ne bougent pas).
   const DESENCOMBRE = { cellule: 64, marge: 4, loinYeux: 12 };
   const BRUIT_CAP = 2;              // ° : en suivi, un écart de cap plus petit (boussole) ne redessine pas
-  const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
+  const HAUTEUR_MUR = 0.98;         // vue d'édition : un mur passe sous pilier et front (_echelleMurs)
   // Sable calcaire : teinte de base du sol et des marches. Couleur de la scène, pas de la charte de l'UI.
   const COULEUR_CALCAIRE = "#c9b48c";
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
@@ -1933,11 +1933,33 @@
       b: base.b * k * (c > 0 ? 1 - c : 1) };
   }
 
-  // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) est toujours SOUS un pilier ou un front de son
-  // niveau. Là où ils se chevauchent, le pilier ou le front l'emporte : le mur monte à HAUTEUR_MUR de la hauteur et
-  // son matériau est reculé en profondeur (polygonOffset), d'où aucun scintillement sur les faces confondues et
-  // un dessus de pilier toujours visible.
+  // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) monte jusqu'au plafond du niveau quand la vue en a
+  // un (hauteur d'yeux, suivi) : aucun jour sous le plafond. Construit à la hauteur h, il est ramené à HAUTEUR_MUR en
+  // vue d'édition (sans plafond) par l'échelle de ses maillages (_echelleMurs : famille « murs », aucune
+  // reconstruction au changement de vue, rien dans la clé des caches) : là où il chevauche un pilier ou un front, le
+  // dessus du pilier reste visible. Son matériau est reculé en profondeur (polygonOffset) : aucun scintillement sur
+  // les faces confondues. 🩸 L'échelle part de y = 0 : en vue d'édition, un mur posé sur une pente ou débordant dans
+  // une trémie est ramené d'autant (2 %), sans conséquence vu d'en haut.
   function _estMur(type) { return type === "mur" || type === "mur-ligne"; }
+
+  // Échelle verticale d'un maillage de murs selon la vue (contrat ci-dessus).
+  function _echelleMur(o) {
+    const k = _e.vue === "plongee" ? HAUTEUR_MUR : 1;
+    if (o.scale.y === k) return;
+    o.scale.y = k;
+    o.updateMatrix();
+  }
+
+  // Murs des tuiles du niveau actif et des voisins remis à l'échelle de la vue (_appliquerVue).
+  function _echelleMurs() {
+    const e = _e, tuiles = function (l) {
+      l.forEach(function (t) {
+        if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "murs") _echelleMur(o); });
+      });
+    };
+    tuiles(e.tuiles);
+    (e.voisins || []).forEach(function (v) { tuiles(v.tuiles); });
+  }
 
   function _construireTuile(t) {
     if (t.iti) { _construireTuileIti(t); return; }
@@ -1975,7 +1997,7 @@
     const remblaisTex = new Lot(), eboulis = new Lot(), arcs = _lotsArc(opaque, h);
     if (ombre) roche.ombre = parpaing.ombre = pierreMur.ombre = ombre;
     roche.brise = true;
-    pierreMur.dv = -(h * HAUTEUR_MUR + MUR_PIERRE.tete) / MUR_PIERRE.m;
+    pierreMur.dv = -(h + MUR_PIERRE.tete) / MUR_PIERRE.m;
     const motifs = { roche: ROCHE.m, parpaing: PARPAING.m, pierre: MUR_PIERRE.m };
     const lotsTex = { roche: roche, parpaing: parpaing, pierre: pierreMur };
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
@@ -1986,7 +2008,7 @@
       const col = !tex ? _couleur("structures", s.type) : tex === "roche" ? _nuanceRoche(s) : BLANC;
       const m = tex ? motifs[tex] : undefined;
       const lot = tex ? lotsTex[tex] : _estMur(s.type) ? murs : opaque;
-      const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
+      const hs = h;   // mur compris : ramené en vue d'édition par _echelleMurs
       const pente = _structurePente(s);
       if (pente) {
         _structureSurPente(lot, s, pente, hs, col, m);
@@ -2043,6 +2065,7 @@
       m.renderOrder = ordre;
       m.matrixAutoUpdate = false;
       m.userData.famille = famille;
+      if (famille === "murs") _echelleMur(m);
       groupe.add(m);
     };
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
@@ -5295,7 +5318,7 @@
   //   base (la roche qui porte), sinon son sol (la base serait dans le vide de la zone) ; rien là où le sol de la zone
   //   est déjà au-dessus de la base ;
   // - monte de son sommet (hs) jusqu'au plafond de la zone là où le sommet est dans le vide de la zone (sol de la zone
-  //   dessous, plafond dessus) ; un mur garde son retrait sous le plafond (h − hs, HAUTEUR_MUR : sous un pilier).
+  //   dessous, plafond dessus) ; un mur comme un pilier (en vue d'édition, ramené par _echelleMurs).
   // Faces latérales seules, coupées aux bords de la zone : au-delà, c'est la roche (un prolongement hors de la zone
   // sortirait du sol ou du plafond, dans la tranche d'un niveau entremêlé). Repère du contexte (e.pentes : celles du
   // voisin dans sa tuile), même lot, couleur et motif que la structure.
@@ -9203,6 +9226,7 @@
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
+    _echelleMurs();
     _paroisPenteVue();
     _voisinsVue();
     _majSolActif();
@@ -15151,7 +15175,7 @@
         }
         if (f !== "opaque" && f !== "murs") return;
         if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
-        yMax[f] = Math.max(yMax[f], m.geometry.boundingBox.max.y);
+        yMax[f] = Math.max(yMax[f], m.geometry.boundingBox.max.y * m.scale.y);   // hauteur montrée (_echelleMurs)
       });
     });
     return {

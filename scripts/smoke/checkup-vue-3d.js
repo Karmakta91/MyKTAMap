@@ -4141,6 +4141,115 @@ async function sectionFrontTrace(page) {
   });
 }
 
+// ── Mur jusqu'au plafond (KTA_V3D_SEUL=murplafond ; vue3d.js > _echelleMurs) : à hauteur d'yeux, mur en ligne et mur
+// polygone montent à h (aucun jour sous le plafond) ; en vue d'édition, ramenés à 0,98 h (sous le pilier qu'ils
+// traversent) sans reconstruire la scène (mêmes tuiles, mêmes maillages) ; retour à hauteur d'yeux : h. Mixte et
+// structures ; capture à hauteur d'yeux. ──
+async function sectionMurPlafond(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-mur-plafond";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setEditorPoints([]);
+    window.setZones([]);
+    window.setRoads([{ uid: "rd_mp", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] }]);
+    // Mur en ligne en travers de la galerie à x = 6, qui traverse un pilier ; mur polygone plus loin.
+    window.setStructures([
+      { uid: "st_mp_l", type: "mur-ligne", level: 0, points: [P(6, -4), P(6, 4)] },
+      { uid: "st_mp_p", type: "pilier-1", level: 0, points: rect(5, 2.5, 7, 4.5) },
+      { uid: "st_mp_m", type: "mur", level: 0, points: rect(12, -3, 12.6, 3) }
+    ]);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const out = {};
+    for (const rendu of ["mixte", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(1, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      const lire = function () {
+        const e = K.etat();
+        return { vue: e.vue, murs: +e.yMax.murs.toFixed(4), opaque: +e.yMax.opaque.toFixed(4), h: e.hauteur,
+          reindex: e.reindexations, construites: e.construites };
+      };
+      const yeux = lire();
+      K.basculerVue();
+      await pause(150);
+      const edition = lire();
+      K.basculerVue();
+      await pause(150);
+      out[rendu] = { yeux: yeux, edition: edition, retour: lire() };
+      await K.fermer();
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ mur jusqu'au plafond");
+  Object.keys(R).forEach(function (rendu) {
+    const q = R[rendu], k = "mur jusqu'au plafond, " + rendu + " : ", h = q.yeux.h;
+    verifier(Math.abs(q.yeux.murs - h) < 1e-4 && Math.abs(q.yeux.opaque - h) < 1e-4,
+      k + "à hauteur d'yeux, haut du mur à h (" + q.yeux.murs + " m = " + h + " m, comme le pilier)", q.yeux);
+    verifier(Math.abs(q.edition.murs - h * 0.98) < 1e-4 && q.edition.vue === "plongee" &&
+      Math.abs(q.edition.opaque - h) < 1e-4,
+      k + "en vue d'édition, ramené à 0,98 h (" + q.edition.murs + " m) sous le pilier qu'il traverse", q.edition);
+    verifier(q.edition.reindex === q.yeux.reindex && q.retour.reindex === q.yeux.reindex &&
+      Math.abs(q.retour.murs - h) < 1e-4,
+      k + "changer de vue ne refait pas la scène (réindexations " + q.yeux.reindex + " → " + q.retour.reindex +
+      "), retour à h", q);
+  });
+  if (CAPTURES) {
+    for (const rendu of ["mixte", "structures"]) {
+      await page.evaluate(async function (rd) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-mur-plafond";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        window._currentLoadedPlanId = PID;
+        window.setEditorPoints([]); window.setZones([]);
+        window.setRoads([{ uid: "rd_mp", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] }]);
+        window.setStructures([
+          { uid: "st_mp_l", type: "mur-ligne", level: 0, points: [P(6, -4), P(6, 4)] },
+          { uid: "st_mp_p", type: "pilier-1", level: 0, points: rect(5, 2.5, 7, 4.5) }]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, rd);
+        window.setVue3DTextures(true);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        await K.ouvrir({ depart: Object.assign(P(4.2, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+        K.reglerPleinJour(true);   // jonction mur / plafond éclairée (rétabli à la fermeture ci-dessous)
+        K.incliner(30);
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, rendu);
+      await capture(page, "mur-plafond-" + rendu);
+    }
+    await page.evaluate(async function () {
+      window.KtaVue3D.reglerPleinJour(false);
+      await window.KtaVue3D.fermer();
+      window.effacerReglagesNiveaux("v3d-checkup-mur-plafond");
+      window.setStructures([]); window.setRoads([]);
+    });
+  }
+}
+
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -11464,11 +11573,11 @@ async function sectionTexturesSol(nav) {
     nom + "mur en ligne à la taille réelle de la pierre des parois (" + Ws.uv + " motif par mètre, en long, en " +
       "hauteur et sur le dessus)", aL.slice(0, 3));
     // Tête sur une assise entière : v = − MUR_PIERRE.tete (m) au sommet du mur, juste sous un lit du motif.
-    const hs = Ws.hauteur * 0.98;
+    const hs = Ws.hauteur;   // à hauteur d'yeux, jusqu'au plafond (vue3d.js > _echelleMurs)
     const enTete = aL.filter(function (a) { return a.sens === "v" && Math.abs(a.y - hs) < 1e-3; });
     verifier(Math.abs(Ws.yMax.murs - hs) < 1e-3 && pm.tete > 0.018 && pm.tete < 0.1 && enTete.length > 0 &&
       enTete.every(function (a) { return Math.abs(a.v0 + pm.tete) < 1e-4; }),
-    nom + "mur en ligne : monte à 98 % de la hauteur et finit sur une assise entière (tête à " + pm.tete +
+    nom + "mur en ligne : monte jusqu'au plafond et finit sur une assise entière (tête à " + pm.tete +
       " m sous un lit, " + enTete.length + " arêtes)", { hs: hs, yMax: Ws.yMax, tete: enTete.slice(0, 3) });
     verifier(Ws.teintes.join() === "#808080,#ffffff",
       nom + "mur en ligne : ombre de contact au pied (teinte × 0,5), blanc au-delà, aucune nuance par structure",
@@ -14183,7 +14292,7 @@ async function sectionZoneJonction(nav) {
         "2,5 m au-dessus), zone sans tracé à plat", { a: r.a, b: r.b, c: r.c, seule: r.seule });
       verifier(!!p0 && !!pm1 && !!mur && proche(p0.yMin, -6.5 / 6, 0.03) && proche(p0.yMax, -5.5 / 6 + 2.5, 0.03) &&
         proche(pm1.yMin, -14.5 / 6, 0.03) && proche(pm1.yMax, -13.5 / 6 + 2.5, 0.03) && proche(mur.yMin, -28.2 / 6, 0.03) &&
-        proche(mur.yMax, -21.8 / 6 + 2.5 * 0.98, 0.03),
+        proche(mur.yMax, -21.8 / 6 + 2.5, 0.03),
         nom + rendu + " : piliers du 0 et du −1 posés sur le sol en pente, jusqu'au plafond en pente ; mur en ligne le " +
         "long du tracé qui suit la pente", { p0: p0, pm1: pm1, mur: mur });
       verifier(r.paroisZone === 0, nom + rendu + " : galerie inclinée sans paroi dans la zone (la chambre la remplace)",
@@ -16909,6 +17018,11 @@ async function sectionCaseBoutonsZoom(nav) {
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
       await sectionTuileColonne(page);
       await sectionNiveauEdition(page);
+    } else if (SEUL === "murplafond") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMurPlafond(page);
     } else if (SEUL === "fronttrace") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -17321,9 +17435,9 @@ async function sectionCaseBoutonsZoom(nav) {
       verifier(JSON.stringify(e0.titres) === JSON.stringify(e0.attendus), "boutons titrés par le dictionnaire", e0.titres);
       verifier(e0.etat.compte.structures >= 2 && e0.tri > 100, "scène non vide (" + e0.etat.compte.structures +
         " structure(s), " + e0.tri + " triangles, hauteur " + e0.etat.hauteur + " m)", e0.etat);
-      verifier(e0.etat.yMax.murs > 0 && e0.etat.yMax.murs < e0.etat.yMax.opaque && e0.etat.murDecale,
-        "mur qui traverse le pilier : plus bas (" + e0.etat.yMax.murs.toFixed(2) + " m < " +
-        e0.etat.yMax.opaque.toFixed(2) + " m) et reculé en profondeur", e0.etat.yMax);
+      verifier(e0.etat.yMax.murs > 0 && Math.abs(e0.etat.yMax.murs - e0.etat.yMax.opaque) < 1e-6 && e0.etat.murDecale,
+        "mur qui traverse le pilier : à hauteur d'yeux jusqu'au plafond comme lui (" + e0.etat.yMax.murs.toFixed(2) +
+        " m), reculé en profondeur", e0.etat.yMax);
       const pan = e0.etat.panneaux.filter(function (q) { return q.dansVolume; });
       const zFace = prep.y / prep.sc - 3;
       verifier(pan.length === 1 && pan[0].visible && pan[0].depthTest === false && pan[0].ordre >= 10 &&
@@ -18155,10 +18269,10 @@ async function sectionCaseBoutonsZoom(nav) {
       verifier(h3.haut === 20 && h3.bas === 1.5 && h3.v12 === 12 && h3.v12moins === 11.5 && h3.v === 3 && h3.hauteur === 3 &&
         h3.pref === 3 && !h3.plus,
         "réglage borné de 1,5 à 20 m (12 m puis − → 11,5 m, pas de 0,5 au-delà de 5 m) ; à 3 m, getHauteurNiveau(niveau de la vue) vaut 3", h3);
-      verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3 * 0.98) < 1e-6 && h3.oeil === 1.6 &&
+      verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3) < 1e-6 && h3.oeil === 1.6 &&
         h3.construites > 0 && h3.rendu === "mixte" &&
         h3.pos.x === h0.pos.x && h3.pos.y === h0.pos.y && h3.cap === h0.cap,
-        "mixte (défaut) : scène refaite à 3 m (piliers 3 m, murs 98 %), position et cap gardés", h3);
+        "mixte (défaut) : scène refaite à 3 m (piliers et murs à 3 m), position et cap gardés", h3);
       const h4 = await page.evaluate(function (p) {
         const K = window.KtaVue3D, r = {};
         return K.fermer().then(function () {
@@ -20548,6 +20662,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionChatiereMasse(page);
       await sectionCacheNiveaux(page);
       await sectionFrontTrace(page);
+      await sectionMurPlafond(page);
       await sectionComble(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);
@@ -22437,9 +22552,9 @@ async function sectionCaseBoutonsZoom(nav) {
         "la légende (couleurs des sommets : 2e masse de la roche, ombre de contact) ; " +
         "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
       verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
-        TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
+        TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs <= TX.defaut.yMax.opaque + 1e-6,
         "type perso en roche brute (sa couleur n'est plus dessinée), type inconnu du canon gardé en couleur unie ; " +
-        "mur toujours plus bas que pilier et front", { couleurs: D0.couleurs, yMax: TX.defaut.yMax });
+        "mur jamais plus haut que pilier et front", { couleurs: D0.couleurs, yMax: TX.defaut.yMax });
       // Échelle : chaque arête horizontale ou verticale d'une face texturée, mur de 2 m comme mur de 40 m.
       const echelle = function (filtre) {
         const v = D0.aretes.filter(filtre).map(function (x) { return x.uvParM; });
