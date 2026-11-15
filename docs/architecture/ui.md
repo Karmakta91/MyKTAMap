@@ -2585,8 +2585,13 @@ extension), hors objet en cours de tracé.
   le même `pointerId` reposé, ferme l'ancien geste au lieu de laisser ses mouvements avalés.
 - 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
   `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
-- **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
-  objets visibles au `pointerdown`, jamais au `pointermove`.
+- **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon point du segment le plus proche.
+  🩸 **Paresseux** (`_viser`) : le `pointerdown` n'ouvre qu'un appui sans cible ; la position plan (mise en page lue
+  par `mouseEventToLatLng`) et le balayage des objets visibles n'ont lieu qu'à l'apparition de la poignée
+  (`VISUEL_MS`, 150 ms) ou à l'appui long, jamais au `pointermove`. Un tap ou un début de pan ne paie plus le balayage
+  (≈ 4 ms → 0,2 ms par appui, tâche de l'appui ≈ 22 → 6 ms, plan fictif + 1 600 objets, CPU ×4). Sans cible,
+  l'appui est rendu sans compter de geste (`enCours()`, `etat()` et `annules` ne voient que les appuis ciblés) ;
+  comme avant, les mouvements de moins de `BOUGE_PX` sont retenus pendant l'attente.
 - **Ronds dorés de la mesure** (décision produit) : chaque sommet des deux mesures 📐 porte un rond doré
   (`measure.js > _majSommetsMesure`, `.kta-mesure-sommet` : `--kta-accent`, liseré `--kta-sur-accent`, renderer SVG
   propre créé après le canvas des mesures, donc au-dessus du trait ; non interactif), refait à chaque `updateMesure` :
