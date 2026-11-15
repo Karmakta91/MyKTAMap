@@ -92,6 +92,12 @@
   `qui: Claude · action: vérifier les 3 doublons et retirer ceux qui sont sûrs, après le merge v2.28.0
   · fini: tas mesuré avant/après sur un relevé lourd, ouverture et tuiles vertes · depuis: 15/11/2026 · taille: S`
 
+- **Changement de niveau 2D : ne plus recréer les couches** — mesure sur un plan réel (15/11, CPU ×4) : 2,3 s par
+  changement, dont ~2,1 s dans `renderStructures` (addLayer 0,75 s, removeLayer 0,3 s, ordre des murs, styles).
+  Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
+  `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
+  sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
