@@ -165,9 +165,16 @@ async function partieFiche(page) {
       if (l instanceof L.Marker && l.getPopup && l._ktaNiveaux) mk = l;
     });
     if (!mk) return { mk: false };
+    // Raccord = pointillé qui part du passage : d'autres pointillés vivent sur le relevé (trait d'un POI à point
+    // précis, départ du mode perdu) et ne doivent pas compter.
+    const origine = mk.getLatLng();
     const compter = function () {
       let n = 0;
-      window.map.eachLayer(function (l) { if (l instanceof L.Polyline && l.options && l.options.dashArray === "4 4") n++; });
+      window.map.eachLayer(function (l) {
+        if (!(l instanceof L.Polyline) || !l.options || l.options.dashArray !== "4 4") return;
+        const a = l.getLatLngs()[0];
+        if (a && a.equals && a.equals(origine)) n++;
+      });
       return n;
     };
     const ferme = compter();
