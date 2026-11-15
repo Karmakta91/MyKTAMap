@@ -3671,6 +3671,162 @@ async function perfMasseSol(nav) {
   }
 }
 
+// ── 24 sexies. Comblé et effondrement creusés le long d'un tracé (révision du 14/11/2026) ─────────────────────────
+// Tracé principal d'ouest en est au niveau 0 (hauteur 2,4 m) ; Comblé de x −30 à −20 et effondrement de 0 à 10 (z −6
+// à 6) en travers ; inaccessible de 25 à 30. Dans les trois rendus : on marche le long du tracé à travers le Comblé et
+// l'effondrement, l'inaccessible arrête ; un pas de côté hors du couloir (emprise du tracé) bute ; départ posé dans la
+// zone hors couloir = ramené ; Comblé jusqu'au ciel (sous le plafond), effondrement à 60 % ; faces creusées le long
+// du couloir ; l'itinéraire ne passe plus par-dessus (aucun volume enjambé).
+async function sectionComble(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc, PID = "v3d-checkup-comble";
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      smart: C.smartNav, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+      roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setEditorPoints([]); window.setStructures([]);
+    window.setRoads([{ uid: "rd_cb_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([
+      { uid: "zn_cb_c", type: "remblais", level: 0, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_cb_e", type: "effondrement", level: 0, points: rect(0, -6, 10, 6) },
+      { uid: "zn_cb_i", type: "inaccessible", level: 0, points: rect(25, -6, 30, 6) }
+    ]);
+    window.effacerReglagesNiveaux(PID);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const lire = function () {
+      const e = K.etat();
+      return { x: +(e.pos.x / sc - ox).toFixed(3), z: +(e.pos.y / sc - oz).toFixed(3) };
+    };
+    const marche = async function (x, z, cap, n, pas) {
+      const d = P(x, z);
+      K.placer(d.x, d.y, cap);
+      await pause(30);
+      let arrets = 0;
+      for (let i = 0; i < n; i++) { if (!K.avancer(pas || 0.2)) arrets++; }
+      await pause(30);
+      return Object.assign(lire(), { arrets: arrets });
+    };
+    const r = { cas: [] };
+    window.setVue3DTextures(true);
+    for (const rendu of ["galerie", "mixte", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-40, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      const e = K.etat(), b = e.boites || {};
+      const c = { rendu: e.rendu, hauteur: e.hauteur, creusees: e.zonesCreusees, faces: e.facesRemblais,
+        facesEb: e.facesEboulis, yComble: b.remblais ? +b.remblais.y1.toFixed(3) : null,
+        yEboulis: b.effondrement ? +b.effondrement.y1.toFixed(3) : null };
+      c.long = await marche(-40, 0, 90, 400);               // le long du tracé : Comblé, effondrement, puis inaccessible
+      c.cote = await marche(-25, 0, 180, 40, 0.1);          // dans le Comblé, pas de côté hors du couloir
+      c.coteEb = await marche(5, 0, 180, 40, 0.1);          // dans l'effondrement, idem
+      c.dansCouloir = window.KtaGalerie.dansCouloir(P(-25, 0).x, P(-25, 0).y, 0);
+      c.horsCouloir = window.KtaGalerie.dansCouloir(P(-25, 3).x, P(-25, 3).y, 0);
+      c.zoneDure = window.KtaGalerie.dansZone(P(27, 0).x, P(27, 0).y, 0, rendu);
+      c.zoneCouloir = window.KtaGalerie.dansZone(P(-25, 0).x, P(-25, 0).y, 0, rendu);
+      await K.fermer();
+      // Départ posé dans le Comblé hors du couloir : ramené là où l'on tient.
+      await K.ouvrir({ depart: Object.assign(P(-25, 4), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      c.depart = Object.assign(lire(), { degage: K.etat().degagements });
+      await K.fermer();
+      r.cas.push(c);
+    }
+    // Itinéraire à travers le Comblé : plus aucun volume enjambé (ruban au sol, dans la galerie creusée).
+    window.setPlanRenduVue3D(null, "mixte");
+    await K.ouvrir({ depart: Object.assign(P(-40, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+    await pause(200);
+    r.volumesIti = K.etat().volumesIti;
+    await K.fermer();
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  R.cas.forEach(function (c) {
+    const k = "Comblé, " + c.rendu;
+    verifier(c.long.x > 23 && c.long.x < 25 && c.long.arrets > 0,
+      k + " : le long du tracé, on traverse le Comblé et l'effondrement ; l'inaccessible arrête (x = " + c.long.x + ")",
+      c.long);
+    verifier(c.cote.z > 0.3 && c.cote.z < 1.25 && c.cote.arrets > 0 && c.coteEb.z < 1.25 && c.coteEb.arrets > 0,
+      k + " : un pas de côté hors du couloir bute dans le Comblé et l'effondrement (z " + c.cote.z + " / " +
+      c.coteEb.z + ")", { cote: c.cote, coteEb: c.coteEb });
+    verifier(c.dansCouloir && !c.horsCouloir && c.zoneDure && !c.zoneCouloir,
+      k + " : couloir = emprise du tracé ; dans le couloir, la zone ne bouche plus ; l'inaccessible bouche toujours", c);
+    verifier(Math.abs(c.depart.z) < 1.25 || c.depart.degage > 0,
+      k + " : départ dans le Comblé hors du couloir → ramené", c.depart);
+    if (c.rendu !== "galerie") {
+      verifier(pr(c.yComble, c.hauteur - 0.004, 0.01) && pr(c.yEboulis, c.hauteur * 0.6, 0.01) && c.creusees >= 2,
+        k + " : Comblé jusqu'au ciel (" + c.yComble + " m), effondrement à 60 % (" + c.yEboulis + " m), creusés le " +
+        "long du tracé", c);
+    } else {
+      verifier(c.creusees >= 2 && c.faces > 0 && c.facesEb > 0,
+        k + " : parois du tube tapissées de remblai et d'éboulis dans les zones (galerie creusée)", c);
+    }
+  });
+  verifier(R.volumesIti === 0, "Comblé : l'itinéraire n'enjambe plus aucun volume (ruban au sol dans la galerie creusée)",
+    R.volumesIti);
+}
+
+// Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : entrée du couloir dans le Comblé, dedans, effondrement, dans les trois
+// rendus.
+async function capturesComble(page) {
+  const vues = [["comble-entree", -34, 0, 90], ["comble-dedans", -26, 0.3, 80], ["comble-effondrement", -4, 0, 90],
+    ["comble-cote", -25, 4.5, 270]];
+  for (const rendu of ["galerie", "mixte", "structures"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-comble";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
+        window._currentLoadedPlanId = PID;
+        window.setStructures([]); window.setEditorPoints([]);
+        window.setRoads([{ uid: "rd_cb_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        window.setZones([
+          { uid: "zn_cb_c", type: "remblais", level: 0, points: rect(-30, -6, -20, 6) },
+          { uid: "zn_cb_e", type: "effondrement", level: 0, points: rect(0, -6, 10, 6) }
+        ]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(true);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3] }, commandes: "pave", tuiles: false });
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.effacerReglagesNiveaux("v3d-checkup-comble");
+  });
+}
+
 async function capturesPente(page) {
   const vues = [["pente-entree", 0, -3, 180, 0], ["pente-dedans", 0, 3, 180, 0], ["pente-bas", 0, 9, 180, 0],
     ["pente-du-bas", 0, 15, 0, -1], ["pente-montee", 0, 9, 0, -1], ["pente-edition", 3, -2, 200, 0, true]];
@@ -16069,6 +16225,12 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPente(page);
       await sectionPenteLargeur(page);
       if (CAPTURES) await capturesPente(page);
+    } else if (SEUL === "comble") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionComble(page);
+      if (CAPTURES) await capturesComble(page);
     } else if (SEUL === "massesol") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -17554,7 +17716,8 @@ async function sectionCaseBoutonsZoom(nav) {
         "bouts libres fermés par une paroi ; T : deux parois en travers d'une branche, une en face du départ", ax);
       await capture(page, "galerie-formes");
 
-      // Collisions contre les parois : butée, carrefour passé, coude, remblais qui bouche, eau qui ne bouche pas.
+      // Collisions contre les parois : butée, carrefour passé, coude ; eau et Comblé traversés par le tracé ne bouchent
+      // pas.
       const coll3 = await page.evaluate(function (a) {
         const K = window.KtaVue3D, rel = function (cx) {
           const p = K.etat().pos;
@@ -17579,8 +17742,9 @@ async function sectionCaseBoutonsZoom(nav) {
         coll3.coudeSud > 0.2 && coll3.coudeSud < 0.5 && coll3.coudeEst > 10.5,
         "galerie : on bute contre la paroi (" + coll3.paroiNord + " m de l'axe), on passe le carrefour et le coude",
         coll3);
-      verifier(coll3.remblais > 5.3 && coll3.remblais < 5.65,
-        "galerie : l'eau ne bouche pas, le remblais découpé arrête (" + coll3.remblais + " m, remblais à 6 m)", coll3);
+      verifier(coll3.remblais > 7.7,
+        "galerie : l'eau ne bouche pas, le Comblé traversé par le tracé non plus : galerie creusée (" + coll3.remblais +
+        " m, Comblé de 6 à 8 m)", coll3);
 
       // Zones coupées au tube, rideau en travers ; POI à 2 m et 5 m ramenés dans le tube, à 25 m masqué.
       const zp = await page.evaluate(function (a) {
@@ -17603,8 +17767,8 @@ async function sectionCaseBoutonsZoom(nav) {
         return !!bb && bb.z0 >= -1.26 && bb.z1 <= 1.26 && bb.x0 >= x0 - 0.01 && bb.x1 <= x1 + 0.01;
       };
       verifier(dans(zp.eau, 2, 4) && dans(zp.remblais, 6, 8) && dans(zp.sol, 10, 11) &&
-        Math.abs(zp.remblais.y1 - zp.hauteur * 0.6) < 0.01 && zp.faces === 2,
-        "zones coupées au tube (2,5 m) : eau, remblais à 60 % (faces vers la galerie seulement), inaccessible", zp);
+        Math.abs(zp.remblais.y1 - zp.hauteur) < 0.01 && zp.faces === 2,
+        "zones coupées au tube (2,5 m) : eau, Comblé jusqu'au ciel (parois du tube tapissées), inaccessible", zp);
       verifier(zp.rideaux.length === 2 && zp.rideaux.indexOf(10) >= 0 && zp.rideaux.indexOf(11) >= 0 &&
         dans(zp.rideau, 10, 11), "inaccessible : un rideau en travers du tube à chaque bord qui coupe l'axe", zp.rideaux);
       const p2 = zp.poi.filter(function (q) { return q.nom === "POI 2 m v3d"; })[0];
@@ -17615,7 +17779,8 @@ async function sectionCaseBoutonsZoom(nav) {
         "POI à 2 et 5 m de l'axe : visibles, ramenés contre la paroi ; POI à 25 m : masqué", zp.poi);
       await capture(page, "galerie-zones");
 
-      // Hauteur ⛏️ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.
+      // Hauteur ⛏️ en mode galerie : tubes, plafond, Comblé (sous le plafond) et rideaux refaits à 3 m ; relue à la
+      // réouverture.
       // Plan multi-niveau : reglerHauteur ne règle rien ; la hauteur du niveau s'écrit comme Réglages, vue rouverte.
       const hg = await page.evaluate(function (a) {
         const K = window.KtaVue3D, r = {};
@@ -17645,8 +17810,9 @@ async function sectionCaseBoutonsZoom(nav) {
       }, { dep: pt(200, 5, 0, 90) });
       const pres = function (v, att) { return typeof v === "number" && Math.abs(v - att) < 1e-6; };
       verifier(hg.v === 3 && hg.rendu === "galerie" && hg.pref === 3 && hg.garde && pres(hg.y.parois, 3) &&
-        pres(hg.y.plafond, 3) && pres(hg.y.remblais, 1.8) && pres(hg.y.rideau, 3) && hg.rideaux === 2 && hg.faces === 2,
-        "galerie : niveau à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
+        pres(hg.y.plafond, 3) && Math.abs(hg.y.remblais - 3) < 0.01 && pres(hg.y.rideau, 3) && hg.rideaux === 2 &&
+        hg.faces === 2,
+        "galerie : niveau à 3 m, parois, plafond et rideaux à 3 m, Comblé sous le plafond, position et cap gardés", hg);
       verifier(hg.rouvert === 3, "galerie : 3 m relus à la réouverture", hg.rouvert);
 
       // ── Filtres partagés : ≡ ouvre le ≡ Filtres de la carte ; masquer d'un côté masque de l'autre ──────────────
@@ -19691,6 +19857,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPente(page);
       await sectionPenteLargeur(page);
       await sectionMasseSol(page);
+      await sectionComble(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);
       await sectionFormesStructures(page);
@@ -21684,12 +21851,14 @@ async function sectionCaseBoutonsZoom(nav) {
         "🧱 coupé : remblais et effondrement à la couleur de la légende (mixte et galerie), comme une vue ouverte " +
         "sans textures", { mixte: C0.couleurs.opaque, galerie: TX.galerieCoupe.t.couleurs.opaque, legende: Lz });
 
-      // ── 24 bis. Remblais, effondrement et inaccessible = obstacles de la 3D dans tous les rendus ; 2D intacte ────
-      // Tube principal à l'ouest (remblais, inaccessible, effondrement en travers), chambre à piliers à l'est (un
-      // effondrement, un remblais, un inaccessible entre deux rangées). Volume dans les trois rendus ; un pas qui
-      // traverse une des trois zones est arrêté au bord dans les 4 contextes (galerie, tube et chambre du mixte,
-      // structures) ; départ dedans = ramené au bord, on repart ; recalage (versGalerie), itinéraire et pas du tracker
-      // identiques avec et sans les zones, et jamais appelés par les règles de zones de la 3D.
+      // ── 24 bis. Comblé et effondrement traversés par un tracé, inaccessible ; 2D intacte ─────────────────────────
+      // Tube principal à l'ouest (Comblé, inaccessible, effondrement en travers), chambre à piliers à l'est (un
+      // effondrement, un Comblé, un inaccessible entre deux rangées), un tracé qui les traverse tous. Volume dans les
+      // trois rendus ; dans les 4 contextes (galerie, tube et chambre du mixte, structures), le pas traverse Comblé et
+      // effondrement le long du tracé (galerie creusée, révision du 14/11/2026) et l'inaccessible l'arrête au bord ;
+      // départ dans un Comblé ou un effondrement = laissé sur place, dans l'inaccessible = ramené au bord ; recalage
+      // (versGalerie), itinéraire et pas du tracker identiques avec et sans les zones, et jamais appelés par les règles
+      // de zones de la 3D.
       const EF = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, G = window.KtaGalerie;
         const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
@@ -21814,31 +21983,43 @@ async function sectionCaseBoutonsZoom(nav) {
       const pres2 = function (v, att) { return typeof v === "number" && Math.abs(v - att) < 0.01; };
       verifier(["galerie", "mixte", "structures"].every(function (k) {
         const o = EF[k];
-        return o.rendu === k && o.boite && pres2(o.boite.y1, hEf) && pres2(o.remblaisY, hEf) && o.maillages >= 1 &&
+        return o.rendu === k && o.boite && pres2(o.boite.y1, hEf) && pres2(o.remblaisY, o.hauteur) && o.maillages >= 1 &&
           o.boite.x0 >= -16.01 && o.boite.x1 <= 27.01;
-      }) && EF.galerie.faces === 4 && EF.mixte.faces === 2,
-        "effondrement en volume texturé (éboulis) à la hauteur du remblais (" + hEf.toFixed(2) + " m) en galerie, " +
-        "mixte (tube et chambre) et structures ; découpé au tube, faces vers la galerie seulement",
+      }) && EF.galerie.faces >= 2 && EF.mixte.faces >= 2,
+        "effondrement en volume texturé (éboulis) à 60 % (" + hEf.toFixed(2) + " m), Comblé jusqu'au ciel, en " +
+        "galerie, mixte (tube et chambre) et structures ; creusés le long du tracé (parois tapissées d'éboulis)",
         { g: EF.galerie.boite, m: EF.mixte.boite, s: EF.structures.boite, faces: [EF.galerie.faces, EF.mixte.faces] });
       verifier(EF.Z.every(function (z) { return EF.chambres[z[0]] === (z[5] === "chambre"); }),
         "témoin : les zones de l'ouest sont dans un tube du mixte, celles de l'est dans une chambre", EF.chambres);
       // Arrêt au bord : corps de 0,2 m et balayage prolongé de 0,2 m, pas de 0,1 m → entre 0,3 et 0,6 m avant le bord.
+      // Traversée : la marche de 10 m atteint au moins le bord est de la zone (le Comblé de la chambre est suivi de
+      // l'inaccessible, qui arrête la marche plus loin).
       const arrete = function (v, bord) { return typeof v === "number" && v > bord - 0.6 && v < bord - 0.3; };
+      const nomZ = function (z) {
+        return z[1] === "inaccessible" ? "l'inaccessible" : z[1] === "remblais" ? "le Comblé" : "l'effondrement";
+      };
       ["galerie", "mixte", "structures"].forEach(function (k) {
         EF.Z.forEach(function (z) {
-          const ctx = k === "mixte" ? "mixte (" + z[5] + ")" : k;
-          verifier(arrete(EF[k].marche[z[0]], z[2]),
-            ctx + " : un pas qui traverse " + (z[1] === "inaccessible" ? "l'inaccessible" : "le " + z[1]) +
-            " est arrêté au bord (" + EF[k].marche[z[0]] + " m, bord à " + z[2] + " m)", EF[k].marche);
+          const ctx = k === "mixte" ? "mixte (" + z[5] + ")" : k, v = EF[k].marche[z[0]];
+          if (z[1] === "inaccessible") {
+            verifier(arrete(v, z[2]), ctx + " : un pas qui traverse l'inaccessible est arrêté au bord (" + v +
+              " m, bord à " + z[2] + " m)", EF[k].marche);
+          } else {
+            verifier(typeof v === "number" && v >= z[3] - 0.01, ctx + " : le pas traverse " + nomZ(z) +
+              " le long du tracé, galerie creusée (" + v + " m, zone de " + z[2] + " à " + z[3] + " m)", EF[k].marche);
+          }
         });
       });
       ["galerie", "mixte", "structures"].forEach(function (k) {
         const d = EF[k].dedans;
         verifier(EF.Z.every(function (z) {
-          const o = d[z[0]];
-          return o.degage >= 1 && !o.dansZone && (o.x <= z[2] + 0.01 || o.x >= z[3] - 0.01) && o.repart > 1;
-        }), k + " : départ dans chacune des 6 zones (" + (k === "mixte" ? "3 en tube, 3 en chambre" : "remblais, " +
-          "effondrement, inaccessible") + ") ramené au bord, on repart", d);
+          const o = d[z[0]], c = (z[2] + z[3]) / 2;
+          if (z[1] === "inaccessible") {
+            return o.degage >= 1 && !o.dansZone && (o.x <= z[2] + 0.01 || o.x >= z[3] - 0.01) && o.repart > 1;
+          }
+          return o.degage === 0 && !o.dansZone && Math.abs(o.x - c) < 0.01 && o.repart > 1;
+        }), k + " : départ dans un Comblé ou un effondrement traversé par le tracé = laissé sur place, dans " +
+          "l'inaccessible = ramené au bord ; on repart des " + (k === "mixte" ? "6 (3 en tube, 3 en chambre)" : "6"), d);
       });
       const sansIti = function (o) { return JSON.stringify(Object.assign({}, o, { iti: null })); };
       verifier(JSON.stringify(EF.sans) === JSON.stringify(EF.volumes) && sansIti(EF.sans) === sansIti(EF.avec) &&
@@ -21849,12 +22030,13 @@ async function sectionCaseBoutonsZoom(nav) {
         "itinéraire qui traverse l'effondrement et pas du tracker à travers les 6 zones identiques avec et sans elles ; " +
         "règles de zones de la 3D appelées " + EF.appels2D + " fois par la 2D",
         { sans: EF.sans, volumes: EF.volumes, avec: EF.avec });
-      verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces === 4 && arrete(EF.coupe.tube, -16) &&
+      verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces >= 2 && EF.coupe.tube >= -12.01 &&
         contient(EF.coupe.couleurs, EF.coupe.legende),
-        "🧱 coupé : l'effondrement reste un volume qui arrête, à la couleur de la légende", EF.coupe);
-      // ── 24 ter. Itinéraire par-dessus un remblais ou un effondrement (ruban, tirets, chevrons, étape) ──────────
-      // Tube principal, effondrement de 4 m en travers (-16 → -12), itinéraire de -23,5 à -4 (une face franchie dans
-      // un tiret à l'entrée comme à la sortie), étape sur l'effondrement. Trois rendus ; tracé 2D inchangé.
+        "🧱 coupé : l'effondrement reste un volume à la couleur de la légende, creusé le long du tracé", EF.coupe);
+      // ── 24 ter. Itinéraire à travers un effondrement creusé par le tracé (ruban, chevrons, étape au sol) ────────
+      // Tube principal, effondrement de 4 m en travers (-16 → -12), itinéraire de -23,5 à -4, étape dans
+      // l'effondrement. Le tracé y creuse la galerie : ruban, chevrons et étape restent au sol, sans contremarche.
+      // Trois rendus ; tracé 2D inchangé.
       const IV = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: 0 }; };
         const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
@@ -21902,30 +22084,18 @@ async function sectionCaseBoutonsZoom(nav) {
       ["mixte", "galerie", "structures"].forEach(function (k) {
         const o = IV[k];
         if (!o) return;
-        const hv = o.hauteur * 0.6, pres3 = function (v, att) { return Math.abs(v - att) < 0.012; };
-        // Horizontaux : sur le volume (centre entre -15,8 et -12,2) au dessus + 5 cm ; hors du volume au sol.
         const hor = o.profil.filter(function (q) { return q[3] - q[2] < 0.01; });
-        const dessus = hor.filter(function (q) { return q[0] > -15.8 && q[0] < -12.2; });
-        const sol = hor.filter(function (q) { return q[0] < -16.4 || q[0] > -11.6; });
+        const dans = hor.filter(function (q) { return q[0] > -15.8 && q[0] < -12.2; });
         const vert = o.profil.filter(function (q) { return q[3] - q[2] > 0.3; });
-        const entree = vert.filter(function (q) { return q[0] < -16 && q[0] > -16.1; });
-        const sortie = vert.filter(function (q) { return q[0] > -12 && q[0] < -11.9; });
-        verifier(dessus.length >= 4 && dessus.every(function (q) { return q[2] >= hv + 0.03 && q[2] <= hv + 0.06; }) &&
-          sol.length >= 8 && sol.every(function (q) { return q[2] <= 0.06; }) &&
-          hor.every(function (q) { return !(q[0] > -16 && q[0] < -12 && q[2] < hv); }),
-          k + " : le ruban passe sur l'effondrement (dessus à " + hv.toFixed(2) + " m + 5 cm), au sol ailleurs, jamais " +
-          "dessous ni en l'air", { dessus: dessus.slice(0, 4), sol: sol.slice(0, 3), n: [dessus.length, sol.length] });
-        verifier(entree.length === 2 && sortie.length === 2 && vert.length === 4 && vert.every(function (q) {
-          return pres3(q[2], 0.05) && pres3(q[3], hv + 0.05);
-        }), k + " : une contremarche (ruban et liseré) collée à la face d'entrée et de sortie, du sol au dessus",
-        { entree: entree, sortie: sortie, n: vert.length });
-        const chOn = o.chevrons.filter(function (c) { return c[0] > -15.7 && c[0] < -12.3; });
-        const chOff = o.chevrons.filter(function (c) { return c[0] < -16.3 || c[0] > -11.7; });
-        verifier(o.nChevrons > 0 && chOn.length >= 2 && chOn.every(function (c) { return pres3(c[1], hv + 0.07); }) &&
-          chOff.every(function (c) { return c[1] < 0.1; }),
-          k + " : chevrons de guidage sur le dessus du volume, au sol ailleurs", { on: chOn.slice(0, 6), off: chOff.length });
-        verifier(o.etapes.length === 1 && o.etapes[0][0] === -14 && pres3(o.etapes[0][1], hv),
-          k + " : marqueur d'étape posé sur l'effondrement (" + JSON.stringify(o.etapes) + ")", o.etapes);
+        verifier(dans.length >= 4 && hor.length >= 12 && hor.every(function (q) { return q[2] <= 0.06; }) && !vert.length,
+          k + " : le ruban traverse l'effondrement au sol, dans la galerie creusée (jamais par-dessus, aucune " +
+          "contremarche)", { dans: dans.slice(0, 4), n: [dans.length, hor.length], vert: vert.length });
+        const chDans = o.chevrons.filter(function (c) { return c[0] > -15.7 && c[0] < -12.3; });
+        verifier(o.nChevrons > 0 && chDans.length >= 2 && o.chevrons.every(function (c) { return c[1] < 0.1; }),
+          k + " : chevrons de guidage au sol, dans l'effondrement comme ailleurs",
+          { dans: chDans.slice(0, 6), n: o.chevrons.length });
+        verifier(o.etapes.length === 1 && o.etapes[0][0] === -14 && o.etapes[0][1] < 0.1,
+          k + " : marqueur d'étape au sol dans l'effondrement (" + JSON.stringify(o.etapes) + ")", o.etapes);
         verifier(o.rubansYMax === null || o.rubansYMax <= 0.031,
           k + " : rubans des tracés ordinaires inchangés, au sol (" + o.rubansYMax + ")", o.rubansYMax);
       });

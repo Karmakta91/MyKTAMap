@@ -529,7 +529,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **Ce qui t'arrête**
 
 - Avec la largeur du corps, on bute contre les piliers, murs et fronts (personnalisés compris) en Structures, contre les parois en Galerie, contre les deux en Mixte (dans une chambre, seulement les structures).
-- Dans les trois rendus, un **Comblé**, un **effondrement** ou une zone **⛔ inaccessible** arrête aussi, dans une galerie comme dans une chambre.
+- Dans les trois rendus, un **Comblé** ou un **effondrement** arrête aussi, sauf le long d'un tracé qui le traverse : là, la galerie est creusée dedans et l'on passe. Une zone **⛔ inaccessible** arrête toujours, même sur un tracé.
 - Si tu pars de l'intérieur de l'une d'elles, tu es ramené au bord et tu repars.
 - Une **masse au sol** ne t'arrête pas d'office : tu montes dessus par sa pente. La vue se courbe s'il reste moins de 1,8 m sous le plafond, tu passes à plat ventre sous 1 m, et le pas s'arrête là où il reste moins de 0,5 m (demi-tour toujours possible).
 - C'est la 3D seulement : la carte, l'itinéraire, le guidage et le tracker n'en tiennent pas compte (l'itinéraire, lui, évite déjà les zones ⛔).
@@ -588,7 +588,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **🏛️ Structures**
 
 - Piliers, murs et fronts de taille dressés à la hauteur de galerie du niveau (⚙️ Réglages › 📉 Niveaux, ou ⛏️ Volume exploité sur un plan à un niveau ; 2 m sinon).
-- Zones Comblé et effondrements en volume (60 % de cette hauteur), eau, zones ⛔ inaccessibles, masses au sol à leur part comblée.
+- Zones Comblé jusqu'au plafond, effondrements en volume (60 % de cette hauteur), creusés le long des tracés qui les traversent ; eau, zones ⛔ inaccessibles, masses au sol à leur part comblée.
 - Tracés et itinéraire au sol.
 - Points en panneaux, toujours visibles (un point relevé dans un pilier s'affiche contre sa face), plus petits et plus pâles au loin, et effacés tout près de toi pour ne pas boucher la vue.
 
@@ -597,7 +597,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - Les tracés deviennent des galeries, sans les structures : principal 2,5 m de large, secondaire 2 m, chemin 1,7 m, tracé personnalisé 2 m.
 - Carrefours ouverts, coudes, cul-de-sac fermé, un liseré au sol de la couleur du tracé.
 - Parois en pierre de taille (avec 🧱 Textures ; coupé : à la couleur de la légende de leur tracé).
-- Les zones s'arrêtent aux parois : le Comblé et l'effondrement bouchent la galerie, une zone ⛔ inaccessible tend un rideau rouge hachuré en travers.
+- Les zones s'arrêtent aux parois : là où le tube traverse un Comblé ou un effondrement, ses parois sont de remblai ou d'éboulis et l'on passe ; une zone ⛔ inaccessible tend un rideau rouge hachuré en travers.
 - Seuls les points à moins de 10 m d'un tracé (salles comprises) s'affichent, contre la paroi.
 
 **🧱 Textures**
@@ -694,7 +694,7 @@ Où et comment un passage se dessine :
 - **Ma dernière position** ou **Me repositionner** : la 3D te place là où le tracker est mis (position et niveau).
 - **📍 Je suis ici** dans la fiche d'un point recale le tracker sur la carte, mais la 3D reste où tu es. En suivi, elle passe alors en **libre** (un message le dit) : le bouton du suivi la ramène au tracker.
 - **Itinéraire** : dessiné au sol en **ruban bleu bordé de sombre**, avec des **chevrons** qui montrent le sens, avec un **mât** à chaque étape et un panneau **🏁** à l'arrivée, niveau par niveau.
-- Là où il traverse un **Comblé** ou un **effondrement**, il monte le long de sa face et passe **par-dessus** (chevrons et étapes aussi), sans que le tracé de la carte change.
+- Là où il traverse un **Comblé** ou un **effondrement**, il reste au sol, dans la galerie creusée le long du tracé.
 - La vue le redessine dès qu'il change (tracé depuis 🚨 pendant la 3D compris).
 - **Guidage** : un **bandeau** sous la rangée de boutons donne la même consigne que sur la carte (« Dans ~20 m, tourner à droite »). Des **chevrons dorés** au sol montrent le chemin jusqu'à la prochaine manœuvre.
 - En **suivi**, c'est la consigne de ton tracker (un aperçu depuis le tracker si le guidage de la carte est coupé). En **libre**, c'est un **aperçu** calculé depuis l'endroit où tu es en 3D (le guidage réel, lui, suit le tracker) ; si tu t'écartes du trajet en libre, l'itinéraire est recalculé tout seul depuis ta place en 3D, sans bouger le tracker, et en suivi le bandeau propose, comme sur la carte, **Recalculer d'ici**, **Je suis ici** ou **Ignorer**. Pas d'annonce vocale.

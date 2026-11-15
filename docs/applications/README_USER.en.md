@@ -529,7 +529,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **What stops you**
 
 - With the width of a body, you bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures).
-- In all three renderings, a **Filled to roof** zone, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber.
+- In all three renderings, a **Filled to roof** zone or a **collapse** stops you too, except along a line that crosses it: there, the tunnel is dug through it and you pass. An **⛔ inaccessible** zone always stops you, even on a line.
 - If you start inside one of them, you are brought back to its edge and can move on.
 - A **partial fill** does not stop you by itself: you climb onto it up its slope. The view stoops when less than 1.8 m is left under the ceiling, you crawl under 1 m, and you stop where less than 0.5 m is left (you can always turn back).
 - This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
@@ -588,7 +588,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **🏛️ Structures**
 
 - Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels, or ⛏️ Mined volume on a single-level map; otherwise 2 m).
-- Filled-to-roof and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones, partial fills at their fill level.
+- Filled-to-roof zones up to the ceiling, collapses in volume (60% of that height), dug along the lines that cross them; water, ⛔ inaccessible zones, partial fills at their fill level.
 - Traces and route on the floor.
 - Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
 
@@ -597,7 +597,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Traces become tunnels, without the structures: main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m.
 - Open crossroads, bends, closed dead ends, a floor stripe in the trace's colour.
 - Walls of dressed stone (with 🧱 Textures; off: in the legend colour of their trace).
-- Zones stop at the walls: filled-to-roof zones and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it.
+- Zones stop at the walls: where the tunnel crosses a Filled to roof zone or a collapse, its walls are made of fill or rubble and you pass; an ⛔ inaccessible zone hangs a red hatched curtain across it.
 - Only points within 10 m of a trace (rooms included) are shown, against the wall.
 
 **🧱 Textures**
@@ -694,7 +694,7 @@ Where and how a way through is drawn:
 - **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
 - **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are. In follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
 - **Route**: drawn on the ground as a **blue strip edged in dark**, with **chevrons** showing the way, with a **post** at each stop and a **🏁** sign at the end, level by level.
-- Where it crosses a **Filled to roof** zone or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
+- Where it crosses a **Filled to roof** zone or a **collapse**, it stays on the floor, in the tunnel dug along the line.
 - The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
 - **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.
 - In **follow** mode it is your tracker's instruction (a preview from the tracker if the map's guidance is off). In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.

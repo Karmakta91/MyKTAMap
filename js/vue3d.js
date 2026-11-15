@@ -162,10 +162,16 @@
   // Joystick (téléphone) : débattement en px pour 0 → VITESSE, zone morte, course au-delà de `course` du
   // débattement tenu APPUI_LONG ; tailles de l'anneau et du bouton (px, posées par css/vue3d.css).
   const JOYSTICK = { debattement: 40, morte: 12, course: 0.85 };
-  // Part de la hauteur du plan : remblais ET effondrement, deux volumes qui bouchent la galerie de la même façon
-  // (même règle du pas, KtaGalerie). Une seule valeur : à 60 %, on voit par-dessus et on lit la galerie au-delà ;
-  // un éboulis plus haut ferait un mur sans relief à hauteur d'yeux.
-  const HAUTEUR_REMBLAIS = 0.6;
+  // Part de la hauteur du plan des deux volumes qui bouchent (même règle du pas, KtaGalerie) : ⚠️ contrat (décision
+  // produit, révision du 14/11/2026) : Comblé (`remblais`) monte JUSQU'AU CIEL (comblement total) ; l'effondrement
+  // garde 60 % (on voit par-dessus l'éboulis). Le long d'un tracé qui les traverse, la galerie est creusée dedans
+  // (_volumeCreuse, couloir = KtaGalerie.dansCouloir).
+  const HAUTEUR_ZONE = { remblais: 1, effondrement: 0.6 };
+  // Effondrement : la hauteur des volumes posés « comme un éboulis » (cône d'un puits comblé, itinéraire enjambé).
+  const HAUTEUR_REMBLAIS = HAUTEUR_ZONE.effondrement;
+  // Comblé jusqu'au ciel : dessus un peu sous le plafond (pas de scintillement avec lui) ; faces du couloir décollées
+  // de COULOIR_FACE vers l'intérieur (pas de scintillement avec la paroi d'un tube).
+  const SOUS_CIEL = 0.004, COULOIR_FACE = 0.02;
   const PANNEAU = { l: 1.6, h: 0.5 };   // m : taille d'un panneau de POI de près
   // De près : rien sous PRES.min, fondu jusqu'à PRES.net ; jamais plus large que PRES.ecran de la largeur de l'écran
   // (au téléphone en portrait, un panneau de 1,6 m à 2 m couvrait tout l'écran).
@@ -1721,12 +1727,13 @@
     });
   }
 
-  // ── Itinéraire par-dessus les volumes (remblais, effondrement) ────────────────────────────────────────
-  // ⚠️ contrat : ruban, chevrons (de sens et de guidage) et marqueurs de l'itinéraire passent PAR-DESSUS un remblais ou un
-  // effondrement dessiné (zones montrées du niveau, _collecter) : posés sur son dessus (HAUTEUR_REMBLAIS de la
-  // hauteur) à leur hauteur propre, une contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en
-  // sort (ni ruban dans le volume, ni rampe en l'air). Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
-  const ITI_SUR = { remblais: true, effondrement: true };
+  // ── Itinéraire par-dessus un volume (mécanisme gardé, aucun type ne s'en sert) ─────────────────────────────
+  // ⚠️ contrat : pour un type de ITI_SUR, ruban, chevrons (de sens et de guidage) et marqueurs de l'itinéraire passent
+  // PAR-DESSUS la zone dessinée (zones montrées du niveau, _collecter) : posés sur son dessus à leur hauteur propre, une
+  // contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en sort. Comblé et effondrement n'y
+  // sont plus (révision du 14/11/2026) : le tracé y creuse la galerie (_volumeCreuse), l'itinéraire y passe au sol.
+  // Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
+  const ITI_SUR = {};
   const ITI_FACE = 0.03;   // m : contremarche décollée de la face (pas de scintillement)
 
   // Volumes que l'itinéraire enjambe → [{ ring (m), x0, z0, x1, z1 }]. Refaits à _reindexer.
@@ -1911,16 +1918,15 @@
         _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
         continue;
       }
+      if (z.type === "remblais" || z.type === "effondrement") {
+        const rb = z.type === "remblais";
+        _volumeCreuse(z, ring, rb ? (tx ? remblaisTex : opaque) : (tx ? eboulis : opaque),
+          tx ? BLANC : _couleur("zones", z.type, "fillColor"), tx ? (rb ? REMBLAIS.m : EBOULIS.m) : undefined, false,
+          rb ? "facesRemblais" : "facesEboulis");
+        continue;
+      }
       if (mx && _zoneDeTube(z, ring, mx)) { _e.zonesTube++; _zoneGalerie(z, mx, lotsTube); continue; }
-      if (z.type === "remblais" && tx) {
-        _prisme(remblaisTex, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, REMBLAIS.m);
-      } else if (z.type === "remblais") {
-        _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
-      } else if (z.type === "effondrement" && tx) {
-        _prisme(eboulis, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, EBOULIS.m);
-      } else if (z.type === "effondrement") {
-        _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
-      } else if (z.type === "eau") {
+      if (z.type === "eau") {
         _dessus(transp, ring, 0.04, _couleur("zones", z.type, "fillColor"));
       } else if (z.type === "inaccessible") {
         // Rouge hachuré comme sur la carte : sol et rideau (visible des deux côtés) en matériaux à hachures.
@@ -2257,13 +2263,16 @@
       e.zonesDecoupees[z.type] = (e.zonesDecoupees[z.type] || 0) + 1;
       if (z.type === "eau") _dessus(lots.eau, c, 0.04, col);
       else if (z.type === "inaccessible") _dessus(lots.hachSol, c, 0.02, col);
-      else if (z.type === "remblais") {
-        _remblaisGalerie(lots.remblais, c, ring, m, h * HAUTEUR_REMBLAIS, lots.texRemblais ? BLANC : col,
-          lots.texRemblais ? REMBLAIS.m : undefined);
-      } else if (z.type === "effondrement") {
-        _remblaisGalerie(lots.eboulis || lots.opaque, c, ring, m, h * HAUTEUR_REMBLAIS, lots.eboulis ? BLANC : col,
-          lots.eboulis ? EBOULIS.m : undefined, "facesEboulis");
-      } else _dessus(lots.opaque, c, 0.02, col);
+      else if (z.type === "remblais" || z.type === "effondrement") continue;   // _volumeCreuse, plus bas
+      else _dessus(lots.opaque, c, 0.02, col);
+    }
+    // Comblé, effondrement : le tube EST le couloir du tracé (praticable) ; ses parois prises dans la zone sont
+    // tapissées du remblai ou de l'éboulis (galerie creusée dedans), le reste de la zone est dans la roche.
+    if (z.type === "remblais" || z.type === "effondrement") {
+      const rb = z.type === "remblais", tx = !!lots.texRemblais;
+      _volumeCreuse(z, ring, rb ? lots.remblais : (lots.eboulis || lots.opaque), tx ? BLANC : col,
+        tx ? (rb ? REMBLAIS.m : EBOULIS.m) : undefined, true, rb ? "facesRemblais" : "facesEboulis");
+      return;
     }
     if (z.type !== "inaccessible") return;
     m.aretesPres(x0 * sc, y0 * sc, x1 * sc, y1 * sc).forEach(function (k) {
@@ -2311,6 +2320,154 @@
       _e[compteur || "facesRemblais"]++;
     }
     _dessus(lot, c, hr, col, tm);
+  }
+
+  // ── Comblé et effondrement creusés le long des tracés ─────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit, révision du 14/11/2026) : le volume d'un Comblé (jusqu'au ciel) ou d'un effondrement
+  // (60 %) s'arrête au COULOIR des tracés qui le traversent (pièces du modèle galerie du niveau, la même emprise que
+  // KtaGalerie.dansCouloir, la règle du pas) : dessus = zone moins les pièces (soustraction de polygones convexes,
+  // _moinsConvexe) ; faces = bords de la zone hors des pièces, et parois des pièces prises dans la zone, tournées vers
+  // le couloir et décollées de COULOIR_FACE. `galerie` : seules les parois du couloir (le reste de la zone est dans la
+  // roche). `tm` (m par motif, 🧱) : coordonnées de texture en mètres. Compte ses faces dans _e[compteur].
+  function _volumeCreuse(z, ring, lot, col, tm, galerie, compteur) {
+    const e = _e, sc = e.sc, G = window.KtaGalerie, niv = e.niveau === null ? undefined : e.niveau;
+    const hz = z.type === "remblais" ? e.hauteur - SOUS_CIEL : e.hauteur * HAUTEUR_ZONE.effondrement;
+    const m = G && typeof G.modele === "function" ? G.modele(niv) : null;
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    ring.forEach(function (q) {
+      x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]);
+    });
+    const ids = m ? m.piecesPres(x0 * sc, z0 * sc, x1 * sc, z1 * sc).filter(function (i) {
+      return m.pieces[i].genre !== "niche";
+    }) : [];
+    const pieces = ids.map(function (i) { return _sensPositif(_metres(m.pieces[i].pts, sc)); });
+    const uvH = function (a, b, y0, y1) {
+      if (!tm) return undefined;
+      const s0 = (a[0] + a[1]) / tm, s1 = s0 + Math.hypot(b[0] - a[0], b[1] - a[1]) / tm;
+      return [s0, y0 / tm, s1, y0 / tm, s1, y1 / tm, s0, y1 / tm];
+    };
+    const face = function (a, b, n) {
+      lot.quad([a[0], 0, a[1]], [b[0], 0, b[1]], [b[0], hz, b[1]], [a[0], hz, a[1]], [n[0], 0, n[1]], col, uvH(a, b, 0, hz));
+      e[compteur] = (e[compteur] || 0) + 1;
+    };
+    if (!galerie) {
+      // Dessus : triangles de la zone moins les pièces.
+      let tris = [];
+      try {
+        tris = THREE.ShapeUtils.triangulateShape(ring.map(function (q) { return new THREE.Vector2(q[0], q[1]); }), []);
+      } catch (err) { tris = []; }
+      tris.forEach(function (t3) {
+        let polys = [[ring[t3[0]], ring[t3[1]], ring[t3[2]]].map(function (q) { return [q[0], q[1]]; })];
+        pieces.forEach(function (Q) {
+          const out = [];
+          polys.forEach(function (p) { _moinsConvexe(_sensPositif(p), Q).forEach(function (r) { out.push(r); }); });
+          polys = out;
+        });
+        polys.forEach(function (p) { if (p.length >= 3) _dessus(lot, _sensPositif(p), hz, col, tm); });
+      });
+      // Faces : bords de la zone hors des pièces.
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i], q = ring[(i + 1) % ring.length], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+        if (l < 1e-6) continue;
+        _horsConvexes(p, q, pieces).forEach(function (iv) {
+          face([p[0] + dx * iv[0], p[1] + dz * iv[0]], [p[0] + dx * iv[1], p[1] + dz * iv[1]], [dz / l, -dx / l]);
+        });
+      }
+    }
+    // Parois du couloir prises dans la zone, tournées vers le couloir, décollées de COULOIR_FACE.
+    ids.forEach(function (id, k) {
+      const Q = pieces[k];
+      let cx = 0, cz = 0;
+      Q.forEach(function (q) { cx += q[0] / Q.length; cz += q[1] / Q.length; });
+      m.paroisDe(id).forEach(function (w) {
+        const a = [w[0] / sc, w[1] / sc], b = [w[2] / sc, w[3] / sc], dx = b[0] - a[0], dz = b[1] - a[1];
+        const l = Math.hypot(dx, dz);
+        if (l < 1e-6) return;
+        let nx = -dz / l, nz = dx / l;
+        if ((cx - a[0]) * nx + (cz - a[1]) * nz < 0) { nx = -nx; nz = -nz; }
+        _dansAnneauIntervalles(ring, a, b).forEach(function (iv) {
+          const A = [a[0] + dx * iv[0] + nx * COULOIR_FACE, a[1] + dz * iv[0] + nz * COULOIR_FACE];
+          const B = [a[0] + dx * iv[1] + nx * COULOIR_FACE, a[1] + dz * iv[1] + nz * COULOIR_FACE];
+          face(A, B, [nx, nz]);
+        });
+      });
+    });
+    e.zonesCreusees = (e.zonesCreusees || 0) + (ids.length ? 1 : 0);
+  }
+
+  // Polygone convexe P moins le polygone convexe Q (sens positifs, m) → morceaux convexes (Sutherland-Hodgman par
+  // demi-plan : ce qui est hors de chaque bord de Q part, le reste continue au bord suivant).
+  function _moinsConvexe(P, Q) {
+    const out = [];
+    let reste = P;
+    for (let i = 0; i < Q.length && reste.length >= 3; i++) {
+      const a = Q[i], b = Q[(i + 1) % Q.length], ex = b[0] - a[0], ez = b[1] - a[1];
+      const cote = function (q) { return ex * (q[1] - a[1]) - ez * (q[0] - a[0]); };   // > 0 : dedans (sens positif)
+      const couper = function (poly, garderDedans) {
+        const r = [];
+        for (let k = 0; k < poly.length; k++) {
+          const A = poly[k], B = poly[(k + 1) % poly.length], ca = cote(A), cb = cote(B);
+          const inA = garderDedans ? ca >= 0 : ca < 0, inB = garderDedans ? cb >= 0 : cb < 0;
+          if (inA) r.push(A);
+          if (inA !== inB) { const t = ca / (ca - cb); r.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); }
+        }
+        return r;
+      };
+      const hors = couper(reste, false);
+      if (hors.length >= 3 && Math.abs(_aire(hors)) > 1e-6) out.push(hors);
+      reste = couper(reste, true);
+    }
+    if (reste.length >= 3 && Math.abs(_aire(reste)) > 1e-6 && !Q.length) out.push(reste);
+    return out;
+  }
+
+  function _aire(p) {
+    let a = 0;
+    for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += p[j][0] * p[i][1] - p[i][0] * p[j][1];
+    return a / 2;
+  }
+
+  // Segment A → B (m) : morceaux [t0, t1] hors de tous les polygones convexes `polys` (sens positifs).
+  function _horsConvexes(A, B, polys) {
+    let ivs = [[0, 1]];
+    polys.forEach(function (Q) {
+      let t0 = 0, t1 = 1;
+      const dx = B[0] - A[0], dz = B[1] - A[1];
+      for (let i = 0; i < Q.length && t0 <= t1; i++) {
+        const a = Q[i], b = Q[(i + 1) % Q.length], ex = b[0] - a[0], ez = b[1] - a[1];
+        const fA = ex * (A[1] - a[1]) - ez * (A[0] - a[0]), d = ex * dz - ez * dx;
+        if (Math.abs(d) < 1e-12) { if (fA < 0) t1 = -1; continue; }
+        const t = -fA / d;
+        if (d > 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t);
+      }
+      if (t1 - t0 <= 1e-6) return;
+      const out = [];
+      ivs.forEach(function (iv) {
+        if (t1 <= iv[0] || t0 >= iv[1]) { out.push(iv); return; }
+        if (t0 > iv[0]) out.push([iv[0], t0]);
+        if (t1 < iv[1]) out.push([t1, iv[1]]);
+      });
+      ivs = out;
+    });
+    return ivs.filter(function (iv) { return iv[1] - iv[0] > 1e-6; });
+  }
+
+  // Segment A → B (m) : morceaux [t0, t1] dans le contour `ring` (coupé à chaque bord, milieu de chaque morceau testé).
+  function _dansAnneauIntervalles(ring, A, B) {
+    const dx = B[0] - A[0], dz = B[1] - A[1], ts = [0, 1];
+    for (let i = 0; i < ring.length; i++) {
+      const p = ring[i], q = ring[(i + 1) % ring.length], ex = q[0] - p[0], ez = q[1] - p[1], d = dx * ez - dz * ex;
+      if (Math.abs(d) < 1e-12) continue;
+      const rx = p[0] - A[0], rz = p[1] - A[1], t = (rx * ez - rz * ex) / d, u = (rx * dz - rz * dx) / d;
+      if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+    }
+    ts.sort(function (a, b) { return a - b; });
+    const out = [];
+    for (let i = 0; i + 1 < ts.length; i++) {
+      const tm = (ts[i] + ts[i + 1]) / 2;
+      if (ts[i + 1] - ts[i] > 1e-6 && _dansRing(ring, A[0] + dx * tm, A[1] + dz * tm)) out.push([ts[i], ts[i + 1]]);
+    }
+    return out;
   }
 
   // Abscisse (m) du point (x, z) sur le contour `ring`, depuis son premier sommet : celle du point le plus proche sur
@@ -14230,7 +14387,7 @@
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         pentes: [], jonctions: [], pentesFranchies: 0, itiPentes: null, nItiPentes: 0,
-        zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},
+        zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, zonesCreusees: 0, rubans: {}, liseres: {},
         filtresChanges: false, reindexations: 0, itiRefaits: 0, msIti: 0, compteIti: 0,
         donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
           msEmpreinte: 0 },
@@ -14561,7 +14718,8 @@
         bouton: _texteIco(e.boutonHauteur),
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
-      facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, rubans: Object.assign({}, e.rubans),
+      facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, zonesCreusees: e.zonesCreusees || 0,
+      volumesIti: (e.volumesIti || []).length, rubans: Object.assign({}, e.rubans),
       liseres: Object.assign({}, e.liseres), arcs: _etatArcs(),
       zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
       equipe: Object.assign({ membres: 0, membres3d: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),

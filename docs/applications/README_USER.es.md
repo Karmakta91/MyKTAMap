@@ -529,7 +529,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **Lo que te para**
 
 - Con la anchura de un cuerpo, chocas contra pilares, muros y frentes (personalizados incluidos) en modo Estructuras, contra las paredes en modo Galería, contra ambos en modo Mixto (en una cámara, solo las estructuras).
-- En las tres representaciones, un **Colmatado**, un **derrumbe** o una zona **⛔ inaccesible** también te para, en una galería como en una cámara.
+- En las tres representaciones, un **Colmatado** o un **derrumbe** también te para, salvo a lo largo de un trazado que lo cruza: ahí la galería está excavada dentro y se pasa. Una zona **⛔ inaccesible** te para siempre, incluso sobre un trazado.
 - Si sales desde dentro de una de ellas, vuelves al borde y puedes seguir.
 - Un **relleno parcial** no te para de por sí: subes encima por su pendiente. La vista se agacha si quedan menos de 1,8 m bajo el techo, te arrastras por debajo de 1 m, y el paso se detiene donde quedan menos de 0,5 m (siempre puedes dar media vuelta).
 - Es solo en 3D: el mapa, la ruta, el guiado y el tracker no los tienen en cuenta (la ruta ya evita las zonas ⛔).
@@ -588,7 +588,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **🏛️ Estructuras**
 
 - Pilares, muros y frentes de explotación levantados a la altura de galería del nivel (⚙️ Ajustes › 📉 Niveles, o ⛏️ Volumen explotado en un plano de un solo nivel; si no 2 m).
-- Zonas colmatadas y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles, rellenos parciales a su parte rellena.
+- Zonas colmatadas hasta el techo, derrumbes en volumen (60 % de esa altura), excavados a lo largo de los trazados que los cruzan; agua, zonas ⛔ inaccesibles, rellenos parciales a su parte rellena.
 - Trazados e itinerario en el suelo.
 - Puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
 
@@ -597,7 +597,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Los trazados se convierten en galerías, sin las estructuras: principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m.
 - Cruces abiertos, codos, fondos de saco cerrados, una franja en el suelo del color del trazado.
 - Paredes de sillería (con 🧱 Texturas; desactivado: del color de la leyenda de su trazado).
-- Las zonas se detienen en las paredes: el colmatado y el derrumbe tapan la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
+- Las zonas se detienen en las paredes: donde el tubo cruza un colmatado o un derrumbe, sus paredes son de relleno o de escombros y se pasa; una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
 - Solo se muestran los puntos a menos de 10 m de un trazado (salas incluidas), contra la pared.
 
 **🧱 Texturas**
@@ -694,7 +694,7 @@ Dónde y cómo se dibuja un paso:
 - **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel).
 - **📍 Estoy aquí** en la ficha de un punto recoloca el tracker en el mapa, pero la 3D se queda donde estás. En seguimiento, pasa entonces a **libre** (un mensaje lo indica): el botón del seguimiento la devuelve al tracker.
 - **Ruta**: dibujada en el suelo como una **franja azul bordeada de oscuro**, con **chevrones** que indican el sentido, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel.
-- Donde cruza un **Colmatado** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
+- Donde cruza un **Colmatado** o un **derrumbe**, se queda en el suelo, en la galería excavada a lo largo del trazado.
 - La vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida).
 - **Guiado**: una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »). **Chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra.
 - En **seguimiento**, es la indicación de tu tracker (una vista previa desde el tracker si el guiado del mapa está desactivado). En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker); si te apartas del trayecto en libre, el itinerario se recalcula solo desde tu lugar en 3D, sin mover el tracker, y en seguimiento la banda ofrece, como en el mapa, **Recalcular desde aquí**, **Estoy aquí** o **Ignorar**. Sin anuncios de voz.

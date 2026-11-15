@@ -1399,15 +1399,26 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout
   et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour) ; dans une chambre,
   seules les structures arrêtent. Dans les trois rendus s'y ajoutent les zones qui bouchent (règle ci-dessous).
-- **Zones obstacles de la 3D** (décision produit) : un remblais, un effondrement ou une zone inaccessible du niveau
-  arrête le pas dans les trois rendus, en tube comme en chambre (`galerieEmprise.js > ZONES_BOUCHENT`, lu par
-  `KtaGalerie.zonesBloquent` et `dansZone` ; `vue3d.js > _juger` l'ajoute à la règle du rendu). L'inaccessible y
-  est par la constante `INACCESSIBLE_BOUCHE` seule (son rendu, hachures au sol et rideau, n'en dépend pas). Un
-  segment est arrêté s'il finit dans une zone ou entre dans son contour ; ⚠️ contrat (jamais coincé) : une zone qui
-  contient le départ du pas (ou le début du segment) ne l'arrête pas, et un contact au point de départ, sur le bord,
-  ne compte pas. Une place dont le corps touche une zone est coincée (`_coince`) : ramenée au point libre le plus
-  proche, à un corps du bord. Index des zones par niveau, gardé tant que la signature des données ne change pas
-  (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
+- **Zones obstacles de la 3D** (décision produit, révision du 14/11/2026, `docs/ETUDE_REMBLAIS.md`) : un Comblé
+  (`remblais`), un effondrement ou une zone inaccessible du niveau arrête le pas dans les trois rendus, en tube comme
+  en chambre (`galerieEmprise.js > ZONES_BOUCHENT`, lu par `KtaGalerie.zonesBloquent` et `dansZone` ;
+  `vue3d.js > _juger` l'ajoute à la règle du rendu). ⚠️ contrat : Comblé et effondrement (`CREUSABLES`) ne bouchent
+  PAS le long d'un tracé qui les traverse : dans le **couloir** (emprise des tubes du modèle galerie du niveau, niches
+  exclues, `KtaGalerie.dansCouloir`), la galerie reste praticable, creusée dans le volume ; le modèle galerie ne
+  retire plus de son emprise que les zones dures (`enRemblais` = inaccessible). L'inaccessible bouche toujours, même
+  sur un tracé (constante `INACCESSIBLE_BOUCHE` ; son rendu, hachures au sol et rideau, n'en dépend pas). Zones dures :
+  un segment est arrêté s'il finit dans une zone ou entre dans son contour ; creusables : s'il passe, à PAS_M près,
+  par un point de la zone hors du couloir (`_indexCreusables`). ⚠️ contrat (jamais coincé) : une zone qui contient le
+  départ du pas (ou le début du segment, hors couloir pour une creusable) ne l'arrête pas, et un contact au point de
+  départ, sur le bord, ne compte pas. Une place dont le corps touche une zone (hors couloir) est coincée (`_coince`) :
+  ramenée au point libre le plus proche, à un corps du bord. Index des zones par niveau, gardé tant que la signature
+  des données ne change pas (`_indexZones` ; le couloir est lu à la demande, jamais pendant la construction du
+  modèle). Dessin : Comblé jusqu'au ciel (`HAUTEUR_ZONE.remblais`, dessus à `SOUS_CIEL` sous le plafond),
+  effondrement à 60 % ; `_volumeCreuse` retire le couloir du volume (dessus = zone moins les pièces, `_moinsConvexe` ;
+  faces = bords de la zone hors des pièces et parois des pièces prises dans la zone, tournées vers le couloir,
+  décollées de `COULOIR_FACE`) ; en galerie, le tube est le couloir : ses parois dans la zone sont tapissées de
+  remblai ou d'éboulis. L'itinéraire y passe au sol (`ITI_SUR` vide). Masse au sol : hors de ces zones (règle par
+  point, ci-dessous). Garde-fou : `checkup-vue-3d.js > sectionComble` (`KTA_V3D_SEUL=comble`). ⚠️ contrat : la 3D
   seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
   et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
   Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, cavage fermé `caf`, comblement d'un cavage,
@@ -1508,7 +1519,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   − / + ne s'ouvre pas (`_hauteurFigee`) : changée seule depuis la 3D, elle recalculait les pentes des jonctions sans
   montrer les autres niveaux. Table fermée : `_reindexer` (hauteurs, sols, pentes) puis marqueurs d'itinéraire. `reglerHauteur` (API) suit la même règle : sans effet, rend la
   hauteur courante ; ⛏️ Volume exploité n'écrit rien non plus (champ de calcul seulement). Les tuiles sont refaites sur place (`_refaireTuiles` : même
-  index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais et effondrements à 60 %, rideaux, tubes, plafond, œil
+  index, position, cap, niveau, rendu) : structures, murs à 98 %, Comblé jusqu'au ciel et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
 - **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
   posé par-dessus ; un seul état : masquer en 3D masque en 2D, et inversement. ⚠️ contrat : la vue dessine ce que
@@ -1595,7 +1606,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une
   galerie inclinée qu'on marche (ci-dessous). Structures (intégrées et perso)
   ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
-  à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais et effondrement à 60 % avec une
+  à profondeur stricte, sinon les recouvrements se mélangent deux fois), Comblé (jusqu'au ciel) et effondrement (60 %) avec une
   face seulement là où ils donnent sur la galerie (`_remblaisGalerie`), inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
   contour coupe l'axe (`_hachurer`), perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
@@ -2254,7 +2265,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `effondrement` en éboulis de fontis (`EBOULIS` : motif de 4 m, gros blocs cassés jusqu'à 60 cm, empilés, fissurés,
   peu de terre, relief plus fort). Un seul dessin pour les deux (`_pierraille` : blocs convexes en demi-plans,
   hauteur en facettes, la plus haute surface gardée ; `_poserBloc`), normal map `_carteNormale`. Forme : deux
-  volumes à 60 % de la hauteur (`HAUTEUR_REMBLAIS`, une seule valeur : même obstacle, on voit par-dessus). Un matériau par type (`_matZone` :
+  volumes : Comblé jusqu'au ciel, effondrement à 60 % de la hauteur (`HAUTEUR_ZONE` ; on voit par-dessus l'éboulis), creusés le long des tracés (`_volumeCreuse`). Un matériau par type (`_matZone` :
   `remblais`, `eboulis`), fait à la première zone du type, un lot par tuile (chambres et tubes ensemble). ⚠️ contrat :
   coordonnées de texture en mètres, comme `_prisme` : dessus projeté au sol, flancs u = abscisse sur le contour de
   la zone depuis la même origine (`_origineMotif`), v = hauteur ; découpé au tube (`_remblaisGalerie`), un flanc
@@ -2347,11 +2358,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   de tons ; chevrons posés sur l'abscisse du trajet (`abscisses` de chaque morceau, comptée aussi sur les tronçons d'un
   autre niveau, qui n'en portent aucun) : ils ne glissent pas et se suivent d'un segment et d'une tuile à l'autre. Ils
   tombent entre les chevrons dorés du guidage (`_majChevrons`, à 0, 2, 4 m…), plus grands et au-dessus. ⚠️ contrat (décision
-  produit) : sur un remblais ou un effondrement dessiné (`ITI_SUR`, zones montrées du niveau, `_volumesIti` à chaque
-  `_reindexer`), ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`,
-  HAUTEUR_REMBLAIS de la hauteur) à leur hauteur propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une
-  contremarche verticale (`_contremarche`, ruban et liseré) monte le long de la face, à `ITI_FACE` (3 cm) devant
-  elle : ni ruban dans le volume, ni rampe en l'air. Refait au réglage ⛏️ de la hauteur. Tracé 2D et rubans des
+  produit) : sur un volume enjambé (`_volumesIti` à chaque `_reindexer` : cône d'un puits comblé, margelle d'un
+  bassin ; plus Comblé ni effondrement, `ITI_SUR` vide : le tracé y creuse la galerie, l'itinéraire y reste au sol),
+  ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`) à leur hauteur
+  propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une contremarche verticale (`_contremarche`, ruban et
+  liseré) monte le long de la face, à `ITI_FACE` (3 cm) devant elle : ni ruban dans le volume, ni rampe en l'air. Sur
+  une masse au sol, le ruban suit son sol. Refait au réglage ⛏️ de la hauteur. Tracé 2D et rubans des
   tracés ordinaires inchangés. Marqueurs
   (`_majMarqueursIti`, à chaque `_reindexer`) : disque et mât de 0,6 m à chaque `road.raccords` de rôle « etape »
   (à son point sur le trajet, au niveau du point du trajet le plus proche), panneau « 🏁 » (et le nom de l'arrivée)

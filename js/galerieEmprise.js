@@ -13,7 +13,8 @@
 //   PROCHE_M, versGalerie(x, y, niveau) (où poser un tracker recalé : tracking.js > _positionDansGalerie),
 //   placePassage(p, niveau, rendu) (place, axe et côté d'entrée du volume de passage d'un POI en 3D : _placeVolume),
 //   zonesBloquent(segs, niveau, depart, rendu), dansZone(x, y, niveau, rendu) (zones qui bouchent, ZONES_BOUCHENT, et
-//   obstacles des accès de surface, BLOQUE, dans les 3 rendus), ACCES / ACCES_DIM / PAROI (accès sans passage et
+//   obstacles des accès de surface, BLOQUE, dans les 3 rendus), CREUSABLES et dansCouloir(x, y, niveau) (Comblé et
+//   effondrement praticables dans l'emprise d'un tracé), ACCES / ACCES_DIM / PAROI (accès sans passage et
 //   formes de POI : formes et dimensions des volumes, formes posées sur la paroi), comblementPorte(x, y, ang, w,
 //   niveau, rendu) (pierre de taille d'un cavage), pente(r, niveau) / denivele(a, b) / demiPente(p, t) (galerie inclinée d'un tracé
 //   jonction vue d'un niveau, lue par vue3d.js), estZoneJonction(z) / penteDeZone(z) / zonesDePente(r) (zone jonction,
@@ -59,6 +60,11 @@
   // Zones qui arrêtent la règle du pas de la vue 3D, dans les trois rendus (zonesBloquent, dedans, segmentsBloques) ;
   // jamais la 2D (carte, tracker, itinéraire, recalage).
   const ZONES_BOUCHENT = { remblais: true, effondrement: true, inaccessible: INACCESSIBLE_BOUCHE };
+  // ⚠️ contrat (décision produit, révision du 14/11/2026, docs/ETUDE_REMBLAIS.md) : Comblé (`remblais`) et effondrement
+  // bouchent, SAUF le long d'un tracé qui les traverse : dans le COULOIR (emprise des tubes du modèle galerie du niveau,
+  // dansCouloir), la galerie reste praticable, creusée dans le volume. L'inaccessible bouche toujours, même avec un
+  // tracé. Masse au sol : hors de ces zones (sa règle est par point, vue3d.js > _masseBloque).
+  const CREUSABLES = { remblais: true, effondrement: true };
   // Mode mixte. 3 m : un tube principal a sa paroi à 1,25 m de l'axe ; une structure plus proche que 3 m de l'axe
   // laisserait entre elle et la paroi moins de 1,75 m (la largeur d'un chemin) : une lame de roche doublée qui ne
   // ressemble à rien. Elle borde donc la galerie elle-même (front de taille, mur de consolidation, pilier de
@@ -498,21 +504,73 @@
 
   // ── Zones qui bouchent (règle du pas de la 3D) ───────────────────────────────────────────────────
 
-  // Zones ZONES_BOUCHENT du niveau (null = tous) en grille → { n, dedans(x, y), bloque(x0, y0, x1, y1) } (px), gardé
-  // tant que la signature des données ne change pas. Indépendant du modèle des galeries : le rendu structures n'en
-  // construit aucun.
+  // Couloir du niveau en (x, y) px : dans l'emprise d'un tracé (pièces du modèle galerie, niches d'escalier exclues).
+  // Lu à la demande (jamais pendant la construction du modèle : _construire lit _indexZones).
+  function dansCouloir(x, y, niveau) {
+    const m = modele(niveau);
+    return !!m && m.dedans(x, y, true);
+  }
+
+  // Zones ZONES_BOUCHENT du niveau (null = tous) en grille → { n, dedans(x, y), bloque(x0, y0, x1, y1, dx, dy) } (px),
+  // gardé tant que la signature des données ne change pas. Deux familles : les dures (inaccessible : _indexAnneaux) et
+  // les CREUSABLES, qui ne bouchent que hors du couloir d'un tracé (_indexCreusables). Le rendu structures n'a pas de
+  // modèle à lui : le couloir est toujours celui du modèle galerie.
   function _indexZones(niveau) {
     const n = Number.isInteger(niveau) ? niveau : null, sig = _signature(false), c = _cacheZones.get(n);
     if (c && c.sig === sig) return c.index;
-    const anneaux = [];
+    const durs = [], creus = [];
     _zones().forEach(function (z) {
       if (!z || !ZONES_BOUCHENT[z.type] || !Array.isArray(z.points) || !_zoneSurNiveau(z, n)) return;
       const a = z.points.filter(function (p) { return p && Number.isFinite(p.x) && Number.isFinite(p.y); });
-      if (a.length >= 3) anneaux.push(a);
+      if (a.length >= 3) (CREUSABLES[z.type] ? creus : durs).push(a);
     });
-    const index = _indexAnneaux(anneaux);
+    const D = _indexAnneaux(durs), C = _indexCreusables(creus, function (x, y) { return dansCouloir(x, y, n); });
+    const index = {
+      n: durs.length + creus.length, durs: D, creusables: C,
+      dedans: function (x, y) { return D.dedans(x, y) || C.dedans(x, y); },
+      bloque: function (x0, y0, x1, y1, dx, dy) { return D.bloque(x0, y0, x1, y1, dx, dy) || C.bloque(x0, y0, x1, y1, dx, dy); }
+    };
     _cacheZones.set(n, { sig: sig, index: index });
     return index;
+  }
+
+  // Zones creusables (contours px) → { n, dedans(x, y), bloque(x0, y0, x1, y1, dx, dy) } : un point bouche s'il est dans
+  // un contour et hors du couloir (`couloir(x, y)`). Segment échantillonné tous les PAS_M : bloqué si l'un de ses points
+  // bouche. ⚠️ contrat (jamais coincé, comme _indexAnneaux) : une zone où le segment commence hors couloir, ou qui
+  // contient le départ du pas (dx, dy) hors couloir, ne l'arrête pas.
+  function _indexCreusables(anneaux, couloir) {
+    const g = new Grille(CASE_M * (_echelle() || 1)), pas = PAS_M * (_echelle() || 1);
+    anneaux.forEach(function (a, i) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      a.forEach(function (p) {
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      });
+      g.poser(i, x0, y0, x1, y1);
+    });
+    const bouche = function (a, x, y) { return _dansAnneau(a, x, y) && !couloir(x, y); };
+    return {
+      n: anneaux.length,
+      dedans: function (x, y) {
+        if (!anneaux.length) return false;
+        const l = g.case(x, y);
+        for (let i = 0; i < l.length; i++) { if (bouche(anneaux[l[i]], x, y)) return true; }
+        return false;
+      },
+      bloque: function (x0, y0, x1, y1, dx, dy) {
+        if (!anneaux.length) return false;
+        const l = g.pres(Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1));
+        if (!l.length) return false;
+        const k = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / pas));
+        for (let i = 0; i < l.length; i++) {
+          const a = anneaux[l[i]];
+          if (bouche(a, x0, y0) || (dx !== undefined && bouche(a, dx, dy))) continue;
+          for (let j = 1; j <= k; j++) {
+            if (bouche(a, x0 + (x1 - x0) * j / k, y0 + (y1 - y0) * j / k)) return true;
+          }
+        }
+        return false;
+      }
+    };
   }
 
   // Contours [{x, y}] (px) en grille → { n, dedans(x, y), bloque(x0, y0, x1, y1, dx, dy) } : la règle commune des
@@ -1456,8 +1514,9 @@
     retours.forEach(function (w, i) {
       gW.poser(i, Math.min(w[0], w[2]), Math.min(w[1], w[3]), Math.max(w[0], w[2]), Math.max(w[1], w[3]));
     });
-    // Zones qui bouchent la galerie (ZONES_BOUCHENT) : le même index que les rendus mixte et structures.
-    const Z = _indexZones(niveau);
+    // Zones qui bouchent la galerie : les dures seules (inaccessible). Un tube est le couloir de son tracé : Comblé et
+    // effondrement n'y bouchent pas (CREUSABLES). Lues à la demande : l'index des creusables lit ce modèle.
+    const ZD = function (x, y) { return _indexZones(niveau).durs.dedans(x, y); };
     const m = {
       niveau: niveau, sc: sc, mixte: !!mixte, noeuds: noeuds, aretes: aretes, pieces: pieces,
       degres: incid.map(function (l) { return l.length; }),
@@ -1489,7 +1548,7 @@
         }
         return false;
       },
-      enRemblais: Z.dedans,
+      enRemblais: ZD,
       plusProche: plusProche
     };
     return m;
@@ -1747,6 +1806,7 @@
     largeur: largeur, modele: modele, dedans: dedans, segmentsBloques: segmentsBloques, invalider: invalider,
     dansPiece: dansPiece, PROCHE_M: PROCHE_M, versGalerie: versGalerie, placePassage: placePassage,
     zonesBloquent: zonesBloquent, dansZone: dansZone, ZONES_BOUCHENT: Object.assign({}, ZONES_BOUCHENT),
+    CREUSABLES: Object.assign({}, CREUSABLES), dansCouloir: dansCouloir,
     ACCES: Object.assign({}, ACCES), BLOQUE: Object.assign({}, BLOQUE), ACCES_DIM: Object.assign({}, ACCES_DIM),
     PAROI: Object.assign({}, PAROI),
     COTES_CERCLE: COTES_CERCLE, comblementPorte: comblementPorte, COMBLE_MAX_M: COMBLE_MAX_M,
