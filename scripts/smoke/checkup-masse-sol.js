@@ -53,8 +53,7 @@ function ouvrirFiche(page, uid) {
   return page.evaluate(function (uid) {
     let cible = null;
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (!cible && typeof c === "string" && c.indexOf('data-kta-uid="' + uid + '"') >= 0) cible = l;
     });
     if (!cible) return false;
@@ -132,7 +131,7 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     const a = await page.evaluate(function () {
       const par = {};
       window.map.eachLayer(function (l) {
-        const p = l.getPopup && l.getPopup(), c = p && p.getContent && p.getContent();
+        const c = window.ktaHtmlFiche(l);
         const m = typeof c === "string" && /data-kta-uid="([^"]+)"/.exec(c);
         if (m && l.options) par[m[1]] = l.options;
       });

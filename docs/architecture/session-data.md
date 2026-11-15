@@ -860,6 +860,13 @@ Cycle de raffinement : Notes / Légende personnalisable / Favoris / Backup multi
 Helper global `window.attacherNotePopup(layer, getDescr, setDescr, titreType, opts)` dans `utils.js` :
 - Mode `edit` (session) : textarea multiligne + bouton 💾 Sauver + `HistoryManager.record` + `SessionPersist.save({force: true})`
 - Mode `readonly` (data layer KMZ) : juste affichage texte avec `white-space: pre-wrap`
+- **Construite à l'ouverture** : `bindPopup` reçoit une fonction que Leaflet appelle à l'ouverture (`Popup.update`,
+  avant `popupopen`, qui branche les écouteurs) ; un rendu de famille (changement de niveau, filtres) n'en construit
+  aucune — les construire à l'avance coûtait ~1 s par changement de niveau sur un relevé réel lourd (HTML + liste
+  des niveaux de chaque structure). ⚠️ `getContent()` rend donc une fonction : lire le HTML par
+  `window.ktaHtmlFiche(layer)`. L'hôte de la fiche en vue 3D (`opts.horsCarte`, `vue3d.js > _ouvrirFicheObjet`)
+  reçoit toujours le HTML. Garde-fou : `checkup-niveau-objet.js` (aucune fiche construite par un changement de
+  niveau).
 
 **Ghost polyline transparente épaisse** (weight + 14 px, opacity 0, `bubblingMouseEvents: false`) ajoutée par-dessus les polylines visibles pour augmenter la zone cliquable. **Skip ghost/popup quand un mode édition est actif** via `window._aucunModeEditionActif()` + `window._kta_syncAllNoteUiForModeChange()` au toggle (sinon clics map interceptés).
 

@@ -767,6 +767,8 @@ function _icoFiche(nom) { return typeof window.ktaIcone === "function" ? window.
 // readonly (data layer) : texte seul, setDescr peut être null. À ne binder QUE si une note existe (c'est à
 // l'appelant de tester `description`), sinon un clic sur un data layer muet ouvrirait une popup vide.
 // Mêmes classes que les popups de point (.kta-popup-point) : thème clair/sombre hérité.
+// ⚠️ Fiche construite à l'ouverture (contenu = fonction) : getContent() n'est pas du HTML, lire par
+// ktaHtmlFiche(layer).
 //
 // 🩸 Pendant un mode tracé / zone / structure, les ghost polylines (épaisses, transparentes,
 // bubblingMouseEvents: false) mangeraient les clics du tracé. Les rendus (renderRoads, renderStructures,
@@ -1044,6 +1046,14 @@ window.ktaSignalerNiveauxJonction = function(de, vers) {
 const _fichesObjets = new WeakMap();
 window.ktaFicheObjetDe = function(o) {
   return (o && Array.isArray(o.points) && _fichesObjets.get(o.points)) || null;
+};
+// HTML de la fiche d'un layer de la carte, ou null. Le contenu d'une fiche est une fonction appelée à l'ouverture
+// (attacherNotePopup) : la lire comme une chaîne ne marche pas, passer par ici.
+window.ktaHtmlFiche = function(layer) {
+  const p = layer && typeof layer.getPopup === "function" ? layer.getPopup() : null;
+  const c = p && typeof p.getContent === "function" ? p.getContent() : null;
+  const h = typeof c === "function" ? c(layer) : c;
+  return typeof h === "string" ? h : null;
 };
 
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
@@ -1326,7 +1336,14 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
            '</div>';
   }
 
-  layer.bindPopup(_renderPopupHtml(), window.KTA_POPUP_OPTS || { autoPan: true, closeButton: true });
+  // Fiche construite à l'OUVERTURE seulement (Leaflet appelle la fonction dans Popup.update, avant popupopen) : un rendu
+  // de famille (changement de niveau, filtres) attache des milliers de fiches qu'on n'ouvrira pas ; les construire à
+  // l'avance (HTML + liste des niveaux) coûtait ~1 s sur un relevé réel lourd. ⚠️ contrat : getContent() d'une fiche
+  // de la carte rend cette FONCTION (l'appeler avec le layer pour avoir le HTML) ; l'hôte de la vue 3D (`horsCarte`)
+  // reçoit toujours le HTML, il l'écrit lui-même aussitôt (vue3d.js > _ouvrirFicheObjet).
+  const _contenuFiche = function() { _majMode(); return _renderPopupHtml(); };
+  layer.bindPopup(opts.horsCarte ? _renderPopupHtml() : _contenuFiche,
+    window.KTA_POPUP_OPTS || { autoPan: true, closeButton: true });
 
   // popupopen : Leaflet le déclenche après l'injection DOM ; on rebranche le save à chaque ouverture.
   layer.on("popupopen", function(evt) {
@@ -1336,9 +1353,13 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     // (Leaflet > _updateLayout, une mise en page forcée du document) juste après celle de l'ouverture, et double le
     // temps du toucher sur un plan chargé. ⚠️ contrat : l'hôte de la fiche de la vue 3D (vue3d.js > _ouvrirFicheObjet)
     // passe un faux popup SANS getContent : on y écrit toujours.
-    const fresh = _renderPopupHtml(), pop = evt && evt.popup;
+    // Contenu en fonction (fiche de la carte) : Leaflet vient de la construire, fraîche, rien à refaire.
+    const pop = evt && evt.popup;
     const actuel = pop && typeof pop.getContent === "function" ? pop.getContent() : null;
-    if (pop && typeof pop.setContent === "function" && actuel !== fresh) pop.setContent(fresh);
+    if (typeof actuel !== "function") {
+      const fresh = _renderPopupHtml();
+      if (pop && typeof pop.setContent === "function" && actuel !== fresh) pop.setContent(fresh);
+    }
     if (mode === "readonly") return;
     setTimeout(function() {
       // 🩸 Cherché DANS la popup ouverte, jamais dans tout le document : la popup qu'on vient de quitter reste dans le
