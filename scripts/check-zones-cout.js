@@ -413,6 +413,35 @@ async function route(w, opts) {
         v && [v.o.brancard, v.r.totalDistance, v.r.cout]);
     }
     {
+      // ⚠️ Sorties classées au TEMPS (décision produit) : B à 200 px derrière une masse ¾ (à plat ventre sur 10 m :
+      // temps 280 px), C à 240 px debout → C d'abord, malgré la distance. Rendu réel de la fenêtre (ordre des noms).
+      const w = bacM({ roads: [droite, R("rd_versC", "principal", [[0, 0], [0, 240]])], zones: [masse(0.75)] });
+      w.getEditorPoints = () => [{ nom: "SortieB", x: 200, y: 0, tags: ["peo"] },
+        { nom: "SortieC", x: 0, y: 240, tags: ["peo"] }];
+      const corps = { innerHTML: "" };
+      const modal = { id: "", className: "", innerHTML: "", parentNode: null, addEventListener() {},
+        querySelector: () => corps };
+      w.document = { createElement: () => modal, getElementById: () => ({ addEventListener() {} }),
+        documentElement: { appendChild(el) { el.parentNode = { removeChild() {} }; } },
+        addEventListener() {}, removeEventListener() {} };
+      w.requestAnimationFrame = f => f();
+      w.setTimeout = setTimeout;
+      w.itineraireYAller = () => {};
+      vm.runInContext("var window = this;" + lire("js/sortieUrgence.js"), w.__ctx);
+      w.SortieUrgence.declencherDepuis(0, 0, undefined, {});
+      for (let i = 0; i < 300 && !/SortieB/.test(corps.innerHTML); i++) await new Promise(res => setTimeout(res, 5));
+      const h = corps.innerHTML, iB = h.indexOf("SortieB"), iC = h.indexOf("SortieC");
+      t("sortie d'urgence au temps : C (240 px debout) avant B (200 px, à plat ventre sur 10 m)",
+        iB >= 0 && iC >= 0 && iC < iB, [iB, iC]);
+      const res = w.Pathfinder.resumeMasseTrajet([P(0, 0), P(200, 0)]);
+      t("resumeMasseTrajet : masse ¾ → 40 px à plat ventre, 0 courbé, ralentissement 80 px",
+        proche(res.ramperPx, 40, 1e-6) && proche(res.courbePx, 0) && proche(res.extraPx, 80, 1e-6), res);
+      const w2 = bacM({ roads: [droite], zones: [masse(0.25)] });
+      const res2 = w2.Pathfinder.resumeMasseTrajet([P(0, 0), P(200, 0)]);
+      t("resumeMasseTrajet : masse ¼ → 40 px courbé, ralentissement 20 px",
+        proche(res2.courbePx, 40, 1e-6) && proche(res2.ramperPx, 0) && proche(res2.extraPx, 20, 1e-6), res2);
+    }
+    {
       const w = bacM({ roads: [droite], zones: [masse(-0.5)] });
       const r = await route(w);
       t("sol abaissé −½ : ×1, coût = distance (200 px)", !r.erreur && proche(r.cout, 200) &&

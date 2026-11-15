@@ -490,6 +490,25 @@ function _tempsItineraireMinutes(distanceM, nbWaypoints) {
 }
 window.getItiTempsMinutes = _tempsItineraireMinutes;
 
+// Masses au sol d'un trajet, en mètres → { extraM (ralentissement, ajouté à la distance pour le TEMPS), courbeM,
+// ramperM } : même mesure que le guidage (pathfinder.js > resumeMasseTrajet). La distance affichée reste la vraie.
+function _masseTrajetM(points) {
+  const P = window.Pathfinder;
+  const sc = (window.APP_CONFIG && window.APP_CONFIG.scale > 0) ? window.APP_CONFIG.scale : 1;
+  const r = P && typeof P.resumeMasseTrajet === "function" ? P.resumeMasseTrajet(points) : null;
+  return r ? { extraM: r.extraPx / sc, courbeM: r.courbePx / sc, ramperM: r.ramperPx / sc }
+    : { extraM: 0, courbeM: 0, ramperM: 0 };
+}
+// Phrase « passe par une masse au sol (courbé / à plat ventre sur ~X m) », ou "" (moins de 0,5 m en tout).
+function _ligneMasseTrajet(m) {
+  const parts = [];
+  if (m.courbeM >= 0.5) parts.push(window.I18n.t("iti.masse.courbe", { d: window.formatDistance(m.courbeM, 0) }));
+  if (m.ramperM >= 0.5) parts.push(window.I18n.t("iti.masse.ramper", { d: window.formatDistance(m.ramperM, 0) }));
+  if (!parts.length) return "";
+  return '<div class="kta-iti-result-row kta-guid-alerte kta-iti-masse">' + window.ktaIcone("triangle-alert") + " " +
+    window.ktaEsc(window.I18n.t("iti.masse.passe", { detail: parts.join(", ") })) + '</div>';
+}
+
 function _formatTempsMinutes(totalMin) {
   if (!totalMin || totalMin < 1) return window.I18n.t("iti.time.lessMin");
   if (totalMin < 60) return window.I18n.t("iti.time.min", { n: Math.round(totalMin) });
@@ -1726,10 +1745,12 @@ window.ouvrirItinerairModal = function() {
     const distActMeters = _distanceItineraireMeters(existingItinerary);
     const nbWpAct       = Array.isArray(existingItinerary.waypoints)
       ? existingItinerary.waypoints.filter(function(w) { return !w.done; }).length : 2;
-    const tempsActMin   = _tempsItineraireMinutes(distActMeters, nbWpAct);
+    const masseAct      = _masseTrajetM(existingItinerary.points);
+    const tempsActMin   = _tempsItineraireMinutes(distActMeters + masseAct.extraM, nbWpAct);
     statusActuel =
       '<div class="kta-iti-result" id="kta-iti-status-block" style="display:block; margin-bottom:10px;" ' +
-           'data-distm="' + distActMeters + '" data-nbwp="' + nbWpAct + '">' +
+           'data-distm="' + distActMeters + '" data-extram="' + masseAct.extraM + '" data-nbwp="' + nbWpAct + '">' +
+        _ligneMasseTrajet(masseAct) +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' +
           '<span id="kta-iti-temps-val">' + _formatTempsMinutes(tempsActMin) + '</span> ' +
@@ -1922,8 +1943,9 @@ window.ouvrirItinerairModal = function() {
     const statusBlk = document.getElementById("kta-iti-status-block");
     if (!statusBlk) return;
     const distM = parseFloat(statusBlk.dataset.distm) || 0;
+    const extraM = parseFloat(statusBlk.dataset.extram) || 0;   // ralentissement des masses au sol
     const nbWp  = parseInt(statusBlk.dataset.nbwp, 10) || 2;
-    const tMin  = _tempsItineraireMinutes(distM, nbWp);
+    const tMin  = _tempsItineraireMinutes(distM + extraM, nbWp);
     const pKey  = _getItiSpeedPreset();
     const p     = ITI_SPEED_PRESETS[pKey];
     const tEl   = document.getElementById("kta-iti-temps-val");
@@ -2205,7 +2227,8 @@ window.ouvrirItinerairModal = function() {
           '</div>';
       }
 
-      const tempsCalcMin = _tempsItineraireMinutes(distM, wpsCalc.length);
+      const masseCalc = _masseTrajetM(result.path);
+      const tempsCalcMin = _tempsItineraireMinutes(distM + masseCalc.extraM, wpsCalc.length);
       const alerteRaccord = _texteAlerteRaccord(result);
       const raccordHtml = alerteRaccord
         ? '<div class="kta-iti-result-row kta-guid-alerte">⚠️ ' + _escapeHtml(alerteRaccord) + '</div>'
@@ -2219,6 +2242,7 @@ window.ouvrirItinerairModal = function() {
       resEl.innerHTML =
         fallbackHtml +
         zonesHtml +
+        _ligneMasseTrajet(masseCalc) +
         raccordHtml +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.distance") + '</strong> ' + window.formatDistance(distM, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>' + window.I18n.t("iti.result.time") + '</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +

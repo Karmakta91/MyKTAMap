@@ -797,8 +797,15 @@ Décision de KARMA (QCM du 11/11/2026, `docs/ETUDE_REMBLAIS.md` § 8 et 11, lot 
 - **Guidage** : le temps restant compte le ralentissement (`Pathfinder.surcoutMasseTrajet(points)` → cumul en px par
   point, sans le brancard ; `itiGuidage.js > _surcoutApres`, ajouté à la distance avant `getItiTempsMinutes`) ; la
   distance affichée ne change pas. La consigne « ramper sur ~X m » n'est pas faite (décision 8 b, plus tard).
-- Limites : la sortie d'urgence et la fenêtre Itinéraire ne disent pas qu'une masse ralentit (pas de phrase dédiée) ;
-  le temps de la fenêtre Itinéraire reste celui de la distance.
+- **Fenêtre Itinéraire** (`interfaceItineraire.js > _masseTrajetM`, `_ligneMasseTrajet`) : `Pathfinder.resumeMasseTrajet(points)`
+  (même mesure que le guidage → `{ extraPx, courbePx, ramperPx }`) donne la phrase « Passe par une masse au sol :
+  courbé / à plat ventre sur ~X m » (`iti.masse.*`, au-delà de 0,5 m) et le temps estimé (distance + ralentissement,
+  aussi au changement de vitesse : `data-extram` du bloc d'état) ; la distance affichée reste la vraie. Le libellé de
+  distance posé sur la carte garde le temps de la distance.
+- **Sortie d'urgence** (décision produit) : classée au **temps** de parcours (`sortieUrgence.js` : `tempsPx` =
+  distance + `resumeMasseTrajet(path).extraPx`), après les critères existants (atteignable, entière, sans zone à
+  coût) ; une sortie plus proche derrière une masse où l'on rampe passe après une sortie un peu plus loin, debout.
+  La distance affichée reste la vraie.
 - Garde-fous : `scripts/check-zones-cout.js` § 10 (¼ ½ ¾ à la main, coupure, détour, brancard, sortie d'urgence, sol
   abaissé, talus, inter-plans, guidage, zones à coût inchangées), `scripts/smoke/checkup-comble-itineraire.js`
   (masse-sol, vrais registres).

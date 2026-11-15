@@ -222,7 +222,7 @@
     }, false);
   }
   // Masses traversées par p1→p2 au niveau `lvl` → { extra (px de coût en plus), sousDebout (px sous 1,8 m de vide),
-  // coupe } | null. Sol local = le plus haut des remblais qui couvrent le point (comme vue3d.js > _solMasse).
+  // courbe / ramper (px parcourus courbé / à plat ventre), coupe } | null. Sol local = le plus haut des remblais qui couvrent le point (comme vue3d.js > _solMasse).
   function _coutMasseSegment(masses, p1, p2, lvl) {
     if (!masses || lvl === "transit") return null;
     const L = _dist(p1, p2);
@@ -238,7 +238,7 @@
     });
     ts.sort(function(a, b) { return a - b; });
     const S = window.KtaMasseSol;
-    let extra = 0, sousDebout = 0, coupe = false, touche = false;
+    let extra = 0, sousDebout = 0, courbe = 0, ramper = 0, coupe = false, touche = false;
     for (let i = 1; i < ts.length && !coupe; i++) {
       const dt = ts[i] - ts[i - 1];
       if (dt <= 1e-9) continue;
@@ -261,9 +261,11 @@
         if (f === Infinity) { coupe = true; break; }
         extra += d * (f - 1);
         if (vide < MASSE_VIDE.debout) sousDebout += d;
+        if (f === MASSE_FACTEUR.courbe) courbe += d;
+        else if (f === MASSE_FACTEUR.ramper) ramper += d;
       }
     }
-    return touche ? { extra: extra, sousDebout: sousDebout, coupe: coupe } : null;
+    return touche ? { extra: extra, sousDebout: sousDebout, courbe: courbe, ramper: ramper, coupe: coupe } : null;
   }
   // Ralentissement le long d'un trajet déjà calculé (guidage : temps restant) → cumul en px à chaque point (même
   // longueur que `points`), masses du plan ouvert, sans le brancard. Un point sans niveau entier (puits, milieu de
@@ -280,6 +282,25 @@
       if (mlOn) lvl = (Number.isInteger(a.level) && a.level === b.level) ? a.level : "transit";
       const m = masses ? _coutMasseSegment(masses, a, b, lvl) : null;
       out.push(out[i - 1] + (m && !m.coupe ? m.extra : 0));
+    }
+    return out;
+  }
+
+  // Résumé des masses d'un trajet déjà calculé (fenêtre Itinéraire, sortie d'urgence) → { extraPx (ralentissement en
+  // px, à ajouter à la distance pour le temps), courbePx, ramperPx } ; mêmes masses et même mesure que le guidage.
+  function resumeMasseTrajet(points) {
+    const out = { extraPx: 0, courbePx: 0, ramperPx: 0 };
+    if (!Array.isArray(points) || points.length < 2) return out;
+    const masses = _massesDuPlan(false);
+    if (!masses) return out;
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1], b = points[i];
+      let lvl = 0;
+      if (mlOn) lvl = (Number.isInteger(a.level) && a.level === b.level) ? a.level : "transit";
+      const m = _coutMasseSegment(masses, a, b, lvl);
+      if (!m || m.coupe) continue;
+      out.extraPx += m.extra; out.courbePx += m.courbe; out.ramperPx += m.ramper;
     }
     return out;
   }
@@ -2361,6 +2382,7 @@
     MASSE_VIDE:        Object.assign({}, MASSE_VIDE),
     facteurVide:       _facteurVide,
     surcoutMasseTrajet: surcoutMasseTrajet,
+    resumeMasseTrajet: resumeMasseTrajet,
     // « Vérifier le plan » (verifierPlan.js) : les tests du graphe eux-mêmes, jamais une copie, sinon l'outil et
     // l'itinéraire divergent. ⚠️ contrat : obstaclesDuPlan() → la liste que lit _buildGraph (plan ouvert) ;
     // obstaclesDe(zones, structures) → la même, sur des données fournies ;

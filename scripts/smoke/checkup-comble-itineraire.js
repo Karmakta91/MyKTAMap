@@ -240,6 +240,36 @@ async function sortie(page, contraintes) {
     });
     verifier(!!gm && gm.tempsMin > gm.sansMasse, "guidage : temps restant ralenti par la masse, distance inchangée",
       gm);
+    // Fenêtre Itinéraire (itinéraire tracé) : la phrase « à plat ventre sur ~X m » et le temps ralenti (même mesure que
+    // le guidage : pathfinder.js > resumeMasseTrajet).
+    const fen = await page.evaluate(async function () {
+      // Vitesse « blessé » (2 km/h) : l'écart de temps dû à la masse se lit à la minute sur ce trajet court.
+      try { localStorage.setItem("myktamap_iti_walking_preset", "blesse"); } catch (e) { /* stockage refusé */ }
+      window.ouvrirItinerairModal();
+      await new Promise(function (r) { setTimeout(r, 800); });
+      const blk = document.getElementById("kta-iti-status-block");
+      if (!blk) return null;
+      const ligne = blk.querySelector(".kta-iti-masse");
+      const distM = parseFloat(blk.dataset.distm), extraM = parseFloat(blk.dataset.extram);
+      const nbWp = parseInt(blk.dataset.nbwp, 10) || 2;
+      const affiche = (document.getElementById("kta-iti-temps-val") || {}).textContent || "";
+      const res = {
+        ligne: ligne ? ligne.textContent : null,
+        attendu: window.I18n.t("iti.masse.ramper", { d: "§" }).split("§")[0],
+        extraM: extraM, distM: distM, affiche: affiche,
+        ralenti: window._formatTempsMinutes(window.getItiTempsMinutes(distM + extraM, nbWp)),
+        sansMasse: window._formatTempsMinutes(window.getItiTempsMinutes(distM, nbWp))
+      };
+      const ov = document.getElementById("kta-itineraire-modal") || document.querySelector(".kta-iti-modal-overlay");
+      if (ov) ov.remove();
+      try { localStorage.removeItem("myktamap_iti_walking_preset"); } catch (e) { /* stockage refusé */ }
+      return res;
+    });
+    verifier(!!fen && !!fen.ligne && fen.ligne.indexOf(fen.attendu) >= 0,
+      "fenêtre Itinéraire : « passe par une masse au sol (à plat ventre sur ~X m) »", fen);
+    verifier(!!fen && fen.extraM > 0 && fen.affiche === fen.ralenti && fen.ralenti !== fen.sansMasse,
+      "fenêtre Itinéraire : temps affiché = distance + ralentissement (" + (fen && fen.ralenti) + ", sans masse " +
+      (fen && fen.sansMasse) + ")", fen);
     await page.evaluate(function () {
       window.setRoads((window.getRoads() || []).filter(function (x) { return x.type !== "itinerary"; }));
     });

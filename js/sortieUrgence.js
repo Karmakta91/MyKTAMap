@@ -131,7 +131,11 @@
       const ecart = _distEucl(origine, res.path[0]) + _distEucl(res.path[res.path.length - 1], cible);
       d += ecart;
       const contourne = !!(res.usedFallback || ecart > 10 * pxParM);
-      return { distPx: d, path: res.path, contourne: contourne, ecartM: ecart / pxParM,
+      // Temps de parcours (en px de marche) : distance + ralentissement des masses au sol (courbé, à plat ventre),
+      // même mesure que le guidage (pathfinder.js > resumeMasseTrajet). Classe les sorties ; distance affichée vraie.
+      const masse = typeof window.Pathfinder.resumeMasseTrajet === "function"
+        ? window.Pathfinder.resumeMasseTrajet(res.path) : { extraPx: 0 };
+      return { distPx: d, tempsPx: d + masse.extraPx, path: res.path, contourne: contourne, ecartM: ecart / pxParM,
                zonesTraversees: Array.isArray(res.zonesTraversees) ? res.zonesTraversees : [] };
     }).catch(function(err) {
       console.warn("[SortieUrgence] computeRoute échec pour", cible.nom, ":", err);
@@ -162,7 +166,7 @@
     return Promise.all(presort.map(function(item) {
       return _calculerDistPathfinder(origine, item.point, contraintes).then(function(pf) {
         if (pf) {
-          return { point: item.point, distPx: pf.distPx, path: pf.path, fallback: false,
+          return { point: item.point, distPx: pf.distPx, tempsPx: pf.tempsPx, path: pf.path, fallback: false,
                    contourne: pf.contourne, ecartM: pf.ecartM, zonesTraversees: pf.zonesTraversees };
         }
         // Repli : distance euclidienne, sortie gardée mais marquée fallback
@@ -178,7 +182,11 @@
         // TYPES_ZONES_COUT) : même règle que l'itinéraire, qui ne les traverse que faute d'autre chemin.
         const za = _traverseZoneCout(a), zb = _traverseZoneCout(b);
         if (za !== zb) return za ? 1 : -1;
-        return a.distPx - b.distPx;
+        // ⚠️ contrat (décision produit) : au TEMPS de parcours, pas à la distance — une sortie plus proche mais
+        // derrière une masse où l'on rampe passe après une sortie un peu plus loin, debout.
+        const ta = Number.isFinite(a.tempsPx) ? a.tempsPx : a.distPx;
+        const tb = Number.isFinite(b.tempsPx) ? b.tempsPx : b.distPx;
+        return ta - tb;
       });
     });
   }
