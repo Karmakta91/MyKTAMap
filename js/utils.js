@@ -1127,9 +1127,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     if (!o || o.type !== "masse-sol" || typeof window.ktaCombleZone !== "function") return "";
     const v = window.ktaCombleZone(o);
     const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.label")) + '</span>';
-    const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>' +
-      // Hauteur atteinte : vide ici, remplie à l'ouverture de la fiche (_remplirAtteinte).
-      '<div class="kta-note-popup-comble-atteinte kta-tx-warn"></div>';
+    const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>';
     if (!opts.convertir || mode === "readonly") {
       return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
              '</strong>' + metres + _rampesHtml(o, false) + '</div>';
@@ -1196,29 +1194,6 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
         '<button class="kta-popup-btn kta-note-popup-rampe-placer" type="button">' +
           _esc(window.I18n.t("masseSol.rampe.placer")) + '</button>' +
       '</div></div>';
-  }
-  // Zone trop courte pour que le talus atteigne son cran : « hauteur atteinte : 2,9 m sur 7,5 m » (profondeur pour un
-  // sol abaissé), même calcul que la 3D (masseSol.js > atteinteZone) ; vide sinon.
-  // ⚠️ contrat (performance) : atteinteZone sonde tous les bords de la zone et balaie une grille : JAMAIS au rendu ni au
-  // bindPopup (la fiche de chaque zone est construite à chaque rendu de la carte), seulement à l'ouverture de la fiche
-  // de CETTE zone, dans les deux modes (lecture seule comprise), puis au changement de cran (majMetres).
-  function _remplirAtteinte(evt) {
-    const o = (opts.convertir && opts.convertir.obj) || opts.objet;
-    if (!o || o.type !== "masse-sol" || !window.KtaMasseSol || typeof window.ktaCombleZone !== "function") return;
-    setTimeout(function () {
-      const racine = (evt && evt.popup && typeof evt.popup.getElement === "function" && evt.popup.getElement())
-        || document;
-      const el = racine.querySelector(".leaflet-popup-content .kta-note-popup-comble-atteinte");
-      if (!el || !el.isConnected) return;
-      el.textContent = _texteAtteinteComble(o, window.ktaCombleZone(o));
-    }, 30);
-  }
-  function _texteAtteinteComble(o, v) {
-    if (!window.KtaMasseSol || !Number.isFinite(v) || v === 0) return "";
-    const r = window.KtaMasseSol.atteinteZone(Object.assign({}, o, { comble: v }));
-    if (!r || Math.abs(r.atteinte) >= Math.abs(r.H) - 0.05) return "";
-    const f = function (x) { return window.formatDistance(Math.abs(x), 1); };
-    return window.I18n.t(r.H < 0 ? "masseSol.atteinteBas" : "masseSol.atteinte", { a: f(r.atteinte), h: f(r.H) });
   }
   function _texteMetresComble(o, v) {
     const mh = window.ktaMetresComble(o, v);
@@ -1353,9 +1328,11 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
   layer.on("popupopen", function(evt) {
     _majMode();
     // contenu re-rendu : la note a pu changer (undo/redo)
+    // 🩸 Contenu remplacé seulement s'il a changé : setContent refait toute la mise en page de la fiche
+    // (Leaflet > _updateLayout, une mise en page forcée du document) juste après celle de l'ouverture, et double le
+    // temps du toucher sur un plan chargé.
     const fresh = _renderPopupHtml();
-    if (evt && evt.popup) evt.popup.setContent(fresh);
-    _remplirAtteinte(evt);   // masse au sol : hauteur atteinte, calculée maintenant seulement
+    if (evt && evt.popup && evt.popup.getContent() !== fresh) evt.popup.setContent(fresh);
     if (mode === "readonly") return;
     setTimeout(function() {
       // 🩸 Cherché DANS la popup ouverte, jamais dans tout le document : la popup qu'on vient de quitter reste dans le
@@ -1433,8 +1410,6 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           if (cbMetres && Number.isFinite(v) && v !== 0) {
             cbMetres.textContent = _texteMetresComble(opts.convertir.obj, v);
           }
-          const cbAtt = popupRoot.querySelector(".kta-note-popup-comble-atteinte");
-          if (cbAtt) cbAtt.textContent = _texteAtteinteComble(opts.convertir.obj, v);
         };
         popupRoot.querySelectorAll('.kta-note-popup-comble-crans input[type="radio"]').forEach(function (r) {
           r.addEventListener("change", function () {

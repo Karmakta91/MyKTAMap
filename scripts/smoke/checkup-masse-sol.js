@@ -118,8 +118,7 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
         { uid: "zn_n25", type: "masse-sol", comble: -0.25, points: r(0, 40) },
         { uid: "zn_n50", type: "masse-sol", comble: -0.5, points: r(1, 40) },
         { uid: "zn_n75", type: "masse-sol", comble: -0.75, points: r(2, 40) },
-        // Hauteur atteinte : bande de 2 m de large à ¾ (le talus n'atteint pas le cran), carré de 30 m à ¼ (atteint).
-        // Hauteur atteinte : bande de 2 m à ¾ avec deux rampes opposées (le sommet est à mi-cran) ; carré à rampe seule.
+        // Bande de 2 m à ¾ avec deux rampes opposées (le sommet est à mi-cran) ; carré de 30 m à ¼, rampe seule.
         { uid: "zn_court", type: "masse-sol", comble: 0.75, points: m(0, 80, 20, 2), rampes: [{ bord: 0 }, { bord: 2 }] },
         { uid: "zn_long", type: "masse-sol", comble: 0.25, points: m(0, 80 + 4 * sc, 30, 30), rampes: [{ bord: 3 }] }
       ]);
@@ -270,21 +269,32 @@ const zoneDe = (page, uid) => page.evaluate(function (uid) {
     await page.evaluate(function () { window.HistoryManager.undo(); });
     await page.waitForTimeout(300);
 
-    // Hauteur atteinte : affichée sur la bande trop courte, rien sur le grand carré (même calcul que la 3D).
+    // Hauteur atteinte : jamais dans la fiche (décision produit : 3D et volume seulement, à la demande). Ouvrir la fiche
+    // d'une masse à rampes (bande courte : la hauteur atteinte serait sous le cran) ne la calcule pas.
     const att = async function (uid) {
+      await page.evaluate(function () {
+        const M = window.KtaMasseSol;
+        window.__nAtteinte = 0;
+        ["atteinteZone", "atteinte"].forEach(function (k) {
+          if (!M["__" + k]) M["__" + k] = M[k];
+          M[k] = function () { window.__nAtteinte++; return M["__" + k].apply(null, arguments); };
+        });
+      });
       await ouvrirFiche(page, uid);
       await page.waitForTimeout(400);
       return page.evaluate(function () {
-        const a = document.querySelector(".leaflet-popup-content .kta-note-popup-comble-atteinte");
-        return a ? { texte: a.textContent, classe: a.className, vu: a.offsetHeight > 0 } : null;
+        const M = window.KtaMasseSol, c = document.querySelector(".leaflet-popup-content");
+        ["atteinteZone", "atteinte"].forEach(function (k) { M[k] = M["__" + k]; delete M["__" + k]; });
+        return { appels: window.__nAtteinte, ligne: !!document.querySelector(".kta-note-popup-comble-atteinte"),
+          texte: /atteinte/i.test(c ? c.textContent : ""), metres: !!(c && c.querySelector(".kta-note-popup-comble-metres")) };
       });
     };
     const aCourt = await att("zn_court");
-    await capture(page, "4c-fiche-hauteur-atteinte");
+    await capture(page, "4c-fiche-sans-hauteur-atteinte");
     const aLong = await att("zn_long");
-    verifier(!!aCourt && /Hauteur atteinte/.test(aCourt.texte) && aCourt.vu && /kta-tx-warn/.test(aCourt.classe) &&
-      !!aLong && aLong.texte === "" && !aLong.vu,
-      "fiche : « Hauteur atteinte … sur … » sur une zone trop courte, rien sur une zone assez longue", { aCourt, aLong });
+    verifier([aCourt, aLong].every(function (a) { return a.appels === 0 && !a.ligne && !a.texte && a.metres; }),
+      "fiche : part comblée seule (cran et mètres), aucune « hauteur atteinte », jamais calculée à l'ouverture " +
+      "(0 appel à atteinteZone / atteinte)", { aCourt, aLong });
     await page.evaluate(function () { if (window.map.closePopup) window.map.closePopup(); });
 
     // ── D. Tableur ──

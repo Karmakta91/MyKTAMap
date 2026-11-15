@@ -1454,9 +1454,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Sur une
   rampe, la **marche ralentit** au-delà de 15° de pente du sol sous les pieds dans le sens du pas (`_ralentiMasse` :
   1 jusqu'à `MASSE.lent`, puis jusqu'à `MASSE.lentPlancher` = ½ à 30°, montée comme descente, sol abaissé compris ;
-  1 dans une galerie inclinée ou une zone jonction, et en vue plongeante). La fiche dit « Hauteur atteinte : … sur … »
-  (« Profondeur » pour un sol abaissé) quand ses rampes n'atteignent pas le cran (deux rampes face à face)
-  (`utils.js > _texteAtteinteComble`). Plafond inchangé.
+  1 dans une galerie inclinée ou une zone jonction, et en vue plongeante). Plafond inchangé. La fiche de la carte
+  n'affiche que la part comblée (cran et mètres), jamais la hauteur atteinte (décision produit : `atteinteZone` ne sert
+  qu'à la demande, jamais à l'ouverture d'une fiche).
   **Part négative = sol abaissé** (creusement dans la roche) : même formule, le sol descend vers l'intérieur, le vide
   grandit (rien n'arrête, on descend debout) ; le sol du niveau (ou du voisin construit, `e.bitsPlans`) est troué sur
   son contour par le gabarit, comme la bouche d'un puits ; fond, pentes et pans prennent le **sol de pierre du niveau**

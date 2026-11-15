@@ -18806,8 +18806,6 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
   width: 5em !important; flex: 0 0 auto; margin-top: 0 !important; padding: 2px 6px !important;
 }
 .kta-note-popup-comble-metres { margin-top: 4px; color: var(--kta-texte-3); }
-.kta-note-popup-comble-atteinte:empty { display: none; }
-.kta-note-popup-comble-atteinte { margin-top: 2px; }
 .kta-note-popup-rampes { margin-top: 8px; }
 .kta-note-popup-rampe { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .kta-note-popup-rampe .kta-popup-btn { min-width: 32px; min-height: 32px; padding: 4px; }
