@@ -910,13 +910,13 @@
   // ≥ MASSE.courbe debout (œil abaissé à vide − MASSE.marge s'il le faut : 1 à 1,8 m), sous MASSE.courbe on rampe
   // (œil CHATIERE.oeil, transition lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête
   // (_masseBloque ; sortir vers plus de vide reste permis). Plafond inchangé. N'entre pas dans les zones qui bouchent
-  // (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. Sans effet sur l'itinéraire (son lot n'est pas livré).
+  // (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. L'itinéraire lit le même sol (KtaMasseSol.sol).
   // Sur le talus, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°). Formule et bords : masseSol.js.
   // Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
   // pente, pas des bords et sonde : masseSol.js (KtaMasseSol), la règle partagée avec la fiche de la carte.
   const MASSE = { pente: window.KtaMasseSol.PENTE, pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
     ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
-    lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05 };
+    lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05, chute: [0.3, 0.5], amorti: 0.06 };
 
   // Sonde de A à B (m) arrêtée par la règle du pas du rendu, au niveau de la scène (contexte d'un voisin compris) :
   // structures, parois des tubes (mixte) ou emprise (galerie), zones qui bouchent ; hors de l'image du plan = arrêtée.
@@ -1105,14 +1105,15 @@
     const e = _e, sc = e.sc;
     if (!e.masses || !e.masses.length) return false;
     // ⚠️ contrat (décision produit) : un FRONT (bord sans rampe d'une zone qui en a, bord commun de deux masses de
-    // hauteurs différentes) arrête le pas : un saut du sol de plus de MASSE.marche entre deux points du trajet à
-    // MASSE.pasFront l'un de l'autre, jusqu'à un corps devant, montée comme descente. Une pente, si raide soit-elle,
-    // reste praticable (le saut est mesuré sur 5 cm) ; ralentie au-delà de 15° (_ralentiMasse).
+    // hauteurs différentes) qu'il faudrait MONTER arrête le pas : le sol monte de plus de MASSE.marche entre deux points
+    // du trajet à MASSE.pasFront l'un de l'autre, jusqu'à un corps devant. Le DESCENDRE est permis, quelle que soit la
+    // hauteur : on chute (_pas, _solAffiche). Une pente, si raide soit-elle, reste praticable (le saut est mesuré sur
+    // 5 cm) ; ralentie au-delà de 15° (_ralentiMasse).
     const L = Math.hypot(x1 - x0, y1 - y0) / sc + RAYON_CORPS, n = Math.max(1, Math.ceil(L / MASSE.pasFront));
     let sp = _solMasse(x0 / sc, y0 / sc);
     for (let k = 1; k <= n; k++) {
       const d = L * k / n, s = _solMasse(x0 / sc + ux * d, y0 / sc + uy * d);
-      if (Math.abs(s - sp) > MASSE.marche) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
+      if (s - sp > MASSE.marche) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
       sp = s;
     }
     const v0 = _videMasse(x0 / sc, y0 / sc);
@@ -8397,7 +8398,7 @@
       e.ramper = Math.max(e.ramper, om.ramper);
     }
     // Geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume ; galerie inclinée : sur sa pente.
-    const sol = _solPlace(), dy = (e.dy || 0) - baisse + sol;
+    const sol = _solAffiche(_solPlace()), dy = (e.dy || 0) - baisse + sol;
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(c.x, 0, c.z);
@@ -8938,7 +8939,58 @@
   // 🩸 Avec le seul axe, on frôlait une face à quelques centimètres en biais ou en glissant : la caméra passait
   // alors dans le pilier (plan proche à 5 cm) et l'on voyait au travers ; et les types perso, dessinés en volume,
   // n'arrêtaient rien.
+  // ⚠️ contrat (décision produit) : un pas qui fait descendre le sol de plus de MASSE.marche (front d'une masse au sol)
+  // déclenche une CHUTE : la caméra tombe du sol de départ au nouveau sol en MASSE.chute (0,3 à 0,5 s : accélération
+  // simple, petit amorti à l'arrivée, jamais d'écran noir) ; pendant la chute, aucun pas ni rotation n'est pris.
   function _pas(m, angle) {
+    const e = _e;
+    if (_enChute()) return false;
+    const s0 = e.vue === "plongee" ? 0 : _solPlace();
+    const ok = _pasSurPlace(m, angle);
+    if (ok && e.vue !== "plongee") {
+      const s1 = _solPlace();
+      if (s0 - s1 > MASSE.marche) {
+        const h = s0 - s1, d = Math.max(MASSE.chute[0], Math.min(MASSE.chute[1], Math.sqrt(2 * h / 9.81)));
+        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, g: 2 * h / (d * d) };
+        e.chutes = (e.chutes || 0) + 1;
+        e.derniereChute = { h: +h.toFixed(3), d: +d.toFixed(3) };
+        e.sale = true;
+      }
+    }
+    return ok;
+  }
+
+  // Chute en cours ? (finie : effacée, l'amorti commence).
+  function _enChute() {
+    const e = _e, c = e.chute;
+    if (!c) return false;
+    if (performance.now() - c.t0 >= c.d * 1000) {
+      e.chute = null;
+      e.atterri = performance.now();
+      e.sale = true;
+      return false;
+    }
+    return true;
+  }
+
+  // Sol vu par la caméra (m) : le sol de la place, sauf pendant une chute (de `de` vers `vers`, accélération g) et
+  // l'amorti qui la suit (creux de MASSE.amorti m sur 0,2 s).
+  function _solAffiche(sol) {
+    const e = _e, t = performance.now();
+    if (_enChute()) {
+      const c = e.chute, dt = (t - c.t0) / 1000;
+      e.sale = true;
+      return Math.max(c.vers, c.de - 0.5 * c.g * dt * dt);
+    }
+    if (e.atterri) {
+      const a = (t - e.atterri) / 1000;
+      if (a < 0.2) { e.sale = true; return sol - MASSE.amorti * Math.sin(Math.PI * a / 0.2); }
+      e.atterri = 0;
+    }
+    return sol;
+  }
+
+  function _pasSurPlace(m, angle) {
     const e = _e, a = angle * Math.PI / 180;
     // Masse au sol : la marche ralentit sur un talus de plus de 15° (_ralentiMasse) ; jamais en vue plongeante.
     e.ralenti = e.vue === "plongee" ? 1 : _ralentiMasse(Math.sin(a), -Math.cos(a));
@@ -11864,7 +11916,7 @@
     e.rapide = !!rapide && !!(av || lat);
     if (av || lat || rot) _passerEnLibre();
     if (av || lat) _rattacher();
-    if (rot) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
+    if (rot && !_enChute()) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
     if (av) _pas(vit * dt * av, e.cap);
     if (lat) _pas(vit * dt, e.cap + 90 * lat);
     // Joystick : un seul pas dans la direction du bouton, à sa vitesse ; course = pleine vitesse × FACTEUR_RAPIDE.
@@ -14463,7 +14515,7 @@
 
   function avancer(m) { if (!_e) return false; _passerEnLibre(); _rattacher(); return _pas(m, _e.cap); }
 
-  function tourner(deg) { if (!_e) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
+  function tourner(deg) { if (!_e || _enChute()) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
 
   // `o.profilIti` : ajoute le profil de l'itinéraire (_profilIti), coûteux : jamais lu image par image.
   function etat(o) {
@@ -14630,6 +14682,7 @@
         fermes: (e.masses || []).map(function (m) { return m.fermes; }),
         fonds: (e.masses || []).map(function (m) { return +m.H.toFixed(3); }),
         rampes: (e.masses || []).map(function (m) { return (m.rampes || []).map(function (r) { return r.bord; }); }),
+        chute: !!e.chute, chutes: e.chutes || 0, derniereChute: e.derniereChute || null,
         fronts: e.frontsMasse || 0,
         bornes: (e.masses || []).map(function (m) { return !!m.borne; }), pieds: e.piedsMasse || 0 },
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {

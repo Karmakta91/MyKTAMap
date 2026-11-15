@@ -1428,9 +1428,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   **Rampes** (`zone.rampes` = bords bas ; `KtaMasseSol.rampes`) : la zone n'a plus de talus automatique ; chaque rampe
   monte linéairement de son bord bas (0) au point du contour le plus loin dans l'axe perpendiculaire (|H|), le sol est
   le **minimum** des profils, plafonné au cran (on monte par n'importe laquelle, les profils se rejoignent sans marche ;
-  négatif : même chose en descente). Les autres bords sont des **fronts** : `_masseBloque` arrête le pas sur un saut du
-  sol de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à `MASSE.pasFront` (5 cm), jusqu'à un corps devant,
-  montée comme descente (même règle au bord commun de deux masses de hauteurs différentes) ; une rampe, si raide
+  négatif : même chose en descente). Les autres bords sont des **fronts** : `_masseBloque` arrête le pas quand le sol
+  MONTE de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à `MASSE.pasFront` (5 cm), jusqu'à un corps
+  devant ; le DESCENDRE est permis, quelle que soit la hauteur : on **chute** (`_pas` lance `e.chute`, `_solAffiche`
+  fait tomber la caméra du sol de départ au nouveau sol en `MASSE.chute` = 0,3 à 0,5 s, accélération simple, amorti
+  de `MASSE.amorti` à l'arrivée ; aucun pas ni rotation pendant la chute, `_enChute`) ; on ressort par une rampe ou un
+  talus. Même règle au bord commun de deux masses de hauteurs différentes ; une rampe, si raide
   soit-elle, reste praticable, ralentie au-delà de 15°. La masse est refaite quand ses rampes changent (`m.sigRampes`).
   Carte : chevrons de pente pointés vers le haut, à la couleur du contour sur un liseré clair (`zones.js >
   ktaChevronsRampes`, `masseSol.js > chevrons`, zones de session et calques) ; légende : une ligne « Pente » quand une

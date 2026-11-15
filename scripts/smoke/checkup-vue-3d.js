@@ -3309,11 +3309,31 @@ async function sectionMasseSol(page) {
     await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
     await pause(300);
     r.rampes.seule = { haut: await ici(9.8, 0), estBute: await marche(12, 0, 270, 40) };
+    // Chute : du plateau (x 9,6) vers l'est, le front descend de ~1,15 m : le pas passe, la caméra tombe.
+    await ici(9.6, 0, 90);
+    const ch0 = K.etat().masses.chutes, cam0 = K.etat().cameraY;
+    let passe = false;
+    for (let i = 0; i < 10 && !passe; i++) { passe = K.avancer(0.1) && K.etat().masses.chute; }
+    const pendant = { chute: K.etat().masses.chute, refus: !K.avancer(0.1), camHaut: K.etat().cameraY };
+    const t0 = performance.now();
+    while (K.etat().masses.chute && performance.now() - t0 < 2000) await pause(16);
+    const duree = performance.now() - t0;
+    await pause(300);
+    const apres = lire();
+    r.rampes.chuteHaut = { chutes: K.etat().masses.chutes - ch0, derniere: K.etat().masses.derniereChute, cam0: cam0,
+      pendant: pendant, duree: Math.round(duree), apres: apres };
     await K.fermer();
     window.setZones([Object.assign({}, zr(), { comble: -0.5 })]);
     await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
     await pause(300);
-    r.rampes.creux = { descente: await marche(-2, 0, 90, 90), cote: await marche(5, -8, 180, 40) };
+    r.rampes.creux = { descente: await marche(-2, 0, 90, 90) };
+    const cc0 = K.etat().masses.chutes;
+    r.rampes.creux.cote = await marche(5, -8, 180, 60);
+    await pause(700);
+    r.rampes.creux.chutes = K.etat().masses.chutes - cc0;
+    r.rampes.creux.fond = lire();
+    // Ressortir : vers l'ouest, par la rampe (le sol remonte en douceur jusqu'au bord ouest).
+    r.rampes.creux.sortie = await marche(5, r.rampes.creux.fond.z, 270, 90);
     await K.fermer();
     r.rampes.sansRampe = KC.retirerRampe(zr(), 3) && !("rampes" in zr());
     window.setZones([Object.assign({}, zr(), { comble: 0.5 })]);
@@ -3468,10 +3488,18 @@ async function sectionMasseSol(page) {
       q.seule.estBute[q.seule.estBute.length - 1].x > 10,
       "rampes : la rampe est retirée, l'ouest seule monte jusqu'au cran à l'est, le bord est devient un front", q.seule);
     const d = q.creux.descente;
-    verifier(d.every(function (l) { return l.ok; }) && saut(d) < 0.12 && d[d.length - 1].sol < -0.4 &&
-      q.creux.cote.some(function (l) { return !l.ok; }),
-      "rampes, sol abaissé : on descend par la rampe sans arrêt, un bord sans rampe arrête (on ne saute pas dans le creux)",
-      { fin: d[d.length - 1], cote: q.creux.cote[q.creux.cote.length - 1] });
+    verifier(d.every(function (l) { return l.ok; }) && saut(d) < 0.12 && d[d.length - 1].sol < -0.4,
+      "rampes, sol abaissé : on descend par la rampe sans arrêt", { fin: d[d.length - 1] });
+    const so = q.creux.sortie, sf = so[so.length - 1];
+    verifier(q.creux.chutes >= 1 && q.creux.fond.sol < -0.4 && q.creux.fond.z > -6 && sf.x < 0 && sf.sol === 0,
+      "rampes, sol abaissé : un bord sans rampe se franchit en chutant au fond, et l'on ressort par la rampe",
+      { chutes: q.creux.chutes, fond: q.creux.fond, sortie: sf });
+    const ch = q.chuteHaut;
+    verifier(ch.chutes === 1 && ch.pendant.chute && ch.pendant.refus && ch.derniere && ch.derniere.h > 1 &&
+      ch.derniere.d >= 0.3 && ch.derniere.d <= 0.5 && ch.duree <= 700 && ch.apres.sol === 0 && ch.apres.x >= 9.99 &&
+      pr(ch.apres.cam, ch.apres.oeil, 0.03),
+      "rampes : descendre un front = chute du plateau au sol (" + (ch.derniere ? ch.derniere.h + " m en " +
+      ch.derniere.d + " s" : "?") + "), aucun pas pendant la chute, caméra au sol à l'arrivée", ch);
     verifier(q.sansRampe && pr(q.talus.sol, T30, 0.02),
       "rampes : plus aucune rampe → talus automatique à 30° (1 m du bord → " + T30.toFixed(3) + " m)", q.talus);
   }
