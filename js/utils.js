@@ -1330,9 +1330,11 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
     // contenu re-rendu : la note a pu changer (undo/redo)
     // 🩸 Contenu remplacé seulement s'il a changé : setContent refait toute la mise en page de la fiche
     // (Leaflet > _updateLayout, une mise en page forcée du document) juste après celle de l'ouverture, et double le
-    // temps du toucher sur un plan chargé.
-    const fresh = _renderPopupHtml();
-    if (evt && evt.popup && evt.popup.getContent() !== fresh) evt.popup.setContent(fresh);
+    // temps du toucher sur un plan chargé. ⚠️ contrat : l'hôte de la fiche de la vue 3D (vue3d.js > _ouvrirFicheObjet)
+    // passe un faux popup SANS getContent : on y écrit toujours.
+    const fresh = _renderPopupHtml(), pop = evt && evt.popup;
+    const actuel = pop && typeof pop.getContent === "function" ? pop.getContent() : null;
+    if (pop && typeof pop.setContent === "function" && actuel !== fresh) pop.setContent(fresh);
     if (mode === "readonly") return;
     setTimeout(function() {
       // 🩸 Cherché DANS la popup ouverte, jamais dans tout le document : la popup qu'on vient de quitter reste dans le
