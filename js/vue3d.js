@@ -399,8 +399,10 @@
   // `deborde` m dans les parois (aucun jour au bord). Longueur : 1,8 m par défaut, une chatière courte (un corps
   // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en points (poiPrecis.js :
   // du début à la fin) : une roche par segment qui suit les coudes (_segmentsChatiere) ; deux points : leur distance,
-  // `court` m au moins, et leur axe.
-  const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
+  // `court` m au moins, et leur axe. Sur une masse au sol, le trou suit le sol local par coupes de `pas` m au plus
+  // (_coupesChatiere) ; la roche va toujours jusqu'au plafond du niveau.
+  const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3,
+    pas: 0.25 };
   // Profil du trou (t en part de `large`, y en part de `trou`, vers le haut) : sol droit, flancs bas, voûte surbaissée
   // (plus large que haut : on y passe en rampant, pas debout).
   const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.7], [0.4, 0.9], [0.18, 1], [-0.18, 1], [-0.4, 0.9],
@@ -6507,10 +6509,10 @@
       cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }),
       marches: v.relMarches || null };
     if (v.acces) Object.assign(v.stats, _statsAcces(v, lots, g));
-    // Masse au sol : un volume sans bouche ni trémie (formes des POI : plaque, ossuaire, outil, fontis, chatière,
-    // véhicule, porte…) est posé sur le sol local à son centre ; un passage troué (puits, galerie inclinée) reste au
-    // sol du niveau (ses bouches marquent le gabarit à y = 0).
-    if (!vv && v.genre !== "pente" && !n(lots.sol) && !n(lots.plafond) && !n(lots.plafondConduit) &&
+    // Masse au sol : un volume sans bouche ni trémie (formes des POI : plaque, ossuaire, outil, fontis, véhicule,
+    // porte…) est posé sur le sol local à son centre ; un passage troué (puits, galerie inclinée) reste au sol du
+    // niveau (ses bouches marquent le gabarit à y = 0). La chatière suit le sol point par point (_coupesChatiere).
+    if (!vv && v.genre !== "pente" && !v.chatiere && !n(lots.sol) && !n(lots.plafond) && !n(lots.plafondConduit) &&
         !Object.keys(lots.trous).length && Number.isFinite(v.cx) && Number.isFinite(v.cz)) {
       g.position.y = _solMasse(v.cx, v.cz);
       v.stats.solLocal = +g.position.y.toFixed(3);
@@ -7160,6 +7162,11 @@
   // plusieurs points (v.seg, _joindreChatiere) : face trouée au début et à la fin du tracé seulement, bouts coupés en
   // onglet aux coudes (v.k0, v.k1) : le boyau et le dessus se raccordent au segment voisin. ⚠️ contrat : aucune
   // emprise ni obstacle (galerieEmprise.js > ACCES) ; seule la caméra s'abaisse (_baisseChatiere).
+  // ⚠️ contrat (décision produit) : sur une masse au sol, le haut de la roche reste au plafond du niveau et le trou
+  // suit le sol local, coupe par coupe (_coupesChatiere) : plancher = le sol lui-même (jamais dessiné ici), flancs
+  // descendus au sol le plus bas de la coupe, voûte à CHATIERE.trou au-dessus du plus haut (au plus 5 cm sous le
+  // plafond). Front vertical traversé : la marche reste celle de la masse, la voûte passe au-dessus du sol haut dès la
+  // coupe d'avant (jamais moins de CHATIERE.trou de vide). Hors masse : une seule coupe à 0, la forme d'avant.
   function _chatiere(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), a = v.a, B = v.b + CHATIERE.deborde, T = CHATIERE.trou;
     const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * (v.bTrou || v.b) - CHATIERE.jeu));
@@ -7170,38 +7177,101 @@
     if (!v.seg || v.seg.fin) faces.push([a, 1]);
     const tx = e.textures === true, lot = tx ? _lot(lots, "roche") : lots.opaque, m = tx ? ROCHE.m : 0;
     const col = tx ? BLANC : _couleur("structures", "pilier-1");
-    const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * Wt, Math.min(q[1] * T, h - 0.05)]; });
-    const bord = [[-B, 0], [B, 0], [B, h], [-B, h]];
+    const C = _coupesChatiere(Q, a, Wt, B, s0, s1);
+    // Profil du trou à la coupe j : plancher et flancs bas au sol le plus bas, voûte au-dessus du plus haut.
+    const trouDe = function (j) {
+      return PROFIL_CHATIERE.map(function (q) {
+        return [q[0] * Wt, q[1] === 0 ? C.bas[j] : Math.min(C.haut[j] + q[1] * T, h - 0.05)];
+      });
+    };
+    const trou = trouDe(0), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), debut = lot.p.length;
     const V2 = function (q) { return new THREE.Vector2(q[0], q[1]); };
-    let tris = [];
-    try { tris = THREE.ShapeUtils.triangulateShape(bord.map(V2), [trou.map(V2)]); } catch (err) { tris = []; }
-    const tous = bord.concat(trou), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
     const P = function (s, q) { const w = Q(s, q[0]); return [w[0], q[1], w[1]]; };
     const uvF = function (q) { return [q[0] / m, q[1] / m]; };
+    const bords = [];
     faces.forEach(function (f) {
+      const j = f[1] < 0 ? 0 : C.n, tj = trouDe(j), yb = C.plat ? 0 : C.bord[j];
+      const bord = [[-B, yb], [B, yb], [B, h], [-B, h]], tous = bord.concat(tj);
+      let tris = [];
+      try { tris = THREE.ShapeUtils.triangulateShape(bord.map(V2), [tj.map(V2)]); } catch (err) { tris = []; }
       const n = [ux * f[1], 0, uz * f[1]];
+      bords.push(+yb.toFixed(3));
       tris.forEach(function (tr) {
-        const A = tous[tr[0]], Bq = tous[tr[1]], C = tous[tr[2]];
-        lot.tri(P(f[0], A), P(f[0], Bq), P(f[0], C), n, col, m ? uvF(A).concat(uvF(Bq), uvF(C)) : undefined);
+        const A = tous[tr[0]], Bq = tous[tr[1]], Cq = tous[tr[2]];
+        lot.tri(P(f[0], A), P(f[0], Bq), P(f[0], Cq), n, col, m ? uvF(A).concat(uvF(Bq), uvF(Cq)) : undefined);
       });
     });
-    // Tour du trou (sauf le sol) : normales vers l'intérieur du trou.
+    // Tour du trou (sauf le sol), coupe par coupe : normales vers l'intérieur du trou ; u le long du profil de base.
+    const S = function (j, t) { return s0(t) + C.f[j] * (s1(t) - s0(t)); };
     let u = 0;
     for (let i = 1; i < trou.length; i++) {
-      const p = trou[i], q = trou[(i + 1) % trou.length], dt = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dt, dy);
-      if (l < 1e-6) continue;
-      let nt = dy / l, ny = -dt / l;
-      if (nt * -(p[0] + q[0]) / 2 + ny * (T / 2 - (p[1] + q[1]) / 2) < 0) { nt = -nt; ny = -ny; }
-      const ap = s0(p[0]), bp = s1(p[0]), aq = s0(q[0]), bq = s1(q[0]);
-      lot.quad(P(ap, p), P(bp, p), P(bq, q), P(aq, q), [-uz * nt, ny, ux * nt], col,
-        m ? [ap / m, u / m, bp / m, u / m, bq / m, (u + l) / m, aq / m, (u + l) / m] : undefined);
-      u += l;
+      const i2 = (i + 1) % trou.length, p0 = PROFIL_CHATIERE[i], q0 = PROFIL_CHATIERE[i2];
+      const lu = Math.hypot((q0[0] - p0[0]) * Wt, (q0[1] - p0[1]) * T);
+      if (lu < 1e-6) continue;
+      for (let j = 0; j < C.n; j++) {
+        const A0 = trouDe(j), A1 = trouDe(j + 1), p = A0[i], q = A0[i2], p1 = A1[i], q1 = A1[i2];
+        const dt = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dt, dy) || 1e-6;
+        let nt = dy / l, ny = -dt / l;
+        if (nt * -(p[0] + q[0]) / 2 + ny * ((C.bas[j] + C.haut[j] + T) / 2 - (p[1] + q[1]) / 2) < 0) {
+          nt = -nt; ny = -ny;
+        }
+        const ap = S(j, p[0]), bp = S(j + 1, p[0]), aq = S(j, q[0]), bq = S(j + 1, q[0]);
+        lot.quad(P(ap, p), P(bp, p1), P(bq, q1), P(aq, q), [-uz * nt, ny, ux * nt], col,
+          m ? [ap / m, u / m, bp / m, u / m, bq / m, (u + lu) / m, aq / m, (u + lu) / m] : undefined);
+      }
+      u += lu;
     }
     _dessus(lot, _sensPositif([Q(s0(-B), -B), Q(s1(-B), -B), Q(s1(B), B), Q(s0(B), B)]), h, col, m || undefined);
+    let toit = -Infinity;
+    for (let i = debut + 1; i < lot.p.length; i += 3) toit = Math.max(toit, lot.p[i]);
+    // Bouts (centre de la première et de la dernière coupe, m) : place, sol local, plancher et voûte (checkup).
+    const bout = function (j) {
+      const w = Q(S(j, 0), 0), tj = trouDe(j);
+      return { x: +w[0].toFixed(3), z: +w[1].toFixed(3), sol: +_solMasse(w[0], w[1]).toFixed(3), bas: +C.bas[j].toFixed(3),
+        voute: +Math.max.apply(null, tj.map(function (q) { return q[1]; })).toFixed(3) };
+    };
     v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3), largeTrou: +Wt.toFixed(3),
-      hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3),
+      hautTrou: +(Math.max.apply(null, trou.map(function (q) { return q[1]; })) - C.bas[0]).toFixed(3),
       dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2), faces: faces.length,
-      segment: v.seg ? [v.seg.i, v.seg.n] : null, onglet: [+k0.toFixed(4), +k1.toFixed(4)] };
+      segment: v.seg ? [v.seg.i, v.seg.n] : null, onglet: [+k0.toFixed(4), +k1.toFixed(4)],
+      coupes: C.n + 1, plat: C.plat, toit: +toit.toFixed(3), bordsFaces: bords, bouts: [bout(0), bout(C.n)],
+      videMin: +Math.min.apply(null, C.haut.map(function (y, j) { return trouDe(j)[4][1] - y; })).toFixed(3) };
+  }
+
+  // Coupes d'une chatière le long de son axe, sol local des masses au sol (_solMasse : la règle du pas) →
+  // { n (intervalles), f (fractions de s0 → s1, n + 1), bas, haut, bord (m, par coupe), plat }. Coupe j : les points
+  // s0(t) + f·(s1(t) − s0(t)) sur la largeur du trou (aux bouts, la ligne d'onglet : les mêmes points du monde que la
+  // coupe du segment voisin, raccord sans marche) ; autour de chacun, un disque qui couvre la moitié de l'écart aux
+  // coupes voisines (jamais de sol plus haut que la voûte entre deux coupes) : bas = le sol le plus bas, haut = le plus
+  // haut ; bord = sous le sol le plus bas de toute la largeur de la roche (bas des faces, caché sous le sol). Aucune
+  // masse sous la roche (plat) : une coupe, tout à 0 (la chatière d'avant, à l'identique).
+  function _coupesChatiere(Q, a, Wt, B, s0, s1) {
+    const plat = { n: 1, f: [0, 1], bas: [0, 0], haut: [0, 0], bord: [0, 0], plat: true };
+    if (!_e.masses || !_e.masses.length) return plat;
+    const n = Math.max(1, Math.ceil(2 * a / CHATIERE.pas)), r = Math.max(a / n, Wt / 8) + 0.02;
+    const lat = [-Wt / 2, -Wt / 4, 0, Wt / 4, Wt / 2], large = [-B, -B / 2, B / 2, B];
+    const out = { n: n, f: [], bas: [], haut: [], bord: [], plat: false };
+    let nul = true;
+    for (let j = 0; j <= n; j++) {
+      const fj = j / n;
+      let lo = Infinity, hi = -Infinity;
+      lat.forEach(function (t) {
+        const c = Q(s0(t) + fj * (s1(t) - s0(t)), t);
+        for (let k = -1; k < 6; k++) {
+          const an = k * Math.PI / 3, d = k < 0 ? 0 : r;
+          const y = _solMasse(c[0] + d * Math.cos(an), c[1] + d * Math.sin(an));
+          lo = Math.min(lo, y); hi = Math.max(hi, y);
+        }
+      });
+      let bd = Math.min(0, lo);
+      large.forEach(function (t) {
+        const c = Q(s0(t) + fj * (s1(t) - s0(t)), t);
+        bd = Math.min(bd, _solMasse(c[0], c[1]));
+      });
+      if (lo !== 0 || hi !== 0 || bd !== 0) nul = false;
+      out.f.push(fj); out.bas.push(lo); out.haut.push(hi); out.bord.push(bd - 0.05);
+    }
+    return nul ? plat : out;
   }
 
   // Repère d'une forme sur la paroi (v.cote : côté de la paroi, galerieEmprise.js > _surParoi) : Q(s, recul) = point

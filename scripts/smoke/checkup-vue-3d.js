@@ -3593,6 +3593,211 @@ async function sectionMasseSol(page) {
 // (pilier en structures) ; rampe (bord ouest) vue du bas, front latéral, creux avec rampe ; ruban d'un tracé au front
 // est de la ¾ (contremarche), sur une rampe, dans un creux (lignes au sol allumées) ; rampe et sommet en Textures HD
 // (dessus du remblai en sol damé plus foncé, fronts en terre et cailloux).
+// ── Chatière sur une masse au sol (KTA_V3D_SEUL=chatieremasse) : haut de la roche au plafond du niveau, trou au sol
+// local à chaque bout (+½, −½, rampe), chatière en 3 points à cheval sur un front raccordée sans marche, œil à
+// 0,35 m du sol local dedans ; hors masse, la chatière d'avant (une coupe, plancher à 0). Sol de référence :
+// KtaMasseSol.masseCarte + KtaMasseSol.sol (la règle du plan), pas celle de la vue 3D. ──
+const CHATIERES_MASSE = function (P, rect) {
+  return {
+    zones: [
+      { uid: "zn_cm_p", type: "masse-sol", level: 0, comble: 0.5, points: rect(-50, -6, -40, 6) },
+      { uid: "zn_cm_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_cm_r", type: "masse-sol", level: 0, comble: 0.5, points: rect(-10, -6, 2, 6),
+        rampes: [{ bord: 3, fin: P(-10 + 1.2 / Math.tan(Math.PI / 6), 0) }] },
+      { uid: "zn_cm_f", type: "masse-sol", level: 0, comble: 0.25, points: rect(15, -6, 30, 6) }
+    ],
+    points: [
+      { id: "pt_cm_p", nom: "Chatière fictive +", uid: "pt_cm_p", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(-45, 0.5).x, y: P(-45, 0.5).y },
+      { id: "pt_cm_n", nom: "Chatière fictive −", uid: "pt_cm_n", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(-25, 0.5).x, y: P(-25, 0.5).y },
+      { id: "pt_cm_r", nom: "Chatière fictive rampe", uid: "pt_cm_r", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(-9, 0.5).x, y: P(-9, 0.5).y },
+      { id: "pt_cm_f", nom: "Chatière fictive front", uid: "pt_cm_f", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(14.6, 0.5).x, y: P(14.6, 0.5).y,
+        precis: { pts: [P(12.6, -0.3), P(14.6, 0.3), P(16.6, -0.3)] } },
+      { id: "pt_cm_0", nom: "Chatière fictive hors masse", uid: "pt_cm_0", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(45, 0.5).x, y: P(45, 0.5).y }
+    ]
+  };
+};
+
+async function sectionChatiereMasse(page) {
+  const R = await page.evaluate(async function (FIX) {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-chatiere-masse";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    const fx = (new Function("return " + FIX))()(P, rect);
+    window.setStructures([]);
+    window.setRoads([{ uid: "rd_cm", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones(fx.zones);
+    window.setEditorPoints(fx.points);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    // Sol de référence du plan (règle de masseSol.js) : le plus haut des remblais, sinon le plus bas des creux.
+    const M = fx.zones.map(function (z) { return window.KtaMasseSol.masseCarte(z).m; });
+    const dans = function (ring, x, z) {
+      let r = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const p = ring[i], q = ring[j];
+        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
+      }
+      return r;
+    };
+    const solRef = function (x, z) {
+      let hi = 0, lo = 0;
+      M.forEach(function (m) {
+        if (!m || !dans(m.ring, x, z)) return;
+        const y = window.KtaMasseSol.sol(m, x, z);
+        hi = Math.max(hi, y); lo = Math.min(lo, y);
+      });
+      return hi > 0 ? hi : lo;
+    };
+    const out = {};
+    for (const rendu of ["mixte", "galerie", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(0, 0), { cap: 90, niveau: 0 }), distanceVue: 200, commandes: "pave",
+        tuiles: false });
+      await pause(200);
+      await images(3);
+      const e = K.etat(), h = e.hauteur;
+      const vols = e.volumes.filter(function (v) { return v.tag === "chatiere"; }).map(function (v) {
+        return { x: +(v.x / sc - ox).toFixed(2), toit: v.toit, plat: v.plat, coupes: v.coupes, segment: v.segment,
+          hautTrou: v.hautTrou, bords: v.bordsFaces, faces: v.faces, videMin: v.videMin, solLocal: v.solLocal,
+          bouts: (v.bouts || []).map(function (b) {
+            return { x: +(b.x - ox).toFixed(3), z: +(b.z - oz).toFixed(3), sol: b.sol, ref: +solRef(b.x, b.z).toFixed(3),
+              bas: b.bas, voute: b.voute };
+          }) };
+      }).sort(function (a, b) { return a.x - b.x; });
+      // Œil dans la chatière : au milieu de chaque roche (masse +½, −½, rampe) et dans la 3 points des deux côtés du
+      // front ; caméra relue après deux images.
+      const oeil = {};
+      for (const q of [["p", -45, 0], ["n", -25, 0], ["r", -9, 0], ["fBas", 14, 0.05], ["fHaut", 16, 0.05], ["zero", 45, 0]]) {
+        const p = P(q[1], q[2]);
+        K.placer(p.x, p.y, 90);
+        await pause(30);
+        await images(2);
+        const et = K.etat();
+        oeil[q[0]] = { cam: et.cameraY, ramper: et.ramper, sol: +solRef(q[1] + ox, q[2] + oz).toFixed(3) };
+      }
+      out[rendu] = { h: h, vols: vols, oeil: oeil, erreurs: (window.__v3dErreurs || []).length };
+      await K.fermer();
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  }, CHATIERES_MASSE.toString());
+
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  console.log("§ chatière sur masse au sol");
+  Object.keys(R).forEach(function (rendu) {
+    const r = R[rendu], h = r.h, T = 0.6, k = "chatière sur masse, " + rendu + " : ";
+    const pres = function (x) { return r.vols.filter(function (v) { return Math.abs(v.x - x) < 2.5; }); };
+    const vp = pres(-45)[0], vn = pres(-25)[0], vr = pres(-9)[0], v0 = pres(45)[0];
+    const vf = pres(14.6).sort(function (a, b) { return a.segment[0] - b.segment[0]; });
+    const tous = [vp, vn, vr, v0].concat(vf);
+    verifier(tous.every(Boolean) && vf.length === 2,
+      k + "les 5 chatières construites (front : 2 segments)", r.vols.map(function (v) { return [v.x, v.segment]; }));
+    if (!tous.every(Boolean) || vf.length !== 2) return;
+    verifier(tous.every(function (v) { return pr(v.toit, h) && v.solLocal === 0; }),
+      k + "haut de la roche au plafond du niveau (" + h + " m) partout, jamais posée en bloc sur le sol de son centre",
+      tous.map(function (v) { return [v.x, v.toit, v.solLocal]; }));
+    // Trou au sol local à chaque bout : plancher au sol (plateau) ou juste dessous (rampe : le disque de la coupe),
+    // voûte à 0,6 m au moins au-dessus.
+    const auSol = function (v, tolBas) {
+      return v.bouts.length === 2 && v.bouts.every(function (b) {
+        return pr(b.sol, b.ref, 0.002) && b.bas <= b.ref + 0.001 && b.ref - b.bas <= tolBas &&
+          b.voute >= Math.min(b.ref + T, h - 0.05) - 0.001;
+      });
+    };
+    verifier(auSol(vp, 0.002) && vp.bouts.every(function (b) { return pr(b.ref, 1.2); }),
+      k + "masse +½ : trou au ras du dessus (1,2 m) aux deux bouts, voûte à 0,6 m au-dessus", vp.bouts);
+    verifier(auSol(vn, 0.002) && vn.bouts.every(function (b) { return pr(b.ref, -1.2); }) &&
+      vn.bords.every(function (y) { return y <= -1.2; }),
+      k + "masse −½ : trou au fond (−1,2 m), faces de roche descendues sous le fond (aucun jour)",
+      { bouts: vn.bouts, bords: vn.bords });
+    verifier(auSol(vr, 0.2) && vr.coupes >= 8 && Math.abs(vr.bouts[1].ref - vr.bouts[0].ref) > 0.5 &&
+      vr.videMin >= T - 0.001,
+      k + "rampe : trou qui monte avec le sol (" + vr.bouts[0].ref + " → " + vr.bouts[1].ref + " m, " + vr.coupes +
+      " coupes), jamais moins de 0,6 m sous la voûte", vr);
+    verifier(auSol(vf[0], 0.002) && auSol(vf[1], 0.002) && vf[0].videMin >= T - 0.001 && vf[1].videMin >= T - 0.001,
+      k + "3 points à cheval sur un front : trou au sol local à chaque bout (" + vf[0].bouts[0].ref + " → " +
+      vf[1].bouts[1].ref + " m), voûte au-dessus du sol haut", vf);
+    const a = vf[0].bouts[1], b = vf[1].bouts[0];
+    verifier(pr(a.x, b.x, 0.002) && pr(a.z, b.z, 0.002) && pr(a.bas, b.bas, 0.001) && pr(a.voute, b.voute, 0.001),
+      k + "3 points : segments raccordés au coude sans marche (plancher " + a.bas + " / " + b.bas + ", voûte " +
+      a.voute + " / " + b.voute + ")", { a: a, b: b });
+    verifier(v0.plat === true && v0.coupes === 2 && pr(v0.hautTrou, T) && v0.bouts.every(function (q) {
+      return q.bas === 0 && pr(q.voute, T);
+    }) && v0.bords.every(function (y) { return y === 0; }),
+      k + "hors masse : chatière d'avant (une coupe, plancher à 0, trou de 0,6 m, faces au sol)", v0);
+    const o = r.oeil, rel = function (q) { return +(q.cam - q.sol).toFixed(3); };
+    verifier(["p", "n", "r", "fBas", "fHaut", "zero"].every(function (n) { return o[n] && o[n].ramper > 0.999 &&
+      pr(rel(o[n]), 0.35, 0.03); }),
+      k + "œil à 0,35 m du sol local dans la roche (+½ " + rel(o.p) + ", −½ " + rel(o.n) + ", rampe " + rel(o.r) +
+      ", front bas " + rel(o.fBas) + " / haut " + rel(o.fHaut) + ", hors masse " + rel(o.zero) + ")", o);
+  });
+}
+
+async function capturesChatiereMasse(page) {
+  const vues = [["chatiere-masse-plus", -49, 0, 90], ["chatiere-masse-plus-dedans", -45.3, 0, 90],
+    ["chatiere-masse-creux", -29.5, 0, 90], ["chatiere-masse-creux-dedans", -25.3, 0, 90],
+    ["chatiere-masse-rampe", -14, 0, 90], ["chatiere-masse-front", 9, 0.1, 90], ["chatiere-masse-front-dos", 19, 0.1, 270]];
+  for (const rendu of ["mixte", "galerie"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-chatiere-masse";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
+        window._currentLoadedPlanId = PID;
+        const fx = (new Function("return " + c.fix))()(P, rect);
+        window.setStructures([]);
+        window.setRoads([{ uid: "rd_cm", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        window.setZones(fx.zones);
+        window.setEditorPoints(fx.points);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(true);
+        window.ktaSetActiveLevel(0);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3], niveau: 0 }, commandes: "pave", tuiles: false });
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu, fix: CHATIERES_MASSE.toString() });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.effacerReglagesNiveaux("v3d-checkup-chatiere-masse");
+    window.setZones([]);
+    window.setEditorPoints([]);
+  });
+}
+
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -16356,6 +16561,12 @@ async function sectionCaseBoutonsZoom(nav) {
       await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
       await sectionMasseSol(page);
       if (CAPTURES) await capturesMasseSol(page);
+    } else if (SEUL === "chatieremasse") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionChatiereMasse(page);
+      if (CAPTURES) await capturesChatiereMasse(page);
     } else if (SEUL === "pentelargeur") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -19976,6 +20187,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPente(page);
       await sectionPenteLargeur(page);
       await sectionMasseSol(page);
+      await sectionChatiereMasse(page);
       await sectionComble(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);

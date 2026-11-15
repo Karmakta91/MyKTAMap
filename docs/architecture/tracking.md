@@ -1474,8 +1474,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   de la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
   **Posés sur le sol local** (`_solMasse`) : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m
   inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
-  du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, chatière, véhicule, porte… :
-  tout le volume, `_construireVolume`) ; un passage troué (puits, galerie inclinée) reste au sol du niveau. Mini-carte :
+  du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, véhicule, porte… : tout le
+  volume, `_construireVolume`) ; la chatière suit le sol coupe par coupe (§ Chatière, `_coupesChatiere`) ; un passage troué (puits, galerie inclinée) reste au sol du niveau. Mini-carte :
   sable selon le cran, obstacle seulement sous 0,5 m de vide (§ Mini-carte). **Rubans des tracés ordinaires** (et liseré du mode galerie, surlignage 📏, ronds
   d'intersection) : sur le sol local (`_rubanSol`, morceaux de `MASSE.pas` au plus sur une masse, pentes des rampes
   suivies) ; un front vertical = palier puis contremarche verticale au droit du front, décollée d'1 cm vers le côté bas
@@ -1831,7 +1831,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   à tous le trou de la galerie la plus étroite ; face trouée au début et à la fin du tracé seulement : le boyau suit les
   coudes. Deux points : longueur (`CHATIERE.court` = 0,4 m au moins) et axe des deux points, au centre de
   `placePassage` du milieu (ancienne forme `x2`, `y2` comprise). Un seul point : la règle de 1,8 m à ce point. Panneau
-  au segment qui porte le milieu du tracé. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  au segment qui porte le milieu du tracé. **Sur une masse au sol** (décision produit, `_coupesChatiere`) : le haut de
+  la roche reste au plafond du niveau, le trou suit le sol local par coupes de `CHATIERE.pas` = 0,25 m au plus (une
+  coupe = une ligne en travers, onglet compris aux bouts : les mêmes points du monde que le segment voisin, raccord sans
+  marche ; sol lu sur un disque qui couvre l'écart aux coupes voisines) : plancher = le sol lui-même, flancs descendus au
+  sol le plus bas de la coupe, voûte à 0,6 m au-dessus du plus haut (5 cm sous le plafond au plus) ; faces de roche
+  descendues sous le sol le plus bas de leur largeur (aucun jour, dans un creux compris). Front vertical traversé : la
+  marche reste celle de la masse, la voûte passe au-dessus du sol haut dès la coupe d'avant (jamais moins de 0,6 m de
+  vide). Hors masse : une seule coupe à 0, la forme d'avant à l'identique. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
   en suivi comme en libre, l'œil descend à 0,35 m dans la roche (tout du long, coudes compris) et sur 1 m de part et
   d'autre en fondu
   (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
