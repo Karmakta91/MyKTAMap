@@ -148,6 +148,9 @@
 
 ## Entrant
 
+- **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
+  15/11), déjà présent avant la masse au sol.
+  `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
 - **`checkup-exports-structures` rouge depuis le nouveau relevé fictif** — il attend 10 structures de calque et en voit
   217 depuis `a1340f74` (14/11) ; hérité, sans lien avec un lot.
   `qui: Claude · action: adapter le test au relevé enrichi sans l'affaiblir · depuis: 14/11/2026 · taille: XS`
