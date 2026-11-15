@@ -148,9 +148,6 @@
 
 ## Entrant
 
-- **Mur en ligne : l'appui long ouvre la fiche au lieu de ＋ / 🗑️** — `checkup-ajuster-sommets` : 9 KO sur le mur en
-  ligne (une fiche s'ouvre), préexistant sur `31c5d6f6` (15/11) ; sans doute un lot récent sur le mur en ligne.
-  `qui: Claude · action: trouver le commit, corriger, checkup vert · depuis: 15/11/2026 · taille: XS`
 - **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
   15/11), déjà présent avant la masse au sol.
   `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
