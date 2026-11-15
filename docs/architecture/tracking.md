@@ -1433,23 +1433,21 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   projection de `fin` (px du plan) sur l'axe perpendiculaire au bord, sinon le point du contour le plus loin — puis
   reste plate au cran ; plusieurs rampes : le **minimum** des profils, plafonné au cran (on monte par n'importe
   laquelle) ; négatif : même chose en descente. Formule partagée dans **`js/masseSol.js`** (`sol`, `atteinte`,
-  `masseCarte` ; aucune sonde de bord) avec la fiche de la carte et l'itinéraire (`pathfinder.js`). Fronts :
-  `_masseBloque` arrête le pas quand le sol MONTE de plus de `MASSE.marche` (0,2 m) entre deux points du trajet à
-  `MASSE.pasFront` (5 cm), jusqu'à un corps devant — sauf **sur un tracé** (décision produit : « il y a un tracé, ça
-  passe », comme le Comblé ; `_surTrace` : axe du modèle du rendu à moins de `RAYON_CORPS` du point du saut, quelle
-  que soit la hauteur, rampe ou non) : on est **hissé** sur le dessus, la chute à l'envers (`_pas` : `e.chute` avec
-  `monte`, lissée en `MASSE.chute`, sans amorti, `etat().masses.montees`) ; 🩸 pendant une chute ou une montée,
+  `masseCarte` ; aucune sonde de bord) avec la fiche de la carte et l'itinéraire (`pathfinder.js`). Fronts (décision
+  produit) : un bord sans rampe se **monte et se descend partout**, quelle que soit sa hauteur, sur un tracé ou non ;
+  la seule limite est la règle du vide (`_masseBloque` : moins de `MASSE.ramper` sous le plafond à l'arrivée, et moins
+  qu'au départ ; une masse 0,9 reste fermée). Le MONTER (plus de `MASSE.marche` en un pas) : on est **hissé** sur le
+  dessus, la chute à l'envers (`_pas` : `e.chute` avec `monte`, lissée en `MASSE.chute`, sans amorti,
+  `etat().masses.montees`) ; 🩸 pendant une chute ou une montée,
   l'abaissement de l'œil dû au vide de la place d'arrivée suit la même fraction que le sol affiché (`_placerCamera`,
   `e.chute.b0`) : appliqué d'un coup, l'œil plongeait avant la montée (ou se redressait avant la chute) ; checkup
-  `sectionMonteeCamera` (`KTA_V3D_SEUL=monteecamera`, hauteur relevée à chaque image, flèche et joystick) ; à côté du tracé, le front reste un mur ;
-  la descente, le creux sans rampe et la règle du vide (< `MASSE.ramper`) ne changent pas, ni la géométrie ni
-  l'itinéraire (checkup `sectionFrontTrace`, `KTA_V3D_SEUL=fronttrace`) ; le DESCENDRE est permis, quelle que soit la hauteur : on **chute**
+  `sectionMonteeCamera` (`KTA_V3D_SEUL=monteecamera`, hauteur relevée à chaque image, flèche et joystick) ; ni la
+  géométrie ni l'itinéraire n'en dépendent (checkup `sectionFrontTrace`, `KTA_V3D_SEUL=fronttrace`) ; le DESCENDRE : on **chute**
   (`_pas` lance `e.chute`, `_solAffiche` fait tomber la caméra du sol de départ au nouveau sol en `MASSE.chute` = 0,3 à
   0,5 s, accélération simple, amorti de `MASSE.amorti` à l'arrivée ; aucun pas ni rotation pendant la chute,
-  `_enChute`) ; on ressort par une rampe. ⚠️ contrat (décision produit) : la chute n'est permise que si l'on peut
-  ressortir — arrivée sur le sol du niveau, ou dans une masse qui a au moins une rampe (`_masseSous`) ; sinon on bute,
-  comme devant un mur (un creux sans rampe n'est jamais un piège). Même règle au bord commun de deux masses de hauteurs différentes ; une rampe, si raide soit-elle, reste
-  praticable, ralentie au-delà de 15°. La masse est refaite quand ses rampes ou leurs fins changent (`m.sigRampes`).
+  `_enChute`) ; un creux ou une masse plus basse sans rampe se quitte en remontant son bord (jamais un piège). Même
+  règle au bord commun de deux masses de hauteurs différentes ; une rampe est la pente douce qu'on marche, sans saut,
+  ralentie au-delà de 15°. La masse est refaite quand ses rampes ou leurs fins changent (`m.sigRampes`).
   Carte : chevrons de pente pointés vers le haut sur la seule longueur de pente, trait de fin, à la couleur du contour
   sur un liseré clair (`zones.js > ktaChevronsRampes`, `masseSol.js > chevrons`, zones de session et calques) ;
   légende : une ligne « Pente » quand une zone en porte ; fiche : liste (sens de la montée en flèche), « Placer / Déplacer

@@ -930,7 +930,7 @@
   // maillage (_maillageMasse, qui la dessine). Vide restant = hauteur du niveau − sol : ≥ MASSE.courbe debout (œil
   // abaissé à vide − MASSE.marge s'il le faut : 1 à 1,8 m), sous MASSE.courbe on rampe (œil CHATIERE.oeil, transition
   // lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête (_masseBloque ; sortir vers plus de vide
-  // reste permis). Front : le monter arrête le pas, le descendre fait chuter (_pas). Plafond inchangé. N'entre pas dans
+  // reste permis). Front : le monter hisse sur le dessus, le descendre fait chuter (_pas). Plafond inchangé. N'entre pas dans
   // les zones qui bouchent (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. L'itinéraire lit le même sol
   // (KtaMasseSol.sol). Sur une rampe, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°).
   // Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
@@ -943,7 +943,7 @@
   const MASSE_SOL_SOMBRE = 0.6;
   const MASSE = { pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
     ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
-    lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05, chute: [0.3, 0.5], amorti: 0.06 };
+    lent: 15, lentPlancher: 0.5, marche: 0.2, chute: [0.3, 0.5], amorti: 0.06 };
 
   // Masse au sol de la zone `z` au niveau de la scène → { z, ring (m, sens positif), H (m), rampes, x0, z0, x1, z1 },
   // null si son contour est vide. En cache par contour, niveau, hauteur, rendu, état des données et rampes (fins
@@ -1088,43 +1088,21 @@
   }
 
   // Pas de (x0, y0) à (x1, y1) px arrêté par une masse au sol : vide sous MASSE.ramper à l'arrivée (centre ou devant,
-  // à un corps), sauf s'il y a plus de vide qu'au départ (on peut toujours en sortir).
+  // à un corps), sauf s'il y a plus de vide qu'au départ (on peut toujours en sortir). Compté dans e.frontsMasse.
+  // ⚠️ contrat (décision produit) : un FRONT (bord sans rampe, bord commun de deux masses de hauteurs différentes) se
+  // MONTE et se DESCEND partout, quelle que soit sa hauteur : monté, on est hissé sur le dessus ; descendu, on chute
+  // (_pas, _solAffiche) ; un creux ou une masse plus basse sans rampe se quitte donc toujours en remontant. Une rampe
+  // est la pente douce qu'on marche, sans saut (ralentie au-delà de 15°). Seule limite : la règle du vide ci-dessus
+  // (une masse qui laisse moins de 0,5 m sous le plafond reste fermée). Ni la géométrie, ni l'itinéraire n'en dépendent.
   function _masseBloque(x0, y0, x1, y1, ux, uy) {
     const e = _e, sc = e.sc;
     if (!e.masses || !e.masses.length) return false;
-    // ⚠️ contrat (décision produit) : un FRONT (bord sans rampe d'une zone qui en a, bord commun de deux masses de
-    // hauteurs différentes) qu'il faudrait MONTER arrête le pas : le sol monte de plus de MASSE.marche entre deux points
-    // du trajet à MASSE.pasFront l'un de l'autre, jusqu'à un corps devant. Le DESCENDRE (quelle que soit la hauteur :
-    // on chute, _pas, _solAffiche) n'est permis que si l'on peut ressortir : arrivée sur le sol du niveau, ou dans une
-    // masse qui a au moins une rampe ; sinon (creux sans rampe, masse plus basse sans rampe) on bute, comme devant un mur.
-    // Une pente, si raide soit-elle, reste praticable (le saut est mesuré sur 5 cm) ; ralentie au-delà de 15°.
-    // ⚠️ contrat (décision produit : « il y a un tracé, ça passe ») : un front à MONTER se franchit sur un tracé du
-    // niveau affiché (_surTrace : axe à moins de RAYON_CORPS du point du saut), quelle que soit sa hauteur et qu'une
-    // rampe soit posée ou non ; on est hissé sur le dessus (_pas). Rien d'autre ne change (descente, creux sans rampe,
-    // vide sous MASSE.ramper sur le dessus), ni la géométrie, ni l'itinéraire.
-    const L = Math.hypot(x1 - x0, y1 - y0) / sc + RAYON_CORPS, n = Math.max(1, Math.ceil(L / MASSE.pasFront));
-    let sp = _solMasse(x0 / sc, y0 / sc);
-    for (let k = 1; k <= n; k++) {
-      const d = L * k / n, qx = x0 / sc + ux * d, qz = y0 / sc + uy * d, q = _masseSous(qx, qz), s = q.sol;
-      if (s - sp > MASSE.marche && !_surTrace(qx, qz)) { e.frontsMasse = (e.frontsMasse || 0) + 1; return true; }
-      if (sp - s > MASSE.marche && q.m && !(q.m.rampes && q.m.rampes.length)) {
-        e.frontsMasse = (e.frontsMasse || 0) + 1;
-        return true;
-      }
-      sp = s;
-    }
     const v0 = _videMasse(x0 / sc, y0 / sc);
     const v1 = Math.min(_videMasse(x1 / sc, y1 / sc),
       _videMasse((x1 + ux * RAYON_CORPS * sc) / sc, (y1 + uy * RAYON_CORPS * sc) / sc));
-    return v1 < MASSE.ramper && v1 < v0 - 1e-6;
-  }
-
-  // Sur un tracé du niveau affiché en (x, z) m : axe le plus proche à moins de RAYON_CORPS (plusProche du modèle du
-  // rendu ; en structures, le modèle galerie du niveau).
-  function _surTrace(x, z) {
-    const e = _e, G = window.KtaGalerie, niv = e.niveau === null ? undefined : e.niveau;
-    const m = e.galerie || e.mixte || (G && typeof G.modele === "function" ? G.modele(niv) : null);
-    return !!m && !!m.plusProche(x * e.sc, z * e.sc, RAYON_CORPS * e.sc);
+    if (!(v1 < MASSE.ramper && v1 < v0 - 1e-6)) return false;
+    e.frontsMasse = (e.frontsMasse || 0) + 1;
+    return true;
   }
 
   // Dessus de la masse `m` dans le lot (grille découpée au contour, MASSE.pas m, plus large si la zone dépasserait
@@ -9490,7 +9468,7 @@
   // ⚠️ contrat (décision produit) : un pas qui fait descendre le sol de plus de MASSE.marche (front d'une masse au sol)
   // déclenche une CHUTE : la caméra tombe du sol de départ au nouveau sol en MASSE.chute (0,3 à 0,5 s : accélération
   // simple, petit amorti à l'arrivée, jamais d'écran noir) ; pendant la chute, aucun pas ni rotation n'est pris. Un
-  // pas qui le fait MONTER de plus de MASSE.marche (front franchi sur un tracé, _masseBloque) = la chute à l'envers :
+  // pas qui le fait MONTER de plus de MASSE.marche (front d'une masse, partout : _masseBloque) = la chute à l'envers :
   // hissé sur le dessus en MASSE.chute (lissé, sans amorti), compté dans e.montees.
   function _pas(m, angle) {
     const e = _e;

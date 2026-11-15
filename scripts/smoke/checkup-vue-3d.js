@@ -3227,11 +3227,17 @@ async function sectionMasseSol(page) {
           const b = K.etat();
           return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
         })() };
-      // −¾ sans rampe (x −10 à 2) : on bute à son bord ouest, comme devant un mur (aucune chute, aucun piège).
-      const cs0 = K.etat().masses.chutes;
-      const buteSR = await marcher(-12, 40);
-      r.creux[rendu].sansRampe = { chutes: K.etat().masses.chutes - cs0, fin: buteSR[buteSR.length - 1],
-        arrets: buteSR.filter(function (q) { return !q.ok; }).length };
+      // −¾ sans rampe (x −10 à 2) : on y descend en chutant, et l'on en ressort hissé sur son bord (front partout).
+      const cs0 = K.etat().masses.chutes, cm0 = K.etat().masses.montees;
+      await marcher(-12, 40);
+      await pause(700);
+      const fondSR = lire(), pSR = P(-8.5, 0);
+      K.placer(pSR.x, pSR.y, 270);
+      await pause(60);
+      for (let i = 0; i < 60; i++) { K.avancer(0.1); await pause(20); }
+      await pause(700);
+      r.creux[rendu].sansRampe = { chutes: K.etat().masses.chutes - cs0, montees: K.etat().masses.montees - cm0,
+        fond: fondSR, sortie: lire() };
       // Fond du −¾ : borné au-dessus du plafond du niveau −1 (vue3d.js > _fondMasse), lu à la 3D.
       r.creux[rendu].solFond = (await ici(-4, 0)).sol;
       r.creux[rendu].rubans = rubansRel();
@@ -3330,7 +3336,7 @@ async function sectionMasseSol(page) {
     r.rampes.retrait = KC.retirerRampe(zr(), 1);
     await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
     await pause(300);
-    // Hors du tracé (z = 1,5 m) : sur le tracé, un front à monter se franchit (sectionFrontTrace).
+    // Hors du tracé (z = 1,5 m) : un front se monte partout (sectionFrontTrace).
     r.rampes.seule = { haut: await ici(9.8, 0), estBute: await marche(12, 1.5, 270, 40) };
     // Chute : du plateau (x 9,6) vers l'est, le front descend de ~1,15 m : le pas passe, la caméra tombe.
     await ici(9.6, 0, 90);
@@ -3367,7 +3373,7 @@ async function sectionMasseSol(page) {
     const desc = await marche(5, 0, 90, 60);
     await pause(700);
     const auSol = lire();
-    const remonte = await marche(auSol.x, 1.5, 270, 20);   // hors du tracé (sectionFrontTrace)
+    const remonte = await marche(auSol.x, 1.5, 270, 40);   // hors du tracé : hissé quand même (sectionFrontTrace)
     r.rampes.positif = { chutes: K.etat().masses.chutes - cp0, auSol: auSol, remonte: remonte[remonte.length - 1],
       arrets: remonte.filter(function (q) { return !q.ok; }).length, desc: desc[desc.length - 1] };
     await K.fermer();
@@ -3516,8 +3522,9 @@ async function sectionMasseSol(page) {
     verifier(pr(c.talus.sol, -T30 * 1.5), k + " : pente de la rampe à 30° en descente (1,5 m → −" +
       (T30 * 1.5).toFixed(3) + " m)", c.talus);
     const sr = c.sansRampe;
-    verifier(sr.chutes === 0 && sr.arrets > 0 && sr.fin.x < -10 && sr.fin.sol === 0,
-      k + " : creux sans rampe : on bute à son bord comme devant un mur (pas de chute, pas de piège)", sr);
+    verifier(sr.chutes >= 1 && sr.fond.sol < -1 && sr.montees >= 1 && sr.sortie.sol === 0 && sr.sortie.x < -10,
+      k + " : creux sans rampe : on y descend en chutant (" + sr.fond.sol + " m) et l'on en ressort hissé sur son bord",
+      sr);
     verifier(d.every(function (q) { return q.ok && camOk(q); }) && saut < 0.12 && pr(d[d.length - 1].sol, -1.2),
       k + " : descente au pas de 0,1 m sans arrêt, caméra = sol + œil, plus grand écart " + saut.toFixed(3) + " m",
       { saut: saut, ko: d.filter(function (q) { return !q.ok || !camOk(q); }).slice(0, 3) });
@@ -3556,11 +3563,12 @@ async function sectionMasseSol(page) {
       "rampes : on monte par chacune (ouest et est) sans arrêt ni saut (" + saut(o).toFixed(3) + " / " +
       saut(e).toFixed(3) + " m), les deux profils se rejoignent au milieu (minimum : 0,6 m)", { milieu: q.milieu });
     const c = q.cote, cf = c[c.length - 1];
-    verifier(c.some(function (l) { return !l.ok; }) && cf.z < -6 && cf.sol === 0,
-      "rampes : on bute sur un bord sans rampe (front vertical), sans monter sur la masse", cf);
-    verifier(q.retrait && pr(q.seule.haut.sol, 1.2 * 9.8 / 10, 0.03) && q.seule.estBute.some(function (l) { return !l.ok; }) &&
-      q.seule.estBute[q.seule.estBute.length - 1].x > 10,
-      "rampes : la rampe est retirée, l'ouest seule monte jusqu'au cran à l'est, le bord est devient un front (hors tracé)", q.seule);
+    verifier(cf.z > -6 && cf.sol > 0.5,
+      "rampes : un bord sans rampe (front vertical) se monte : hissé sur la masse (" + cf.sol + " m)", cf);
+    const eb = q.seule.estBute[q.seule.estBute.length - 1];
+    verifier(q.retrait && pr(q.seule.haut.sol, 1.2 * 9.8 / 10, 0.03) && eb.x < 10 && eb.sol > 1,
+      "rampes : la rampe est retirée, l'ouest seule monte jusqu'au cran à l'est, le bord est devient un front, qui se " +
+      "monte (hissé, hors tracé : " + eb.sol + " m)", q.seule);
     const d = q.creux.descente;
     verifier(d.every(function (l) { return l.ok; }) && saut(d) < 0.12 && d[d.length - 1].sol < -0.4,
       "rampes, sol abaissé : on descend par la rampe sans arrêt", { fin: d[d.length - 1] });
@@ -3577,8 +3585,9 @@ async function sectionMasseSol(page) {
     verifier(q.sansRampe && pr(q.talus.sol, 1.2),
       "rampes : plus aucune rampe → pleine hauteur partout (1 m du bord : 1,2 m), plus de talus", q.talus);
     const po = q.positif;
-    verifier(po.chutes >= 1 && po.auSol.sol === 0 && po.auSol.x > 10 && po.arrets > 0 && po.remonte.x >= 10,
-      "rampes : masse sans rampe → on en descend en chutant vers le sol du niveau, on n'y remonte pas hors du tracé", po);
+    verifier(po.chutes >= 1 && po.auSol.sol === 0 && po.auSol.x > 10 && po.remonte.x < 10 && po.remonte.sol > 1,
+      "rampes : masse sans rampe → on en descend en chutant vers le sol du niveau, et l'on y remonte hissé (hors tracé)",
+      po);
   }
   ["textures", "aplat"].forEach(function (t) {
     const m = R.budget[t];
@@ -4143,10 +4152,10 @@ async function sectionCacheNiveaux(page) {
     I.v1Ajout + ") et dans la scène en y montant ; retiré → absent des deux", I);
 }
 
-// ── Front d'une masse au sol franchi sur un tracé (KTA_V3D_SEUL=fronttrace ; vue3d.js > _masseBloque, _surTrace,
-// _pas) : masse ¾ sans rampe traversée par un tracé : sur le tracé on est hissé sur le dessus (montée animée, comptée),
-// à 1 m à côté on bute ; masse 0,9 (0,24 m de vide) : on bute même sur le tracé ; creux −½ sans rampe : la descente
-// reste refusée (inchangée). Rendus mixte et structures. ──
+// ── Front d'une masse au sol monté partout (KTA_V3D_SEUL=fronttrace ; vue3d.js > _masseBloque, _pas) : masse ¾ sans
+// rampe : hissé sur le dessus (montée animée, comptée) sur le tracé comme à 1 m de lui ; masse 0,9 (0,24 m de vide) :
+// on bute, même sur le tracé (règle du vide) ; creux −½ sans rampe : on y descend en chutant et l'on en ressort
+// hissé. Rendus mixte et structures. ──
 async function sectionFrontTrace(page) {
   const R = await page.evaluate(async function () {
     const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-front-trace";
@@ -4184,9 +4193,9 @@ async function sectionFrontTrace(page) {
       await K.ouvrir({ depart: Object.assign(P(-14, 0), { cap: 90 }), commandes: "pave", tuiles: false });
       await pause(200);
       // Marche vers l'est depuis (x, z) : n pas de 0,1 m ; fin, sol, montées, chute ou montée vue en cours.
-      const marcher = async function (x, z, n) {
+      const marcher = async function (x, z, n, cap) {
         const p = P(x, z);
-        K.placer(p.x, p.y, 90);
+        K.placer(p.x, p.y, cap === undefined ? 90 : cap);
         await images(3);
         const m0 = K.etat().masses.montees, c0 = K.etat().masses.chutes;
         let anime = 0, cams = [];
@@ -4210,7 +4219,8 @@ async function sectionFrontTrace(page) {
         trace: await marcher(-14, 0, 60),
         cote: await marcher(-14, 1, 60),
         bas: await marcher(11, 0, 60),
-        creux: await marcher(36, 0, 60)
+        creux: await marcher(36, 0, 60),
+        sortie: await marcher(43, 0, 60, 270)
       };
       await K.fermer();
     }
@@ -4224,19 +4234,21 @@ async function sectionFrontTrace(page) {
     window.KtaGalerie.invalider();
     return out;
   });
-  console.log("§ front d'une masse au sol franchi sur un tracé");
+  console.log("§ front d'une masse au sol monté partout");
   Object.keys(R).forEach(function (rendu) {
-    const q = R[rendu], k = "front sur un tracé, " + rendu + " : ";
+    const q = R[rendu], k = "front monté partout, " + rendu + " : ";
     verifier(q.trace.x > -9.5 && Math.abs(q.trace.sol - 1.8) < 0.02 && q.trace.montees === 1 && q.trace.anime >= 3 &&
       q.trace.monotone && q.trace.derniere && q.trace.derniere.d >= 0.3 && q.trace.derniere.d <= 0.5,
       k + "masse ¾ sans rampe : sur le tracé, hissé sur le dessus (1,8 m) en " + (q.trace.derniere && q.trace.derniere.d) +
       " s, montée animée (" + q.trace.anime + " images), comptée", q.trace);
-    verifier(q.cote.x < -10 && q.cote.sol === 0 && q.cote.montees === 0,
-      k + "à 1 m du tracé, on bute contre le front (x = " + q.cote.x + ")", q.cote);
+    verifier(q.cote.x > -9.5 && Math.abs(q.cote.sol - 1.8) < 0.02 && q.cote.montees === 1 && q.cote.monotone,
+      k + "à 1 m du tracé aussi, hissé sur le dessus (un front se monte partout)", q.cote);
     verifier(q.bas.x < 15 && q.bas.montees === 0,
       k + "masse 0,9 (0,24 m de vide) : on bute même sur le tracé (la règle du vide reste)", q.bas);
-    verifier(q.creux.x < 40 && q.creux.chutes === 0,
-      k + "creux −½ sans rampe : la descente reste refusée, même sur le tracé", q.creux);
+    verifier(q.creux.x > 40 && q.creux.chutes === 1 && Math.abs(q.creux.sol + 1.2) < 0.02,
+      k + "creux −½ sans rampe : on y descend en chutant (" + q.creux.sol + " m)", q.creux);
+    verifier(q.sortie.x < 40 && q.sortie.sol === 0 && q.sortie.montees === 1 && q.sortie.monotone,
+      k + "creux −½ sans rampe : on en ressort hissé sur son bord", q.sortie);
   });
 }
 
