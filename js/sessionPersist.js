@@ -473,6 +473,32 @@
         if (purgees > 0) console.log("[SessionPersist] " + purgees + " trace(s) de suppression de plus de 90 jours purgée(s)");
       }
 
+      // Filtres runtime : Array → Set ; null par champ = pas de filtre sur ce champ.
+      // ⚠️ Posés AVANT les setters : chaque setter rend déjà filtré (renderZones/renderRoads/renderStructures,
+      // marqueurs de session), ce qui évite un second rendu complet des objets de session au chargement.
+      let _active = null;
+      if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
+        const rf = payload.runtimeFilters;
+        if (!window._ktaRuntimeFilters) {
+          window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
+        }
+        function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
+        window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
+        window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
+        window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
+        window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
+        // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
+        // null = automatique (suit le niveau 0). Ancienne session : `garderFond: true` = fond forcé affiché.
+        window._ktaRuntimeFilters.planDeBase  = (rf.planDeBase === true || rf.planDeBase === false)
+          ? rf.planDeBase : (rf.garderFond === true ? true : null);
+        _active = [];
+        if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
+        if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
+        if (window._ktaRuntimeFilters.zoneTypes   !== null) _active.push("zoneTypes");
+        if (window._ktaRuntimeFilters.structTypes !== null) _active.push("structTypes");
+        restored.runtimeFilters = _active.length;
+      }
+
       // Les setters redessinent en interne (setEditorPoints, setRoads, setZones, setStructures).
       if (window.setEditorPoints && Array.isArray(payload.editorPoints)) {
         window.setEditorPoints(payload.editorPoints);
@@ -548,31 +574,15 @@
         restored.trackerTimeline = payload.trackerTimeline.length;
       }
 
-      // Filtres runtime : Array → Set ; null par champ = pas de filtre sur ce champ.
-      if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
-        const rf = payload.runtimeFilters;
-        if (!window._ktaRuntimeFilters) {
-          window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
-        }
-        function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
-        window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
-        window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
-        window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
-        window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
-        // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
-        // null = automatique (suit le niveau 0). Ancienne session : `garderFond: true` = fond forcé affiché.
-        window._ktaRuntimeFilters.planDeBase  = (rf.planDeBase === true || rf.planDeBase === false)
-          ? rf.planDeBase : (rf.garderFond === true ? true : null);
-        const _active = [];
-        if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
-        if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
-        if (window._ktaRuntimeFilters.zoneTypes   !== null) _active.push("zoneTypes");
-        if (window._ktaRuntimeFilters.structTypes !== null) _active.push("structTypes");
-        restored.runtimeFilters = _active.length;
-        // Différé : les marqueurs de session doivent être posés avant le re-rendu filtré.
+      // Différé : le reste de la carte (calques DATA, plan de base, tracker, calques image) n'a vu ni les filtres
+      // ni le plan de base de la session. Tracés, zones et structures de session sont déjà rendus filtrés par
+      // leur setter : on ne les refait que si une famille manquait au payload (ancienne session, objets d'avant).
+      if (_active !== null) {
+        const _sessionRendue = Array.isArray(payload.roads) && Array.isArray(payload.zones)
+          && Array.isArray(payload.structures);
         setTimeout(function() {
           if (typeof window.appliquerFiltreRuntime === "function") {
-            try { window.appliquerFiltreRuntime(); } catch(e) {}
+            try { window.appliquerFiltreRuntime({ sessionRendue: _sessionRendue }); } catch(e) {}
           }
           // 🩸 Des filtres restaurés en silence = « où sont passés mes points ? » : toast + pastille ≡.
           if (window.FilterPanel && typeof window.FilterPanel.majBadge === "function") {

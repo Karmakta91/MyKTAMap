@@ -1027,15 +1027,18 @@ window._ktaRuntimeFilters = {
 
 #### 64.4 Cascade re-render — `window.appliquerFiltreRuntime`
 
-Helper global dans `interface.js`, alias de `appliquerFiltreNiveau` :
+Helper global dans `interfaceConfig.js`, alias de `appliquerFiltreNiveau` (options transmises) :
 
 ```js
-window.appliquerFiltreRuntime = function() {
+window.appliquerFiltreRuntime = function(opts) {
   if (typeof window.appliquerFiltreNiveau === "function") {
-    window.appliquerFiltreNiveau();
+    window.appliquerFiltreNiveau(opts);
   }
 };
 ```
+
+`opts.sessionRendue === true` saute le re-rendu complet des tracés, zones et structures de session (ils viennent
+d'être rendus avec les filtres courants) et refiltre tout le reste. Seul appelant : la restauration de session (§64.8).
 
 **Pourquoi un alias ?** Les modules level-aware (renderRoads, renderZones, renderStructures, _applyLevelFilterToData*) appliquent runtime+niveau dans la même passe de rendu. Pas besoin de 2 passes distinctes.
 
@@ -1096,28 +1099,12 @@ Chaque toggle (input change, mini-action Tout/Aucun, reset all) appelle `_schedu
 runtimeFilters: _serializeRuntimeFilters()  // {tags: [...]|null, roadTypes: [...]|null, ...}
 ```
 
-**Restore** : Array → Set via `_toSet(arr)` dans `_restore()` :
-```js
-if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
-  const rf = payload.runtimeFilters;
-  if (!window._ktaRuntimeFilters) {
-    window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
-  }
-  function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
-  window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
-  window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
-  window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
-  window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
-  // Apply après timeout 200ms pour laisser les markers session être restaurés (phase 2 itineraries)
-  setTimeout(function() {
-    if (typeof window.appliquerFiltreRuntime === "function") {
-      try { window.appliquerFiltreRuntime(); } catch(e) {}
-    }
-  }, 200);
-}
-```
-
-⚠️ **Timing 200ms** : aligné avec la phase 2 de restore des itineraries (cf §9). Sinon, les markers session ne seraient pas encore re-créés → filter inopérant.
+**Restore** (`sessionPersist.js > _applyRestore`) : Array → Set via `_toSet(arr)`, plan de base (`planDeBase`)
+compris, **avant** les setters (`setEditorPoints`, `setRoads`, `setZones`, `setStructures`) : chacun rend déjà
+filtré, donc un seul rendu des objets de session au chargement. À +200 ms, `appliquerFiltreRuntime({ sessionRendue })`
+refiltre le reste de la carte (calques DATA, plan de base, tracker, calques image, badges), puis pastille ≡ et toast
+« filtres restaurés ». `sessionRendue` n'est vrai que si le payload portait les trois familles (tracés, zones,
+structures) : sinon les objets déjà là sont re-rendus avec les filtres.
 
 #### 64.9 Sync M-LVL bidirectionnel
 
@@ -1151,7 +1138,7 @@ Si 0 tag → section affiche "Aucun point dans cette session."
 - ❌ Filtrer `road.type === "itinerary"` ou `s === currentStructure` — toujours bypass (cf §64.6)
 - ❌ Stocker `_ktaRuntimeFilters` dans une key localStorage globale séparée — utiliser le payload SessionPersist (`runtimeFilters` champ) pour cohérence per-plan
 - ❌ Sérialiser des Sets en JSON direct (`JSON.stringify(new Set(...))` retourne `"{}"`) — toujours convertir en Array via `Array.from(set)` avant
-- ❌ Appliquer `appliquerFiltreRuntime()` synchroniquement au boot SessionPersist — utiliser `setTimeout(_, 200)` pour laisser la phase 2 restore (itineraries) finir
+- ❌ Poser les filtres de session APRÈS les setters de `_applyRestore` — chaque objet de session serait rendu deux fois au chargement (un rendu complet des zones de trop, coûteux avec des masses au sol)
 - ❌ Appeler `_enumerateTags()` ou `_enumerateTypes()` dans une boucle de render — coûteux (itère session + embedded à chaque appel). Cache l'résultat si utilisé plusieurs fois dans la même passe de render
 - ❌ Modifier `window._ktaRuntimeFilters` directement depuis un autre module — passer par `FilterPanel.setFilters({...})` pour bénéficier de `_scheduleApply` + `_notify`
 

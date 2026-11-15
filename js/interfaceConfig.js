@@ -2042,7 +2042,10 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
 
 // Re-rend / re-filtre TOUS les modules level-aware après un changement de visibleLevels (chacun expose
 // _applyLevelFilterTo*()).
-window.appliquerFiltreNiveau = function() {
+// ⚠️ `opts.sessionRendue` : tracés, zones et structures de session viennent d'être rendus avec les filtres et
+// niveaux courants (restauration de session) ; leur re-rendu complet est sauté, tout le reste est refiltré.
+window.appliquerFiltreNiveau = function(opts) {
+  const sessionRendue = !!(opts && opts.sessionRendue === true);
   // Présences / itinéraires d'une installation reliée : atténuation « hors niveau » recalculée.
   if (window.KtaPresences && typeof window.KtaPresences.redessiner === "function") {
     try { window.KtaPresences.redessiner(); } catch(e) {}
@@ -2052,14 +2055,14 @@ window.appliquerFiltreNiveau = function() {
     try { window.SecoursMode.redessinerOverlay(); } catch(e) {}
   }
   // Roads + zones de session : re-rendu complet (filtre appliqué au build).
-  if (typeof window.renderRoads === "function") {
+  if (!sessionRendue && typeof window.renderRoads === "function") {
     try { window.renderRoads(); } catch(e) {}
   }
-  if (typeof window.renderZones === "function") {
+  if (!sessionRendue && typeof window.renderZones === "function") {
     try { window.renderZones(); } catch(e) {}
   }
   // Structures de session.
-  if (typeof window.renderStructures === "function") {
+  if (!sessionRendue && typeof window.renderStructures === "function") {
     try { window.renderStructures(); } catch(e) {}
   }
   // Points des calques DATA.
@@ -2110,9 +2113,9 @@ window.appliquerFiltreNiveau = function() {
 
 // Re-rendu après changement des filtres runtime (tags, types…) : alias de appliquerFiltreNiveau, les modules
 // appliquent aussi window._ktaRuntimeFilters dans la même passe.
-window.appliquerFiltreRuntime = function() {
+window.appliquerFiltreRuntime = function(opts) {
   if (typeof window.appliquerFiltreNiveau === "function") {
-    window.appliquerFiltreNiveau();
+    window.appliquerFiltreNiveau(opts);
   }
 };
 
