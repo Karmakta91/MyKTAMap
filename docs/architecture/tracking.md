@@ -2699,19 +2699,25 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   rien) : faces des structures (`_facesStructures`), volumes d'un niveau (`_volumesDuNiveau` : modèles intacts, rendus
   en copies neuves, places de panneau et POI retrouvés dans les données relues — 🩸 les calques rendent des objets neufs
   à chaque lecture), grille des structures (`_grilleVolumes`), et **tuiles d'un voisin quitté**, gardées cachées
-  (`_garderVoisin`, `CACHE_VOISINS` = 3 : -1, +1 et le niveau quitté, de quoi faire 0 ↔ 1 sans rien reconstruire) ;
+  (`_garderVoisin`) ;
   structures et zones filtrées et niveaux occupés (`ktaNiveauxOccupes`) relus seulement quand les données changent.
   Clé : niveau de la scène, contexte (actif / voisin), hauteur et altitude de chaque niveau (réglages écart / hauteur),
   `_sigVoisins` (empreinte des données de `_majDonnees`, filtres ≡, calques, niveaux visibles, rendu, 🧱, HD). 🩸 Toute
   modification change l'empreinte : la clé ne correspond plus et **tout** est vidé (`_purgerCachesNiveau`, voisins
-  gardés libérés) — jamais une scène périmée ; « tout » refait (hauteur, 🧱) vide aussi. `CACHE_NIVEAUX` = 6 entrées
-  par cache, dans `_e` (vidés à la fermeture). Mesuré (relevé fictif de 14 283 structures sur 3 niveaux, processeur
+  gardés libérés) — jamais une scène périmée ; « tout » refait (hauteur, 🧱) vide aussi. **Mémoire bornée** (décision
+  produit) : chaque entrée porte la scène (niveau actif, `e.sceneNiveau`) qui l'a lue en dernier ; seules restent celles
+  des scènes du niveau actif ± 1 dans l'ordre de ▲▼ (`_bornerCachesNiveau`, après chaque `_voisinsPreparer` ; voisins
+  gardés libérés) : revenir au niveau quitté ne recalcule rien, la mémoire plafonne à trois scènes. Dans `_e` (vidés à
+  la fermeture). 🩸 L'empreinte des données est calculée **avant** le premier `_reindexer` de l'ouverture : calculée
+  après, elle changeait la clé, tout était purgé au premier passage et le retour au niveau de départ gelait. Mesuré (relevé fictif de 14 283 structures sur 3 niveaux, processeur
   × 4) : passage 0 ↔ 1 à chaud 370 → 58 ms, pire image qui suit 56 → 35 ms ; coût +18 Mo de tas JS et +32 géométries
   GPU (tuiles des voisins gardées). Ce qui reste : tuiles du niveau actif (~13 ms), signature de `KtaGalerie.modele`
   (~12 ms). `etat().reindex` (étapes de `_reindexer`), `etat().cacheNiveaux` ; `ouvrir({ cacheNiveaux: false })` coupe
   les caches (mesure avant / après). Checkup `sectionCacheNiveaux` (`KTA_V3D_SEUL=cacheniveaux`) : zéro recalcul à
-  chaud, pilier déplacé au niveau 1 depuis le 0 qui barre le pas en y revenant, ajouté / retiré dans la scène et
-  dans l'index du voisin.
+  chaud, 1er retour au niveau d'ouverture sans raté, scènes en cache au niveau actif ± 1 et tas plafonné sur 5
+  niveaux visités (CDP après ramasse-miettes), pilier déplacé au niveau 1 depuis le 0 qui barre le pas en y revenant,
+  ajouté / retiré dans la scène et dans l'index du voisin. Hors de ces caches : `KtaGalerie` garde un modèle par
+  niveau et par rendu (`galerieEmprise.js > modele`, `_cache`), sans borne.
 
 ### Niveaux entremêlés et zones jonction (QCM du 08/11/2026, lot D du multi-niveau en 3D)
 

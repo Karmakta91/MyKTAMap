@@ -4569,6 +4569,7 @@
     const t0 = performance.now();
     const niveauAvant = e.niveau, renduAvant = e.rendu, hauteurAvant = e.hauteur;
     e.niveau = _niveauCourant();
+    e.sceneNiveau = e.niveau;   // scène des entrées de cache (_cacheNiveau), jamais changée par _avecVoisin
     _prendreHauteurDuNiveau();
     const d = _collecter(e.niveau);
     // Coût de chaque étape (checkup : etat().reindex) ; ms depuis t0.
@@ -4868,6 +4869,10 @@
       return [v.niveau, n];
     });
     Object.keys(c).forEach(function (k) { out[k] = c[k].size; });
+    // Scènes encore en cache (niveaux, triés) : la borne les garde au niveau actif ± 1.
+    const sc = new Set();
+    Object.keys(c).forEach(function (k) { c[k].forEach(function (q) { sc.add(q.scene); }); });
+    out.scenes = Array.from(sc).sort(function (a, b) { return a - b; });
     return out;
   }
 
@@ -4877,7 +4882,7 @@
 
   // Voisin quitté (_voisinsPreparer, plus montré ou niveau de la scène changé) : ses tuiles construites restent, cachées
   // (sol et plafond d'un seul tenant retirés, volumes libérés), reprises telles quelles s'il revient avec la même clé
-  // (_voisinNeuf) ; CACHE_VOISINS au plus, le plus ancien libéré (_libererVoisin).
+  // (_voisinNeuf) ; v.scene : la scène qui les montrait (borne : _bornerCachesNiveau).
   function _garderVoisin(v) {
     const e = _e;
     if (!v.cle || e.sansCache) { _libererVoisin(v); return; }
@@ -4891,11 +4896,6 @@
     if (m.has(v.cle) && m.get(v.cle) !== v) _libererVoisin(m.get(v.cle));
     m.delete(v.cle);
     m.set(v.cle, v);
-    while (m.size > CACHE_VOISINS) {
-      const k = m.keys().next().value;
-      _libererVoisin(m.get(k));
-      m.delete(k);
-    }
     e.sale = true;
   }
 
@@ -4905,6 +4905,7 @@
     const v = { niveau: n, dy: a.dy, dessus: a.dessus, hauteur: h, galerie: null, mixte: null, plans: null,
       sig: sig + "|" + a.dy + "|" + h + "|" + _sigEntre(entre), entre: entre, plansCaches: _plansCaches(entre, h) };
     v.cle = _cleVoisin(v);
+    v.scene = e.sceneNiveau;
     _purgerCachesNiveau(false);
     const m = e.cachesNiveau && e.cachesNiveau.voisins, g = m ? m.get(v.cle) : null;
     if (g) {
@@ -4985,6 +4986,7 @@
     }
     e.travSig = cleTrav;
     _estomperVoisins();
+    _bornerCachesNiveau();
     _majSolActif();   // voisin du dessous montré ou non, 🧱 changé (_refaireTuiles)   // côté changé (voisins gardés), originaux changés (🧱)
     e.sale = true;
   }
@@ -6253,11 +6255,12 @@
   // _majDonnees), filtres de la carte, rendu, 🧱, HD (_sigVoisins), hauteur et altitude de chaque niveau (réglages
   // écart / hauteur). 🩸 Toute modification change l'empreinte, donc la clé : jamais une scène périmée (checkup :
   // pilier ajouté puis retiré au niveau 1 pendant qu'on est au 0) ; de plus, tout est vidé dès que _sigVoisins change
-  // (_purgerCachesNiveau : aucune entrée d'un état passé ne reste en mémoire). Vivent dans _e (vidés à la fermeture),
-  // CACHE_NIVEAUX entrées au plus par cache, la plus ancienne sort. Seul le cache des voisins garde de la géométrie :
-  // les tuiles d'un voisin quitté, cachées (CACHE_VOISINS au plus, de quoi faire un aller-retour 0 ↔ 1 sans rien
-  // reconstruire), libérées quand elles sortent du cache.
-  const CACHE_NIVEAUX = 6, CACHE_VOISINS = 3;
+  // (_purgerCachesNiveau : aucune entrée d'un état passé ne reste en mémoire). Vivent dans _e (vidés à la fermeture).
+  // ⚠️ contrat (mémoire bornée) : chaque entrée porte la SCÈNE (niveau actif, e.sceneNiveau) qui l'a lue en dernier ;
+  // seules restent celles des scènes du niveau actif ± 1 dans l'ordre de ▲▼ (_bornerCachesNiveau, après chaque
+  // _voisinsPreparer) : données, volumes et voisins gardés de ces trois scènes, de quoi revenir au niveau quitté sans
+  // rien recalculer ; le reste est libéré. Seul le cache des voisins garde de la géométrie (tuiles d'un voisin quitté,
+  // cachées), libérée quand l'entrée sort.
 
   // Caches vidés si l'état qu'ils supposent a changé (données, filtres, rendu, 🧱, HD) ou si `force` ; voisins gardés
   // libérés (GPU).
@@ -6289,17 +6292,37 @@
     if (!e.cachesNiveau) e.cachesNiveau = {};
     const m = e.cachesNiveau[nom] || (e.cachesNiveau[nom] = new Map());
     if (m.has(cle)) {
-      const v = m.get(cle);
-      m.delete(cle);
-      m.set(cle, v);
+      const q = m.get(cle);
+      q.scene = e.sceneNiveau;
       e.cacheStats.touches++;
-      return { v: v, neuf: false };
+      return { v: q.v, neuf: false };
     }
     const v = calcul();
-    m.set(cle, v);
-    while (m.size > CACHE_NIVEAUX) m.delete(m.keys().next().value);
+    m.set(cle, { v: v, scene: e.sceneNiveau });
     e.cacheStats.rates++;
     return { v: v, neuf: true };
+  }
+
+  // Niveaux dont les scènes restent en cache : le niveau actif et ceux juste au-dessus et au-dessous (_niveauxEdition)
+  // ; null sur un plan à un niveau (rien à borner).
+  function _scenesGardees() {
+    const e = _e, l = _niveauxEdition(), i = l.indexOf(e.sceneNiveau);
+    if (!Number.isInteger(e.sceneNiveau) || i < 0) return null;
+    return [l[i - 1], l[i], l[i + 1]].filter(Number.isInteger);
+  }
+
+  // Entrées des scènes plus loin que le niveau actif ± 1 retirées, voisins gardés libérés (contrat ci-dessus).
+  function _bornerCachesNiveau() {
+    const e = _e, c = e.cachesNiveau, P = _scenesGardees();
+    if (!c || !P) return;
+    Object.keys(c).forEach(function (nom) {
+      c[nom].forEach(function (q, k) {
+        if (P.indexOf(q.scene) >= 0) return;
+        if (nom === "voisins") _libererVoisin(q);
+        c[nom].delete(k);
+        e.cacheStats.bornes++;
+      });
+    });
   }
 
   // Volumes du niveau (_calculerVolumesDuNiveau) par le cache : modèles intacts gardés (copies faites avant toute
@@ -14905,7 +14928,7 @@
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         pentes: [], jonctions: [], pentesFranchies: 0, itiPentes: null, nItiPentes: 0,
         zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, zonesCreusees: 0, rubans: {}, liseres: {},
-        filtresChanges: false, reindexations: 0, cacheStats: { touches: 0, rates: 0, purges: 0, voisinsRepris: 0 }, cachesNiveau: null, itiRefaits: 0, msIti: 0, compteIti: 0,
+        filtresChanges: false, reindexations: 0, cacheStats: { touches: 0, rates: 0, purges: 0, voisinsRepris: 0, bornes: 0 }, cachesNiveau: null, itiRefaits: 0, msIti: 0, compteIti: 0,
         donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
           msEmpreinte: 0 },
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
@@ -14954,10 +14977,12 @@
       _lireNord();
       _brancher();
       _redimensionner();
-      _reindexer();
+      // 🩸 Empreinte AVANT le premier _reindexer : les caches du niveau de départ et ses voisins sont faits sous sa clé
+      // (_sigVoisins) ; calculée après, elle changeait la clé et le premier retour au niveau de départ gelait.
       const tE = performance.now();
       _e.donnees.empreinte = _empreinteDonnees();
       _e.donnees.msEmpreinte = performance.now() - tE;
+      _reindexer();
       // En suivi, la place est celle du tracker ; en libre, dégagée aussi d'une structure dessinée (_coince).
       if (_e.mode === "libre") _degager(true);
       _lireEdition();

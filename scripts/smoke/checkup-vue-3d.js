@@ -3806,6 +3806,82 @@ async function capturesChatiereMasse(page) {
 // aucun recalcul (ratés du cache constants, voisins repris). Piège du cache : un pilier DÉPLACÉ au niveau 1 (même
 // nombre de structures) pendant qu'on est au 0 barre le pas en y revenant, remis à sa place il ne barre plus ; un
 // pilier ajouté puis retiré se compte dans la scène et dans l'index du voisin. ──
+// Mémoire bornée (sectionCacheNiveaux) : relevé FICTIF de 5 niveaux (−4 à 0, ≈ 2 000 piliers chacun), vue d'édition,
+// ▲▼ vers le bas un niveau à la fois ; tas JS après ramasse-miettes (CDP) et scènes en cache à chaque niveau.
+// → { etapes: [{ niveau, tas, scenes }] } | null (sans CDP).
+async function memoireBornee(page, cdp) {
+  if (!cdp) return null;
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, P = window.__cnP, rect = window.__cnRect;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.__mbAv = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, smart: C.smartNav,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = "v3d-checkup-cache-borne";
+    C.multiLevel = true; C.smartNav = false;
+    window.setPlanRenduVue3D(null, "mixte");
+    window.setZones([]);
+    const st = [], roads = [];
+    [-4, -3, -2, -1, 0].forEach(function (n) {
+      for (let i = 0; i < 48; i++) {
+        for (let j = 0; j < 48; j++) {
+          const x = -144 + i * 6 + 2, z = -144 + j * 6 + 2;
+          if ((z < 4 && z + 2 > -2) || (x < 4 && x + 2 > -2)) continue;
+          st.push({ uid: "st_mb_" + n + "_" + i + "_" + j, type: "pilier-1", level: n, points: rect(x, z, x + 2, z + 2) });
+        }
+      }
+      roads.push({ uid: "rd_mb_x" + n, type: "principal", level: n, points: [P(-144, 1), P(144, 1)] });
+    });
+    C.availableLevels = [-4, -3, -2, -1, 0]; C.visibleLevels = [-4, -3, -2, -1, 0]; C.activeLevel = 0;
+    window.setStructures(st);
+    window.setRoads(roads);
+    window.setEditorPoints([]);
+    window.ktaSetActiveLevel(0);
+    window.KtaGalerie.invalider();
+    const d = P(1.5, 1);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "pave", tuiles: true, distanceVue: 30 });
+    K.reglerNiveauxVus("voisins");
+    K.basculerVue();
+    await new Promise(function (ok) { setTimeout(ok, 400); });
+  });
+  const etapes = [];
+  for (let i = 0; i < 5; i++) {
+    if (i) {
+      await page.evaluate(async function () {
+        window.KtaVue3D.niveauEdition("bas");
+        for (let k = 0; k < 30; k++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      });
+    }
+    await cdp.send("HeapProfiler.enable").catch(function () { /* non pris en charge */ });
+    await cdp.send("HeapProfiler.collectGarbage").catch(function () { /* non pris en charge */ });
+    const u = await cdp.send("Runtime.getHeapUsage").catch(function () { return null; });
+    const e = await page.evaluate(function () {
+      const x = window.KtaVue3D.etat();
+      return { niveau: x.niveau, scenes: x.cacheNiveaux.scenes || [] };
+    });
+    etapes.push({ niveau: e.niveau, tas: u ? u.usedSize : 0, scenes: e.scenes });
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    const av = window.__mbAv, C = window.APP_CONFIG;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+  });
+  return { etapes: etapes };
+}
+
 async function sectionCacheNiveaux(page) {
   let cdp = null;
   try {
@@ -4034,6 +4110,29 @@ async function sectionCacheNiveaux(page) {
     ", faces 0 ms, voisins repris à chaque passage)", ch.map(function (p) { return p.cache; }));
   verifier(mAvec < mSans * 0.6, "cache par niveau : passage à chaud plus court (" + mSans + " → " + mAvec + " ms)",
     { sans: mSans, avec: mAvec });
+  verifier(AVEC.pas[1].niveau === 0 && AVEC.pas[1].cache.rates === AVEC.pas[0].cache.rates,
+    "cache par niveau : 1er retour au niveau d'ouverture sans aucun raté (rempli à l'ouverture : " +
+    AVEC.pas[0].cache.rates + " → " + AVEC.pas[1].cache.rates + " ratés, " + AVEC.pas[1].ms + " ms)",
+    { aller: AVEC.pas[0].cache, retour: AVEC.pas[1].cache });
+  // Mémoire bornée : 5 niveaux descendus un à un (▲▼ de la vue d'édition), tas JS après ramasse-miettes à chaque
+  // niveau ; scènes en cache toujours au niveau actif ± 1.
+  const MB = await memoireBornee(page, cdp);
+  if (MB) {
+    const mo = function (o) { return (o / 1048576).toFixed(1); };
+    ok("mesure (info) : tas JS par niveau visité (0 → −4), après ramasse-miettes : " +
+      MB.etapes.map(function (q) { return q.niveau + " " + mo(q.tas) + " Mo"; }).join(", "));
+    const t = MB.etapes.map(function (q) { return q.tas; });
+    verifier(MB.etapes.length === 5 && MB.etapes.every(function (q, i) {
+      return q.niveau === -i && q.scenes.every(function (n) { return Math.abs(n - q.niveau) <= 1; });
+    }), "cache par niveau : 5 niveaux visités, scènes en cache toujours au niveau actif ± 1",
+    MB.etapes.map(function (q) { return [q.niveau, q.scenes]; }));
+    // Le tas du départ porte les sections précédentes (ramasse-miettes lent) : le plafond se juge sur le 5e niveau,
+    // jamais au-dessus du plus haut des trois premiers + 4 Mo.
+    const haut3 = Math.max(t[0], t[1], t[2]);
+    verifier(t.length === 5 && t[4] <= haut3 + 4 * 1048576,
+      "cache par niveau : la mémoire plafonne (5e niveau " + mo(t[4]) + " Mo, au plus haut des trois premiers " +
+      mo(haut3) + " Mo)", MB.etapes);
+  }
   verifier(I.marcheLibre > 5.3 && I.marcheBarree < 4.6 && I.marcheRemise > 5.3 && I.n1Deplace === I.n1 &&
     I.auZeroDeplace.purges >= 1,
     "cache par niveau : pilier DÉPLACÉ au niveau 1 depuis le 0 (même nombre de structures) → il barre le pas en y " +
