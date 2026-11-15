@@ -722,14 +722,16 @@ pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-confi
      tracé imprécis) : sinon chaque pas sortant le couperait et le tracker resterait figé.
    - **Coût** : grille d'index de 128 px par liste, refaite seulement quand la liste change (même tableau, même
      longueur, même somme des `updatedAt` et des nombres de points). ~0,3 ms par pas pour 13 000 piliers (Node, PC).
+     Cette somme (un passage sur toute la liste) n'est relue qu'après un `kta:donneesPlanChange` : toute écriture
+     d'une structure finit par `renderStructures`, qui l'émet. 🩸 Une structure modifiée en place sans rendu garde
+     un index périmé jusqu'au signal suivant.
    - La structure **en cours de tracé** ne compte pas.
    - **Contact** (`_segmentsSeCoupent`) : croisement, extrémité posée sur l'arête, bout commun. 🩸 Un pas
      **colinéaire** à une arête ne compte que s'il la recouvre (un point commun au moins) : longer une face dans son
      prolongement passait pour un contact et figeait le tracker (et la vue 3D) le long d'un pilier aligné.
    - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau[, avecPerso]])` (true = refusé),
      `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
-     juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
-     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
+     juge un lot de segments en relisant l'index une seule fois (sources, exclusions et index relus à chaque appel). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
@@ -1479,7 +1481,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   10 cm) touche la structure, coupé à sa face (`_indexStructures > rayon` : premier bord croisé, ceux que juge la règle
   du pas) : ni fente ni bout de paroi orphelin ; aucun pan ne touche → le côté reste fermé. Les pans sont dans
   `paroisDe` (dessin) et `modele.retours` (collision). 🩸 Pas de `ktaSegmentsBloquesParStructure` pour ces pans :
-  chaque appel relit la signature de toutes les structures (2 s de modèle sous émulation téléphone sur le plan dense).
+  il ne dit que oui / non et relit ses sources à chaque appel (2 s de modèle sous émulation téléphone sur le plan dense).
   Aux nœuds, le bord du joint entre deux branches s'ouvre si l'une d'elles a ce côté ouvert (`_joint`, `r.cotesA` /
   `r.cotesB`). Les **deux** côtés ouverts (ou une structure en travers, qui ouvre les deux) = **chambre** : le
   morceau perd ses parois (coupe au seuil exact par dichotomie). Pourquoi 3 m : la paroi d'un tube principal est à 1,25 m de

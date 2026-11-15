@@ -853,8 +853,9 @@
   // Longueur (px) du pan de retour partant de (x, y) dans la direction (ux, uy) : jusqu'au premier bord de structure
   // du niveau (S.rayon : les bords que juge la règle du pas des structures, types perso compris, donc on bute là où
   // le pan s'arrête), ou null si aucun n'est à moins de RETOUR_MAX_M.
-  // 🩸 Pas de ktaSegmentsBloquesParStructure ici : chaque appel relit la signature de toutes les structures ; des
-  // milliers d'appels (pas de 10 cm, dichotomie) portaient le modèle d'un plan dense à 2 s sous émulation téléphone.
+  // 🩸 Pas de ktaSegmentsBloquesParStructure ici : chaque appel relit ses sources et ses exclusions, et ne dit que
+  // oui / non ; des milliers d'appels (pas de 10 cm, dichotomie) portaient le modèle d'un plan dense à 2 s sous
+  // émulation téléphone. S.rayon donne le premier bord croisé en un appel.
   function _retour(S, x, y, ux, uy, sc) {
     return S.rayon(x, y, ux, uy, RETOUR_MAX_M * sc);
   }

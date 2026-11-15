@@ -268,6 +268,10 @@ window._applyLevelFilterToTracker = _appliquerFiltreNiveauSurTracker;
 // Grille d'index (cases de 128 px) par liste, refaite seulement si la liste change : même tableau, même longueur
 // et même signature (somme des `updatedAt` et des nombres de points ; toute modification passe par KtaUid.touch).
 // Un pas ne teste que les objets des cases qu'il touche (~0,1 ms pour 13 000 piliers, contre ~5 ms en balayage).
+// ⚠️ La signature (un passage sur toute la liste) n'est relue qu'après un `kta:donneesPlanChange` : toute écriture
+// d'une structure finit par renderStructures, qui l'émet (utils.js > ktaSignalerDonneesPlan). Tableau remplacé ou
+// longueur changée (ajout, suppression, calque chargé) se voient sans signal. 🩸 Modifier une structure en place
+// sans rendu laisse l'index périmé jusqu'au prochain signal.
 // Type → forme de l'obstacle (true = polygone fermé, false = ligne).
 // ⚠️ `arc` (arc de soutènement) absent exprès : on passe dessous, ni le tracker ni la vue 3D ne s'y arrêtent.
 const _OBST_TYPES = {
@@ -283,6 +287,9 @@ function _formeObstacle(type, avecPerso) {
 }
 const _OBST_CASE  = 128;
 const _indexObstacles = [null, null];   // [session, plan]
+window.addEventListener("kta:donneesPlanChange", function() {
+  for (let k = 0; k < _indexObstacles.length; k++) if (_indexObstacles[k]) _indexObstacles[k].sigFraiche = false;
+});
 
 function _signatureListe(liste) {
   let sig = 0;
@@ -294,9 +301,11 @@ function _signatureListe(liste) {
 }
 
 function _indexDe(k, liste) {
-  const sig = _signatureListe(liste);
   const c = _indexObstacles[k];
-  if (c && c.liste === liste && c.n === liste.length && c.sig === sig) return c;
+  const memeListe = !!c && c.liste === liste && c.n === liste.length;
+  if (memeListe && c.sigFraiche) return c;
+  const sig = _signatureListe(liste);
+  if (memeListe && c.sig === sig) { c.sigFraiche = true; return c; }
   const cases = new Map();
   for (let i = 0; i < liste.length; i++) {
     const s = liste[i];
@@ -315,7 +324,7 @@ function _indexDe(k, liste) {
       }
     }
   }
-  const idx = { liste: liste, n: liste.length, sig: sig, cases: cases };
+  const idx = { liste: liste, n: liste.length, sig: sig, sigFraiche: true, cases: cases };
   _indexObstacles[k] = idx;
   return idx;
 }
@@ -354,8 +363,8 @@ function _pasBloqueParStructure(x0, y0, x1, y1, niveau, avecPerso) {
 }
 
 // Même règle pour un lot de segments [[x0, y0, x1, y1], …] → tableau de booléens (true = refusé). L'index n'est
-// relu qu'une fois par lot. 🩸 Relire l'index coûte un passage sur toutes les structures (signature) : la vue 3D,
-// qui juge une quinzaine de segments par pas (largeur du corps), passe par un lot, pas par quinze appels.
+// relu qu'une fois par lot : la vue 3D, qui juge une quinzaine de segments par pas (largeur du corps), passe par un
+// lot, pas par quinze appels (sources, exclusions des calques en modification et index relus à chaque appel).
 function _segmentsBloquesParStructure(segments, niveau, avecPerso) {
   const lvl = Number.isInteger(niveau) ? niveau : trackerLevel;
   const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
