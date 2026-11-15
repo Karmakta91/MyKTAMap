@@ -86,6 +86,12 @@
   sol séparé de la distance, temps du guidage. `docs/ETUDE_REMBLAIS.md`.
   `qui: Claude · action: lots 5 puis 6 de ETUDE_REMBLAIS.md · fini: volume et itinéraire conformes à l'étude
   · depuis: 11/11/2026 · taille: M`
+- **Mémoire d'un plan en double** — 3e mesure sur un plan réel (15/11) : 🔬 le ZIP gardé deux fois (`_lazyZipRef` et
+  `_planDataCache[plan].zip`, ~35 Mo), la liste des structures deux fois (`RUNTIME_ASSETS` et `dataLayers`, ~5 Mo),
+  l'index des structures de `galerieEmprise.js` peut-être deux fois (~13 Mo). Borné, pas une fuite.
+  `qui: Claude · action: vérifier les 3 doublons et retirer ceux qui sont sûrs, après le merge v2.28.0
+  · fini: tas mesuré avant/après sur un relevé lourd, ouverture et tuiles vertes · depuis: 15/11/2026 · taille: S`
+
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
