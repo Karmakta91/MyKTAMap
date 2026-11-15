@@ -3591,7 +3591,8 @@ async function sectionMasseSol(page) {
 // Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : pied du talus de la ½, son sommet (courbé), sur la ¾ (on rampe),
 // dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord (aussi 🧱 coupé) et du fond
 // (pilier en structures) ; rampe (bord ouest) vue du bas, front latéral, creux avec rampe ; ruban d'un tracé au front
-// est de la ¾ (contremarche), sur une rampe, dans un creux (lignes au sol allumées).
+// est de la ¾ (contremarche), sur une rampe, dans un creux (lignes au sol allumées) ; rampe et sommet en Textures HD
+// (dessus du remblai en sol damé plus foncé, fronts en terre et cailloux).
 async function capturesMasseSol(page) {
   const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
     ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
@@ -3602,7 +3603,8 @@ async function capturesMasseSol(page) {
     ["rampe-bas", -33, 0, 90, true, false, false, true], ["rampe-front", -25, -9, 180, true, false, false, true],
     ["rampe-creux", -33, 0, 90, true, true, false, true], ["rampe-fin", -34, 0, 90, true, false, false, "fin"],
     ["masse-piliers", -14, 0.3, 90, true, false, false, false, true], ["trace-front", 6, 0.6, 270, true],
-    ["trace-rampe", -33, 0.6, 90, true, false, false, "fin"], ["trace-creux", -33, 0.6, 90, true, true]];
+    ["trace-rampe", -33, 0.6, 90, true, false, false, "fin"], ["trace-creux", -33, 0.6, 90, true, true],
+    ["rampe-bas-hd", -33, 0, 90, true, false, true, true], ["masse-sommet-hd", -25, 0, 90, true, false, true]];
   const lignesSol = await page.evaluate(function () {
     const v = window.getVue3DLignesSol();
     window.setVue3DLignesSol(true);

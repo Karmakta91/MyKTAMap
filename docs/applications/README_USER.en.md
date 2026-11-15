@@ -608,6 +608,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Support arches: dressed stone in the same tone as the gallery walls, everywhere — voussoirs in smooth-dressed stone, piers in the same stone as the gallery walls, and rougher rubble masonry above the arch.
 - **Filled to roof**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
+- **Partial fill**: you walk on packed ground a little darker than the tunnel floor (top and slopes); its straight edges show the cut of the fill, in earth and stones. A lowered floor takes the stone of the floor.
 - Filled to roof and collapse are at their real size and do not change shape. A custom zone keeps its colour.
 - Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn black (the 🗺️ plan on the ground stays visible on top).
 - The wood, stone and backfill of accesses (below) follow this setting too.

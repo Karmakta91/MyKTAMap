@@ -923,6 +923,9 @@
   // Ruban d'un tracé sur une masse au sol (_rubanSol) : marche (m) au-delà de laquelle on cherche un front, nombre de
   // pas de dichotomie (0,5 m / 2^10 ≈ 0,5 mm), décollement de la contremarche vers le côté bas (m).
   const FRONT_RUBAN = { seuil: 0.05, iter: 10, decolle: 0.01 };
+  // Dessus et rampes d'un remblai (masse au sol positive, 🧱) : le sol damé du niveau multiplié par ce facteur —
+  // même famille, assez sombre pour distinguer la masse du sol qui l'entoure (_matsPente().solMasse).
+  const MASSE_SOL_SOMBRE = 0.6;
   const MASSE = { pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
     ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
     lent: 15, lentPlancher: 0.5, marche: 0.2, pasFront: 0.05, chute: [0.3, 0.5], amorti: 0.06 };
@@ -1099,10 +1102,10 @@
 
   // Dessus de la masse `m` dans le lot (grille découpée au contour, MASSE.pas m, plus large si la zone dépasserait
   // MASSE.triMax triangles) et ses pans verticaux (le long de chaque bord, du sol du niveau au dessus : le front ;
-  // rien là où une rampe part de 0). `tex` : coordonnées de texture en mètres / REMBLAIS.m (lot texturé 🧱). Rend le
-  // nombre de
-  // triangles posés.
-  function _maillageMasse(lot, m, col, tex, motif) {
+  // rien là où une rampe part de 0). `tex` : coordonnées de texture en mètres / `motif` (REMBLAIS.m par défaut, lot
+  // texturé 🧱). `pans` (facultatif) { lot, col, tex, motif } : les pans dans un autre lot que le dessus (remblai : le
+  // dessus en sol damé, la coupe en terre et cailloux, _masseSol). Rend le nombre de triangles posés.
+  function _maillageMasse(lot, m, col, tex, motif, pans) {
     const w = m.x1 - m.x0, d = m.z1 - m.z0;
     // Budget : 2 triangles par case (≈ w × d / pas²) + 2 par pan (≈ périmètre / pas) ≤ 90 % de MASSE.triMax (les cases
     // découpées au contour en ajoutent un peu) → plus petit pas qui tient, jamais sous MASSE.pas.
@@ -1114,7 +1117,8 @@
     const T = MASSE.triMax * 0.9;
     const pas = Math.max(MASSE.pas, (2 * per + Math.sqrt(4 * per * per + 8 * T * w * d)) / (2 * T));
     const nx = Math.max(1, Math.ceil(w / pas)), nz = Math.max(1, Math.ceil(d / pas));
-    const mt = motif || REMBLAIS.m, avant = lot.p.length;
+    const mt = motif || REMBLAIS.m, P = pans || { lot: lot, col: col, tex: tex, motif: mt };
+    const lp = P.lot, mp = P.motif || REMBLAIS.m, avant = lot.p.length + (lp !== lot ? lp.p.length : 0);
     const H = function (x, z) { return _solMasseDe(m, x, z); };
     const uv = function (a, b, c) {
       return tex ? [a[0] / mt, a[2] / mt, b[0] / mt, b[2] / mt, c[0] / mt, c[2] / mt] : undefined;
@@ -1122,11 +1126,12 @@
     // ⚠️ contrat (décision produit) : 🧱 coupé (aplat), la couleur du canon est assombrie selon la pente de la face
     // (ny = composante verticale de sa normale tournée vers le haut) : plateau et fond à la couleur, talus à 30° ≈ 0,4,
     // pans à MASSE.ombreMin — la pente se lit sans texture, dans le même sens pour un sol abaissé. 🧱 : la texture.
-    const ombre = function (ny) {
-      if (tex) return col;
+    const ombreDe = function (c, t, ny) {
+      if (t) return c;
       const k = Math.max(MASSE.ombreMin, 1 - MASSE.ombre * (1 - ny));
-      return { r: col.r * k, g: col.g * k, b: col.b * k };
+      return { r: c.r * k, g: c.g * k, b: c.b * k };
     };
+    const ombre = function (ny) { return ombreDe(col, tex, ny); };
     const tri = function (a, b, c) {
       const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
       let cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
@@ -1195,23 +1200,27 @@
         if ((Math.abs(ha) < 0.01 && Math.abs(hb) < 0.01) || dansRoche(ax, az, bx, bz)) continue;
         const A = [ax, 0, az], B = [bx, 0, bz], Bh = [bx, hb, bz], Ah = [ax, ha, az];
         const su = function (a, b, c) {
-          return tex ? [a[0] / mt + a[2] / mt, a[1] / mt, b[0] / mt + b[2] / mt, b[1] / mt, c[0] / mt + c[2] / mt,
-            c[1] / mt] : undefined;
+          return P.tex ? [a[0] / mp + a[2] / mp, a[1] / mp, b[0] / mp + b[2] / mp, b[1] / mp, c[0] / mp + c[2] / mp,
+            c[1] / mp] : undefined;
         };
-        if (Math.abs(ha) > 0.01) lot.tri(A, B, Ah, n, ombre(0), su(A, B, Ah));
-        if (Math.abs(hb) > 0.01) lot.tri(B, Bh, Ah, n, ombre(0), su(B, Bh, Ah));
+        const cp = ombreDe(P.col, P.tex, 0);
+        if (Math.abs(ha) > 0.01) lp.tri(A, B, Ah, n, cp, su(A, B, Ah));
+        if (Math.abs(hb) > 0.01) lp.tri(B, Bh, Ah, n, cp, su(B, Bh, Ah));
       }
     }
-    return (lot.p.length - avant) / 9;
+    return (lot.p.length + (lp !== lot ? lp.p.length : 0) - avant) / 9;
   }
 
   // Masse au sol `z` dessinée dans la tuile : texturée (🧱 : lot du remblais, terre et cailloux) ou à la couleur de la
   // légende (aplat). Compte ses triangles (checkup, mesure de perf : e.trianglesMasses).
   // ⚠️ contrat (décision produit) : un sol abaissé est un creusement dans la roche, pas un tas : son fond et son talus
   // prennent le sol de pierre du niveau (`lotCreux`, matériau des sols des galeries sans gabarit : _matsPente, même
-  // carte et même grain HD, coordonnées en mètres / SOL.m comme les dalles) ; 🧱 coupé, la couleur de ce sol. Le
-  // remblai (part positive) garde terre et cailloux.
-  function _masseSol(lotTex, lotUni, z, trous, lotCreux) {
+  // carte et même grain HD, coordonnées en mètres / SOL.m comme les dalles) ; 🧱 coupé, la couleur de ce sol.
+  // ⚠️ contrat (décision produit) : le remblai (part positive), 🧱 allumé, a ses surfaces de MARCHE (dessus, rampes) en
+  // sol damé du niveau un peu plus foncé (`lotDessus`, matériau _matsPente().solMasse : la même carte, grain HD suivi,
+  // assombri de MASSE_SOL_SOMBRE) ; ses FRONTS verticaux gardent terre et cailloux (la coupe du remblai, `lotTex`).
+  // 🧱 coupé : la couleur de la légende, ombrée selon la pente (le sol du niveau est noir en aplat).
+  function _masseSol(lotTex, lotUni, z, trous, lotCreux, lotDessus) {
     const e = _e, t0 = performance.now(), m = _masseDe(z);
     if (!m) return;
     // Sol abaissé : le sol du niveau (ou du voisin construit) est troué sur le contour, comme la bouche d'un puits.
@@ -1220,8 +1229,11 @@
       _dessus(trous[bit] || (trous[bit] = new Lot()), m.ring, 0, BLANC);
     }
     const tex = e.textures === true;
-    const n = m.H < 0 && lotCreux ? _maillageMasse(lotCreux, m, BLANC, true, SOL.m)
-      : _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
+    let n;
+    if (m.H < 0 && lotCreux) n = _maillageMasse(lotCreux, m, BLANC, true, SOL.m);
+    else if (tex && lotDessus) {
+      n = _maillageMasse(lotDessus, m, BLANC, true, SOL.m, { lot: lotTex, col: BLANC, tex: true, motif: REMBLAIS.m });
+    } else n = _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
     e.trianglesMasses = (e.trianglesMasses || 0) + n;
     e.trianglesMasseMax = Math.max(e.trianglesMasseMax || 0, n);
     e.msMasses = (e.msMasses || 0) + performance.now() - t0;
@@ -1915,7 +1927,7 @@
     if (ombre) parois.ombre = ombre;
     // Niveaux entremêlés et zones jonction (_paroiEntre, _trousEntre, _zoneJonction) : coupes, trous du gabarit et
     // chambres en pente.
-    const trous = {}, solPente = new Lot(), plafondPente = new Lot();
+    const trous = {}, solPente = new Lot(), plafondPente = new Lot(), solMasse = new Lot();
     if (mx) {
       t.parois = []; t.paroisY = [];
       for (let i = 0; i < t.g.length; i++) {
@@ -1962,7 +1974,7 @@
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
       // Masse au sol : son dessus en talus (_masseSol), en chambre comme en tube ; ni prisme ni découpe aux parois.
-      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous, solPente); continue; }
+      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous, solPente, solMasse); continue; }
       const pz = _penteDeLaZone(z);
       if (pz) {
         _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
@@ -2028,6 +2040,7 @@
     if (eboulis.p.length) _matZone("eboulis");
     ajouter(eboulis, _e.mats.eboulis, 0, "effondrement");
     ajouter(eauTube, _e.mats.eauGalerie, 2, "eau");
+    if (solMasse.p.length) ajouter(solMasse, _matsPente().solMasse, 0, "remblais");
     if (solPente.p.length || plafondPente.p.length) {
       const mp = _matsPente();
       ajouter(solPente, mp.sol, ORDRE_SOL, "sol");
@@ -2201,8 +2214,9 @@
     }
     // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
     const tx = e.textures === true;
-    const solCreux = new Lot();
-    const lots = { trous: trous, solCreux: solCreux, opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau,
+    const solCreux = new Lot(), solMasse = new Lot();
+    const lots = { trous: trous, solCreux: solCreux, solMasse: solMasse, opaque: opaque, eau: eau, hachSol: hachSol,
+      hachRideau: hachRideau,
       remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
@@ -2228,6 +2242,7 @@
     };
     ajouter(sol, e.mats.solGalerie, ORDRE_SOL, "sol");
     if (solCreux.p.length) ajouter(solCreux, _matsPente().sol, ORDRE_SOL, "sol");
+    if (solMasse.p.length) ajouter(solMasse, _matsPente().solMasse, 0, "remblais");
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
@@ -2302,7 +2317,10 @@
     const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
     if (ring.length < 3) return;
     // Masse au sol : entière (les parois du tube cachent ce qui est dans la roche), pas découpée par pièce.
-    if (z.type === "masse-sol") { _masseSol(lots.remblais, lots.opaque, z, lots.trous, lots.solCreux); return; }
+    if (z.type === "masse-sol") {
+      _masseSol(lots.remblais, lots.opaque, z, lots.trous, lots.solCreux, lots.solMasse);
+      return;
+    }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     ring.forEach(function (q) {
       x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
@@ -5397,8 +5415,9 @@
   function _matsPente() {
     const e = _e;
     if (!e.matsPente) {
-      e.matsPente = { sol: e.mats.solGalerie.clone(), plafond: e.mats.plafondGalerie.clone() };
-      ["sol", "plafond"].forEach(function (k) {
+      e.matsPente = { sol: e.mats.solGalerie.clone(), plafond: e.mats.plafondGalerie.clone(),
+        solMasse: e.mats.solGalerie.clone() };
+      ["sol", "plafond", "solMasse"].forEach(function (k) {
         e.matsPente[k].stencilWrite = false;
         e.matsPente[k].stencilFunc = THREE.AlwaysStencilFunc;
         e.matsPente[k].side = THREE.DoubleSide;
@@ -5408,6 +5427,13 @@
       const a = e.mats[q[1]], b = e.matsPente[q[0]];
       _suivreCartes(b, a);
     });
+    // Dessus d'un remblai (_masseSol) : la carte du sol des galeries, couleur assombrie ; refait seulement si la carte
+    // ou la couleur du sol a changé (needsUpdate recompile le matériau).
+    const sm = e.matsPente.solMasse, sg = e.mats.solGalerie;
+    const sombre = sg.color.clone().multiplyScalar(MASSE_SOL_SOMBRE);
+    if (sm.map !== sg.map || sm.normalMap !== sg.normalMap || !sm.color.equals(sombre)) {
+      sm.map = sg.map; sm.normalMap = sg.normalMap; sm.color.copy(sombre); sm.needsUpdate = true;
+    }
     return e.matsPente;
   }
 

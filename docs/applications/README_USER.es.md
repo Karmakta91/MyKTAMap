@@ -608,6 +608,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Arcos de sostenimiento: piedra de sillería del mismo tono que las paredes de las galerías, en todas partes — dovelas de piedra labrada, pilares en la piedra de las paredes y, sobre el arco, una mampostería de mampuestos más rústica.
 - **Colmatado**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
 - **Derrumbe** (hundimiento): un amontonamiento de grandes bloques rotos y agrietados, con poca tierra.
+- **Relleno parcial**: se camina sobre un suelo apisonado un poco más oscuro que el de la galería (parte superior y pendientes); sus bordes rectos muestran el corte del relleno, en tierra y piedras. Un suelo rebajado toma la piedra del suelo.
 - Colmatado y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
 - Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido; las paredes de las galerías toman el color de su trazado (en un cruce, el del trazado más ancho); suelo y techo quedan negros (el 🗺️ plano en el suelo sigue visible encima).
 - La madera, la piedra y el relleno de los accesos (más abajo) también siguen este ajuste.

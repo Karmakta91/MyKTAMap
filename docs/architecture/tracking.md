@@ -1468,8 +1468,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   seulement, un voisin montré garde son pied au sol du niveau).
   Dessin (`_maillageMasse`) : grille de 0,5 m découpée au contour, pas élargi pour tenir ≤ 2 000 triangles par zone
   (`MASSE.triMax`, pans compris ; une zone est dessinée dans la tuile de son centre) ; en galerie, une case toute dans
-  la roche n'est pas dessinée (sauf sol abaissé) ; remblai 🧱 : terre et cailloux (`REMBLAIS.m`), sinon la couleur de
-  la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
+  la roche n'est pas dessinée (sauf sol abaissé) ; remblai 🧱 (décision produit) : dessus et rampes en sol damé du
+  niveau assombri (`_matsPente().solMasse`, carte du sol des galeries × `MASSE_SOL_SOMBRE`, grain HD suivi), fronts
+  verticaux en terre et cailloux (`REMBLAIS.m`, la coupe du remblai : `_maillageMasse` > `pans`) ; 🧱 coupé, la couleur
+  de la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
   **Posés sur le sol local** (`_solMasse`) : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m
   inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
   du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, chatière, véhicule, porte… :

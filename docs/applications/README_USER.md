@@ -608,6 +608,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 - Arcs de soutènement : pierre de taille de la même teinte que les parois des galeries, partout — claveaux en pierre dressée, piédroits dans la pierre des parois, et au-dessus de l'arc une maçonnerie de moellons plus rustique.
 - **Comblé** : terre et sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis.
 - **Effondrement** (fontis) : un éboulis de gros blocs cassés et fissurés, avec peu de terre.
+- **Masse au sol** : on marche sur un sol damé un peu plus foncé que celui de la galerie (dessus et pentes) ; ses bords droits montrent la coupe du remblai, en terre et cailloux. Un sol abaissé prend la pierre du sol.
 - Comblé et effondrement sont à leur taille réelle et ne changent pas de forme. Une zone personnalisée garde sa couleur.
 - Coupé : chaque structure et chaque zone reprend la couleur de la légende, la tienne comprise ; les parois des galeries prennent la couleur de leur tracé (à un carrefour, celle du tracé le plus large) ; sol et plafond deviennent noirs (le plan au sol 🗺️ reste visible dessus).
 - Le bois, la pierre et les remblais des accès (plus bas) suivent aussi ce réglage.
