@@ -1200,6 +1200,8 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 - la surface **comblée** (zones « Comblé » dans le vide du secteur) en m² et m³, et le **vide actuel** (exploité moins comblé) ;
 - s'il y en a dans le secteur, le **remblai** (masse au sol), la **masse non exploitée** et le **sol abaissé** (surface et volume), chacun sur sa ligne. Une masse au sol compte pour sa part de la hauteur (¼, ½, ¾…), comme si ses bords étaient verticaux (le talus est négligé, la fenêtre le rappelle). Un **remblai** est retiré du vide, mais reste dans le volume exploité (la roche a bien été extraite). Une **masse non exploitée** est retirée du volume exploité **et** du vide. Un **sol abaissé** est ajouté aux deux. Là où une masse chevauche un Comblé, seul le Comblé compte ; là où une masse non exploitée chevauche un remblai, elle l'emporte. Les surfaces (secteur, exploitée, taux) ne changent pas.
 
+Sous le tableau, deux blocs à déplier : l'**Estimation de comblement** (coût du matériau choisi — béton, coulis ou remblai inerte — avec les pertes, forages et durée d'intervention, coût total ; un ordre de grandeur, pas un devis) et **Pour le fun** (toupies, piscines olympiques, masse, CO₂, durée) ; tes prix et réglages restent sur cet appareil, **Valeurs par défaut** les remet.
+
 Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
 
 ---

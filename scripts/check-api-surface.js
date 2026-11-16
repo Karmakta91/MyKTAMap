@@ -265,6 +265,50 @@ function charger(fichier, nomGlobal, prealables) {
     r.videM3 === r.videM2 * 2.5 && r.volumeM3 === r.exploiteM2 * 2.5 && r.remblaisM3 === r.remblaisM2 * 2.5 &&
     !r.masseSol && !r.abaisse && r.masseM2 === 0 && r.abaisseM2 === 0);
 
+  // ── Estimation de comblement (pur) — exemple de KARMA : 75 ha de vide × 3 m = 2 250 000 m³ ──
+  // Béton 130 €/m³ + 20 % de pertes : 2 700 000 m³ → 351 M€ ; toupies (8 m³, PERTES COMPRISES) 337 500 ;
+  // piscines 1 080 ; masse × 2,4 = 6 480 000 t ; CO₂ × 0,25 = 675 000 t ; une toupie / 10 min = 3 375 000 min.
+  // Forages : 750 000 m² / 25 = 30 000 → × 1 500 € = 45 M€ ; / 4 par jour = 7 500 jours ouvrés (≈ 357,1 mois).
+  const EC = VE.estimerComblement;
+  const rK = { ok: true, videEqM2: 750000, volumeEqM2: 750000, videM2: 750000, exploiteM2: 750000 };
+  let e = EC(rK, 3, {});
+  t("estimation : 2 250 000 m³ de vide, 2 700 000 avec 20 % de pertes, béton 351 M€ (défauts)",
+    e.ok && proche(e.volumeBaseM3, 2250000) && proche(e.volumePertesM3, 2700000) && proche(e.coutMateriau, 351e6));
+  t("estimation : 30 000 forages, 45 M€, 7 500 jours ouvrés (≈ 357,1 mois), total 396 M€",
+    e.nbForages === 30000 && proche(e.coutForages, 45e6) && e.jours === 7500 && proche(e.mois, 7500 / 21) &&
+    proche(e.coutTotal, 396e6));
+  t("pour le fun : 337 500 toupies (pertes comprises), 1 080 piscines, 6 480 000 t, 675 000 t de CO₂, 3 375 000 min",
+    e.toupies === 337500 && proche(e.piscines, 1080) && proche(e.masseT, 6480000) && proche(e.co2T, 675000) &&
+    e.dureeToupiesMin === 3375000);
+  e = EC(rK, 3, { base: "pct", pct: 50 });
+  t("estimation : 50 % du vide → 1 125 000 m³, mêmes 30 000 forages (un forage traite toute la hauteur)",
+    proche(e.volumeBaseM3, 1125000) && e.nbForages === 30000);
+  e = EC(rK, 3, { base: "hauteur", hauteurM: 1 });
+  t("estimation : jusqu'à 1 m sur 3 m → un tiers du vide, 750 000 m³", proche(e.volumeBaseM3, 750000));
+  e = EC(rK, 3, { base: "hauteur", hauteurM: 5 });
+  t("estimation : hauteur bornée à celle du calcul (5 m → 3 m, tout le vide)", proche(e.volumeBaseM3, 2250000));
+  e = EC({ ok: true, videEqM2: 750000, volumeEqM2: 900000, videM2: 750000, exploiteM2: 800000 }, 3,
+    { base: "exploite" });
+  t("estimation : exploité total (900 000 m² éq. × 3 = 2 700 000 m³), forages sur la surface exploitée (32 000)",
+    proche(e.volumeBaseM3, 2700000) && e.nbForages === 32000);
+  e = EC(rK, 3, { materiau: "coulis", pertesPct: 0 });
+  t("estimation : coulis 80 €/m³ sans pertes → 180 M€, CO₂ 0,12 t/m³ = 270 000 t, densité 1,6",
+    proche(e.coutMateriau, 180e6) && proche(e.co2T, 270000) && proche(e.masseT, 3600000));
+  e = EC(rK, 3, { materiau: "remblai" });
+  t("estimation : remblai inerte 20 €/m³ (+20 %) = 54 M€, CO₂ non compté",
+    proche(e.coutMateriau, 54e6) && e.co2T === null);
+  e = EC({ ok: true, videEqM2: 26, volumeEqM2: 26, videM2: 26, exploiteM2: 26 }, 2, { prix: { beton: "abc" },
+    surfaceForageM2: 25, foragesJour: -1, pertesPct: "x" });
+  t("estimation : 26 m² / 25 → 2 forages (arrondi au-dessus) ; saisie illisible → défaut (130 €, 20 %, 4 / jour)",
+    e.nbForages === 2 && e.jours === 1 && proche(e.coutMateriau, 26 * 2 * 1.2 * 130));
+  t("estimation : hauteur nulle ou résultat absent → ok:false",
+    EC(rK, 0, {}).ok === false && EC(null, 3, {}).ok === false);
+  t("estimation : défauts figés (130 / 80 / 20 €, 2,4 / 1,6 / 1,8 t/m³, 20 %, 25 m², 1 500 €, 4 / jour, 10 min)",
+    VE.ESTIMATION_DEFAUTS.prix.beton === 130 && VE.ESTIMATION_DEFAUTS.prix.coulis === 80 &&
+    VE.ESTIMATION_DEFAUTS.prix.remblai === 20 && VE.ESTIMATION_DEFAUTS.densite.coulis === 1.6 &&
+    VE.ESTIMATION_DEFAUTS.pertesPct === 20 && VE.ESTIMATION_DEFAUTS.surfaceForageM2 === 25 &&
+    VE.ESTIMATION_DEFAUTS.coutForage === 1500 && VE.ESTIMATION_DEFAUTS.foragesJour === 4 &&
+    VE.ESTIMATION_DEFAUTS.toupieMin === 10 && Object.isFrozen(VE.ESTIMATION_DEFAUTS.prix));
   // Charge : secteur à 400 sommets (bords subdivisés), 900 piliers 4×4 px dedans = 14 400 px² = 3 600 m².
   const grand = [];
   for (let i = 0; i < 100; i++) grand.push({ x: i * 10, y: 0 });

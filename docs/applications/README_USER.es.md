@@ -1200,6 +1200,8 @@ En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se e
 - la superficie **colmatada** (zonas «Colmatado» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos colmatado);
 - si el sector los tiene, el **relleno** (relleno parcial), la **masa sin explotar** y el **suelo rebajado** (superficie y volumen), cada uno en su línea. Un relleno parcial cuenta según su parte de la altura (¼, ½, ¾…), como si sus bordes fueran verticales (el talud se desprecia, la ventana lo recuerda). Un **relleno** se quita del vacío pero sigue en el volumen explotado (la roca sí se extrajo). Una **masa sin explotar** se quita del volumen explotado **y** del vacío. Un **suelo rebajado** se añade a ambos. Donde una masa se superpone a un Colmatado, solo cuenta el Colmatado; donde una masa sin explotar se superpone a un relleno, prevalece. Las superficies (sector, explotada, tasa) no cambian.
 
+Bajo la tabla, dos bloques desplegables: la **Estimación de relleno** (coste del material elegido — hormigón, lechada o relleno inerte — con las pérdidas, sondeos y duración de la intervención, coste total; un orden de magnitud, no un presupuesto) y **Por diversión** (hormigoneras, piscinas olímpicas, masa, CO₂, duración); tus precios y ajustes se quedan en este dispositivo, **Valores por defecto** los restablece.
+
 En un plano de varios niveles solo cuenta el **nivel activo** (en la 🧊 Vista 3D: el de la 3D), y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
 
 ---

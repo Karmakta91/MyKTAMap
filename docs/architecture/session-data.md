@@ -698,10 +698,26 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
   p1 < p2 < … ; la tranche i est l'union des masses de part ≥ pi, d'épaisseur pi − pi−1, et son aire dans le vide hors
   Comblé vaut |(S ∩ (R ∪ M)) − P| − |(S ∩ R) − P| (deux `calculerAires`) : chevauchements de hauteurs différentes
   comptés une fois, **le Comblé l'emporte** sur une masse qui le chevauche, un pilier dans une masse en est retiré.
-  **Sol abaissé** (part < 0) : même calcul sur |part|, volume **ajouté**. Vide (volume) = (exploité − Comblé) × h −
-  masses + sols abaissés ; sa surface ne change pas. Lignes de la fenêtre (`volume.masse*`, `volume.abaisse*`,
-  `volume.noteMasse`) seulement si une masse ou un sol abaissé touche le vide du secteur ; plan sans masse : chiffres
-  identiques au bit près. Une masse et un sol abaissé qui se chevauchent comptent chacun (cas non tranché).
+  **Sol abaissé** (part < 0) : même calcul sur |part|, ajouté au volume exploité ET au vide. **Sorte**
+  (`ktaMasseNonExploitee`) : un **remblai** est retranché du vide seulement (il reste dans l'exploité) ; une masse
+  **non exploitée** est retranchée du volume exploité ET du vide (ses paliers à elle ; où elle chevauche un remblai,
+  elle l'emporte). Volume exploité = exploité × h − non exploitées + sols abaissés ; vide (volume) = (exploité −
+  Comblé) × h − toutes les masses positives + sols abaissés ; surfaces (secteur, exploitée, taux) inchangées. Lignes
+  de la fenêtre (`volume.masse*` = remblai, `volume.nonExploitee*`, `volume.abaisse*`, `volume.noteMasse`) seulement
+  si l'une touche le vide du secteur ; plan sans masse : chiffres identiques au bit près. Une masse et un sol abaissé
+  qui se chevauchent comptent chacun (cas non tranché).
+- **Estimation de comblement** (`estimerComblement`, pur, testé dans `check-api-surface.js`) : deux blocs
+  `<details>` sous le tableau, fermés par défaut. « Estimation » : volume de base (vide restant par défaut, exploité
+  total, part du vide en %, ou vide jusqu'à une hauteur bornée à celle du calcul, en proportion), matériau (béton
+  130 €/m³ · 2,4 t/m³, coulis 80 · 1,6, remblai inerte 20 · 1,8), pertes 20 % → coût = volume × (1 + pertes) × prix ;
+  forages = ⌈surface de base (vide restant, ou exploitée pour « exploité ») ÷ surface par forage (25 m²)⌉ × coût
+  d'un forage (1 500 €) ; durée = ⌈forages ÷ forages par jour (4)⌉ jours ouvrés (et mois de 21 j au-delà de 42 j) ;
+  total = matériau + forages ; mention « ordre de grandeur, pas un devis ». « Pour le fun » (pertes COMPRISES) :
+  toupies de 8 m³, piscines olympiques de 2 500 m³, masse (densité), CO₂ (facteur fixe : béton 0,25 t/m³, coulis
+  0,12, remblai non compté), durée à une toupie toutes les X min (10). Formats compacts de la locale (k, M, Md),
+  euros par `Intl`. ⚠️ Réglages et état des blocs SUR L'APPAREIL (`localStorage["myktamap_volume_estimation_v1"]`,
+  try/catch : défauts sans stockage), jamais dans la session ni le plan ; prix et densité propres à chaque
+  matériau ; « Valeurs par défaut » remet tout. Preuve : `checkup-estimation-comblement.js`.
 - **Hauteur moyenne** : celle **du niveau mesuré** (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans
   réglage ; plan à un niveau : niveau 0), valeur initiale du champ ; recalcul des volumes à chaque frappe. Plan à un
   niveau : une valeur > 0 est écrite par `setHauteurNiveau`. ⚠️ Plan à étages (décision produit) : le champ sert au

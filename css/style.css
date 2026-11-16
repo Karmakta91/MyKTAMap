@@ -18749,6 +18749,23 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   line-height: 1.45;
   margin: 12px 0 0;
 }
+/* Estimation de comblement et « pour le fun » (volumeExploite.js > _estimationHtml) : blocs repliables,
+   champs en grille. */
+.kta-volume-bloc { margin-top: 14px; border: 1px solid var(--kta-bordure); border-radius: 8px; padding: 8px 10px; }
+.kta-volume-bloc > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--kta-accent-texte); }
+.kta-volume-bloc[open] > summary { margin-bottom: 8px; }
+.kta-volume-champs { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 8px 0; }
+.kta-volume-champ {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 12px; color: var(--kta-texte-2);
+}
+.kta-volume-champ[hidden] { display: none; }
+.kta-volume-champ input, .kta-volume-champ select {
+  width: 120px; max-width: 55%; padding: 5px 8px; background: var(--kta-surface-2);
+  border: 1px solid var(--kta-bordure); border-radius: 6px; color: var(--kta-texte); font-size: 13px;
+}
+.kta-volume-champ input { text-align: right; }
+.kta-volume-bloc .kta-popup-actions { margin-top: 8px; }
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
 .kta-note-popup-convertir,
 .kta-note-popup-jct-appliquer,

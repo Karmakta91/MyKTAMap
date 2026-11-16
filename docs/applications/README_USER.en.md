@@ -1200,6 +1200,8 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 - the **filled** area (“Filled to roof” zones inside the sector void) in m² and m³, and the **current void** (mined minus filled);
 - if the sector has any, the **backfill** (partial fill), the **unworked mass** and the **lowered floor** (area and volume), each on its own line. A partial fill counts for its share of the height (¼, ½, ¾…), as if its edges were vertical (the slope is ignored, the window says so). **Backfill** is removed from the void but stays in the mined volume (the rock was extracted). An **unworked mass** is removed from the mined volume **and** from the void. A **lowered floor** is added to both. Where a mass overlaps a Filled to roof zone, only that zone counts; where an unworked mass overlaps backfill, it wins. Areas (sector, mined, rate) do not change.
 
+Below the table, two blocks to expand: the **Backfill estimate** (cost of the chosen material — concrete, grout or inert fill — with losses, boreholes and work duration, total cost; an order of magnitude, not a quote) and **Just for fun** (mixer trucks, Olympic pools, mass, CO₂, duration); your prices and settings stay on this device, **Default values** resets them.
+
 On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 
 ---
