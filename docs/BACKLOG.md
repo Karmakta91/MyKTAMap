@@ -101,10 +101,10 @@
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
-- **Fiches trop chargées au PC** — le téléphone est fait (fiches en plein écran, case dans Configuration > Affichage,
-  sur Karma_dev le 16/11, à valider par KARMA au téléphone). Reste le PC : la fiche montre trop d'informations.
-  `qui: Claude · action: topo (capture PC, ce qu'on garde, ce qu'on replie) après validation du plein écran
-  · fini: fiche PC validée par KARMA · depuis: 16/11/2026 · taille: S`
+- **Fiches trop chargées au PC** — le téléphone est fait et validé par KARMA (16/11 : fiches dans une fenêtre
+  floutée, case dans Configuration > Affichage). Reste le PC : la fiche montre trop d'informations.
+  `qui: Claude · action: topo (capture PC, ce qu'on garde, ce qu'on replie) · fini: fiche PC validée par KARMA
+  · depuis: 16/11/2026 · taille: S`
 
 ## Plus tard
 
