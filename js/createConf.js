@@ -316,7 +316,7 @@ function afficherPlanner() {
               <option value="structures">${window.I18n.t("vue3d.modeStructures")}</option>
               <option value="galerie">${window.I18n.t("vue3d.modeGalerie")}</option>
             </select>
-            <p class="kta-prof-hint">${window.I18n.t("gen.rendu3d.hint")}</p>
+            <p class="kta-prof-hint" style="grid-column:1 / -1; margin:0;">${window.I18n.t("gen.rendu3d.hint")}</p>
           </div>
 
           <!-- Tiling V2 (depuis v149) : opt-in conversion en plan tuile.

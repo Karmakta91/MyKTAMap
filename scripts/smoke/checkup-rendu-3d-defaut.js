@@ -125,7 +125,13 @@ async function rendu3D(page, garder) {
     if (!window.KtaVue3D) await window.ktaChargerVue3D();
     const K = window.KtaVue3D;
     if (K.etat().ouvert) await K.fermer();
-    await K.ouvrir({ depart: { x: 500, y: 400, cap: 0, niveau: 0 }, commandes: "pave" });
+    // Une galerie FICTIVE en croix au départ (session), pour que la capture montre le rendu.
+    if (!window.getRoads().length) {
+      window.setRoads([{ uid: "rd_r3d_a", type: "principal", level: 0, points: [{ x: 300, y: 400 }, { x: 700, y: 400 }] },
+        { uid: "rd_r3d_b", type: "principal", level: 0, points: [{ x: 540, y: 250 }, { x: 540, y: 550 }] }]);
+      if (window.KtaGalerie) window.KtaGalerie.invalider();
+    }
+    await K.ouvrir({ depart: { x: 500, y: 400, cap: 90, niveau: 0 }, commandes: "pave" });
     for (let i = 0; i < 20; i++) await new Promise(function (r) { requestAnimationFrame(r); });
     const b = document.querySelector(".kta-v3d-btn-rendu");
     const r = { ouvert: K.etat().ouvert, rendu: K.etat().rendu, bouton: b ? b.dataset.rendu : null,
