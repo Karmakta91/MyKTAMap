@@ -18901,6 +18901,13 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
 .kta-note-popup-nature[hidden] { display: none; }
 .kta-note-popup-nature-choix { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; }
 .kta-note-popup-nature-option { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+/* 🩸 .leaflet-popup-content input impose width: 100 % !important : un bouton radio y prenait toute la place et
+   poussait son libellé sur trois lignes (« Masse non exploitée »). */
+.kta-note-popup .kta-note-popup-nature-option input,
+.kta-note-popup .kta-note-popup-comble-cran input[type="radio"] {
+  width: auto !important; flex: 0 0 auto; margin: 0 !important; padding: 0 !important;
+}
+.kta-note-popup-nature-option span { white-space: nowrap; }
 .kta-note-popup-nature-lue { margin-top: 2px; color: var(--kta-texte); }
 .kta-note-popup-rampes { margin-top: 8px; }
 .kta-note-popup-rampe { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
