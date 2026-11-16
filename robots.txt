@@ -1,0 +1,5 @@
+# MyKTAMap — tout est ouvert aux robots ; le plan du site liste les pages publiques.
+User-agent: *
+Allow: /
+
+Sitemap: https://myktamap.fr/sitemap.xml

@@ -232,4 +232,7 @@ function mesure(page) {
   console.log("\n" + (problemes.length ? "❌ " + problemes.length + " problème(s)" :
     "✅ Secteur du volume : dessin, retrouvé, repris, niveaux additionnés, annulation"));
   process.exit(problemes.length ? 1 : 0);
-})().catch(function (e) { console.error(e); process.exit(2); });
+})().catch(function (e) {
+  console.error(e);
+  lancerNavigateur.fermerTout().then(function () { process.exit(2); });   // navigateurs fermés avant de sortir
+});

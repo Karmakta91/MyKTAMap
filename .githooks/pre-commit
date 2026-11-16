@@ -306,6 +306,9 @@ node scripts/check-entete-licence.js || exit $?
 # 🔒 CSP stricte : aucun script inline (onclick=, javascript:, <script> sans src), killsw.html excepte.
 node scripts/check-csp-inline.js || exit $?
 
+# Harnais : navigateurs lances par scripts/smoke/navigateur.js (suivis, fermes a la sortie, coupes s'ils bloquent).
+node scripts/check-harnais-navigateur.js || exit $?
+
 # Sessions en IndexedDB : aucun acces direct a localStorage["myktamap_session_v1_<planId>"].
 node scripts/check-session-store.js || exit $?
 

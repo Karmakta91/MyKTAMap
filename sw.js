@@ -30,7 +30,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.28.0";
+const CACHE_NAME = "myktamap-cache-v2.28.1";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -352,6 +352,7 @@ const ASSETS_TO_CACHE = [
   // UI Picker calage image layers (modale split-screen 2 minimaps)
   "./js/imageLayerCalibrationPicker.js",
   "./js/map.js",
+  "./js/fichePleinEcran.js",
   "./js/mapBearing.js",
   "./js/tracking.js",
   "./js/poiJonction.js",

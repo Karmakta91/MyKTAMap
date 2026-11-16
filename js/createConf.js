@@ -307,6 +307,18 @@ function afficherPlanner() {
             <div id="pl_niveaux_table"></div>
           </div>
 
+          <!-- Rendu 3D par défaut (plan.vue3dRendu) : celui de la vue 3D tant que l'utilisateur n'a pas choisi le
+               sien pour ce plan (config.js > getRenduVue3D). Mixte = champ absent, JSON identique. -->
+          <div class="kta-planner-grille" style="margin-top:12px;">
+            <label class="kta-cfg-label" for="pl_rendu3d">${window.ktaIcone("box") + " " + window.I18n.t("gen.rendu3d.label")}</label>
+            <select class="kta-cfg-input" id="pl_rendu3d" title="${window.I18n.t("gen.rendu3d.hint")}">
+              <option value="mixte" selected>${window.I18n.t("vue3d.modeMixte")}</option>
+              <option value="structures">${window.I18n.t("vue3d.modeStructures")}</option>
+              <option value="galerie">${window.I18n.t("vue3d.modeGalerie")}</option>
+            </select>
+            <p class="kta-prof-hint" style="grid-column:1 / -1; margin:0;">${window.I18n.t("gen.rendu3d.hint")}</p>
+          </div>
+
           <!-- Tiling V2 (depuis v149) : opt-in conversion en plan tuile.
                Visible UNIQUEMENT en mode "Modifier" (besoin du File source du V1)
                ET seulement si le plan source n'a PAS deja une section tiling
@@ -1841,6 +1853,8 @@ function _preRemplirFormulaire(config) {
   sv("pl_author",  plan.author      || "");
   sv("pl_tags",    Array.isArray(plan.tags) ? plan.tags.join(", ") : "");
   sv("pl_fond",    ["noir", "blanc", "gris"].indexOf(plan.fondConseille) >= 0 ? plan.fondConseille : "");
+  // Rendu 3D par défaut : valeur inconnue ou absente → Mixte (comme à la lecture, config.js > getRenduVue3D).
+  sv("pl_rendu3d", ["structures", "galerie"].indexOf(plan.vue3dRendu) >= 0 ? plan.vue3dRendu : "mixte");
   sv("pl_width",   plan.imageWidth  || "");
   sv("pl_height",  plan.imageHeight || "");
   // Un ZIP rechargé donne ses dimensions au plan vierge (sinon 4000 × 4000 et tout se décale).
@@ -3824,6 +3838,9 @@ async function _genererZip() {
     if (tags.length)    planObj.tags = tags;
     const _fond = (document.getElementById("pl_fond") || {}).value || "";
     if (["noir", "blanc", "gris"].indexOf(_fond) >= 0) planObj.fondConseille = _fond;
+    // Rendu 3D par défaut écrit seulement s'il n'est pas Mixte (le défaut de l'app).
+    const _rendu3d = (document.getElementById("pl_rendu3d") || {}).value || "";
+    if (["structures", "galerie"].indexOf(_rendu3d) >= 0) planObj.vue3dRendu = _rendu3d;
     // Niveaux en hauteur (table de la page) : sols en multi-niveau seulement ; hauteurs de chaque niveau en
     // multi-niveau, et pour un plan à un niveau seulement si elle diffère du défaut (JSON inchangé sinon).
     const _niv = _plannerLireNiveaux();

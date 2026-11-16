@@ -925,8 +925,10 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: inherit !important;
 }
 
-/* ── Modale plein écran « Tracker » : tuiles tactiles par section, grille 2 colonnes ── */
-.kta-tracker-modal-overlay {
+/* ── Modale « Tracker » : tuiles tactiles par section, grille 2 colonnes ; voile et boîte repris par la fiche en
+   fenêtre (.kta-fiche-modale, js/fichePleinEcran.js) ── */
+.kta-tracker-modal-overlay,
+.kta-fiche-modale {
   position: fixed;
   inset: 0;
   z-index: 99999;
@@ -1822,6 +1824,66 @@ body.kta-lost-click-mode .leaflet-container {
 .kta-popup-point > b:first-child {
   display: inline-block;
   padding-right: 24px;
+}
+
+/* ── Fiche en fenêtre (téléphone, js/fichePleinEcran.js) ──
+   Boîte, en-tête, croix et corps = classes de la modale Tracker ; voile et flou = règle de .kta-tracker-modal-overlay
+   (partagée plus haut). La popup Leaflet elle-même est posée dans .kta-fiche-modale-corps : position, transform et
+   largeurs que Leaflet écrit en style inline sont écrasés. ⚠️ z-index 99998 : juste sous les modales, qui s'ouvrent
+   par-dessus la fiche. */
+.kta-fiche-modale {
+  z-index: 99998;
+}
+.kta-fiche-modale-titre {
+  min-width: 0;
+}
+.kta-fiche-modale-nom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-fiche-modale-ico {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+.kta-fiche-modale-corps {
+  overscroll-behavior: contain;
+}
+.kta-fiche-modale .leaflet-popup {
+  position: static !important;
+  transform: none !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  text-align: left;
+  opacity: 1 !important;
+}
+html body .kta-fiche-modale .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.kta-fiche-modale .leaflet-popup-content {
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 8px 2px 4px !important;
+  font-size: 15px !important;
+}
+.kta-fiche-modale .leaflet-popup-tip-container,
+.kta-fiche-modale .leaflet-popup-close-button,
+.kta-fiche-modale .kta-popup-point > b:first-child,
+.kta-fiche-modale .kta-popup-point > b:first-child + br {
+  display: none !important;
+}
+/* Pastille du type (ou icône) avant le titre d'une forme : même écart que l'icône d'un point. */
+.kta-fiche-modale-nom > span:first-child,
+.kta-fiche-modale-nom > svg:first-child {
+  margin-right: 9px;
 }
 
 .leaflet-popup-content input,
@@ -4272,41 +4334,27 @@ html.kta-theme-light .kta-readme-lang-select option { background: #ffffff; color
   #splashTitle .kta-titre-suffix-pro { clip-path: none; }
 }
 
-/* Crédit Claude (haut-gauche, teinte « clay » #d97757) + version (haut-droite), symétriques. */
-#splashClaudeCorner {
-  position: absolute;
-  top: calc(18px + env(safe-area-inset-top, 0px));
-  left: calc(22px + env(safe-area-inset-left, 0px));
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
+/* Sans JavaScript : le texte de présentation passe au-dessus du splash (qui reste affiché). */
+.kta-noscript {
+  position: relative;
+  z-index: 10000;
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 20px 24px;
+  background: var(--kta-surface);
+  color: var(--kta-texte);
+  border: 1px solid var(--kta-bordure);
+  border-radius: 10px;
+  font-family: "KTA Emoji", Arial, sans-serif;
+  line-height: 1.5;
 }
-.splash-claude-mark {
-  font-size: 19px;
-  line-height: 1;
-  color: #d97757;
-  text-shadow: 0 0 14px rgba(217, 119, 87, 0.4);
-}
-.splash-claude-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  line-height: 1.25;
-  text-align: left;
-}
-.splash-claude-main {
-  font-size: 12px;
-  font-weight: 600;
-  color: #d97757;
-  letter-spacing: 0.03em;
-}
-.splash-claude-sub {
-  font-size: 10px;
-  color: #8892a4;
-  letter-spacing: 0.05em;
+.kta-noscript h1 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: var(--kta-accent-texte);
 }
 
+/* Version (haut-droite). */
 #splashVersion {
   position: absolute;
   top: calc(20px + env(safe-area-inset-top, 0px));
@@ -12981,7 +13029,8 @@ body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-gr
 }
 
 /* Modal Tracker en thème clair */
-body.kta-theme-light .kta-tracker-modal-overlay {
+body.kta-theme-light .kta-tracker-modal-overlay,
+body.kta-theme-light .kta-fiche-modale {
   background: rgba(20, 28, 44, 0.55);
 }
 body.kta-theme-light .kta-tracker-modal-box {

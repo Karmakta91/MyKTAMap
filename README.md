@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.28.0` (16/11/2026)
+## 📦 Version courante — `v2.28.1` (16/11/2026)
 
-> ⛰️ **v2.28.0 — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide** : nouveau type de zone **Masse au sol** (remblai partiel, ou **masse non exploitée** au motif de blocs), à sa part de la hauteur (¼, ½, ¾, négative pour un sol abaissé) et avec des **pentes** posées à la main ; l'itinéraire compte le vide restant (courbé, à plat ventre, coupé sous 0,5 m). En 3D, on marche dessus : on monte par un bord droit ou une pente, on chute d'un front ; chatière, tracés et mini-carte suivent le sol. Le **Comblé** (ancien Remblais) monte jusqu'au plafond sauf le long d'un tracé, et l'itinéraire l'évite sans jamais s'y bloquer. **⛏️ Volume exploité** sur son propre secteur, par plan et par niveau (plusieurs niveaux additionnés), avec l'**estimation de comblement** (matériau, forages, durée) et « Pour le fun ». Plus rapide : changement de niveau en 2D et en 3D, ouverture des fiches, sauvegarde ; plus de boucle des conditions quand le navigateur refuse le stockage. Détail : journal ci-dessous.
+> 📱 **v2.28.1 — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site** : au téléphone, la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une **fenêtre au centre de l'écran**, comme celle du Tracker (l'app floutée derrière), qui défile ; case « Ouvrir les fiches dans une fenêtre » dans ⚙️ Configuration › Affichage. Le **Générateur** fixe le **rendu 3D par défaut** d'un plan (Mixte, Structures ou Galerie). myktamap.fr se présente mieux aux moteurs de recherche et dans les aperçus de lien (titre, description, image, robots.txt, sitemap.xml, données structurées) ; le crédit « Conçu avec Claude » quitte le splash. Harnais : aucun navigateur de test laissé derrière soi. Détail : journal ci-dessous.
 
 ---
 
@@ -181,6 +181,9 @@ denylist.json           ← Empreintes SHA-256 de ZIP de plans fuités, refusés
 confadmin.html          ← ConfAdmin : outil de génération de data/index.json (kiosque, connexion serveur), script js/confadmin.js
 killsw.html             ← Page de secours : désinscrit le Service Worker et vide les caches (seule exception de la CSP stricte)
 ping.html               ← Corps « OK » : sonde de connectivité de l'app (même origine)
+robots.txt              ← Consignes aux robots d'indexation : tout est ouvert, adresse du plan du site (pas précaché)
+sitemap.xml             ← Plan du site pour les moteurs de recherche : l'accueil (pas précaché)
+og-myktamap.png         ← Image d'aperçu des liens partagés (og:image, 1200 × 630 : la ville et le puits de l'écran Bienvenue, fictifs ; pas précachée)
 
 js/                     ← Modules de l'app (vanilla, sans bundler) — voir « Modules JS » ci-dessous
 css/                    ← Feuilles de style : style.css (socle + jetons de la charte) + feuilles chargées à la demande
@@ -215,7 +218,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (153 modules)
+## 🟢 L'application : modules JS (154 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -276,6 +279,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `imageLayerCalibrationPicker.js` | Modale de calage 2 ancres (deux mini-cartes source / plan) |
 | `mapBearing.js` | Rotation d'une carte Leaflet, une instance par carte : plan orienté pendant le suivi et rotation manuelle à deux doigts avec bouton nord sur la carte 2D, rotation manuelle seule pour les cartes OSM (`creerRotationManuelle`) ; pane intercalaire `.kta-rotate-pane` |
 | `map.js` | Carte Leaflet du plan (CRS.Simple), catalogue `TAGS_BUILTIN`, `_iconMap`, calques, filtre de niveau |
+| `fichePleinEcran.js` | Fiches des points, tracés, zones et structures en plein écran au téléphone : la popup Leaflet posée dans une fenêtre qui défile (réglage d'appareil) |
 | `tracking.js` | Tracker podométrique sans GPS : position, cap, recalage, map-matching, timeline du parcours |
 
 ### ✏️ Annotations et outils de mesure
@@ -533,6 +537,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-doc-sidebar.js` | Tableau des groupes de la barre latérale (3 guides) différent de ce que déclare `interface.js` | pre-commit |
 | `check-doc-vocabulaire.js` | Vocabulaire de la doc démenti par le code (« flyout », nombre de styles de légende) | pre-commit |
 | `check-emoji-vs16.js` | Pictogramme écrit sans U+FE0F (🛣 🗂 👁 ⏸…) : rendu texte noir et blanc sur Windows / Android | pre-commit |
+| `check-harnais-navigateur.js` | Harnais de `scripts/smoke/` qui lance son navigateur en direct (`chromium.launch`…) au lieu du lanceur commun `navigateur.js` (suivi, fermeture à la sortie, coupure au-delà de `KTA_DELAI_HARNAIS_MS`) | pre-commit |
 | `check-icone-texte.js` | Balisage SVG de `ktaIcone` posé en `textContent` (direct, ou via une fonction du fichier qui pose son argument en texte) : il s'afficherait en clair | pre-commit |
 | `check-icones-ui.js` | Icône de contrôle revenue à l'emoji (barre de la carte, Tracker, export, accueil, Configuration de l'accueil, fenêtres d'outils de la carte, vue 3D, Mode Secours, barres du haut et du bas, fiches, confirmations, Vue OSM, Générateur, Tableur, inspecteurs, tutoriel, Profil et son export, sélection multiple, portes d'entrée, pied de page de l'accueil, ConfAdmin), nom inconnu de `ktaIcones.js`, emoji de la doc ou du tutoriel ni substitué ni listé « autre sens », texte hors doc qui cite l'emoji d'un bouton migré (cliquet) | pre-commit |
 | `check-lexique-icones.js` | Lexique des icônes en tête d'`AI_CONTEXT.md` absent, périmé ou modifié à la main, emoji de bouton cité sans nom ni dessin (`--ecrire` le régénère depuis `js/ktaIcones.js`) | pre-commit |
@@ -636,7 +641,7 @@ d'emploi : `scripts/smoke/README.md`.
 |---|---|
 | `smoke/smoke.js` | Smoke de la porte de release : boote l'app, ouvre les écrans, échoue sur toute erreur console ou clé i18n manquante |
 | `smoke/server.js` | Serveur statique local des harnais (Service Worker, `data/index.json`) |
-| `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge) |
+| `smoke/navigateur.js` | Lance le navigateur des harnais avec replis (shell headless, Chromium, Edge), suit chaque navigateur ouvert (`fermerTout()` à la sortie en erreur) et coupe un harnais bloqué au-delà de `KTA_DELAI_HARNAIS_MS` (45 min par défaut : navigateurs fermés, sortie 124) ; seul lanceur permis (`check-harnais-navigateur.js`) |
 | `smoke/attendre.js` | Attente d'une condition dans la page compatible avec la CSP (remplace `waitForFunction`) |
 | `smoke/planV2Fictif.js` | Plan tuilé V2 fictif fabriqué en mémoire pour les harnais (tuiles, plan-config, index ; rien sur disque) |
 | `smoke/repro-import.js` | Reproduction manuelle : l'import d'un profil complet ne reste pas bloqué |
@@ -684,6 +689,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
+| `smoke/checkup-fiche-plein-ecran.js` | Fiches dans une fenêtre au téléphone, Chromium et WebKit : case de la Configuration (défaut selon l'appareil, choix gardé après rechargement), fiche longue d'un point ouverte au toucher dans une boîte centrée sur un voile flouté, qui défile dans la boîte, en-tête au nom du point, carte immobile, « Y aller », ✕, Échap, toucher le voile, fiches d'un tracé, d'une zone et d'une structure, « Convertir » par-dessus, « Repositionner » puis toucher la carte, intervention Secours en cours ; bulle habituelle au PC ; captures avec `FPE_SHOTS=<dossier>` |
 | `smoke/checkup-fond-osm.js` | Fond OSM sous le plan : bouton grisé sans géoréf, interrupteur, transparence de l'image du plan, calage au pixel au zoom max, plan orienté, extinction, hors ligne, OSM refusé et incognito sans requête, « Ma position » |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
@@ -733,6 +739,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-distance-totale.js` | 📏 Distance totale : niveau affiché compté, case « Tous les niveaux » retenue par plan, changement de niveau, 3D, plan à un niveau |
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue pour le niveau mesuré |
 | `smoke/checkup-niveaux-verticaux.js` | Sol, hauteur et écart par niveau : Générateur (ZIP rouvert puis relu), `getNiveauVertical`, ⚙️ Réglages (écart négatif, pref, ↺), téléphone |
+| `smoke/checkup-rendu-3d-defaut.js` | Rendu 3D par défaut d'un plan : Générateur (champ, ZIP généré relu), vue 3D ouverte sur le rendu du plan-config, choix retenu prioritaire après rechargement, repli Mixte (absent, inconnu) |
 | `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice, réglages ⚙️ Portée et Lampe (intensité, faisceau, Plein jour), cavage comblé jusqu'aux structures, zoom de la vue plongeante, scène refaite quand les données changent vue ouverte (session, annulation, calque rapatrié puis restitué, légende, rafale, geste), dessin en vue plongeante avec les outils de la carte (§ 28 : pilier, murs, zone, tracé, mesure, niveau de la 3D, gestes, extinction, greffe, lecture seule, plan au sol), zone reliée à plusieurs niveaux (§ 29 : vue et obstacle sur chacun des siens, scène refaite au décochage), vue d'édition (§ 30 : caméra libre au doigt, ⌖, survol, niveau sans passage, bandeau, segments et angles de la mesure, panneaux lisibles, plan au sol au point visé, parois et sol unis 🧱 coupé, vue retenue par plan, tuile ⚙️ sur la colonne 🛠️) ; mesures sur un plan dense synthétique (portée de 20 à 100 m, plongée dézoomée, scène refaite, `KTA_V3D_PERF=dessin`) |
 
 ---
@@ -835,6 +842,15 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.28.1 (16/11/2026) — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site (branche `Karma_dev`)
+
+> Écart avec la prod v2.28.0.
+
+- **🧪 Harnais : aucun navigateur de test laissé derrière soi** (`scripts/smoke/navigateur.js`, `check-harnais-navigateur.js`) : tout harnais lance son navigateur par le lanceur commun, qui le suit, le ferme sur `fermerTout()` quand le harnais sort en erreur, et coupe un harnais bloqué au-delà de `KTA_DELAI_HARNAIS_MS` (45 min par défaut). Mesuré : Playwright tue déjà ses navigateurs quand node s'arrête (fin, exception, `timeout`, `taskkill /F`), Chromium, WebKit et profil persistant ; le trou était le harnais bloqué. `checkup-cycle-sw.js` referme et efface ses profils même après une exception ; `repro-import.js` passe par le lanceur.
+- **🧊 Rendu 3D par défaut d'un plan, choisi dans le Générateur** (`js/createConf.js > pl_rendu3d`, `js/config.js > getRenduVue3D`) : champ **Rendu 3D par défaut** (Mixte proposé, Structures, Galerie), écrit `plan.vue3dRendu` dans le plan-config seulement s'il n'est pas Mixte, repris en modification d'un plan. La vue 3D lit le rendu par `getRenduVue3D` : choix retenu de l'utilisateur pour ce plan, puis celui du plan-config, puis Mixte (plan sans le champ ou valeur inconnue). Sans KtaGalerie, structures seules. Guides fr / en / es, `data-formats.md`. 🛡️ `checkup-rendu-3d-defaut.js`.
+- **📱 Fiches dans une fenêtre au téléphone** (`js/fichePleinEcran.js`, `map.js > KTA_POPUP_OPTS.ktaFiche`, `homeConfig.js`, `ui.md` § Fiche en fenêtre, `checkup-fiche-plein-ecran.js`) : au téléphone (tactile et moins de 900 px de large), la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une fenêtre au milieu de l'écran, comme celle du Tracker (l'app floutée derrière), au lieu de la bulle trop grande ; c'est la même popup Leaflet (posée hors de la carte), qui défile dans la fenêtre, ses boutons agissent ; en-tête avec le nom et l'icône du point (le type pour un tracé, une zone, une structure) ; ✕, Échap ou toucher à côté la referme, la carte ne bouge pas derrière. Case « Ouvrir les fiches dans une fenêtre » dans ⚙️ Configuration de l'accueil › Affichage : elle suit l'appareil tant qu'on n'y touche pas, puis garde le choix sur l'appareil. Guides et aide intégrée fr / en / es.
+- **🔎 Référencement de myktamap.fr** (`index.html`, `robots.txt`, `sitemap.xml`, `og-myktamap.png`, `check-csp-inline.js`) : titre « MyKTAMap — cartographie souterraine hors ligne, sans GPS », description tirée de l'accroche de la vitrine, adresse canonique, Open Graph et carte Twitter (image 1200 × 630 de l'écran Bienvenue, fictive), données structurées SoftwareApplication (`<script type="application/ld+json">` : seule balise inline admise par `check-csp-inline.js`, JSON valide exigé), `robots.txt` tout ouvert avec l'adresse du plan du site, `sitemap.xml` (l'accueil), et un `<noscript>` en tête du HTML : le premier texte lu par un moteur est celui de la vitrine. Le crédit « Conçu avec Claude » quitte le splash (la mention reste dans la documentation). Fichiers servis, hors précache ; aucune requête nouvelle de l'app.
 
 #### v2.28.0 (16/11/2026) — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide (branche `Karma_dev`)
 
@@ -10205,6 +10221,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> ⛰️ **v2.28.0 — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide** : nouveau type de zone **Masse au sol** (remblai partiel, ou **masse non exploitée** au motif de blocs), à sa part de la hauteur (¼, ½, ¾, négative pour un sol abaissé) et avec des **pentes** posées à la main ; l'itinéraire compte le vide restant (courbé, à plat ventre, coupé sous 0,5 m). En 3D, on marche dessus : on monte par un bord droit ou une pente, on chute d'un front ; chatière, tracés et mini-carte suivent le sol. Le **Comblé** (ancien Remblais) monte jusqu'au plafond sauf le long d'un tracé, et l'itinéraire l'évite sans jamais s'y bloquer. **⛏️ Volume exploité** sur son propre secteur, par plan et par niveau (plusieurs niveaux additionnés), avec l'**estimation de comblement** (matériau, forages, durée) et « Pour le fun ». Plus rapide : changement de niveau en 2D et en 3D, ouverture des fiches, sauvegarde ; plus de boucle des conditions quand le navigateur refuse le stockage. Détail : journal ci-dessous.
 
 > 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Le calage modifié dans les Réglages est repris partout (fond OSM, Vue OSM, Secours) et écrit par « Mettre à jour le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
 

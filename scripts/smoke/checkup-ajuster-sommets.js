@@ -700,7 +700,9 @@ async function insertionRefusee(page, ptr) {
   const z0 = await lireObjet(page, "zn_as_z");
   const g = await geste(page, ptr, z0.points[1], null);
   verifier(!g.apres.plus && !g.apres.menu && !g.apres.as.insertion, "lecture seule : ni ＋ ni 🗑️", g.apres);
-  await page.evaluate(function () { window.ktaEditionRefusee = window.__asRO; });
+  // L'appui long en lecture seule ouvre la fiche de la zone : refermée, sinon (fiche en plein écran au téléphone,
+  // fichePleinEcran.js) elle couvre la carte et l'appui suivant la vise.
+  await page.evaluate(function () { window.ktaEditionRefusee = window.__asRO; window.map.closePopup(); });
   await ouvrirInsertion(page, ptr, z0.points[1]);
   const ouverte = (await etat(page)).as.insertion;
   await page.evaluate(function () { window.ktaEditionRefusee = function () { return true; }; });

@@ -2656,6 +2656,50 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
 Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
 § 39.
 
+## 📱 Fiche en fenêtre (`js/fichePleinEcran.js`)
+
+Au téléphone, la fiche d'un point, tracé, zone ou structure s'ouvre dans une fenêtre centrée, comme la modale
+Tracker (l'app floutée derrière), au lieu de la bulle Leaflet (trop grande pour l'écran). Décisions KARMA du
+16/11/2026 (1b 2a 3a 4a), puis fenêtre au lieu du plein écran :
+
+- **Toutes les fiches** : celles qui portent `window.KTA_POPUP_OPTS` (`map.js`, option `ktaFiche`) — points de
+  session et de calque (`editor.js`, `utils.js > ajouterPointsDepuisJSON`), tracés, zones et structures
+  (`utils.js > attacherNotePopup`). Les autres popups (itinéraire, Mode perdu, cartes OSM, fond OSM) gardent la bulle.
+- **Téléphone** = tactile (`maxTouchPoints` ou `(pointer: coarse)`) ET `innerWidth` < 900 px, lu à chaque
+  ouverture : une tablette en paysage reste en bulle.
+- **Réglage d'appareil** : ⚙️ Configuration de l'accueil › Affichage › « Ouvrir les fiches dans une fenêtre »
+  (`#loaderFichePeCb`). Jamais touché : il suit l'appareil (case relue à chaque ouverture de la Configuration) ; un
+  choix va dans `localStorage["myktamap_fiche_plein_ecran_v1"]` (`"1"` / `"0"`, copie en mémoire si le stockage
+  est refusé), jamais dans la session ni un export.
+- **La fenêtre des modales Tracker** : boîte, en-tête, croix et corps = classes `.kta-tracker-modal-box` /
+  `-header` / `-title` / `-close` / `-body` ; voile et flou = la règle de `.kta-tracker-modal-overlay`, partagée en CSS
+  avec `.kta-fiche-modale` (pas la classe elle-même : `shortcuts.js` et la vue 3D lisent `.kta-tracker-modal-overlay`
+  comme la modale Tracker). La fiche défile dans le corps.
+- **En-tête** : le 1er `<b>` de la fiche (son titre, HTML produit et échappé par la fiche) — nom d'un point avec
+  l'icône de son marqueur, type et pastille d'une forme (un tracé, une zone, une structure n'ont pas de nom) ;
+  masqué dans le corps, relu quand le contenu change (`MutationObserver` sur le contenu de la popup).
+- **La même fiche, pas une copie** : `L.Popup.prototype.getPane` rend le corps de la fenêtre pour une popup de
+  fiche ouverte sur `window.map` ; Leaflet y pose SON conteneur, construit le contenu (fonction de `bindPopup`) et
+  émet `popupopen` / `popupclose` comme d'habitude. Les écouteurs des fiches (`_ktaPopupAction` en capture sur
+  document, `attacherNotePopup`, photos) agissent sans changement ; `isPopupOpen`, `closePopup` et la fermeture
+  automatique à l'ouverture d'une autre popup aussi. Les actions qui mènent à la carte (Y aller, Je suis ici,
+  Repositionner, Point précis…) appellent déjà `map.closePopup()` : la fenêtre part avec la popup.
+- **La carte ne bouge pas** : `_adjustPan` est coupé pour ces popups ; la position, le transform et les largeurs que
+  Leaflet écrit en style inline sont écrasés en CSS (`.kta-fiche-modale .leaflet-popup…`) ; fond de la bulle
+  transparent (la boîte porte le dégradé), pointe et croix de Leaflet masquées.
+- **Fermer** : ✕ de l'en-tête, toucher le voile hors de la boîte (comme la modale Tracker,
+  `interface.js > _ouvrirTrackerModal`), ou **Échap** (seulement venu de la fiche ou d'aucun champ : une fenêtre
+  ouverte par-dessus garde le sien). Le bouton retour du téléphone n'est pas géré : l'app ne gère le retour pour
+  aucune de ses fenêtres (pas d'`history.pushState`).
+- **z-index 99998**, juste sous les modales (99999) : Modifier, Convertir, photos, `ktaConfirm` s'ouvrent dessus
+  quel que soit l'ordre du DOM.
+- Mode « clic carte » actif (`_modeClicCarteActif`) : pas d'hôte, `map.js` referme déjà la popup.
+- Hors champ : la fiche de la 🧊 Vue 3D (`vue3d.js > _ouvrirFicheObjet`, hôte propre, pas une popup Leaflet).
+- Noms hérités du premier essai en plein écran, gardés pour ne pas perdre les choix enregistrés : module
+  `fichePleinEcran.js`, `window.KtaFichePleinEcran`, clé `myktamap_fiche_plein_ecran_v1`, clés `config.fichePe.*`.
+
+Garde-fou : `scripts/smoke/checkup-fiche-plein-ecran.js` (Chromium + WebKit, téléphone et PC).
+
 ## 🎨 Icônes de l'interface
 
 Deux familles : les **icônes SVG au trait** (`js/ktaIcones.js`) pour tout ce qui joue le rôle d'icône (boutons,

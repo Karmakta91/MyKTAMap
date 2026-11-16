@@ -271,4 +271,7 @@ async function etape(page, nom, fn, arg, attendu) {
   console.log("\n" + (problemes.length ? "❌ " + problemes.length + " problème(s)" :
     "✅ Session : sérialisée seulement après une modification, rien de perdu"));
   process.exit(problemes.length ? 1 : 0);
-})().catch(function (e) { console.error(e); process.exit(2); });
+})().catch(function (e) {
+  console.error(e);
+  lancerNavigateur.fermerTout().then(function () { process.exit(2); });   // navigateurs fermés avant de sortir
+});

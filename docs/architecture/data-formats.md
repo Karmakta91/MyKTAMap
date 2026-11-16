@@ -310,6 +310,17 @@ un champ : il se calcule (`sol(n + 1) − sol(n) − hauteur(n)`, ici −1,5 m a
 Prefs par plan (`myktamap_plan_prefs_<id>`), qui priment : `niveauxProfondeur` (table entière), `niveauxHauteur`
 (niveau par niveau) ; `hauteurGalerieM` (une hauteur pour tout le plan) n'est plus écrite mais encore relue.
 
+### `plan.vue3dRendu` — plan-config.json
+
+```json
+"plan": { "vue3dRendu": "galerie" }
+```
+
+Rendu de la vue 3D à l'ouverture du plan : `"mixte"` | `"structures"` | `"galerie"`. Écrit par le Générateur
+(**Rendu 3D par défaut**) seulement s'il n'est pas `"mixte"`. Absent ou valeur inconnue = mixte. La pref par plan
+`vue3dRendu` (le bouton Rendu de la vue 3D) prime. Lecture par `config.js > getRenduVue3D` seulement : pref →
+plan-config → mixte. Sans KtaGalerie, la vue reste en structures.
+
 ### `calquesSession` (v1.85.0) — payload de session
 
 ```json

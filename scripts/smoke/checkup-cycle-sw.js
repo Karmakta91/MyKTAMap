@@ -145,6 +145,9 @@ function appPrete() {
 }
 function modaleMaj() { return !!document.getElementById("kta-update-modal"); }
 
+// Profils ouverts : refermés et retirés du disque à la fin de chaque moteur (main), même si une étape a levé avant son
+// fermer() — sinon le profil reste ouvert pendant le moteur suivant et son dossier temporaire reste sur le disque.
+const _profils = [];
 async function nouveauProfil(nom, ls) {
   const dossier = fs.mkdtempSync(path.join(os.tmpdir(), "kta-cycle-sw-" + nom + "-"));
   const ctx = await lancerPersistant(MOTEUR, dossier, { viewport: { width: 390, height: 844 } });
@@ -162,7 +165,9 @@ async function nouveauProfil(nom, ls) {
       localStorage.setItem("__kta_seme", "1");
     }, ls);
   }
-  return { ctx: ctx, page: page, erreurs: erreurs, journal: journal, dossier: dossier };
+  const p = { ctx: ctx, page: page, erreurs: erreurs, journal: journal, dossier: dossier };
+  _profils.push(p);
+  return p;
 }
 async function fermer(p) {
   await p.ctx.close().catch(function () {});
@@ -423,6 +428,8 @@ async function poids() {
       if (nom === "chromium" && ETAPES.indexOf("5") >= 0) await poids();
     } catch (e) {
       pb("exception du harnais : " + (e && e.stack || e));
+    } finally {
+      for (const p of _profils.splice(0)) await fermer(p);   // fermer() est sans effet sur un profil déjà fermé
     }
   }
   serveur.close();

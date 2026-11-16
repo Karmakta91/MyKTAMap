@@ -1,10 +1,9 @@
 {
-  "version": "v2.28.0",
+  "version": "v2.28.1",
   "released": "2026-11-16",
   "notes": [
-    "⛰️ Nouveau type de zone Masse au sol : remblai ou masse non exploitée, avec sa hauteur (¼, ½, ¾…) et des pentes que l'on pose soi-même ; l'itinéraire et le calcul de volume en tiennent compte.",
-    "🧊 En 3D, on marche sur la masse au sol : on monte sur un bord ou on en chute, ou l'on prend une pente ; le Comblé (ancien Remblais) monte jusqu'au plafond sauf le long d'un tracé, et l'itinéraire l'évite sans jamais s'y bloquer.",
-    "⚡ Plus rapide : changement de niveau en 2D et en 3D, ouverture des fiches, sauvegarde ; fin des conditions d'utilisation qui revenaient en boucle sur certains téléphones.",
-    "⛏️ Le calcul de volume se fait sur un secteur à lui, sur un ou plusieurs niveaux ; il estime le coût d'un comblement (béton, coulis, remblai, forages, durée) et donne quelques équivalences pour le fun."
+    "📱 Au téléphone, la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une fenêtre au centre de l'écran, qui défile ; réglable dans Configuration › Affichage.",
+    "🧊 Le Générateur fixe le rendu 3D par défaut d'un plan : Mixte, Structures ou Galerie.",
+    "🔎 myktamap.fr mieux présenté dans les moteurs de recherche et quand on partage son lien."
   ]
 }

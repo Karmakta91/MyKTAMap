@@ -8,6 +8,7 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const lancerNavigateur = require("./navigateur.js");   // suivi et fermeture des navigateurs des harnais
 const PORT = 8124;
 const BASE = "http://127.0.0.1:" + PORT;
 
@@ -36,7 +37,7 @@ const LS_PREGATES = {
     fs.createReadStream(fp).pipe(res);
   }).listen(PORT);
 
-  const nav = await chromium.launch();
+  const nav = await lancerNavigateur(chromium);
   const ctx = await nav.newContext({ serviceWorkers: "block", viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   page.on("console", function (m) { console.log("  [console:" + m.type() + "] " + m.text().slice(0, 200)); });
@@ -107,4 +108,7 @@ const LS_PREGATES = {
 
   await nav.close();
   server.close();
-})().catch(function (e) { console.error("ERREUR HARNAIS:", e); process.exit(1); });
+})().catch(function (e) {
+  console.error("ERREUR HARNAIS:", e);
+  lancerNavigateur.fermerTout().then(function () { process.exit(1); });
+});

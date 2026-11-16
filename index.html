@@ -11,12 +11,55 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>MyKTAMap</title>
+  <title>MyKTAMap — cartographie souterraine hors ligne, sans GPS</title>
 
   <meta name="author"      content="Flavien VIDAL (alias KARMA)">
   <meta name="copyright"   content="(c) 2026 Flavien VIDAL — Tous droits reserves">
   <meta name="license"     content="CC BY-NC-SA 4.0 — https://creativecommons.org/licenses/by-nc-sa/4.0/">
-  <meta name="description" content="MyKTAMap — Application de cartographie pour cataphiles. Usage non commercial uniquement.">
+  <meta name="description" content="Cartographie souterraine hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : vos plans et vos annotations restent sur votre appareil.">
+  <!-- Référencement : une seule adresse pour les 3 langues (langue choisie dans l'app) → pas de hreflang. La même
+       page sert les installations et le front de l'édition pro : canonical et og:url désignent le site public. -->
+  <link rel="canonical" href="https://myktamap.fr/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="MyKTAMap">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="MyKTAMap — cartographie souterraine hors ligne, sans GPS">
+  <meta property="og:description" content="Cartographie souterraine hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : vos plans et vos annotations restent sur votre appareil.">
+  <meta property="og:url" content="https://myktamap.fr/">
+  <meta property="og:image" content="https://myktamap.fr/og-myktamap.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="MyKTAMap : plan de galeries souterraines fictif, ville et puits">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MyKTAMap — cartographie souterraine hors ligne, sans GPS">
+  <meta name="twitter:description" content="Cartographie souterraine hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : vos plans et vos annotations restent sur votre appareil.">
+  <meta name="twitter:image" content="https://myktamap.fr/og-myktamap.png">
+  <!-- Données structurées (schema.org) : description = la meta description ci-dessus ; édition community seule.
+       Jamais exécuté (seule balise inline admise par scripts/check-csp-inline.js). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MyKTAMap",
+    "description": "Cartographie souterraine hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : vos plans et vos annotations restent sur votre appareil.",
+    "url": "https://myktamap.fr/",
+    "image": "https://myktamap.fr/og-myktamap.png",
+    "applicationCategory": "TravelApplication",
+    "operatingSystem": "Web",
+    "inLanguage": [
+      "fr",
+      "en",
+      "es"
+    ],
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    },
+    "license": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+  }
+  </script>
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <!-- Police « KTA Emoji » (Twemoji réduit) avant la charte : chaque pile font-family l'ouvre. -->
@@ -54,17 +97,22 @@
 
 <body>
 
+  <!-- Sans JavaScript (et premier texte du HTML brut, lu par les moteurs de recherche) : ce qu'est l'app, d'après
+       l'écran Bienvenue (lang/fr.json > bienvenue.*). Avec JavaScript, rien de ce bloc ne s'affiche. -->
+  <noscript>
+    <div class="kta-noscript">
+      <h1>MyKTAMap — cartographie souterraine</h1>
+      <p>Hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : tes plans et tes annotations
+        restent sur ton appareil.</p>
+      <p>Une carte pour le souterrain (carrières, galeries, sites souterrains) qui s'appuie sur l'image d'un plan :
+        points et photos, tracés, zones, itinéraire, suivi de ta position sans GPS, vue 3D, mode Secours.</p>
+      <p>MyKTAMap a besoin de JavaScript : active-le pour ouvrir l'application.</p>
+    </div>
+  </noscript>
+
   <!-- Splash de démarrage : affiché par défaut ; js/ktaSplash.js (juste après) choisit la version, main.js le ferme
        quand l'accueil est affiché. Toujours sombre (décision produit). -->
   <div id="splashOverlay">
-    <!-- Crédit Claude en haut à gauche, symétrique de la version ; teinte « clay » #d97757, distincte du doré. -->
-    <div id="splashClaudeCorner" class="kta-splash-coin" aria-hidden="true">
-      <span class="splash-claude-mark">✦</span>
-      <span class="splash-claude-text">
-        <span class="splash-claude-main" data-i18n="home.splash.craftedWith">Conçu avec Claude</span>
-        <span class="splash-claude-sub" data-i18n="home.splash.craftedSub">Assistant IA · Anthropic</span>
-      </span>
-    </div>
     <!-- Version remplie par main.js > _splashStart depuis window.__MKM__.build (aucune valeur en dur). -->
     <div id="splashVersion" class="kta-splash-coin" aria-hidden="true"></div>
 
@@ -599,6 +647,15 @@
               <span class="kta-perf-ultra-hint" data-i18n="config.rotationBloquee.hint">Deux doigts et Maj + molette ne font plus tourner la carte du plan ni les cartes OSM. Utile sur les appareils lents.</span>
             </span>
           </label>
+          <!-- Fiches en fenêtre : réglage d'appareil, source de vérité KtaFichePleinEcran (fichePleinEcran.js) ;
+               tant qu'elle n'est pas touchée, la case suit l'appareil (cochée au téléphone). -->
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderFichePeCb">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label"><span data-kta-ico="maximize"></span> <span data-i18n="config.fichePe.label">Ouvrir les fiches dans une fenêtre</span></span>
+              <span class="kta-perf-ultra-hint" data-i18n="config.fichePe.hint">Les fiches des points, tracés, zones et structures s'ouvrent dans une fenêtre au milieu de l'écran, l'app floutée derrière, au lieu d'une bulle sur la carte. Au départ : cochée sur un téléphone, décochée sur un ordinateur ou une tablette en paysage.</span>
+            </span>
+          </label>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderSnapDraw">
             <span class="kta-perf-ultra-text">
@@ -927,6 +984,8 @@
        (cap et pas). -->
   <script src="js/mapBearing.js" defer></script>
   <script src="js/map.js" defer></script>
+  <!-- fichePleinEcran.js : après Leaflet (patch de L.Popup) ; fiches = popups aux KTA_POPUP_OPTS de map.js. -->
+  <script src="js/fichePleinEcran.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <!-- poiJonction.js : passages entre niveaux (modèle, formulaire, fiche) ; lu à l'appel par editor.js, utils.js,
        road.js et pathfinder.js. -->
