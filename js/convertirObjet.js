@@ -701,6 +701,23 @@
   // ── Sorte d'une masse au sol : remblai (défaut, champ absent) / masse non exploitée ──────────
   // ⚠️ contrat : `nature: "non-exploitee"` écrit seulement pour une part > 0 ; « remblai » RETIRE le champ (aucun
   // plan existant ne change). Lecture : styleResolver.js > ktaMasseNonExploitee. Même objet muté (uid, touch).
+  // ⚠️ contrat : la règle UNIQUE d'écriture de la sorte d'une masse au sol, sur l'objet donné (rien d'autre n'est
+  // écrit) : "non-exploitee" pose le champ (part > 0 seulement), "remblai" le retire. Utilisée par changerNature (fiche),
+  // appliquerTableau et le Tableur (copie éditée). → true si l'objet a changé.
+  function poserNature(obj, nature) {
+    if (!obj || obj.type !== "masse-sol") return false;
+    if (nature === "remblai") {
+      if (obj.nature === undefined) return false;
+      delete obj.nature;
+      return true;
+    }
+    if (nature !== "non-exploitee") return false;
+    const comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(obj) : 0.5;
+    if (!(comble > 0) || obj.nature === "non-exploitee") return false;
+    obj.nature = "non-exploitee";
+    return true;
+  }
+
   function changerNature(obj, nature) {
     // 🔒 lecture seule
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
@@ -717,7 +734,7 @@
     if ((cible.nature === "non-exploitee") === ne) return false;   // rien à annuler
     const avant = (window.HistoryManager && window.HistoryManager.captureState)
       ? window.HistoryManager.captureState("zones") : null;
-    if (ne) cible.nature = "non-exploitee"; else delete cible.nature;
+    poserNature(cible, nature);
     if (window.KtaUid) window.KtaUid.touch(cible);
     ecrire(liste);
     if (window.HistoryManager && avant && window.HistoryManager.record) {
@@ -975,6 +992,15 @@
       : Number.isFinite(v) && v !== 0 && v >= -1 && v < 1;
   }
   function _combleLisible(v) { return v === undefined || v === null || _combleValide(v); }
+  // Sorte lue dans une ligne du Tableur, comme l'import SIG (sigImport.js > natureDe : « Non exploitée »,
+  // non_exploitee…) → "non-exploitee" | "remblai" (absente, vide ou « remblai ») | null (illisible).
+  function _natureDeLigne(v) {
+    if (v === undefined || v === null || String(v).trim() === "") return "remblai";
+    const S = window.SigImport;
+    if (S && typeof S.natureDe === "function" && S.natureDe({ nature: v })) return "non-exploitee";
+    return String(v).trim().toLowerCase() === "remblai" ? "remblai" : null;
+  }
+  function _natureLisible(v) { return _natureDeLigne(v) !== null; }
   // `niveaux` d'un passage entre niveaux (poiJonction.js) : absent, ou liste d'entiers.
   function _niveauxLisibles(v) {
     return v == null || (Array.isArray(v) && v.every(Number.isInteger));
@@ -1026,6 +1052,7 @@
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
         if (!_niveauxLisibles(l.niveaux)) return fautive("niveau");
         if (!_combleLisible(l.comble)) return fautive("comble");
+        if (!_natureLisible(l.nature)) return fautive("nature");
         plan.push({ neuf: l });
         continue;
       }
@@ -1043,6 +1070,7 @@
       if (touche("level") && l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
       if (touche("niveaux") && !_niveauxLisibles(l.niveaux)) return fautive("niveau");
       if (touche("comble") && !_combleLisible(l.comble)) return fautive("comble");
+      if (touche("nature") && !_natureLisible(l.nature)) return fautive("nature");
       if (touche("level") && l.level != null && l.level !== niveauDe(obj)) {
         if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
         // Zone jonction : ses deux niveaux se changent dans sa fiche (changerNiveauxPente), comme une jonction.
@@ -1050,15 +1078,21 @@
         op.niveau = l.level;
       }
       Object.keys(l).forEach(function (k) {
-        if (PAS_COLONNE[k] || k.charAt(0) === "_" || l[k] === undefined || !touche(k) || meme(l[k], obj[k])) return;
+        if (PAS_COLONNE[k] || k === "nature" || k.charAt(0) === "_" || l[k] === undefined || !touche(k) ||
+          meme(l[k], obj[k])) return;
         (op.champs = op.champs || {})[k] = l[k];
       });
+      // Sorte d'une masse au sol (poserNature) : « Remblai » = clé absente de la ligne, qui retire donc le champ.
+      if (touche("nature")) {
+        const voulue = _natureDeLigne(l.nature);
+        if ((voulue === "non-exploitee") !== (obj.nature === "non-exploitee")) op.nature = voulue;
+      }
       plan.push(op);
     }
     const bilan = { modifies: 0, ajoutes: 0, supprimes: 0, ignores: ignores };
     plan.forEach(function (op) {
       if (op.neuf) bilan.ajoutes++;
-      else if (op.type || op.niveau !== null || op.champs) bilan.modifies++;
+      else if (op.type || op.niveau !== null || op.champs || op.nature) bilan.modifies++;
     });
     parUid.forEach(function (o, uid) { if (!vus.has(uid)) bilan.supprimes++; });
     if (opts.simuler) return bilan;
@@ -1072,6 +1106,11 @@
         const neuf = JSON.parse(JSON.stringify(op.neuf));
         if (typeof neuf.uid === "string" && parUid.has(neuf.uid)) delete neuf.uid;   // doublon : identité neuve
         if (window.KtaUid) window.KtaUid.touch(neuf);
+        if (neuf.nature !== undefined) {
+          const v = _natureDeLigne(neuf.nature);
+          delete neuf.nature;
+          poserNature(neuf, v);
+        }
         return neuf;
       }
       let obj = op.obj;
@@ -1080,6 +1119,7 @@
         if (window.KtaUid) window.KtaUid.touch(obj);
       }
       if (op.type) obj = _versType(obj, op.type, famille);
+      if (op.nature && poserNature(obj, op.nature) && window.KtaUid) window.KtaUid.touch(obj);
       if (op.niveau !== null) _poserNiveau(obj, op.niveau);
       _normaliserNiveaux(obj);   // `niveaux` saisi au Tableur : `level` toujours inclus
       // Part passée en négatif au Tableur : la sorte n'a plus de sens (styleResolver.js > ktaMasseNonExploitee).
@@ -1341,6 +1381,7 @@
     changerNiveauxZone: changerNiveauxZone,   // fiche d'une zone (niveaux en plus de `level`)
     changerComble: changerComble,   // fiche d'une masse au sol (part comblée)
     changerNature: changerNature,   // fiche d'une masse au sol (remblai / masse non exploitée)
+    poserNature:   poserNature,     // règle de la sorte sur un objet donné (Tableur : la copie éditée)
     ajouterRampe:  ajouterRampe,    // fiche d'une masse au sol : « Placer une pente » (bord bas)
     retirerRampe:  retirerRampe,    // fiche d'une masse au sol : ✕ d'une pente
     changerFinRampe: changerFinRampe,   // fiche d'une masse au sol : fin d'une pente (posée, déplacée, retirée)

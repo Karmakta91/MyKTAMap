@@ -15,6 +15,9 @@
 // Plan multi-niveau : colonne « level » toujours présente, en liste (niveaux du plan + niveau actuel).
 // Masse au sol : colonne « comble » (part comblée) dès qu'une zone de ce type est là, éditée par crans ¼ ½ ¾ ou une
 //   valeur libre (_editerComble), en lecture seule sur les autres types ; absente = ½ (affiché « ½ (défaut) »).
+//   Colonne « Sorte » (champ `nature`) : Remblai / Masse non exploitée (_editerSorte, KtaConvertir.poserNature, la
+//   règle de la fiche), seulement pour une part > 0 ; vide et verrouillée sinon ; une part passée à ≤ 0 la vide
+//   aussitôt dans la copie.
 // 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
 // Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
@@ -726,9 +729,10 @@
     set.delete("updatedAt");
     if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
     // Masse au sol : la part comblée a sa colonne, même si aucune zone ne la porte encore (absente = ½).
-    if (data.some(function(p) { return p && p.type === "masse-sol"; })) set.add("comble");
+    // Sorte (remblai / masse non exploitée) : sa colonne aussi, absente = remblai.
+    if (data.some(function(p) { return p && p.type === "masse-sol"; })) { set.add("comble"); set.add("nature"); }
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
-    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "comble", "rampes", "tags", "etat",
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "comble", "nature", "rampes", "tags", "etat",
       "description",
       "points", "profondeur", "date_update", "dateConstat"];
     const ordonnees = [];
@@ -820,7 +824,8 @@
     _colonnes.forEach(function(col) {
       let arrow = "";
       if (_tri.col === col) arrow = ' <span class="tri-arrow">' + (_tri.asc ? "▲" : "▼") + '</span>';
-      html += '<th data-col="' + _escapeAttr(col) + '">' + _escapeHtml(col) + arrow + '</th>';
+      const libelle = col === "nature" ? window.I18n.t("masseSol.nature.titre") : col;
+      html += '<th data-col="' + _escapeAttr(col) + '">' + _escapeHtml(libelle) + arrow + '</th>';
     });
     html += "</tr>";
     thead.innerHTML = html;
@@ -887,6 +892,7 @@
         const v = p[col];
         const ro = (col === "id" || col === "points" || col === "accroches" || col === "precis" ||
                     (col === "level" && _sansNiveau(p)) || (col === "comble" && p.type !== "masse-sol") ||
+                    (col === "nature" && !_sorteEditable(p)) ||
                     col === "rampes");
         let cls = "";
         if (ro) cls += "col-readonly";
@@ -916,10 +922,10 @@
           // Part comblée : texte du cran (« ½ ») ; absente → la valeur par défaut, dite comme telle.
           contenu = _escapeHtml(Number.isFinite(v) && v !== 0 ? window.ktaTexteComble(v)
             : window.I18n.t("tabledit.col.combleDefaut", { part: window.ktaTexteComble(0.5) }));
-          // Sorte : dite seulement pour une masse non exploitée (elle se change dans la fiche de la zone).
-          if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(p)) {
-            contenu += " · " + _escapeHtml(window.I18n.t("masseSol.nature.nonExploitee"));
-          }
+        } else if (col === "nature") {
+          // Sorte d'une masse au sol de part > 0 (lue par ktaMasseNonExploitee) ; sinon vide et verrouillée.
+          contenu = !_sorteEditable(p) ? "" : _escapeHtml(window.I18n.t(window.ktaMasseNonExploitee(p)
+            ? "masseSol.nature.nonExploitee" : "masseSol.nature.remblai"));
         } else if (col === "rampes") {
           // Rampes d'une masse au sol : posées depuis la fiche de la zone (bord bas), jamais saisies ici.
           const n = Array.isArray(v) ? v.length : 0;
@@ -1014,6 +1020,7 @@
 
     if (col === "level" && _niveauxPlan()) { _editerNiveau(td, idx); return; }
     if (col === "comble") { if (p.type === "masse-sol") _editerComble(td, idx); return; }
+    if (col === "nature") { if (_sorteEditable(p)) _editerSorte(td, idx); return; }
     if (col === "rampes") return;   // posées depuis la fiche de la zone
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
@@ -1107,6 +1114,46 @@
     });
   }
 
+  // Sorte modifiable : masse au sol de part > 0 (comme la fiche).
+  function _sorteEditable(p) {
+    return !!p && p.type === "masse-sol" && typeof window.ktaCombleZone === "function" && window.ktaCombleZone(p) > 0;
+  }
+
+  // Cellule « Sorte » d'une masse au sol : liste Remblai / Masse non exploitée, écrite dans la copie éditée par la
+  // règle de la fiche (KtaConvertir.poserNature) ; appliquée à la session avec le reste du tableau (une entrée ⏪).
+  function _editerSorte(td, idx) {
+    const p = _data[idx];
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", window.I18n.t("masseSol.nature.titre"));
+    const actuel = window.ktaMasseNonExploitee(p) ? "non-exploitee" : "remblai";
+    [["remblai", "masseSol.nature.remblai"], ["non-exploitee", "masseSol.nature.nonExploitee"]].forEach(function(o) {
+      const opt = document.createElement("option");
+      opt.value = o[0];
+      opt.textContent = window.I18n.t(o[1]);
+      if (o[0] === actuel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    td.classList.add("editing");
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+    let fini = false;
+    function ecrire(v) {
+      if (fini) return;
+      fini = true;
+      if (v && window.KtaConvertir && window.KtaConvertir.poserNature(p, v)) { _toucher(p); _modifie = true; }
+      td.classList.remove("editing");
+      _construireCorps();
+      _miseAJourInfos();
+    }
+    sel.addEventListener("change", function() { ecrire(sel.value); });
+    sel.addEventListener("blur", function() { if (sel.isConnected) ecrire(sel.value); });
+    sel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { e.preventDefault(); ecrire(null); }
+      else if (e.key === "Enter") { e.preventDefault(); ecrire(sel.value); _focusVoisin(idx, "nature", "down"); }
+    });
+  }
+
   // Cellule « comble » d'une masse au sol : liste ¼ ½ ¾ / Autre… ; « Autre… » remplace la liste par une saisie libre
   // (virgule ou point, signe moins accepté). Une valeur nulle, illisible, sous −1 ou ≥ 1 est refusée (≥ 1 : passer la
   // zone en Comblé par sa colonne `type`) : la cellule garde son ancienne valeur et le dit.
@@ -1137,7 +1184,14 @@
       if (fini) return;
       fini = true;
       if (window.ktaCombleValide(v)) {
-        if (v !== p.comble) { p.comble = v; _toucher(p); _modifie = true; }
+        if (v !== p.comble) {
+          p.comble = v;
+          if (!(v > 0) && window.KtaConvertir && window.KtaConvertir.poserNature) {
+            window.KtaConvertir.poserNature(p, "remblai");   // sorte sans objet sous 0 (même règle que la fiche)
+          }
+          _toucher(p);
+          _modifie = true;
+        }
       } else if (v !== null && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
         const cle = v >= 1 ? "tabledit.comble.versComble" : v < -1 ? "masseSol.tropBas" : "masseSol.invalide";
         window.OOMGuard.showToast(window.I18n.t(cle), "warn");

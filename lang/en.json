@@ -6145,6 +6145,7 @@
   "tabledit.apply.typeInterdit": "Row {ligne}: the type “{type}” cannot be set from the data editor (junction: multi-level tool; route: computed). Nothing was applied to the session.",
   "tabledit.apply.niveau": "Row {ligne}: this level cannot be applied (invalid value, or a junction, which links two levels). Nothing was applied to the session.",
   "tabledit.apply.comble": "Row {ligne}: the fill level must be a number between 0 and 1 (at 1 or more, the area is Filled to roof: change its type). Nothing was applied to the session.",
+  "tabledit.apply.nature": "Row {ligne}: the kind of a partial fill must be \"Backfill\" or \"Unworked mass\" (empty = backfill). Nothing was applied to the session.",
   "tabledit.type.inconnu": "Type unknown to the legend: refused by “Apply to the session”",
   "home.tools.title": "Tools",
   "osm_mes.btnTitle": "Measure a distance or an area",

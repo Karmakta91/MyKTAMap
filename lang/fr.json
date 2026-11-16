@@ -6145,6 +6145,7 @@
   "tabledit.apply.typeInterdit": "Ligne {ligne} : le type « {type} » ne se pose pas depuis l'Éditeur de données (jonction : outil multi-niveau ; itinéraire : calculé). Rien n'a été appliqué à la session.",
   "tabledit.apply.niveau": "Ligne {ligne} : ce niveau ne s'applique pas (valeur invalide, ou jonction, qui relie deux niveaux). Rien n'a été appliqué à la session.",
   "tabledit.apply.comble": "Ligne {ligne} : la part comblée doit être un nombre entre 0 et 1 (à 1 ou plus, la zone est un Comblé : changez son type). Rien n'a été appliqué à la session.",
+  "tabledit.apply.nature": "Ligne {ligne} : la sorte d'une masse au sol doit être « Remblai » ou « Masse non exploitée » (vide = remblai). Rien n'a été appliqué à la session.",
   "tabledit.type.inconnu": "Type inconnu de la légende : refusé par « Appliquer à la session »",
   "home.tools.title": "Outils",
   "osm_mes.btnTitle": "Mesurer une distance ou une surface",
