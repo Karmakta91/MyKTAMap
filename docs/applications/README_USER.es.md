@@ -737,7 +737,7 @@ Dónde y cómo se dibuja un paso:
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
-- **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa (con **Todos los niveles** marcado, 📏 cuenta todo el plano, pero el suelo de la 3D solo muestra su nivel: la ventana lo indica); **❌ Borrar el resaltado** lo borra de ambas. ⛏️ usa la superficie ♦️ que trazaste en la 3D.
+- **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa (con **Todos los niveles** marcado, 📏 cuenta todo el plano, pero el suelo de la 3D solo muestra su nivel: la ventana lo indica); **❌ Borrar el resaltado** lo borra de ambas. ⛏️ dibuja su sector en la vista, en el nivel de la 3D.
 - **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento, en cada nivel: la imagen propia del nivel si el plano la tiene; si no, el plano base.
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
@@ -1191,7 +1191,7 @@ En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de los
 
 ### ⛏️ Volumen explotado (extracción)
 
-En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se extrajo de un sector. Traza primero el sector con **♦️ Superficie** siguiendo los frentes de explotación y pulsa ⛏️ (sin superficie, un mensaje te lo recuerda). La ventana da:
+En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se extrajo de un sector. El volumen tiene **su propio sector**, uno por plano y por nivel, guardado en este dispositivo y recuperado al volver a abrirlo: la primera vez, la ventana propone **Dibujar el sector** (la ventana se oculta, toca los vértices siguiendo los frentes de explotación como con ♦️ Superficie y luego **Validar**) o, si tienes una medición ♦️, **Usar la medición Superficie** (una copia: cambiar la medición después no cambia el volumen). **Volver a dibujar el sector** lo sustituye. Mientras la ventana está abierta, el sector se dibuja con puntos azules en el mapa (nunca en las exportaciones). La ventana da:
 
 - la **superficie del sector**;
 - los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
@@ -1202,7 +1202,7 @@ En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se e
 
 Bajo la tabla, dos bloques desplegables: la **Estimación de relleno** (coste del material elegido — hormigón, lechada o relleno inerte — con las pérdidas, sondeos y duración de la intervención, coste total; un orden de magnitud, no un presupuesto) y **Por diversión** (hormigoneras, piscinas olímpicas, masa, CO₂, duración); tus precios y ajustes se quedan en este dispositivo, **Valores por defecto** los restablece.
 
-En un plano de varios niveles solo cuenta el **nivel activo** (en la 🧊 Vista 3D: el de la 3D), y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
+La ventana indica siempre sobre qué se calcula («todo el plano» o los niveles). En un plano de varios niveles, marca los niveles que cuentan (o **Todos**): cada uno cuenta con **su** sector y **su** altura, la ventana da el total y un **detalle por nivel** desplegable; un nivel marcado sin sector lo indica y propone **Dibujar** o **Usar el sector del nivel X**. Al principio es el nivel mostrado (en la 🧊 Vista 3D: el de la 3D). El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
 
 ---
 

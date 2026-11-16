@@ -309,6 +309,32 @@ function charger(fichier, nomGlobal, prealables) {
     VE.ESTIMATION_DEFAUTS.pertesPct === 20 && VE.ESTIMATION_DEFAUTS.surfaceForageM2 === 25 &&
     VE.ESTIMATION_DEFAUTS.coutForage === 1500 && VE.ESTIMATION_DEFAUTS.foragesJour === 4 &&
     VE.ESTIMATION_DEFAUTS.toupieMin === 10 && Object.isFrozen(VE.ESTIMATION_DEFAUTS.prix));
+  // ── Plusieurs niveaux (sommerNiveaux) : chacun SON secteur et SA hauteur ──
+  // Niveau 0 : carré 100×100 px = 2 500 m², rien dedans, h 2 m → 5 000 m³. Niveau −1 : 100×50 px = 1 250 m², pilier
+  // 20×20 px = 100 m² → exploité 1 150 m², h 3 m → 3 450 m³. Total : secteur 3 750, piliers 100, exploité 3 650 m²,
+  // taux 97,33 %, volume 8 450 m³, vide 3 650 m² / 8 450 m³.
+  const J = JSON.stringify;
+  const n0 = calc({ secteur: carre, niveau: 0, hauteur: 2 });
+  const nm1 = calc({ secteur: R(0, 0, 100, 50), niveau: -1, hauteur: 3,
+    structures: [pil(R(40, 10, 60, 30), { level: -1 })] });
+  const S2 = VE.sommerNiveaux([{ niveau: 0, r: n0, h: 2 }, { niveau: -1, r: nm1, h: 3 }]);
+  t("niveaux : 0 (2 500 m², 2 m) + −1 (1 250 m², pilier 100 m², 3 m) → secteur 3 750, exploité 3 650 m², 1 pilier",
+    S2.ok && proche(S2.secteurM2, 3750) && proche(S2.piliersM2, 100) && S2.nbPiliers === 1 &&
+    proche(S2.exploiteM2, 3650) && J(S2.niveaux) === J([0, -1]));
+  t("niveaux : volume 5 000 + 3 450 = 8 450 m³ (chaque hauteur), vide 8 450 m³, taux 97,33 %",
+    proche(S2.volumeM3, 8450) && proche(S2.videM3, 8450) && proche(S2.videM2, 3650) &&
+    proche(S2.tauxPct, 3650 / 3750 * 100));
+  t("niveaux : un niveau seul = ses chiffres (5 000 m³) ; aucun lisible → ok:false",
+    proche(VE.sommerNiveaux([{ niveau: 0, r: n0, h: 2 }]).volumeM3, 5000) &&
+    VE.sommerNiveaux([{ niveau: 0, r: { ok: false }, h: 2 }]).ok === false && VE.sommerNiveaux([]).ok === false);
+  // Estimation sur le total : vide 8 450 m³ × 1,2 = 10 140 m³ × 130 € = 1 318 200 € ; forages par niveau 2 500 / 25 =
+  // 100 et 1 150 / 25 = 46 → 146 × 1 500 € = 219 000 € ; ⌈146 / 4⌉ = 37 jours ; ⌈10 140 / 8⌉ = 1 268 toupies.
+  const ET = VE.estimerComblementTotal([{ r: n0, h: 2 }, { r: nm1, h: 3 }], {});
+  t("estimation sur 2 niveaux : 10 140 m³, 1 318 200 €, 146 forages (par niveau), 219 000 €, 37 jours, 1 268 toupies",
+    ET.ok && proche(ET.volumePertesM3, 10140) && proche(ET.coutMateriau, 1318200) && ET.nbForages === 146 &&
+    proche(ET.coutForages, 219000) && ET.jours === 37 && ET.toupies === 1268);
+  t("estimation sur 1 niveau = estimerComblement (mêmes chiffres)",
+    J(VE.estimerComblementTotal([{ r: n0, h: 2 }], {}).coutTotal) === J(VE.estimerComblement(n0, 2, {}).coutTotal));
   // Charge : secteur à 400 sommets (bords subdivisés), 900 piliers 4×4 px dedans = 14 400 px² = 3 600 m².
   const grand = [];
   for (let i = 0; i < 100; i++) grand.push({ x: i * 10, y: 0 });

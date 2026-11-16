@@ -58,8 +58,10 @@ async function ouvrirPlan(page) {
     window.setZones([]);
     window._ktaDataStructurePolygons.splice(0);
     window._ktaDataPolygons.splice(0);
-    window.setMeasurePointsSurface([{ x: x, y: y }, { x: x + 100, y: y }, { x: x + 100, y: y + 100 },
-      { x: x, y: y + 100 }]);
+    // Secteur du volume (par plan et par niveau, sur l'appareil) : le niveau du calcul, ou tout le plan.
+    const niveau = window.APP_CONFIG.multiLevel === true ? window.APP_CONFIG.activeLevel : null;
+    window.KtaVolumeExploite.secteurs.poser(window._currentLoadedPlanId, niveau, [{ x: x, y: y }, { x: x + 100, y: y },
+      { x: x + 100, y: y + 100 }, { x: x, y: y + 100 }]);
   });
 }
 

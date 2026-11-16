@@ -10643,21 +10643,16 @@ async function sectionMesures3D(nav, mode) {
     await ouvrirPanneauMesure();
     await tapEcran(await sousAction("ui.subaction.mesureVolume"));
     await page.waitForTimeout(300);
+    // Secteur du volume : par plan et par niveau (volumeExploite.js), aucun au départ pour ce relevé.
     const v1 = await page.evaluate(function () {
-      const b = document.querySelector("#kta-confirm-oui");
-      const m = b && b.closest(".kta-readme-modal-overlay");
-      let dessus = false;
-      if (b) {
-        const r = b.getBoundingClientRect(), el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        dessus = el === b || (!!el && b.contains(el));
-      }
-      return { message: m ? m.textContent.indexOf(window.I18n.t("volume.sansSecteur")) >= 0 : false,
-        modale: !!document.getElementById("kta-volume-modal"), dessus: dessus };
+      const m = document.getElementById("kta-volume-modal");
+      const msg = m && m.querySelector(".kta-volume-sans");
+      return { message: !!msg && msg.textContent === window.I18n.t("volume.sansSecteur"), modale: !!m,
+        dessiner: !!(m && m.querySelector('[data-va="dessiner"][data-vn="-1"]')) };
     });
-    verifier(v1.message && !v1.modale && v1.dessus,
-      nom + "⛏️ sans surface ♦️ : le message de la carte, par-dessus la vue", v1);
-    await tapEcran(await centre("#kta-confirm-oui"));
-    await page.waitForTimeout(800);
+    const vz1 = await dessus("#kta-volume-modal");
+    verifier(v1.message && v1.modale && v1.dessiner && !!vz1 && vz1.dessus,
+      nom + "⛏️ sans secteur : la fenêtre le dit et propose « Dessiner » au niveau de la vue, par-dessus la vue", v1);
     // Surface ♦️ posée au toucher dans la vue : rectangle de 4 × 3 m autour du point visé ; pilier de 1 m² au −1
     // dedans (compté), pilier de 1,96 m² au 0 à côté (pas compté : la carte est au 0, la vue au −1).
     const S = await page.evaluate(function () {
@@ -10671,9 +10666,10 @@ async function sectionMesures3D(nav, mode) {
       return { cx: cx, cz: cz };
     });
     await page.waitForTimeout(900);   // scène refaite (structures changées)
-    await ouvrirPanneauMesure();
-    await tapEcran(await sousAction("ui.subaction.mesureSurface"));
-    await page.waitForTimeout(800);   // le toucher qui ferme le panneau d'un groupe est avalé (DESSIN_AVALER)
+    // « Dessiner le secteur » (niveau −1, celui de la vue) : la fenêtre se cache, le geste de ♦️ Surface s'arme DANS
+    // la vue (KtaSelectionZone), les touchers posent les sommets, « Valider » rend la fenêtre.
+    await tapEcran(await centre('#kta-volume-modal [data-va="dessiner"][data-vn="-1"]'));
+    await page.waitForTimeout(800);
     const coins = [[-2, -1.5], [2, -1.5], [2, 1.5], [-2, 1.5]];
     for (const c of coins) {
       const ec = await page.evaluate(function (a) {
@@ -10689,12 +10685,14 @@ async function sectionMesures3D(nav, mode) {
       await page.waitForTimeout(250);
     }
     const nSurf = await page.evaluate(function () { return (window.getMeasurePointsSurface() || []).length; });
-    await ouvrirPanneauMesure();
-    await tapEcran(await sousAction("ui.subaction.mesureVolume"));
+    const vzb = await dessus(".kta-volume-dessin-barre [data-vd=\"valider\"]");
+    verifier(!!vzb && vzb.dessus, nom + "⛏️ : barre du dessin (Valider) par-dessus la vue", vzb);
+    await tapEcran(await centre(".kta-volume-dessin-barre [data-vd=\"valider\"]"));
     await page.waitForTimeout(400);
     const v2 = await page.evaluate(function () {
       const m = document.getElementById("kta-volume-modal"), V = window.KtaVolumeExploite;
-      const pts = window.getMeasurePointsSurface(), sc = window.APP_CONFIG.scale;
+      const pts = window.KtaVolumeExploite.secteurs.lire(window._currentLoadedPlanId).niveaux["-1"] || [];
+      const sc = window.APP_CONFIG.scale;
       const calc = function (n) {
         return V.calculer({ secteur: pts, structures: window.getStructures(), zones: [], niveau: n, scale: sc,
           hauteur: 2 });
@@ -10708,14 +10706,16 @@ async function sectionMesures3D(nav, mode) {
       };
       const nv = m && m.querySelector(".kta-volume-niveau");
       return { modale: !!m, niveau: nv ? nv.textContent : null,
-        attenduNiveau: window.I18n.t("volume.niveau", { lvl: "−1" }),
+        attenduNiveau: window.I18n.t("volume.niveauCalcul", { liste: "−1" }), nSecteur: pts.length,
+        mesureRendue: (window.getMeasurePointsSurface() || []).length === 0,
         secteurM2: r.secteurM2, nbPiliers: r.nbPiliers, piliersNiveau0: fmt(r0.piliersM2), exploite: td("volume.exploite"),
         attenduExploite: fmt(r.exploiteM2), piliers: td("volume.piliers"),
         attenduPiliers: window.I18n.t("volume.piliersVal", { s: fmt(r.piliersM2), n: r.nbPiliers }) };
     });
     const vz2 = await dessus("#kta-volume-modal");
-    verifier(nSurf === 4 && v2.modale && !!vz2 && vz2.dessus,
-      nom + "⛏️ : surface ♦️ de 4 sommets posée dans la vue, panneau du volume par-dessus la vue", { nSurf: nSurf, vz2: vz2 });
+    verifier(nSurf === 4 && v2.nSecteur === 4 && v2.mesureRendue && v2.modale && !!vz2 && vz2.dessus,
+      nom + "⛏️ : secteur de 4 sommets dessiné dans la vue (geste de ♦️), mesure rendue, panneau par-dessus la vue",
+      { nSurf: nSurf, nSecteur: v2.nSecteur, mesureRendue: v2.mesureRendue, vz2: vz2 });
     verifier(Math.abs(v2.secteurM2 - 12) < 0.4 && v2.nbPiliers === 1 &&
       v2.exploite === v2.attenduExploite && v2.piliers === v2.attenduPiliers && v2.piliers.indexOf(v2.piliersNiveau0) < 0 && v2.niveau === v2.attenduNiveau,
     nom + "⛏️ : volume sur la surface dessinée en 3D (" + (v2.secteurM2 || 0).toFixed(2) + " m²), au niveau de la vue " +
@@ -10730,6 +10730,7 @@ async function sectionMesures3D(nav, mode) {
     verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
     await page.evaluate(function () {
       window.setMeasurePointsSurface([]);
+      window.KtaVolumeExploite.secteurs.retirer(window._currentLoadedPlanId);
       window.setStructures([]); window.setRoads([]);
       return window.KtaVue3D.fermer();
     });
@@ -18780,18 +18781,18 @@ async function sectionCaseBoutonsZoom(nav) {
           return K.fermer();
         }).then(function () {
           // ⛏️ Volume exploité lit le même chiffre, et ce qu'il écrit, la vue le relit.
-          const surf = window.getMeasurePointsSurface;
-          window.getMeasurePointsSurface = function () {
-            const d = 5 * p.sc;
-            return [{ x: p.x - d, y: p.y - d }, { x: p.x + d, y: p.y - d }, { x: p.x + d, y: p.y + d }, { x: p.x - d, y: p.y + d }];
-          };
+          // Secteur du volume posé au niveau du calcul (par plan et par niveau, sur l'appareil).
+          const d = 5 * p.sc, Vx = window.KtaVolumeExploite, id = window._currentLoadedPlanId;
+          const nv = window.APP_CONFIG.multiLevel === true ? (window.APP_CONFIG.activeLevel || 0) : null;
+          Vx.secteurs.poser(id, nv, [{ x: p.x - d, y: p.y - d }, { x: p.x + d, y: p.y - d }, { x: p.x + d, y: p.y + d },
+            { x: p.x - d, y: p.y + d }]);
           window.KtaVolumeExploite.ouvrir();
           const champ = document.getElementById("kta-volume-h");
           r.volume = champ ? champ.value : null;
           if (champ) { champ.value = "2.5"; champ.dispatchEvent(new Event("input", { bubbles: true })); }
           const x = document.querySelector("#kta-volume-modal .kta-panneau-close");
           if (x) x.click();
-          window.getMeasurePointsSurface = surf;
+          Vx.secteurs.retirer(id);
           return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
         }).then(function () {
           r.depuisVolume = K.etat().hauteur;

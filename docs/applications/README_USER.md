@@ -737,7 +737,7 @@ Où et comment un passage se dessine :
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
 - **📐 Mesure** : la distance (et la surface) s'affiche dans un **bandeau en bas de la vue**, mis à jour à chaque point, comme sur la carte ; la longueur de chaque segment et l'angle à chaque point s'affichent aussi dans la 3D, lisibles.
-- **📏 Distance totale** et **⛏️ Volume exploité** sont aussi dans 📐 : leur fenêtre s'ouvre par-dessus la vue et compte **le niveau de la 3D**. Les tronçons comptés par 📏 sont surlignés en magenta au sol, comme sur la carte (avec **Tous les niveaux** coché, 📏 compte tout le plan, mais le sol de la 3D ne montre que son niveau : la fenêtre le dit) ; **❌ Effacer le surlignage** l'efface des deux. ⛏️ prend la surface ♦️ que tu as tracée dans la 3D.
+- **📏 Distance totale** et **⛏️ Volume exploité** sont aussi dans 📐 : leur fenêtre s'ouvre par-dessus la vue et compte **le niveau de la 3D**. Les tronçons comptés par 📏 sont surlignés en magenta au sol, comme sur la carte (avec **Tous les niveaux** coché, 📏 compte tout le plan, mais le sol de la 3D ne montre que son niveau : la fenêtre le dit) ; **❌ Effacer le surlignage** l'efface des deux. ⛏️ y dessine son secteur dans la vue, au niveau de la 3D.
 - **🗺️ Plan au sol** : l'image du plan sous la scène, là où tu regardes, pour dessiner sur le relevé, à chaque niveau : l'image propre au niveau si le plan en a une, sinon le plan de base.
 - En rendu 🛣️ Galerie, choisir un outil de structure passe en **Mixte** (un message le dit), pour voir ce que tu dessines.
 - **Retoucher l'outil, Échap, quitter la vue d'édition ou fermer la 3D** éteignent l'outil. Un objet commencé se termine comme sur la carte : gardé s'il a assez de points, sinon abandonné.
@@ -1191,7 +1191,7 @@ Dans le groupe **📐 Mesure**, **📏 Distance totale** additionne la longueur 
 
 ### ⛏️ Volume exploité (défruitement)
 
-Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a été extrait d'un secteur. Trace d'abord le secteur avec **♦️ Surface** en suivant les fronts de taille, puis appuie sur ⛏️ (sans surface, un message te le rappelle). La fenêtre donne :
+Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a été extrait d'un secteur. Le volume a **son propre secteur**, un par plan et par niveau, gardé sur cet appareil et retrouvé à la réouverture : la première fois, la fenêtre propose **Dessiner le secteur** (la fenêtre se cache, touche les sommets en suivant les fronts de taille comme avec ♦️ Surface, puis **Valider**) ou, si tu as une mesure ♦️, **Reprendre la mesure Surface** (une copie : changer la mesure ensuite ne change pas le volume). **Redessiner le secteur** le remplace. Pendant que la fenêtre est ouverte, le secteur est tracé en pointillés bleus sur la carte (jamais dans les exports). La fenêtre donne :
 
 - la **surface du secteur** ;
 - les **piliers retranchés** : surface et nombre. Comptent les piliers, les murs et les structures personnalisées fermées, les tiens et ceux des calques de données (même masqués), coupés au bord du secteur. Les fronts de taille et les murs en ligne ne comptent pas ;
@@ -1202,7 +1202,7 @@ Dans le groupe **📐 Mesure**, **⛏️ Volume exploité** calcule ce qui a ét
 
 Sous le tableau, deux blocs à déplier : l'**Estimation de comblement** (coût du matériau choisi — béton, coulis ou remblai inerte — avec les pertes, forages et durée d'intervention, coût total ; un ordre de grandeur, pas un devis) et **Pour le fun** (toupies, piscines olympiques, masse, CO₂, durée) ; tes prix et réglages restent sur cet appareil, **Valeurs par défaut** les remet.
 
-Sur un plan à étages, seul le **niveau actif** compte (dans la 🧊 Vue 3D : celui de la 3D), et la fenêtre le dit. Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
+La fenêtre dit toujours sur quoi porte le calcul (« tout le plan », ou les niveaux). Sur un plan à étages, coche les niveaux à compter (ou **Tous**) : chacun compte avec **son** secteur et **sa** hauteur, la fenêtre donne le total et un **détail par niveau** à déplier ; un niveau coché sans secteur le dit et propose **Dessiner** ou **Reprendre le secteur du niveau X**. Au départ, c'est le niveau affiché (dans la 🧊 Vue 3D : celui de la 3D). Il faut un plan **calibré** (échelle dans ⚙️ Réglages) : sans échelle, aucun chiffre n'est donné. Ces chiffres restent à l'écran : ils ne sont pas exportés.
 
 ---
 

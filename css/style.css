@@ -18749,6 +18749,30 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   line-height: 1.45;
   margin: 12px 0 0;
 }
+/* Secteur du volume (volumeExploite.js) : niveaux du calcul, état du secteur, actions ; barre du dessin. */
+.kta-volume-niveaux { margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.kta-volume-niveaux-tete {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: var(--kta-texte-2);
+}
+.kta-volume-niv { border: 1px solid var(--kta-bordure); border-radius: 8px; padding: 6px 8px; }
+.kta-volume-niv-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.kta-volume-niv-case { display: inline-flex; align-items: center; gap: 6px; color: var(--kta-texte); }
+.kta-volume-niv-etat { color: var(--kta-texte-3); font-size: 12px; text-align: right; }
+.kta-volume-niv-sans .kta-volume-niv-etat { color: var(--kta-accent-texte); }
+.kta-volume-niv-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; padding-top: 0; border-top: 0; }
+.kta-volume-tous { margin: 0; padding: 0; border: 0; }
+.kta-volume-niv-actions .kta-popup-btn { flex: 1 1 auto; min-height: 36px; font-size: 12px; }
+.kta-volume-detail-titre { font-size: 12px; color: var(--kta-texte-2); margin: 8px 0 2px; }
+.kta-volume-dessin-barre {
+  position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 100001;
+  width: min(440px, calc(100vw - 32px)); background: var(--kta-surface); color: var(--kta-texte);
+  border: 1px solid var(--kta-interaction); border-radius: 10px; padding: 10px 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.kta-volume-dessin-consigne { margin: 0 0 8px; font-size: 13px; line-height: 1.4; }
+.kta-volume-dessin-boutons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0; padding-top: 0; border-top: 0; }
+.kta-volume-dessin-boutons .kta-popup-btn { flex: 1 1 auto; min-height: 40px; }
 /* Estimation de comblement et « pour le fun » (volumeExploite.js > _estimationHtml) : blocs repliables,
    champs en grille. */
 .kta-volume-bloc { margin-top: 14px; border: 1px solid var(--kta-bordure); border-radius: 8px; padding: 8px 10px; }

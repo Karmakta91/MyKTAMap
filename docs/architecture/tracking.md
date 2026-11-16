@@ -2621,8 +2621,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   du surlignage de la carte (`ktaSwatchColor("traces", "jonction")`), un seul maillage hors tuiles (`_majDistTot`),
   refait à `kta:distanceTotaleChange` (case, ❌ Effacer, réouverture) et à chaque reconstruction, jamais l'inverse ;
   sur le sol local comme les rubans des tracés (`_rubanSol`). Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
-  panneau (`ktaDistanceTotaleRafraichir`). ⛏️ lit la surface ♦️ posée dans la vue (rien de neuf à dessiner) ; sans
-  surface, le message de la carte.
+  panneau (`ktaDistanceTotaleRafraichir`). ⛏️ dessine son secteur dans la vue (geste de ♦️, niveau de la vue) ; sans
+  secteur, la fenêtre de la carte le dit (`session-data.md` § 49.3 bis).
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
   `fiches: false` : ni barre ni sommet (`addons.md`).
 - **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé

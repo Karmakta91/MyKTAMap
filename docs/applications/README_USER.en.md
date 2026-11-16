@@ -737,7 +737,7 @@ Where and how a way through is drawn:
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
-- **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map (with **All levels** ticked, 📏 counts the whole map, but the 3D ground only shows its own level: the window says so); **❌ Clear highlight** clears it from both. ⛏️ uses the ♦️ Area you drew in the 3D view.
+- **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map (with **All levels** ticked, 📏 counts the whole map, but the 3D ground only shows its own level: the window says so); **❌ Clear highlight** clears it from both. ⛏️ draws its sector in the view, on the 3D view's level.
 - **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey, at every level: the level's own image if the plan has one, otherwise the base plan.
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
@@ -1191,7 +1191,7 @@ In the **📐 Measurement** group, **📏 Total distance** adds up the length of
 
 ### ⛏️ Mined volume (extraction)
 
-In the **📐 Measurement** group, **⛏️ Mined volume** works out what was extracted from a sector. First draw the sector with **♦️ Area** along the working faces, then press ⛏️ (without an area, a message reminds you). The window gives:
+In the **📐 Measurement** group, **⛏️ Mined volume** works out what was extracted from a sector. The volume has **its own sector**, one per plan and per level, kept on this device and found again when you reopen it: the first time, the window offers **Draw the sector** (the window hides, tap the corners along the working faces as with ♦️ Area, then **Confirm**) or, if you have a ♦️ measurement, **Use the Area measurement** (a copy: changing the measurement afterwards does not change the volume). **Redraw the sector** replaces it. While the window is open, the sector is drawn as a blue dotted line on the map (never in exports). The window gives:
 
 - the **sector area**;
 - the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
@@ -1202,7 +1202,7 @@ In the **📐 Measurement** group, **⛏️ Mined volume** works out what was ex
 
 Below the table, two blocks to expand: the **Backfill estimate** (cost of the chosen material — concrete, grout or inert fill — with losses, boreholes and work duration, total cost; an order of magnitude, not a quote) and **Just for fun** (mixer trucks, Olympic pools, mass, CO₂, duration); your prices and settings stay on this device, **Default values** resets them.
 
-On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
+The window always says what the calculation covers (“the whole plan”, or the levels). On a multi-level plan, tick the levels to count (or **All**): each one counts with **its own** sector and **its own** height, the window gives the total and a **detail by level** to expand; a ticked level without a sector says so and offers **Draw** or **Use the sector of level X**. At first, it is the displayed level (in the 🧊 3D view: the view's level). The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 
 ---
 

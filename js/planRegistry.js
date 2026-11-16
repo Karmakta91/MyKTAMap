@@ -174,6 +174,8 @@
     // 🔒 Un plan ☁️ retiré à la déconnexion ne laisse rien de son contenu, pas même ses décomptes.
     try { localStorage.removeItem("myktamap_plan_stats_v1_" + id); } catch(e) {}
     if (window.KtaVuePlan) window.KtaVuePlan.retirer(id);
+    // Secteurs du ⛏️ Volume exploité (volumeExploite.js), propres à l'appareil comme la vue.
+    if (window.KtaVolumeExploite) window.KtaVolumeExploite.secteurs.retirer(id);
     if (window.FondOsmPlan) window.FondOsmPlan.retirer(id);   // transparence du fond OSM sous le plan
     try { localStorage.removeItem("myktamap_plan_prefs_" + id); } catch(e) {}   // réglages par plan (config.js)
     try {
@@ -223,6 +225,7 @@
         localStorage.removeItem("myktamap_plan_prefs_" + ancienId);
       }
       if (window.KtaVuePlan) window.KtaVuePlan.transferer(ancienId, nouveauId);
+      if (window.KtaVolumeExploite) window.KtaVolumeExploite.secteurs.transferer(ancienId, nouveauId);
       if (window.FondOsmPlan) window.FondOsmPlan.transferer(ancienId, nouveauId);
     } catch (e) { bilan.raison = "stockage"; return bilan; }
     if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.changerPlan === "function") {

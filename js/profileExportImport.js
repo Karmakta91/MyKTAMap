@@ -48,7 +48,8 @@
 
   // Section "perPlanLs" : préfixes des clés localStorage par plan.
   // 🩸 Un nouveau préfixe par plan dans l'app doit être ajouté ici, sinon il manque à l'export, sans un mot.
-  // Exclu exprès : `myktamap_vue_v1_` (vue laissée, js/vuePlan.js), propre à l'appareil (décision produit).
+  // Exclus exprès, propres à l'appareil (décision produit) : `myktamap_vue_v1_` (vue laissée, js/vuePlan.js) et
+  // `myktamap_volume_secteur_v1_` (secteurs du ⛏️ Volume exploité, js/volumeExploite.js).
   const PER_PLAN_PREFIXES = [
     "myktamap_kmz_calib_",        // géoréf GPS (pointA/B {x,y,lat,lng})
     "myktamap_plan_prefs_",       // préférences par plan (calibrations des calques image, Nord…)

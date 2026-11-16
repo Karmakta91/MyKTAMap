@@ -682,12 +682,26 @@ function polygonAreaM2(points) {
 #### 49.3 bis ⛏️ Volume exploité (`js/volumeExploite.js`)
 
 Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#kta-volume-modal`, rien d'exporté.
-- **Secteur** = la surface ♦️ en cours (`getMeasurePointsSurface()`, ≥ 3 points), sinon `ktaAlerte` qui dit de la
-  tracer. **Échelle** absente (`APP_CONFIG.scale` non > 0) : `ktaAlerte`, aucun chiffre.
+- **Secteur** = celui DU VOLUME, découplé de la mesure ♦️ (décision produit) : un par plan ET par niveau (`"tout"` pour
+  un plan à un niveau), sur l'appareil (`localStorage["myktamap_volume_secteur_v1_<planId>"]` = `{ v: 1, niveaux, coches }`,
+  try/catch, copie en mémoire si refusé ; jamais session ni plan ; hors export du profil ; suit le plan dans
+  `planRegistry.js` (retiré, transféré) comme la vue). Sans secteur : la fenêtre le dit (`volume.sansSecteur`) et
+  propose **Dessiner** (`dessinerSecteur` : fenêtre fermée, `KtaSelectionZone.commencer` arme ♦️ Surface hors
+  historique sur une mesure mise de côté, barre Valider / Annuler / Retirer, mesure rendue à la fin ; plan à étages :
+  la carte passe sur le niveau, vue 3D : seul son niveau) ou **Reprendre la mesure Surface** (copie, sans lien).
+  Fenêtre ouverte : secteurs comptés tracés en pointillés `--kta-interaction` sur `window.map` (non interactifs, hors
+  `layerEditor` : jamais exportés), retirés à la fermeture. **Échelle** absente (`APP_CONFIG.scale` non > 0) :
+  `ktaAlerte`, aucun chiffre.
 - **Retranchés** : toutes les structures dont le type n'est PAS une ligne (`isStructurePolylineType` : piliers, mur
   polygone, types perso polygone ; jamais fronts ni mur en ligne), session (`getStructures`) + calques embarqués
   (`_ktaDataStructurePolygons`, visibles ou non). **Remblais** : zones `remblais`, session + `_ktaDataPolygons`.
-- **Niveau** : plan à étages → `APP_CONFIG.activeLevel` seul (sans `level` = 0), écrit dans la fenêtre ; plan à un
+- **Niveaux** : la fenêtre dit TOUJOURS sur quoi porte le calcul (`#kta-volume-portee` : tout le plan / niveau X /
+  niveaux X, Y (total)). Plan à étages : cases par niveau (ceux du plan + ceux qui ont un secteur) et « Tous », retenues
+  par plan (`coches`), au départ le niveau affiché (`_niveauAffiche` : vue 3D, sinon actif). Chaque niveau compte
+  avec SON secteur et SA hauteur (`getNiveauVertical`), additionnés par `sommerNiveaux` (pur) ; plusieurs niveaux :
+  total + « Détail par niveau » repliable (lisible au téléphone), pas de champ de hauteur (phrase de renvoi). Un
+  niveau coché sans secteur le dit, propose Dessiner ou « Reprendre le secteur du niveau X » (le plus proche).
+  L'estimation de comblement porte sur le total (`estimerComblementTotal`, forages arrondis par niveau). Plan à un
   niveau → tout compte.
 - **Chiffres** : secteur, piliers (union, coupée au secteur) et leur nombre (part non nulle dans le secteur),
   exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
