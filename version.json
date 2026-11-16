@@ -2,7 +2,7 @@
   "version": "v2.28.1",
   "released": "2026-11-16",
   "notes": [
-    "📱 Au téléphone, la fiche d'un point, d'un tracé ou d'une zone s'ouvre dans une fenêtre au centre de l'écran, qui défile ; réglable dans Configuration › Affichage.",
+    "📱 Au téléphone, la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une fenêtre au centre de l'écran, qui défile ; réglable dans Configuration › Affichage.",
     "🧊 Le Générateur fixe le rendu 3D par défaut d'un plan : Mixte, Structures ou Galerie.",
     "🔎 myktamap.fr mieux présenté dans les moteurs de recherche et quand on partage son lien."
   ]
