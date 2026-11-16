@@ -15,6 +15,8 @@
 //      (addEventListener / délégation + data-*) ;
 //   2. aucun lien `javascript:` (href ou .href) → "#" + preventDefault ;
 //   3. aucun <script> sans src dans une page → un fichier js/ ;
+//      🔒 sauf `<script type="application/ld+json">` SEUL (données structurées, jamais exécutées par le
+//      navigateur) : aucun autre attribut, JSON valide exigé (JSON.parse) ;
 //   4. aucune config nginx du dépôt ne rouvre 'unsafe-inline' aux scripts ni ne revient en Report-Only.
 // Exception unique : killsw.html (page de secours quand le Service Worker est cassé — son script reste
 // DANS la page ; nginx lui donne sa propre CSP).
@@ -30,6 +32,10 @@ const EXCEPTIONS = new Set(["killsw.html"]);
 const RE_ON = /\son[a-z]{3,20}\s*=\s*(\\?["'`])/gi;
 const RE_JS_URL = /(href\s*=\s*\\?["']|\.href\s*=\s*["'])\s*javascript:/gi;
 const RE_SCRIPT_INLINE = /<script(?![^>]*\bsrc\s*=)[^>]*>/gi;
+// 🔒 Seule balise inline admise : un bloc de données structurées, `type` pour unique attribut (guillemets simples ou
+// doubles, casse libre). Un autre type, un attribut de plus (defer, src, onload…) : refusé.
+const RE_LD_JSON = /^<script\s+type\s*=\s*(["'])application\/ld\+json\1\s*>$/i;
+const RE_BLOC_LD_JSON = /<script\s+type\s*=\s*(["'])application\/ld\+json\1\s*>([\s\S]*?)<\/script>/gi;
 
 function fautes(nom, texte) {
   const out = [];
@@ -44,9 +50,21 @@ function fautes(nom, texte) {
     if (RE_JS_URL.test(l)) out.push(nom + ":" + (i + 1) + "  lien javascript:");
     if (/\.html$/.test(nom)) {
       RE_SCRIPT_INLINE.lastIndex = 0;
-      if (RE_SCRIPT_INLINE.test(l)) out.push(nom + ":" + (i + 1) + "  <script> inline (sans src)");
+      while ((m = RE_SCRIPT_INLINE.exec(l))) {
+        if (!RE_LD_JSON.test(m[0])) out.push(nom + ":" + (i + 1) + "  <script> inline (sans src)");
+      }
     }
   });
+  // Données structurées : le contenu doit être du JSON (un bloc illisible est ignoré par les moteurs, sans bruit).
+  if (/\.html$/.test(nom)) {
+    let b;
+    RE_BLOC_LD_JSON.lastIndex = 0;
+    while ((b = RE_BLOC_LD_JSON.exec(texte))) {
+      try { JSON.parse(b[2]); } catch (e) {
+        out.push(nom + ":" + (texte.slice(0, b.index).split(/\n/).length) + "  ld+json illisible (" + e.message + ")");
+      }
+    }
+  }
   return out;
 }
 
@@ -59,6 +77,14 @@ const SABOTAGES = [
   ["p.html", "<a href=\"javascript:alert(1)\">x</a>"],
   ["p.html", "<script>alert(1)</script>"],
   ["p.html", "  <script type=\"text/javascript\">"],
+  ["p.html", "<script type=\"application/json\">{}</script>"],
+  ["p.html", "<script type=\"application/ld+jsonp\">{}</script>"],
+  ["p.html", "<script type=\"application/ld+json\" defer>{}</script>"],
+  ["p.html", "<script defer type=\"application/ld+json\">{}</script>"],
+  ["p.html", "<script type=application/ld+json>{}</script>"],
+  ["p.html", "<script type=\"application/ld+json'>{}</script>"],
+  ["p.html", "<script type=\"application/ld+json\">{} <script>alert(1)</script>"],
+  ["p.html", "<script type=\"application/ld+json\">{ name: 'x' }</script>"],
 ];
 const SAINS = [
   ["a.js", "el.addEventListener(\"click\", f);"],
@@ -68,6 +94,11 @@ const SAINS = [
   ["p.html", "<script src=\"js/a.js\"></script>"],
   ["p.html", "<script defer src=\"js/a.js\"></script>"],
   ["a.js", "if (/^javascript:/i.test(s)) return false;"],
+  ["p.html", "<script type=\"application/ld+json\">{\"@type\": \"SoftwareApplication\"}</script>"],
+  ["p.html", "<SCRIPT TYPE='Application/LD+JSON'>{}</SCRIPT>"],
+  ["p.html", "<script type=\"application/ld+json\">\n  {\"a\": [1, 2]}\n</script>"],
+  // Du JS DANS un bloc ld+json reste une chaîne de données : jamais exécutée (la CSP ne le voit pas comme script).
+  ["p.html", "<script type=\"application/ld+json\">{\"x\": \"alert(1)\"}</script>"],
 ];
 const rate = SABOTAGES.filter((c) => fautes(c[0], c[1]).length === 0).map((c) => c[1]);
 const faux = SAINS.filter((c) => fautes(c[0], c[1]).length > 0).map((c) => c[1]);

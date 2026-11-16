@@ -34,6 +34,32 @@
   <meta name="twitter:title" content="MyKTAMap — cartographie souterraine hors ligne, sans GPS">
   <meta name="twitter:description" content="Cartographie souterraine hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : vos plans et vos annotations restent sur votre appareil.">
   <meta name="twitter:image" content="https://myktamap.fr/og-myktamap.png">
+  <!-- Données structurées (schema.org) : description = la meta description ci-dessus ; édition community seule.
+       Jamais exécuté (seule balise inline admise par scripts/check-csp-inline.js). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MyKTAMap",
+    "description": "Cartographie souterraine hors ligne et sans GPS, sur téléphone ou ordinateur. Gratuit et sans compte : vos plans et vos annotations restent sur votre appareil.",
+    "url": "https://myktamap.fr/",
+    "image": "https://myktamap.fr/og-myktamap.png",
+    "applicationCategory": "TravelApplication",
+    "operatingSystem": "Web",
+    "inLanguage": [
+      "fr",
+      "en",
+      "es"
+    ],
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    },
+    "license": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+  }
+  </script>
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <!-- Police « KTA Emoji » (Twemoji réduit) avant la charte : chaque pile font-family l'ouvre. -->
