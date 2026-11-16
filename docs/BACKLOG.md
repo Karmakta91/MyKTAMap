@@ -97,10 +97,11 @@
   Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
   `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
   sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
-- **Fenêtre du POI : trop grosse au téléphone, trop chargée au PC** — retour de KARMA (16/11). Au téléphone, la
-  fiche d'un point couvre trop la carte ; au PC, elle montre trop d'informations. Le téléphone passe en premier.
-  `qui: Claude · action: topo (captures téléphone et PC, ce qu'on garde, ce qu'on replie) après le merge v2.28.0
-  · fini: fiche du POI validée par KARMA au téléphone, puis au PC · depuis: 16/11/2026 · taille: S`
+- **Fiches trop grosses au téléphone, trop chargées au PC** — décidé (16/11, 1b 2a 3a 4a) : au téléphone (tactile et
+  < 900 px), TOUTES les fiches s'ouvrent en plein écran et défilent, même contenu ; case « plein écran » dans Paramètres
+  de l'accueil > Affichage, auto selon l'appareil puis choix gardé. Le PC « trop chargé » vient ensuite.
+  `qui: Claude · action: lot de Dev puis intégration ; ensuite topo PC · fini: preuves téléphone et PC, KARMA valide au
+  téléphone · depuis: 16/11/2026 · taille: M · lot: fiche-plein-ecran`
 
 ## Plus tard
 
