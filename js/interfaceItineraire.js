@@ -1943,7 +1943,7 @@ window.ouvrirItinerairModal = function() {
     const statusBlk = document.getElementById("kta-iti-status-block");
     if (!statusBlk) return;
     const distM = parseFloat(statusBlk.dataset.distm) || 0;
-    const extraM = parseFloat(statusBlk.dataset.extram) || 0;   // ralentissement des masses au sol
+    const extraM = Number.parseFloat(statusBlk.dataset.extram) || 0;   // ralentissement des masses au sol
     const nbWp  = parseInt(statusBlk.dataset.nbwp, 10) || 2;
     const tMin  = _tempsItineraireMinutes(distM + extraM, nbWp);
     const pKey  = _getItiSpeedPreset();

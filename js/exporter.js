@@ -2678,7 +2678,8 @@
       // l'est (styleResolver.js > ktaMasseNonExploitee).
       const _ne = (typeof window.ktaMasseNonExploitee === "function") &&
         [].concat(window.getZones ? window.getZones() || [] : [],
-          window.getAllEmbeddedZones ? window.getAllEmbeddedZones() || [] : []).some(window.ktaMasseNonExploitee);
+          window.getAllEmbeddedZones ? window.getAllEmbeddedZones() || [] : [])
+          .some(z => window.ktaMasseNonExploitee(z));
       const _sNe = _ne ? window.ktaResolveStyle("zones", "masse-sol", { flat: true, nonExploitee: true }) : null;
       if (_sNe && (!LC || LC.isVisible("zones", "masse-sol") !== false)) {
         lignes.push({ label: window.I18n.t("masseSol.nature.nonExploitee"), fillColor: _sNe.fillColor,
