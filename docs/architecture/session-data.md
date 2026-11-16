@@ -35,7 +35,7 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 
 **Règle** : aucun module ne lit ni n'écrit `myktamap_session_v1_<planId>` directement — toujours `window.KtaSessionStore` (ou `SessionPersist.getSaved(planId)`).
 
-**Stratégie** : **une session PAR PLAN**, polling 1.5s, comparaison de hash pour détecter les modifs, save **forcé** (avec tampon de fermeture, cf §9.0) sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
+**Stratégie** : **une session PAR PLAN**, tick de 1,5 s qui ne sérialise que la session **sale** (cf « Session sale » plus bas), comparaison de hash pour détecter les modifs, save **forcé** (avec tampon de fermeture, cf §9.0) sur `beforeunload` + `pagehide` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
 
 - **Phase 1 (immédiate)** au `onPlanLoaded` : restore de toutes les roads SAUF itinéraires + tous les autres calques (editor, zones, measure). L'user voit son contexte de travail apparaître.
 - **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session (via `setRoads(getRoads().concat(itineraires))`). 1500ms est le compromis qui laisse Leaflet finir son `fitBounds` initial + les tuiles V2 se placer + les autres modules s'initialiser (Pathfinder, label distance, etc.).
@@ -54,7 +54,7 @@ Le localStorage plafonne à ~5 Mo **par site**, quel que soit l'espace de l'appa
 1. Plan chargé → `_currentLoadedPlanId` set dans `chargerPlanServeur` ou `startImportedPlan`
 2. `lancerApplication()` finit, appelle `SessionPersist.onPlanLoaded(window._currentLoadedPlanId)`
 3. Si match → restore via setters (`setEditorPoints`, `resetRoads + setRoads`, `resetZones + setZones`, `setMeasurePoints`) + toast "Session restaurée"
-4. Polling auto-save démarre (1.5s)
+4. Tick d'auto-save démarre (1,5 s, sérialise seulement la session sale)
 5. Fin de `lancerApplication()` : `KtaExtensions.planCharge(id)` → le plan est « prêt » pour une extension
    (événement `mktm:plan-pret`). 🩸 Avant ce point, la mémoire tient encore les objets du plan quitté (ou rien) et
    `initEditor` / la restauration les remplacent : `appliquerChangements` y refuse tout lot (`null`) et
@@ -108,7 +108,36 @@ de répondre). 🔒 **Plan d'extension en lecture seule** (`ktaEditionRefusee`) 
 { "version": 1, "planId": "...", "savedAt": "ISO", "editorPoints": [...], "roads": [...], "zones": [...], "measure": [...] }
 ```
 
-**Pourquoi polling et pas hooks ?** : pas besoin de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible. Risque zéro d'oublier un point de modification.
+**Session sale** (`sessionPersist.js > _tick`, `_marquerSale`, `_signatureLegere`) : sérialiser (`_gatherState` +
+`JSON.stringify` + empreinte) coûte ~13 ms par tick sur un plan chargé à CPU ×4 (plus sur un vrai relevé) ; à vide, le
+tick n'en paie plus que ~0,2 ms. Il sérialise si l'un de ces signaux est vrai, sinon il saute :
+- **rendu des données** : `kta:donneesPlanChange` (`utils.js > ktaSignalerDonneesPlan`, émis par renderRoads /
+  renderZones / renderStructures / renderEditorPoints et CalqueSession) — toute écriture d'objet finit par un rendu :
+  setters, fiche, ajuster, convertir, Tableur, import, synchro d'une extension, phase 2 de la restauration. 🩸 Sauf
+  `detail.affichage` : les rendus lancés par `interfaceConfig.js > appliquerFiltreNiveau` (niveau actif, niveaux
+  visibles, filtres) ne changent aucune donnée et ne salissent rien — sans ça, chaque changement de niveau
+  resérialisait toute la session (≈ 0,4 s mesurée sur un relevé réel lourd, CPU ×4) ;
+- **historique** : `HistoryManager.onChange` (enregistrement, ⏪, ↪, remise à zéro) ;
+- **geste de l'utilisateur** : `pointerup`, `click`, `keydown`, `input`, `change`, `drop` (capture sur window) rendent
+  la session sale pendant `FENETRE_GESTE_MS` (4 s) — mesure 📐 posée au clic, légende, filtres, mode de mesure, et
+  les suites asynchrones d'un geste (fichier lu, confirmation). Ni `pointermove` ni molette : déplacer la carte ne
+  salit rien. Un geste qui n'a fait que changer l'affichage (même `appliquerFiltreNiveau`) retire sa fenêtre
+  (`SessionPersist.ignorerGeste`, événements à moins de `RAFALE_MS` = 1 s d'écart) ; celle des gestes d'avant reste.
+  Les filtres, qui font partie de la session, sont vus par l'empreinte légère ; le niveau actif n'en fait pas partie
+  (vue du plan, `plans-loader.md` § Vue retrouvée) ;
+- **empreinte légère changée** (`_signatureLegere`, sans copie ni JSON de la session) : nombres de points / tracés /
+  zones / structures / points de mesure, mode de mesure, longueur et dernier pas de la timeline du suivi, début du
+  suivi, nombres de traces, filtres. Attrape les ajouts sans geste (pas du podomètre, `devicemotion`).
+
+Les modules qui appellent `SessionPersist.save()` eux-mêmes (ajuster, calques, convertir, éditeur, historique,
+légende, extensions, mise à jour du plan, photos, POI précis, raccords, sélection, utils…) sérialisent toujours,
+sans passer par le tick. 🩸 **Filet** : un chemin qui modifierait la session en place sans rendu, sans historique,
+sans geste et sans changer de nombre (aucun connu aujourd'hui) est sérialisé au plus tard après `FILET_MS` (30 s),
+et aussitôt à la fermeture ou à la mise en arrière-plan. Un échec d'écriture resalit la session (le tick suivant
+réessaie). `SessionPersist.marquerSale()` : signal neutre pour un futur chemin sans rendu. Diagnostic :
+`SessionPersist.etatTick()` (`sautes`, `complets`, `sale`, `geste`). Hors du slot de session, donc hors de ce tick :
+photos (IndexedDB des photos), favoris, carnet des sorties (leur propre stockage). Garde-fou :
+`checkup-session-sale.js` (repos sans sérialisation, chaque type modifié sans geste, filets, onglet tué).
 
 #### 9.1 Import d'un fichier de session (`interfaceImportExport.js > ouvrirImportSession`)
 
@@ -553,7 +582,7 @@ _creerGroupeAccordeon({
 
 #### 47.9 Save SessionPersist forcé après undo/redo
 
-Le polling auto-save (1.5s) ne se déclenche que sur mutation détectée. Or après un undo, l'état change MAIS pourrait revenir avant la prochaine fenêtre de polling → perte si reload. D'où le force-save explicite dans `undo()` et `redo()` :
+Le tick d'auto-save (1,5 s) n'écrit que sur mutation détectée. Or après un undo, l'état change MAIS pourrait revenir avant la prochaine fenêtre de polling → perte si reload. D'où le force-save explicite dans `undo()` et `redo()` :
 ```js
 function _saveSession() {
   if (window.SessionPersist?.save) {
@@ -653,16 +682,56 @@ function polygonAreaM2(points) {
 #### 49.3 bis ⛏️ Volume exploité (`js/volumeExploite.js`)
 
 Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#kta-volume-modal`, rien d'exporté.
-- **Secteur** = la surface ♦️ en cours (`getMeasurePointsSurface()`, ≥ 3 points), sinon `ktaAlerte` qui dit de la
-  tracer. **Échelle** absente (`APP_CONFIG.scale` non > 0) : `ktaAlerte`, aucun chiffre.
+- **Secteur** = celui DU VOLUME, découplé de la mesure ♦️ (décision produit) : un par plan ET par niveau (`"tout"` pour
+  un plan à un niveau), sur l'appareil (`localStorage["myktamap_volume_secteur_v1_<planId>"]` = `{ v: 1, niveaux, coches }`,
+  try/catch, copie en mémoire si refusé ; jamais session ni plan ; hors export du profil ; suit le plan dans
+  `planRegistry.js` (retiré, transféré) comme la vue). Sans secteur : la fenêtre le dit (`volume.sansSecteur`) et
+  propose **Dessiner** (`dessinerSecteur` : fenêtre fermée, `KtaSelectionZone.commencer` arme ♦️ Surface hors
+  historique sur une mesure mise de côté, barre Valider / Annuler / Retirer, mesure rendue à la fin ; plan à étages :
+  la carte passe sur le niveau, vue 3D : seul son niveau) ou **Reprendre la mesure Surface** (copie, sans lien).
+  Fenêtre ouverte : secteurs comptés tracés en pointillés `--kta-interaction` sur `window.map` (non interactifs, hors
+  `layerEditor` : jamais exportés), retirés à la fermeture. **Échelle** absente (`APP_CONFIG.scale` non > 0) :
+  `ktaAlerte`, aucun chiffre.
 - **Retranchés** : toutes les structures dont le type n'est PAS une ligne (`isStructurePolylineType` : piliers, mur
   polygone, types perso polygone ; jamais fronts ni mur en ligne), session (`getStructures`) + calques embarqués
   (`_ktaDataStructurePolygons`, visibles ou non). **Remblais** : zones `remblais`, session + `_ktaDataPolygons`.
-- **Niveau** : plan à étages → `APP_CONFIG.activeLevel` seul (sans `level` = 0), écrit dans la fenêtre ; plan à un
+- **Niveaux** : la fenêtre dit TOUJOURS sur quoi porte le calcul (`#kta-volume-portee` : tout le plan / niveau X /
+  niveaux X, Y (total)). Plan à étages : cases par niveau (ceux du plan + ceux qui ont un secteur) et « Tous », retenues
+  par plan (`coches`), au départ le niveau affiché (`_niveauAffiche` : vue 3D, sinon actif). Chaque niveau compte
+  avec SON secteur et SA hauteur (`getNiveauVertical`), additionnés par `sommerNiveaux` (pur) ; plusieurs niveaux :
+  total + « Détail par niveau » repliable (lisible au téléphone), pas de champ de hauteur (phrase de renvoi). Un
+  niveau coché sans secteur le dit, propose Dessiner ou « Reprendre le secteur du niveau X » (le plus proche).
+  L'estimation de comblement porte sur le total (`estimerComblementTotal`, forages arrondis par niveau). Plan à un
   niveau → tout compte.
 - **Chiffres** : secteur, piliers (union, coupée au secteur) et leur nombre (part non nulle dans le secteur),
   exploité = secteur − piliers, taux = exploité ÷ secteur, volume = exploité × hauteur, remblais = part du VIDE
   (secteur − piliers) couverte par un remblai, vide actuel = exploité − remblais. Surfaces par `formatSurface`.
+- **Masse au sol** (`masse-sol`, `_masses`, `docs/ETUDE_REMBLAIS.md` § 9) : retranchée par sa **part**
+  (`styleResolver.js > ktaCombleZone`, la même que la fiche et la 3D ; bornée à [−1 ; 1]) × la hauteur du calcul, à
+  bords verticaux (talus négligé : une ligne de note le dit). **Paliers exacts** : parts distinctes triées
+  p1 < p2 < … ; la tranche i est l'union des masses de part ≥ pi, d'épaisseur pi − pi−1, et son aire dans le vide hors
+  Comblé vaut |(S ∩ (R ∪ M)) − P| − |(S ∩ R) − P| (deux `calculerAires`) : chevauchements de hauteurs différentes
+  comptés une fois, **le Comblé l'emporte** sur une masse qui le chevauche, un pilier dans une masse en est retiré.
+  **Sol abaissé** (part < 0) : même calcul sur |part|, ajouté au volume exploité ET au vide. **Sorte**
+  (`ktaMasseNonExploitee`) : un **remblai** est retranché du vide seulement (il reste dans l'exploité) ; une masse
+  **non exploitée** est retranchée du volume exploité ET du vide (ses paliers à elle ; où elle chevauche un remblai,
+  elle l'emporte). Volume exploité = exploité × h − non exploitées + sols abaissés ; vide (volume) = (exploité −
+  Comblé) × h − toutes les masses positives + sols abaissés ; surfaces (secteur, exploitée, taux) inchangées. Lignes
+  de la fenêtre (`volume.masse*` = remblai, `volume.nonExploitee*`, `volume.abaisse*`, `volume.noteMasse`) seulement
+  si l'une touche le vide du secteur ; plan sans masse : chiffres identiques au bit près. Une masse et un sol abaissé
+  qui se chevauchent comptent chacun (cas non tranché).
+- **Estimation de comblement** (`estimerComblement`, pur, testé dans `check-api-surface.js`) : deux blocs
+  `<details>` sous le tableau, fermés par défaut. « Estimation » : volume de base (vide restant par défaut, exploité
+  total, part du vide en %, ou vide jusqu'à une hauteur bornée à celle du calcul, en proportion), matériau (béton
+  130 €/m³ · 2,4 t/m³, coulis 80 · 1,6, remblai inerte 20 · 1,8), pertes 20 % → coût = volume × (1 + pertes) × prix ;
+  forages = ⌈surface de base (vide restant, ou exploitée pour « exploité ») ÷ surface par forage (25 m²)⌉ × coût
+  d'un forage (1 500 €) ; durée = ⌈forages ÷ forages par jour (4)⌉ jours ouvrés (et mois de 21 j au-delà de 42 j) ;
+  total = matériau + forages ; mention « ordre de grandeur, pas un devis ». « Pour le fun » (pertes COMPRISES) :
+  toupies de 8 m³, piscines olympiques de 2 500 m³, masse (densité), CO₂ (facteur fixe : béton 0,25 t/m³, coulis
+  0,12, remblai non compté), durée à une toupie toutes les X min (10). Formats compacts de la locale (k, M, Md),
+  euros par `Intl`. ⚠️ Réglages et état des blocs SUR L'APPAREIL (`localStorage["myktamap_volume_estimation_v1"]`,
+  try/catch : défauts sans stockage), jamais dans la session ni le plan ; prix et densité propres à chaque
+  matériau ; « Valeurs par défaut » remet tout. Preuve : `checkup-estimation-comblement.js`.
 - **Hauteur moyenne** : celle **du niveau mesuré** (`config.js > getNiveauVertical(niveau).hauteurM`, 2 m sans
   réglage ; plan à un niveau : niveau 0), valeur initiale du champ ; recalcul des volumes à chaque frappe. Plan à un
   niveau : une valeur > 0 est écrite par `setHauteurNiveau`. ⚠️ Plan à étages (décision produit) : le champ sert au
@@ -821,6 +890,13 @@ Cycle de raffinement : Notes / Légende personnalisable / Favoris / Backup multi
 Helper global `window.attacherNotePopup(layer, getDescr, setDescr, titreType, opts)` dans `utils.js` :
 - Mode `edit` (session) : textarea multiligne + bouton 💾 Sauver + `HistoryManager.record` + `SessionPersist.save({force: true})`
 - Mode `readonly` (data layer KMZ) : juste affichage texte avec `white-space: pre-wrap`
+- **Construite à l'ouverture** : `bindPopup` reçoit une fonction que Leaflet appelle à l'ouverture (`Popup.update`,
+  avant `popupopen`, qui branche les écouteurs) ; un rendu de famille (changement de niveau, filtres) n'en construit
+  aucune — les construire à l'avance coûtait ~1 s par changement de niveau sur un relevé réel lourd (HTML + liste
+  des niveaux de chaque structure). ⚠️ `getContent()` rend donc une fonction : lire le HTML par
+  `window.ktaHtmlFiche(layer)`. L'hôte de la fiche en vue 3D (`opts.horsCarte`, `vue3d.js > _ouvrirFicheObjet`)
+  reçoit toujours le HTML. Garde-fou : `checkup-niveau-objet.js` (aucune fiche construite par un changement de
+  niveau).
 
 **Ghost polyline transparente épaisse** (weight + 14 px, opacity 0, `bubblingMouseEvents: false`) ajoutée par-dessus les polylines visibles pour augmenter la zone cliquable. **Skip ghost/popup quand un mode édition est actif** via `window._aucunModeEditionActif()` + `window._kta_syncAllNoteUiForModeChange()` au toggle (sinon clics map interceptés).
 

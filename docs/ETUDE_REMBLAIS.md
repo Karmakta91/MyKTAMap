@@ -14,6 +14,31 @@ sur un même niveau, la hauteur de vide varie du tout au tout, et l'on marche tr
 remblai partiel par une pente douce, marcher dessus sous le ciel, ramper là où il reste peu de vide, et buter
 seulement là où il n'en reste plus.
 
+## Décision de KARMA (15/11/2026, soir) — masse non exploitée
+
+QCM du 15/11 au soir (1a 2a 3a 4a). Une masse au sol a désormais une **sorte** : **remblai** (défaut, ce qu'elle
+était) ou **masse non exploitée** (roche jamais extraite, laissée en place).
+- **Donnée** : `nature: "non-exploitee"` sur la zone `masse-sol`, champ facultatif ; absent = remblai, aucun plan
+  existant ne bouge. N'a de sens que pour une part > 0 (caché et jamais écrit en négatif). Getter unique
+  `ktaMasseNonExploitee(zone)`, lu par la 2D, le volume, la fiche, les exports et la 3D (data-formats.md).
+- **Volume** : une masse non exploitée est retirée du volume exploité **et** du vide, par paliers ; un remblai reste
+  dans l'exploité et ne réduit que le vide (inchangé) ; un **sol abaissé est ajouté au volume exploité et au vide**
+  (1a : avant, au vide seulement — l'incohérence corrigée). Chevauchement : la non exploitée l'emporte sur le
+  remblai ; le Comblé l'emporte toujours. Les surfaces (secteur, exploitée, taux) ne changent pas.
+- **2D** (3a) : même sable que la masse au sol, appareil de blocs sans grains ni galets (même motif quelle que soit la
+  part) ; aplat plus dense là où il n'y a pas de motif (export image, KMZ). Ligne de légende ajoutée quand le plan
+  en contient une.
+- **3D** : faite à part sur le même contrat.
+
+## Révision de KARMA (15/11/2026) — masse au sol à pleine hauteur, pentes posées
+
+Remplace le talus automatique à 30° des lots 4 et « talus honnête » : **sans rampe, une masse au sol est à pleine
+hauteur de son cran partout**, ses bords sont des **fronts verticaux** (positif comme négatif). Les pentes n'existent
+que là où l'utilisateur pose une **rampe** : bord bas, puis l'endroit où elle atteint le haut (`rampes: [{ bord, fin }]`,
+fin facultative : sans elle, jusqu'au bout de la zone ; au-delà, plat). En 3D, monter un front de plus de 0,2 m est
+bloqué ; le descendre fait **chuter**, seulement si l'on peut ressortir (arrivée sur le sol du niveau, ou dans une zone qui a une rampe) : sinon on bute, comme devant un mur (option 2 de KARMA, 15/11 : un creux sans rampe n'est pas un piège).
+L'itinéraire suit le même sol (`masseSol.js > sol`). Deux rampes face à face se rejoignent à mi-cran (validé par KARMA).
+
 ## Révision de KARMA (14/11/2026) — Comblé ne bloque plus, le tracé l'emporte
 
 Remplace le (a) ci-dessous et les questions 2 et 11 sur ce point. Raison : une zone Comblé mal comprise ou posée à
@@ -28,6 +53,9 @@ effondrée ni inaccessible, considère que ça passe.
 - **Vérifier le plan** signale chaque tracé qui traverse un Comblé (à vérifier, pas une erreur).
 - **Effondrement : même règle que Comblé** (révision du 14/11) : évité s'il existe un autre chemin, sinon l'itinéraire
   passe et le dit ; obstacle 3D sauf le long d'un tracé qui le traverse ; signalé par Vérifier le plan.
+- **Tolérance d'1 m** (option 3, 15/11) : l'évitement strict est gardé, mais une traversée continue de **moins
+  d'1 m** dans un Comblé ou un effondrement est ignorée (ni coût, ni message, ni « Vérifier le plan ») : elle évite
+  les faux détours d'un contour dessiné un peu large. Mesurée à l'échelle du plan ; sans échelle, pas de tolérance.
 - **Seule la zone « Inaccessible » bloque tout passage, même avec un tracé** : itinéraire coupé et obstacle 3D, sans
   exception (posée exprès pour dire « interdit »).
 - **Ordre** : la masse au sol (lots 2 → 4) passe avant Comblé.
@@ -276,6 +304,8 @@ ramper sur ~X m » plus tard.
 **Reco** : Comblé retranché en entier (inchangé) ; masse au sol par sa part, exacte par paliers (hauteurs distinctes
 triées, `calculerAires` sur l'union des zones à au moins chaque palier), talus négligé et dit ; là où une masse
 chevauche un Comblé, le Comblé l'emporte. Deux lignes de plus dans la fenêtre (surface et volume de masse au sol).
+Révisé le 15/11 au soir (masse non exploitée, ci-dessus) : remblai et masse non exploitée sur des lignes distinctes ;
+la non exploitée est retirée aussi du volume exploité, le sol abaissé y est ajouté.
 
 ### 10. Effondrement
 
@@ -354,12 +384,12 @@ question 4, la préférence proposée est retenue.
 | Lot | Contenu | Taille |
 |---|---|---|
 | 0 | **« Vérifier le plan »**, au moins le contrôle des tracés coupés par une zone bloquante (lots de `ETUDE_VERIFIER_PLAN.md`) ; table unique des types durs (pathfinder, inter-plans) posée à cette occasion, `inaccessible` seul | M |
-| 1 | **Comblé** (après le lot 0) : libellés fr / en / es, `remblais` ajouté aux types durs, case « Respecter… », brancard, 3D jusqu'au ciel (effondrement découplé) ; **dans le même lot**, le message à l'échec, sortie d'urgence comprise, qui dit quelles zones Comblé coupent le chemin (question 2, sans repli) : Comblé dur ne part pas sans lui ; défaut d'import ; guides, `AI_CONTEXT.md`, `multilevel-pathfinding.md` | M |
+| 1 | ✅ **Comblé, révisé le 14/11** (fait, sauf la 3D) : libellés fr / en / es (« Comblé », *Filled to roof*, *Colmatado*) ; Comblé et effondrement en **zones à coût** (`pathfinder.js > TYPES_ZONES_COUT` : évités si un autre chemin existe, traversés et dits sinon, distance non gonflée), itinéraire, sortie d'urgence, inter-plans, Secours ; retirés des évitables et du brancard, case « Respecter… » inchangée ; « Vérifier le plan » C12 en « À revoir » ; défaut d'import vérifié (masse au sol) ; guides, Aide, `AI_CONTEXT.md`, `multilevel-pathfinding.md`. **3D faite** : Comblé jusqu'au ciel et effondrement découplé (`vue3d.js > HAUTEUR_ZONE`), obstacle débloqué le long d'un tracé qui le traverse (couloir : `galerieEmprise.js > CREUSABLES`, `dansCouloir` ; volume creusé : `vue3d.js > _volumeCreuse`), ruban au sol | M |
 | 2 | Maquette 2D de la masse au sol | S |
 | 3 | **Masse au sol, donnée et 2D** : type ajouté partout (21 fichiers, skill mis à jour), champ `comble`, fiche, Tableur, copies, KMZ / GeoJSON / SIG, légende, exports ; garde-fou d'aller-retour ; `data-formats.md` | L |
 | 4 | Masse au sol en 3D : sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ; checkup § 24 bis ; mesure de perf | L |
-| 5 | Volume exploité par paliers | S |
-| 6 | Itinéraire (coût séparé de la distance) et temps du guidage | M |
+| 5 | ✅ **Volume exploité par paliers** (fait) : `volumeExploite.js > _masses`, Comblé entier, masse au sol par sa part en paliers exacts (le Comblé l'emporte), sol abaissé ajouté, talus négligé et dit ; `check-api-surface.js`, `session-data.md` § 49.3 bis | S |
+| 6 | ✅ **Itinéraire et temps du guidage** (fait) : `pathfinder.js > _coutMasseSegment` (vide point par point par `masseSol.js > masseCarte` / `sol` : ×1 / ×1,5 / ×3, coupé sous 0,5 m, sol abaissé ×1), distance vraie, sortie d'urgence et inter-plans, brancard sous 1,8 m, temps du guidage ralenti (`surcoutMasseTrajet`) ; consigne « ramper » plus tard (8 b) ; `check-zones-cout.js` § 10, `multilevel-pathfinding.md` | M |
 
 Ordre : 0 → 1 → 2 → 3 → 4, puis 5 et 6. Le lot 0 sert seul dès aujourd'hui ; le lot 1 se suffit (le total devient vrai partout) ; le lot 3 donne un sens à la
 masse au sol avant la 3D.

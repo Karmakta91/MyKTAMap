@@ -42,13 +42,16 @@
     return (s && s.rayures && s.rayures.color) || null;
   }
 
-  function _styleCanvas(categorie, type, repli) {
+  // `zone` (facultatif) : part et nature d'une masse au sol (styleResolver.js > ktaStyleOptsZone ; masse non
+  // exploitée = aplat plus dense, le canvas d'export ne peint pas de motif).
+  function _styleCanvas(categorie, type, repli, zone) {
     const R = window.ktaResolveStyle;
     if (typeof R !== "function") {
       console.error("[Export] window.ktaResolveStyle absent — styles indisponibles.");
       return null;
     }
-    return R(categorie, type, { flat: true }) ||
+    const o = (zone && typeof window.ktaStyleOptsZone === "function") ? window.ktaStyleOptsZone(zone) : null;
+    return R(categorie, type, Object.assign({ flat: true }, o || {})) ||
            (repli ? R(categorie, repli, { flat: true }) : null);
   }
 
@@ -566,7 +569,7 @@
     const infos = {
       tags:      _listerTagsPoints(points),
       roadTypes: _compterTypes(roads, ["principal", "secondaire", "chemin"]),
-      zoneTypes: _compterTypes(zones, ["eau", "remblais", "effondrement", "inaccessible"])
+      zoneTypes: _compterTypes(zones, ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"])
     };
     _layerPointsCache[layerCfg.id] = infos;
     return infos;
@@ -597,7 +600,9 @@
 
     const hasTags  = tagsList.length > 0;
     const hasRoads = ["principal","secondaire","chemin"].some(function(t) { return roadTypes[t] > 0; });
-    const hasZones = ["eau","remblais","effondrement","inaccessible"].some(function(t) { return zoneTypes[t] > 0; });
+    const hasZones = ["eau","masse-sol","remblais","effondrement","inaccessible"].some(function(t) {
+      return zoneTypes[t] > 0;
+    });
 
     if (!hasTags && !hasRoads && !hasZones) {
       cont.innerHTML = "";
@@ -641,11 +646,12 @@
     if (hasZones) {
       const zoneLabels = {
         eau:          _lp("zones", "eau", window.I18n.t("imgexport.zoneType.eau")),
+        "masse-sol":  _lp("zones", "masse-sol", window.I18n.t("imgexport.zoneType.masseSol")),
         remblais:     _lp("zones", "remblais", window.I18n.t("imgexport.zoneType.remblais")),
         effondrement: _lp("zones", "effondrement", window.I18n.t("imgexport.zoneType.effondrement")),
         inaccessible: _lp("zones", "inaccessible", window.I18n.t("imgexport.zoneType.inaccessible"))
       };
-      ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
+      ["eau","masse-sol","remblais","effondrement","inaccessible"].forEach(function(t) {
         if (!zoneTypes[t]) return;
         const id = "export_layer_" + safeId + "_zone_" + t;
         html += `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
@@ -823,6 +829,7 @@
     };
     const zonesByType = {
       eau:          zones.filter(function(z) { return z.type === "eau";          }).length,
+      "masse-sol":  zones.filter(function(z) { return z.type === "masse-sol";    }).length,
       remblais:     zones.filter(function(z) { return z.type === "remblais";     }).length,
       effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length,
       inaccessible: zones.filter(function(z) { return z.type === "inaccessible"; }).length,
@@ -860,7 +867,7 @@
     const structTypesCustom  = _sS.custom;
     const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
     const roadTypesCustom    = _sR.custom;
-    const _sZ = _compterEtCustom(zones, ["eau", "remblais", "effondrement", "inaccessible", "pente"]);
+    const _sZ = _compterEtCustom(zones, ["eau", "masse-sol", "remblais", "effondrement", "inaccessible", "pente"]);
     const zoneTypesCustom    = _sZ.custom;
 
     // Tracker : toujours actif (la position courante existe au minimum), tracé inclus si > 1 point.
@@ -904,6 +911,7 @@
 
       row("zones",   Ti("imgexport.ann.zones"),           nbZones,   true) +
       rowSub("zones_eau",          _lp("zones", "eau", Ti("imgexport.zoneType.eau")),          zonesByType.eau,          true) +
+      rowSub("zones_masse-sol",    _lp("zones", "masse-sol", Ti("imgexport.zoneType.masseSol")),  zonesByType["masse-sol"], true) +
       rowSub("zones_remblais",     _lp("zones", "remblais", Ti("imgexport.zoneType.remblais")),     zonesByType.remblais,     true) +
       rowSub("zones_effondrement", _lp("zones", "effondrement", Ti("imgexport.zoneType.effondrement")), zonesByType.effondrement, true) +
       rowSub("zones_inaccessible", _lp("zones", "inaccessible", Ti("imgexport.zoneType.inaccessible")), zonesByType.inaccessible, true) +
@@ -936,7 +944,8 @@
     setTimeout(function() {
       _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]
         .concat(roadTypesCustom.map(function (c) { return "ann_roads_" + c.type; })));
-      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]
+      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_masse-sol", "ann_zones_remblais",
+        "ann_zones_effondrement", "ann_zones_inaccessible"]
         .concat(zoneTypesCustom.map(function (c) { return "ann_zones_" + c.type; })));
       // Synchro parent ↔ enfants des structures. Les sous-types custom sont ajoutés à la volée : liste non écrite
       // en dur, sinon décocher « Structures » ne les décoche pas.
@@ -1303,7 +1312,7 @@
       const cb = document.getElementById("ann_roads_" + t);
       etat.ann["roads_" + t] = cb ? cb.checked : true;
     });
-    ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
+    ["eau","masse-sol","remblais","effondrement","inaccessible"].forEach(function(t) {
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
@@ -1602,6 +1611,7 @@
     };
     opts.ann.zonesTypes = {
       eau:          document.getElementById("ann_zones_eau")?.checked          ?? true,
+      "masse-sol":  document.getElementById("ann_zones_masse-sol")?.checked    ?? true,
       remblais:     document.getElementById("ann_zones_remblais")?.checked     ?? true,
       effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true,
       inaccessible: document.getElementById("ann_zones_inaccessible")?.checked ?? true
@@ -1932,10 +1942,11 @@
     // de zones : présente si « Tracés » est coché, comme le tracé jonction (qui n'a pas de case à lui).
     if ((opts.ann.zones || opts.ann.roads) && window.getZones) {
       const zones = window.ktaExportEtatsFiltres(window.getZones());
-      const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
-      const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
+      const ordre = window.KTA_ORDRE_ZONES || {};
+      const filtreZ = opts.ann.zonesTypes ||
+        { eau: true, "masse-sol": true, remblais: true, effondrement: true, inaccessible: true };
       // `inaccessible` en aplat rouge foncé (hachures SVG non portables au canvas) : repli de { flat: true }.
-      function _styleZoneExp(type) { return _styleCanvas("zones", type, "remblais"); }
+      function _styleZoneExp(type, zone) { return _styleCanvas("zones", type, "remblais", zone); }
       const triees = [...zones]
         .filter(function(z) {
           if (z.type === "pente") return !!opts.ann.roads;
@@ -1948,7 +1959,7 @@
         });
       for (const z of triees) {
         if (!z.points || z.points.length < 3) continue;
-        const s = _styleZoneExp(z.type);
+        const s = _styleZoneExp(z.type, z);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(sc(z.points[0].x), sc(z.points[0].y));
@@ -2193,14 +2204,14 @@
         }
       }
 
-      // Zones embarquées en arrière-plan (eau → remblais → effondrement → inaccessible), filtre de niveaux.
-      const ordreZ = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      // Zones embarquées en arrière-plan (KTA_ORDRE_ZONES), filtre de niveaux.
+      const ordreZ = window.KTA_ORDRE_ZONES || {};
       [...drawnZones].sort(function(a, b) {
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         if (!_itemPasseLevels(z)) return;
         if (z.type === "pente" && !jonctionGardee) return;
-        _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais")); });
+        _poser(function () { _drawPolygon(z.points || [], _styleCanvas("zones", z.type, "remblais", z)); });
         _diagAdv.embZones++;
       });
 
@@ -2654,10 +2665,26 @@
             .map(function(e) { return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor }; })
         : [
             { label: window.I18n.t("imgexport.legLabel.eau"),          fillColor: "#3aa9e8", borderColor: "#0066aa" },
+            (function () {   // masse au sol : couleurs du canon (aplat), aucune valeur recopiée ici
+              const s = window.ktaResolveStyle("zones", "masse-sol", { flat: true });
+              return { label: window.I18n.t("imgexport.legLabel.masseSol"), fillColor: s.fillColor,
+                borderColor: s.color };
+            })(),
             { label: window.I18n.t("imgexport.legLabel.remblais"),     fillColor: "#5a5a68", borderColor: "#3a3a44" },
             { label: window.I18n.t("imgexport.legLabel.effondrement"), fillColor: "#ff3333", borderColor: "#cc0000" },
             { label: window.I18n.t("imgexport.legLabel.inaccessible"), fillColor: "#7a0000", borderColor: "#5a0a0a" }
           ];
+      // Masse non exploitée : même sable, aplat plus dense (le canvas ne peint pas les blocs), seulement si une zone
+      // l'est (styleResolver.js > ktaMasseNonExploitee).
+      const _ne = (typeof window.ktaMasseNonExploitee === "function") &&
+        [].concat(window.getZones ? window.getZones() || [] : [],
+          window.getAllEmbeddedZones ? window.getAllEmbeddedZones() || [] : [])
+          .some(z => window.ktaMasseNonExploitee(z));
+      const _sNe = _ne ? window.ktaResolveStyle("zones", "masse-sol", { flat: true, nonExploitee: true }) : null;
+      if (_sNe && (!LC || LC.isVisible("zones", "masse-sol") !== false)) {
+        lignes.push({ label: window.I18n.t("masseSol.nature.nonExploitee"), fillColor: _sNe.fillColor,
+          borderColor: _sNe.color, fillOpacity: _sNe.fillOpacity });
+      }
       if (LC) {
         LC.listCustomEntries("zones")
           .filter(function(e) { return e.visible && e.fillColor; })
@@ -2920,7 +2947,7 @@
           } else if (l.fillColor) {
             ctx.save();
             ctx.fillStyle = l.fillColor;
-            ctx.globalAlpha = 0.7;
+            ctx.globalAlpha = Number.isFinite(l.fillOpacity) ? l.fillOpacity : 0.7;
             ctx.fillRect(xCol, yLine, ic, ic);
             ctx.globalAlpha = 1;
             if (l.borderColor) {

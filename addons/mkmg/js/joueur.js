@@ -196,7 +196,7 @@
     if (p.arme.eclair.visible && performance.now() - p.eclairT > ARME.eclairMs) p.arme.eclair.visible = false;
     const s = p.silh.groupe, cap = ctx.cap * Math.PI / 180;
     s.visible = haut;
-    s.position.set(pos.x / sc, 0, pos.y / sc);
+    s.position.set(pos.x / sc, typeof ctx.sol === "function" ? ctx.sol(pos.x, pos.y) : 0, pos.y / sc);   // sol local
     s.rotation.y = Math.atan2(Math.sin(cap), -Math.cos(cap));
   }
 

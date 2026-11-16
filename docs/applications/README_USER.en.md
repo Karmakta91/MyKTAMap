@@ -215,6 +215,7 @@ To get out **right now**, without thinking: injury, low battery, lamp failure. T
 
 - Once the route is drawn, the **guidance banner** tells you what to do at each junction; during an emergency exit it cannot be closed, even if guidance is turned off. If you stray, its button becomes **Nearest exit from here** (see "🪧 Guidance" in the route section).
 - An exit marked **Straight-line distance — route not verified** (dashed card) has no computed path: it is filed under **Unconfirmed**, and if no exit has a verified path, a red banner says so first. Beware: it may be unreachable (walls, isolated floor).
+- An exit whose path goes through a **Filled to roof** or **collapsed** zone is ranked after those that avoid it, and the window says so (no other path avoids it).
 
 **Where the computation starts**: from your current position, as soon as tracking is on or you have located yourself once since opening the map ("📍 I am here", realignment, portal, restored session); the window tells you which. If you have **never** located yourself, the app asks **Where are you?**: tap your position on the map. That tap also realigns tracking, so the route and the XL display start from the same spot.
 
@@ -320,7 +321,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 | **Measurement** | 📐 | Measure a distance or an area, **compute the total length of paths** and the **⛏️ mined volume** of a sector, clear |
 | **Point editing** | ✏️ | Add your own points *(direct click — ON/OFF switch)* |
 | **Paths** | 🛣️ | Draw main and secondary galleries, paths, junctions |
-| **Zones** | ⬛ | Draw backfill, collapse, water or inaccessible zones |
+| **Zones** | ⬛ | Draw filled-to-roof, partial fill, collapse, water or inaccessible zones |
 | **Structures** | 🏛️ | Pillars, walls and working faces |
 
 **How it works:**
@@ -528,8 +529,9 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **What stops you**
 
 - With the width of a body, you bump into pillars, walls and faces (custom ones included) in Structures mode, into the walls in Tunnels mode, into both in Mixed mode (in a chamber, only structures).
-- In all three renderings, **backfill**, a **collapse** or an **⛔ inaccessible** zone stops you too, in a tunnel as in a chamber.
+- In all three renderings, a **Filled to roof** zone or a **collapse** stops you too, except along a line that crosses it: there, the tunnel is dug through it and you pass. An **⛔ inaccessible** zone always stops you, even on a line.
 - If you start inside one of them, you are brought back to its edge and can move on.
+- A **partial fill** does not stop you by itself: you climb onto it up its slope. The view stoops when less than 1.8 m is left under the ceiling, you crawl under 1 m, and you stop where less than 0.5 m is left (you can always turn back).
 - This is 3D only: the map, the route, the guidance and the tracker ignore them (the route already avoids ⛔ zones).
 
 #### 🧭 Follow or 🕹️ Free
@@ -586,7 +588,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **🏛️ Structures**
 
 - Pillars, walls and quarry faces raised to the level's gallery height (⚙️ Settings › 📉 Levels, or ⛏️ Mined volume on a single-level map; otherwise 2 m).
-- Backfill and collapse zones in volume (60% of that height), water, ⛔ inaccessible zones.
+- Filled-to-roof zones up to the ceiling, collapses in volume (60% of that height), dug along the lines that cross them; water, ⛔ inaccessible zones, partial fills at their fill level.
 - Traces and route on the floor.
 - Points as signs, always visible (a point surveyed inside a pillar shows against its face), smaller and paler further away, and faded out right next to you so they never block the view.
 
@@ -595,7 +597,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Traces become tunnels, without the structures: main 2.5 m wide, secondary 2 m, path 1.7 m, custom trace 2 m.
 - Open crossroads, bends, closed dead ends, a floor stripe in the trace's colour.
 - Walls of dressed stone (with 🧱 Textures; off: in the legend colour of their trace).
-- Zones stop at the walls: backfill and collapses block the tunnel, an ⛔ inaccessible zone hangs a red hatched curtain across it.
+- Zones stop at the walls: where the tunnel crosses a Filled to roof zone or a collapse, its walls are made of fill or rubble and you pass; an ⛔ inaccessible zone hangs a red hatched curtain across it.
 - Only points within 10 m of a trace (rooms included) are shown, against the wall.
 
 **🧱 Textures**
@@ -604,9 +606,10 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints); the 2nd mass is the same rock in a barely warmer shade; to tell it clearly from the 1st, turn the textures off. A custom structure gets the rock.
 - Walls: concrete block, at its real size (a block is 50 cm long, whatever the wall). A wall drawn as a line is in dressed stone, in the same tone as the tunnel walls.
 - Support arches: dressed stone in the same tone as the gallery walls, everywhere — voussoirs in smooth-dressed stone, piers in the same stone as the gallery walls, and rougher rubble masonry above the arch.
-- **Backfill**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
+- **Filled to roof**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
 - **Collapse** (sinkhole): rubble of large broken, cracked blocks, with little earth.
-- Backfill and collapse are at their real size and do not change shape. A custom zone keeps its colour.
+- **Partial fill**: you walk on packed ground a little darker than the tunnel floor (top and slopes); its straight edges show the cut of the fill, in earth and stones. A lowered floor takes the stone of the floor.
+- Filled to roof and collapse are at their real size and do not change shape. A custom zone keeps its colour.
 - Off: every structure and every zone takes back its legend colour, yours included; tunnel walls take the colour of their trace (at a crossroads, the widest trace's); floor and ceiling turn black (the 🗺️ plan on the ground stays visible on top).
 - The wood, stone and backfill of accesses (below) follow this setting too.
 
@@ -692,7 +695,7 @@ Where and how a way through is drawn:
 - **My last position** or **Set my position**: the 3D view takes you where the tracker is put (position and level).
 - **📍 I am here** in a point's card realigns the tracker on the map, but the 3D view stays where you are. In follow mode it then switches to **free** mode (a message says so): the follow button brings it back to the tracker.
 - **Route**: drawn on the ground as a **blue strip edged in dark**, with **chevrons** showing the way, with a **post** at each stop and a **🏁** sign at the end, level by level.
-- Where it crosses **backfill** or a **collapse**, it climbs its face and runs **over the top** (chevrons and stops too), while the route on the map stays the same.
+- Where it crosses a **Filled to roof** zone or a **collapse**, it stays on the floor, in the tunnel dug along the line.
 - The view redraws it as soon as it changes (drawn from 🚨 during the 3D view included).
 - **Guidance**: a **banner** under the row of buttons gives the same instruction as on the map ("In ~20 m, turn right"). **Golden chevrons** on the ground show the way to the next manoeuvre.
 - In **follow** mode it is your tracker's instruction (a preview from the tracker if the map's guidance is off). In **free** mode it is a **preview** worked out from where you are in 3D (real guidance still follows the tracker); if you stray from the route in free mode, the route is recalculated on its own from your 3D spot, without moving the tracker, and in follow mode the banner offers, as on the map, **Recompute from here**, **I am here** or **Ignore**. No voice announcements.
@@ -734,7 +737,7 @@ Where and how a way through is drawn:
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
 - **📐 Measurement**: the distance (and area) is shown in a **banner at the bottom of the view**, updated at each point, as on the map; each segment's length and the angle at each point are shown in the 3D view too, readable.
-- **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map (with **All levels** ticked, 📏 counts the whole map, but the 3D ground only shows its own level: the window says so); **❌ Clear highlight** clears it from both. ⛏️ uses the ♦️ Area you drew in the 3D view.
+- **📏 Total distance** and **⛏️ Mined volume** are in 📐 too: their window opens over the view and counts **the 3D view's level**. The sections counted by 📏 are highlighted in magenta on the ground, as on the map (with **All levels** ticked, 📏 counts the whole map, but the 3D ground only shows its own level: the window says so); **❌ Clear highlight** clears it from both. ⛏️ draws its sector in the view, on the 3D view's level.
 - **🗺️ Plan on the ground**: the plan image under the scene, where you look, to draw over the survey, at every level: the level's own image if the plan has one, otherwise the base plan.
 - In 🛣️ Tunnels rendering, choosing a structure tool switches to **Mixed** (a message says so), so you can see what you draw.
 - **Touching the tool again, Escape, leaving edit view or closing the 3D view** turn the tool off. A started object ends as on the map: kept if it has enough points, otherwise dropped.
@@ -832,6 +835,8 @@ The foldable **🚫 Avoidance preferences (optional)** section of the Route wind
 If no other path exists, the route goes through anyway and says so: **⚠️ Cannot avoid: …**. Your preferences are remembered per map; **🗑️ Reset all avoidances** clears them.
 
 **Inaccessible zones ⛔**, on the other hand, are **never crossed**, unless you untick **Respect impassable areas and walls (line)** (useful on an incomplete survey). **Walls (line)** 🟦 follow the same rule. I'm lost and Rescue mode always respect them.
+
+**Filled to roof** and **Collapse** zones never block: the route **avoids them whenever another path exists**, even a much longer one. With no other path, it goes through anyway and the result says so (**Goes through a Filled to roof zone for 12 m: no other path avoids it**). No box to tick: it always applies, emergency exit and routes to another map included. A gallery drawn on purpose through a Filled to roof zone therefore stays passable; “Check the map” flags it so you can confirm.
 
 ---
 
@@ -984,13 +989,30 @@ In the **⬛ Zones** group, closed surfaces to annotate the map:
 
 | Type | Look | Effect on the route |
 |---|---|---|
-| ⬛ **Backfill** | dark grey | none |
-| 🟥 **Collapse** | red | none |
+| ⬛ **Filled to roof** | dark grey | **avoided** whenever another path exists; otherwise crossed, and the result says so |
+| ⬛ **Partial fill** | grained sand, dashed outline | none for now |
+| 🟥 **Collapse** | red | like Filled to roof |
 | 🟦 **Water** | blue | none |
 | ⛔ **Inaccessible** | dark red / black hatching | **blocks** the way |
 | 🪜 **Junction zone** (multi-level map) | junction trace colour, light veil | none: the route follows the junction trace that crosses it (see 🏗️ Multi-level mode) |
 
-Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then backfill, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
+Press a type, place at least 3 points (dotted), then close the zone: **tap the first point again** (a circle surrounds it from the 3rd point on) or press **✅ Close the current zone**. The tool stays on: tap the next zone straight away, and press the type again to turn it off. Whatever order you draw in, water is shown underneath, then partial fill, filled-to-roof zones, collapses, and inaccessible on top of the other zones; structures (pillars, walls, quarry faces) always stay above zones.
+
+### ⬛ Partial fill — fill level
+
+A **partial fill** is rubble that only fills part of the gallery height, and you walk on it. **Filled to roof** remains the area filled up to the roof.
+
+- In the zone's bubble, choose the **fill level**: ¼, ½, ¾ or **Other** (a value such as 0.9), then **Apply fill level**. The bubble also shows the equivalent in metres, from the level height (plan settings).
+- Without a value, a partial fill counts as ½.
+- A **negative** level (−¼, −½, −¾ or a value such as −0.4) lowers the floor: the bubble then says how far it drops. On the map, its grains are light, sunken, without pebbles. Below −1, the value is refused.
+- **Kind**: in the bubble, **Backfill** (default) or **Unworked mass** (rock left in place, never extracted). The choice applies at once and can be undone with ⏪. It only exists for a positive level: it disappears when you tick a negative level. On the map, an unworked mass keeps the same sand, with a block pattern instead of grains; the legend adds it as soon as the plan has one, and in image exports it is slightly denser. The Spreadsheet changes it in its **Kind** column (positive level only: empty and locked otherwise), applied with the rest of the table. It follows the zone in **KMZ** and **GeoJSON** exports (`nature` property), and the GIS import reads it back.
+- **Slopes (ramps)**: with no slope, the fill is at full height everywhere and its edges are straight. To say where you climb, press **Place a slope** in the bubble, tap the **low edge** of the area (the one you climb from), then the place where the slope reaches the top: beyond it, it is flat (**No end**: the slope goes to the opposite edge). The bubble then lets you **move the end** or remove it. The other edges are straight fronts: in 3D you bump into them going up, and you drop to the foot going down (you climb back out by a slope). You can place several (you can then climb by any of them); each one is removed with its cross in the bubble. On the map, chevrons show the direction of the climb; the legend explains them. With a negative level, the slope goes down.
+- On the map, the higher the level, the more grains.
+- At 1 or more, the gallery is full: the bubble offers to turn the zone into **Filled to roof**.
+- The **Spreadsheet** has a **comble** column, with the same choices.
+- The value follows the zone in **KMZ** and **GeoJSON** exports. On **GIS import**, “ms”, “masse au sol” and “remblai partiel” give a partial fill; an optional height column gives its level (0.5 or 50 %). A polygon whose type is not recognised becomes a partial fill, and the matching screen says how many.
+- In the **3D view**, you walk on it: its top is flat at the fill level, and you climb onto it by a slope. Standing with 1.8 m or more left under the ceiling, stooping between 1 and 1.8 m, crawling between 0.5 and 1 m; under 0.5 m you can no longer pass (you can always turn back). The route ribbon, the signs and the mini-map follow. A lowered floor goes down the same way. A straight edge (with no slope) can be crossed anywhere: you climb it, pulled up onto the top, and you go down it by dropping, except where less than 0.5 m would be left under the ceiling. On a steep slope, walking slows down (down to half speed).
+- **Route**: the length walked inside a partial fill counts according to the space left under the roof, point by point (slopes included): standing (1.8 m or more) as usual, stooping (1 to 1.8 m) as 1.5 times the length, crawling (0.5 to 1 m) as 3 times; below 0.5 m, the way is cut. The route therefore takes another path when it is faster. The **distance shown stays the real one**; the **estimated time** in the Route window and the **remaining guidance time** count the slowdown, and the window says “Goes through a ground mass: stooping / crawling for ~X m”. The emergency exit offers the **quickest** exit to reach, not necessarily the nearest. A lowered floor changes nothing. The emergency exit follows the same rule; in a **stretcher evacuation** (Rescue mode), a partial fill leaving less than 1.8 m is avoided whenever another path exists (never blocking, except below 0.5 m).
 
 ### ⛔ "Inaccessible" zone — blocks the route
 
@@ -1048,7 +1070,7 @@ The **🛣️ Paths**, **⬛ Zones** and **🏛️ Structures** groups each have
 A **route**, a **zone**, a **structure** or a **📐 measurement** already drawn can be corrected without redrawing it, on the map, with the drawing tools off (a 📐 measurement also while the 📐 tool is on):
 
 - **Move a point**: press and hold (half a second) a point of the shape; a gold circle appears: drag it, the shape follows as a dotted line, then release.
-- **Add a point**: press and hold the middle of a side; a point appears there, drag it straight away.
+- **Add a point**: press and hold anywhere on a side, even far from its middle on a large zone; a point appears there, drag it straight away.
 - **Delete a point**: press and hold a point without moving: **＋** and **🗑️** appear above it (and **✂️** on an inner point of a path); tap **🗑️**. A line keeps at least 2 points, a surface 3: below that, a message says so and only **＋** is offered.
 - **Insert points in a row**: same press and hold, then **＋**. A banner “＋ Insertion · N point(s) · ✓ Done” appears: each tap on the map adds a point between the last one placed and the next point of the shape, which is redrawn at once (on a closed shape, the first point comes after the last; at the end of a line, the line is extended). Meanwhile, no tap opens a popup or a tool. **✓ Done**, **Esc** or a tap on the next point stop the insertion; **Ctrl+Z** (or ⏪) removes one point at a time, during and after.
 - **✂️ Split a path**: same press and hold on a point of a path, then **✂️**. The path becomes two paths: the first ends at that point, the second starts there (both share the point, the route still goes through). They keep the type, the level and the note. Not on an end (each piece keeps at least 2 points), nor on a link between levels; to split in the middle of a side, first add a point there. A single ⏪ joins the path back.
@@ -1169,15 +1191,18 @@ In the **📐 Measurement** group, **📏 Total distance** adds up the length of
 
 ### ⛏️ Mined volume (extraction)
 
-In the **📐 Measurement** group, **⛏️ Mined volume** works out what was extracted from a sector. First draw the sector with **♦️ Area** along the working faces, then press ⛏️ (without an area, a message reminds you). The window gives:
+In the **📐 Measurement** group, **⛏️ Mined volume** works out what was extracted from a sector. The volume has **its own sector**, one per plan and per level, kept on this device and found again when you reopen it: the first time, the window offers **Draw the sector** (the window hides, tap the corners along the working faces as with ♦️ Area, then **Confirm**) or, if you have a ♦️ measurement, **Use the Area measurement** (a copy: changing the measurement afterwards does not change the volume). **Redraw the sector** replaces it. While the window is open, the sector is drawn as a blue dotted line on the map (never in exports). The window gives:
 
 - the **sector area**;
 - the **pillars deducted**: area and count. Pillars, walls and closed custom structures count, yours and those of the data layers (even hidden), clipped at the sector edge. Working faces and line walls do not count;
 - the **mined area** (sector minus pillars) and the **extraction ratio** (mined ÷ sector);
 - the **mined volume**: mined area × **average gallery height**, typed in the window (at first the level's height, otherwise 2 m; recalculated at once). On a single-level map, it is remembered for the map; on a map with several levels, it is only used for the calculation: each level's height is set in ⚙️ Settings › Levels: depth and height, and a sentence under the field says so;
-- the **backfill** (“Backfill” zones inside the sector void) in m² and m³, and the **current void** (mined minus backfill).
+- the **filled** area (“Filled to roof” zones inside the sector void) in m² and m³, and the **current void** (mined minus filled);
+- if the sector has any, the **backfill** (partial fill), the **unworked mass** and the **lowered floor** (area and volume), each on its own line. A partial fill counts for its share of the height (¼, ½, ¾…), as if its edges were vertical (the slope is ignored, the window says so). **Backfill** is removed from the void but stays in the mined volume (the rock was extracted). An **unworked mass** is removed from the mined volume **and** from the void. A **lowered floor** is added to both. Where a mass overlaps a Filled to roof zone, only that zone counts; where an unworked mass overlaps backfill, it wins. Areas (sector, mined, rate) do not change.
 
-On a multi-level plan, only the **active level** counts (in the 🧊 3D view: the view's level), and the window says which. The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
+Below the table, two blocks to expand: the **Backfill estimate** (cost of the chosen material — concrete, grout or inert fill — with losses, boreholes and work duration, total cost; an order of magnitude, not a quote) and **Just for fun** (mixer trucks, Olympic pools, mass, CO₂, duration); your prices and settings stay on this device, **Default values** resets them.
+
+The window always says what the calculation covers (“the whole plan”, or the levels). On a multi-level plan, tick the levels to count (or **All**): each one counts with **its own** sector and **its own** height, the window gives the total and a **detail by level** to expand; a ticked level without a sector says so and offers **Draw** or **Use the sector of level X**. At first, it is the displayed level (in the 🧊 3D view: the view's level). The plan must be **calibrated** (scale in ⚙️ Settings): without a scale, no figure is given. These figures stay on screen: they are not exported.
 
 ---
 
@@ -1626,6 +1651,8 @@ In this order, keeping your data:
 
 These tools delete **no** data (stored maps, sessions, photos, logbook, preferences). As a precaution, **📤 Export my profile** first.
 
+**The app asks for the terms of use every time it opens**, or shows “Data not saved”: your browser refuses to save the site's data. In Chrome: padlock left of the address › **Site settings** › allow **Cookies and site data** (or Settings › Site settings); or free up space on the device. Then reopen the app. As long as it is refused, the app stays usable, but nothing is kept from one opening to the next.
+
 ### 💥 Reset everything
 
 **⚙️ Configuration → 🔧 Troubleshooting → 💥 Reset everything** puts the app back as on a first launch. **Irreversible**: it deletes your map list and their archives, your sessions and their backups, the photos, the logbook and history PDFs, your profile (rank, achievements, avatar, wallpaper), Rescue Mode scenarios, your preferences, your PIN, and the app itself (to be downloaded again).
@@ -1875,7 +1902,7 @@ The 🚑 **free rescuer** has neither route nor steps: they add notes, each with
 
 A step set to **Casualty found** gives a position: the step's position, level included. **📍 Refine on the map** adjusts it. A **red ✚** marks it on the map, for everyone; the operator sees it in a banner at the top of their view, and the report prints it first.
 
-**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed). Before the calculation, the **stretcher options**: zones to avoid (water and rubble ticked by default) and, as a last resort, passing through inaccessible zones. If no path avoids these zones, the window says so.
+**🚑 Evacuate** opens the Emergency exit from the casualty: the map's exits and the teams' access points, ranked by actual distance ("Access No. 3 (Charlie, Delta) — to be opened from the surface" if it is closed). Before the calculation, the **stretcher options**: zones to avoid (water ticked by default; Filled to roof and collapse are always avoided when another path exists) and, as a last resort, passing through inaccessible zones. If no path avoids these zones, the window says so.
 
 #### 🚒 4. External rescue services
 
@@ -2102,7 +2129,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
   - **👁️ Preview on the map**: your realigned data is drawn dashed over the map before downloading; the preview disappears when the tool closes. You then get `_conv.json` files.
   - From the home screen (no map open), only resolutions and landmarks typed by hand are available. Inter-map links, georeferencing and scale have to be redone on the new map.
 - **🔗 Connections to check** (map open): lists the places where two lines of the network do not touch, up to 6 m apart on the same level, when joining them would connect two parts of the network that are separate today (the shortest per pair of parts). Tap a row: the window folds away, the map shows the spot (both points circled) and a banner at the bottom takes you from one to the next (**◀ Previous · 3 / 12 · Next ▶**). **🔗 Connect** snaps the vertex onto the other line, which gains a vertex there: the junction is exact, the route and the 3D view follow, and **Ctrl+Z** undoes it. A line from a data layer of the map is first opened for editing (same question as **🔄 Edit**). **Ignore** remembers an intended gap on this map (a wall, a walled-up gallery): it does not come back unless you redraw the spot; **Show ignored again (N)** brings them all back.
-- **Check the map** (map open): lists the data errors that mislead routes and the emergency exit, sorted by severity then by check: a **line cut by an inaccessible zone or a wall (line)** (with the length inside the zone; "at the edge" when it only enters by a few centimetres, often a drawing to redo), a **level passage** (stairs, shaft) **without a confirmed connection** on one of its levels, or whose connection no longer touches any gallery, a **junction line** that connects a level to itself or whose end touches no gallery. Tap a row: the map goes to the right level, shows the spot (the object highlighted, the obstacle outlined) and opens its details; the bottom banner moves from one to the next (**Previous** · 1 / 4 · **Next**), **Obstacle details** opens those of the zone or wall. **Seen, normal** remembers an intended case (a walled-up gallery) on this device, for this map: it does not come back, even if you edit the object; **Seen, normal (N)** lists them, **Restore** brings one back. While drawing, a message also warns you when a line you draw (or an inaccessible zone, a wall) cuts a gallery.
+- **Check the map** (map open): lists the data errors that mislead routes and the emergency exit, sorted by severity then by check: a **line cut by an inaccessible zone or a wall (line)** (with the length inside the zone; "at the edge" when it only enters by a few centimetres, often a drawing to redo), a **level passage** (stairs, shaft) **without a confirmed connection** on one of its levels, or whose connection no longer touches any gallery, a **junction line** that connects a level to itself or whose end touches no gallery. Under **To review**, a **path crossing a Filled to roof or collapsed zone**: not an error (the route avoids it if it can, otherwise goes through), but confirm the gallery or correct the zone. Tap a row: the map goes to the right level, shows the spot (the object highlighted, the obstacle outlined) and opens its details; the bottom banner moves from one to the next (**Previous** · 1 / 4 · **Next**), **Obstacle details** opens those of the zone or wall. **Seen, normal** remembers an intended case (a walled-up gallery) on this device, for this map: it does not come back, even if you edit the object; **Seen, normal (N)** lists them, **Restore** brings one back. While drawing, a message also warns you when a line you draw (or an inaccessible zone, a wall) cuts a gallery.
 - **🧹 Deduplicate data**: removes consecutive identical vertices from paths, zones, structures and measurements, invisible but making files heavier. You get a `_dedup.json` file and a count of what was removed; points are never touched.
 
 If the source contains several datasets, a selector lets you choose.

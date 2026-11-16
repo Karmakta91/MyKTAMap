@@ -9,8 +9,9 @@
 //   getLastSaveInfo, normNomPlan).
 // Slot `myktamap_session_v1_<planId>` via window.KtaSessionStore (js/sessionStore.js : lecture synchrone
 // en mémoire, écriture IndexedDB en arrière-plan, repli localStorage). Changer de plan n'efface rien : la
-// session de chaque plan reste dans son slot. Polling par empreinte + save forcé sur beforeunload et
-// visibilitychange. Restauration appelée par main.js via onPlanLoaded(planId).
+// session de chaque plan reste dans son slot. Tick (_tick) qui ne sérialise que la session « sale » (_sale :
+// rendu des données, historique, geste de l'utilisateur, empreinte légère changée) + filet toutes les 30 s +
+// save forcé sur beforeunload, pagehide et visibilitychange. Restauration : main.js via onPlanLoaded(planId).
 // Le tracé visible du tracker n'est pas persisté (seule sa timeline l'est).
 // ⚠️ Plan partagé par une extension (KtaExtensions.effacementPartage) : « Effacer la session » fait choisir entre
 //   vider l'appareil (tout revient de la synchro), supprimer mes ajouts ou tout supprimer pour l'organisation
@@ -38,6 +39,15 @@
   const STORAGE_KEY_LEGACY = "myktamap_session_v1";
   const POLL_INTERVAL_MS      = 1500;
   const POLL_INTERVAL_SLOW_MS = 30000;  // PerfUltra.slowSave
+  // Session « sale » : le tick ne sérialise (_gatherState + JSON + empreinte, ~100 ms à CPU ×4 sur un plan chargé)
+  // que si une modification a pu avoir lieu. ⚠️ contrat : tout chemin qui modifie la session passe par l'un des
+  // signaux de _marquerSale (rendu `kta:donneesPlanChange`, HistoryManager, geste de l'utilisateur dans les
+  // FENETRE_GESTE_MS, empreinte légère changée) ou appelle SessionPersist.save() lui-même. 🩸 Un chemin oublié
+  // n'est jamais perdu : le filet sérialise au plus tard après FILET_MS, et à la fermeture / mise en arrière-plan.
+  const FENETRE_GESTE_MS = 4000;
+  const FILET_MS         = 30000;
+  // Événements d'un même geste (pointerup → click → change) : moins de RAFALE_MS entre deux.
+  const RAFALE_MS        = 1000;
 
   function _currentPollInterval() {
     if (window.PerfUltra && window.PerfUltra.get("slowSave")) {
@@ -60,6 +70,13 @@
   // 🩸 Phase 2 de restauration (itinéraire différé) : à annuler sur « Effacer la session » ou changement de
   // plan, sinon l'itinéraire réapparaît 1,5 s plus tard.
   let _phase2TimeoutId = null;
+  let _sale = true;            // une modification a pu avoir lieu depuis la dernière sérialisation
+  let _saleJusqua = 0;         // geste de l'utilisateur : sale jusqu'à cette date (suites asynchrones)
+  let _dernierGeste = 0;       // date du dernier événement de geste
+  let _saleAvantRafale = 0;    // _saleJusqua d'avant le geste en cours (cf ignorerGeste)
+  let _signature = null;       // empreinte légère de la dernière sérialisation
+  let _dernierComplet = 0;     // date de la dernière sérialisation (filet)
+  const _ticks = { sautes: 0, complets: 0 };
   function _annulerPhase2() {
     if (_phase2TimeoutId !== null) {
       clearTimeout(_phase2TimeoutId);
@@ -219,6 +236,36 @@
     return (performance.now() - t0) > 5;
   }
 
+  function _marquerSale() { _sale = true; }
+  function _len(f) {
+    try { const a = typeof f === "function" ? f() : null; return a ? a.length : 0; } catch(e) { return -1; }
+  }
+  // ⚠️ Lectures sans copie ni JSON de la session : nombres d'objets, suivi (longueur + dernier pas), traces, mode de
+  // mesure, filtres (petits ensembles). Attrape un ajout / retrait hors geste (pas du suivi, synchro) ; une édition
+  // en place passe par un rendu, l'historique ou un geste.
+  function _signatureLegere() {
+    const tl = (typeof window.getTrackingTimeline === "function") ? (window.getTrackingTimeline() || []) : [];
+    const der = tl.length ? tl[tl.length - 1] : null;
+    const U = window.KtaUid;
+    return [_len(window.getEditorPoints), _len(window.getRoads), _len(window.getZones), _len(window.getStructures),
+      _len(window.getMeasurePoints), _len(window.getMeasurePointsSurface),
+      (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "",
+      tl.length, der ? der.t : 0,
+      (typeof window.getTrackingStartTs === "function") ? (window.getTrackingStartTs() || 0) : 0,
+      U ? _len(U.getTombstones) : 0, (U && typeof U.getTracesCopie === "function") ? _len(U.getTracesCopie) : 0,
+      JSON.stringify(_serializeRuntimeFilters())].join("|");
+  }
+  // Tick du polling : rien de sale, empreinte légère inchangée, filet pas échu → aucune sérialisation.
+  function _tick() {
+    if (!_currentPlanId || _decisionEnAttente) return false;
+    const now = Date.now();
+    if (!_sale && now >= _saleJusqua && now - _dernierComplet < FILET_MS && _signatureLegere() === _signature) {
+      _ticks.sautes++;
+      return false;
+    }
+    return save();
+  }
+
   function save(opts) {
     if (!_currentPlanId) return false;
     if (_decisionEnAttente) return false;
@@ -232,6 +279,11 @@
     _lastForceSave = 0;
 
     if (window.KtaUid) window.KtaUid.purge();   // traces > 90 jours
+    // Sérialisation complète : la session est propre jusqu'au prochain signal (un échec d'écriture la resalit).
+    _signature = _signatureLegere();
+    _sale = false;
+    _dernierComplet = Date.now();
+    _ticks.complets++;
     const state = _gatherState();
     const hash  = _hashState(state);
     if (hash === _lastHash) return false;
@@ -313,6 +365,7 @@
     // (en localStorage, c'est l'événement mktm:stockage-plein qui s'en charge).
     if (isQuota && _store().mode() === "idb") _verifierMemoire(true);
     _lastSaveKo = true;   // l'écran de détails le dit en rouge
+    _sale = true;         // le tick suivant réessaie
   }
 
   // Résultat (asynchrone) d'une écriture IndexedDB. Échec → l'empreinte est oubliée :
@@ -473,6 +526,32 @@
         if (purgees > 0) console.log("[SessionPersist] " + purgees + " trace(s) de suppression de plus de 90 jours purgée(s)");
       }
 
+      // Filtres runtime : Array → Set ; null par champ = pas de filtre sur ce champ.
+      // ⚠️ Posés AVANT les setters : chaque setter rend déjà filtré (renderZones/renderRoads/renderStructures,
+      // marqueurs de session), ce qui évite un second rendu complet des objets de session au chargement.
+      let _active = null;
+      if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
+        const rf = payload.runtimeFilters;
+        if (!window._ktaRuntimeFilters) {
+          window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
+        }
+        function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
+        window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
+        window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
+        window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
+        window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
+        // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
+        // null = automatique (suit le niveau 0). Ancienne session : `garderFond: true` = fond forcé affiché.
+        window._ktaRuntimeFilters.planDeBase  = (rf.planDeBase === true || rf.planDeBase === false)
+          ? rf.planDeBase : (rf.garderFond === true ? true : null);
+        _active = [];
+        if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
+        if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
+        if (window._ktaRuntimeFilters.zoneTypes   !== null) _active.push("zoneTypes");
+        if (window._ktaRuntimeFilters.structTypes !== null) _active.push("structTypes");
+        restored.runtimeFilters = _active.length;
+      }
+
       // Les setters redessinent en interne (setEditorPoints, setRoads, setZones, setStructures).
       if (window.setEditorPoints && Array.isArray(payload.editorPoints)) {
         window.setEditorPoints(payload.editorPoints);
@@ -548,31 +627,15 @@
         restored.trackerTimeline = payload.trackerTimeline.length;
       }
 
-      // Filtres runtime : Array → Set ; null par champ = pas de filtre sur ce champ.
-      if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
-        const rf = payload.runtimeFilters;
-        if (!window._ktaRuntimeFilters) {
-          window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
-        }
-        function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
-        window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
-        window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
-        window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
-        window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
-        // Préférence d'affichage, pas un filtre : ne compte pas dans le toast « filtres restaurés ».
-        // null = automatique (suit le niveau 0). Ancienne session : `garderFond: true` = fond forcé affiché.
-        window._ktaRuntimeFilters.planDeBase  = (rf.planDeBase === true || rf.planDeBase === false)
-          ? rf.planDeBase : (rf.garderFond === true ? true : null);
-        const _active = [];
-        if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
-        if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
-        if (window._ktaRuntimeFilters.zoneTypes   !== null) _active.push("zoneTypes");
-        if (window._ktaRuntimeFilters.structTypes !== null) _active.push("structTypes");
-        restored.runtimeFilters = _active.length;
-        // Différé : les marqueurs de session doivent être posés avant le re-rendu filtré.
+      // Différé : le reste de la carte (calques DATA, plan de base, tracker, calques image) n'a vu ni les filtres
+      // ni le plan de base de la session. Tracés, zones et structures de session sont déjà rendus filtrés par
+      // leur setter : on ne les refait que si une famille manquait au payload (ancienne session, objets d'avant).
+      if (_active !== null) {
+        const _sessionRendue = Array.isArray(payload.roads) && Array.isArray(payload.zones)
+          && Array.isArray(payload.structures);
         setTimeout(function() {
           if (typeof window.appliquerFiltreRuntime === "function") {
-            try { window.appliquerFiltreRuntime(); } catch(e) {}
+            try { window.appliquerFiltreRuntime({ sessionRendue: _sessionRendue }); } catch(e) {}
           }
           // 🩸 Des filtres restaurés en silence = « où sont passés mes points ? » : toast + pastille ≡.
           if (window.FilterPanel && typeof window.FilterPanel.majBadge === "function") {
@@ -907,7 +970,7 @@
   function _startPolling() {
     if (_pollTimer) return;
     const interval = _currentPollInterval();
-    _pollTimer = setInterval(save, interval);
+    _pollTimer = setInterval(_tick, interval);
     if (interval !== POLL_INTERVAL_MS) {
       console.log("[SessionPersist] 🚀 PerfUltra.slowSave actif → polling " + (interval/1000) + "s");
     }
@@ -950,12 +1013,15 @@
   // Appelé par main.js > lancerApplication() après l'init : migre l'ancien slot, restaure le slot du plan
   // s'il existe (modale), démarre le polling.
   function onPlanLoaded(planId) {
+    _abonnerHistorique();
     _stopPolling();
     _slotAssume = false;
     _decisionEnAttente = false;
     _annulerPhase2();   // sinon l'itinéraire de l'ancien plan arrive sur le nouveau
     _currentPlanId = planId || null;
     _lastHash = null;
+    _sale = true;
+    _dernierComplet = 0;
 
     _migrerAncienSlotUniqueSiBesoin();
 
@@ -1067,12 +1133,52 @@
   // ── Filets : fermeture et arrière-plan ──────────────
   // Forcés (pas de throttle) : pas de seconde chance, iOS peut tuer l'onglet en arrière-plan.
   window.addEventListener("beforeunload", function() { save({ force: true }); });
+  // 🩸 iOS ne garantit ni beforeunload ni toujours visibilitychange quand l'onglet est fermé ou tué.
+  window.addEventListener("pagehide", function() { save({ force: true }); });
+
+  // ── Signaux « sale » ──────────────
+  // Rendu des données (toute écriture d'objet finit par un rendu, couleurs de légende et calques compris).
+  // 🩸 Sauf un redessin d'affichage seul (`detail.affichage` : niveau, niveaux visibles, filtres —
+  // interfaceConfig.js > appliquerFiltreNiveau) : aucune donnée n'a changé, et sur un gros relevé la sérialisation
+  // coûte des centaines de ms à chaque changement de niveau.
+  window.addEventListener("kta:donneesPlanChange", function(e) {
+    if (e && e.detail && e.detail.affichage === true) return;
+    _marquerSale();
+  });
+  // Geste de l'utilisateur : sale pendant FENETRE_GESTE_MS (suites asynchrones : fichier lu, confirmation, calcul).
+  // Ni pointermove ni molette : un déplacement de la carte ne modifie pas la session.
+  ["pointerup", "click", "keydown", "input", "change", "drop"].forEach(function(t) {
+    window.addEventListener(t, function() {
+      const now = Date.now();
+      if (now - _dernierGeste > RAFALE_MS) _saleAvantRafale = _saleJusqua;
+      _dernierGeste = now;
+      _saleJusqua = now + FENETRE_GESTE_MS;
+    },
+      { capture: true, passive: true });
+  });
+  // Historique (enregistrement, ⏪, ↪) : abonné ici (historyManager.js est chargé avant) ou au premier plan.
+  function _abonnerHistorique() {
+    const H = window.HistoryManager;
+    if (_abonnerHistorique.fait || !H || typeof H.onChange !== "function") return;
+    _abonnerHistorique.fait = true;
+    H.onChange(_marquerSale);
+  }
+  _abonnerHistorique();
 
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState === "hidden") save({ force: true });
   });
 
   window.SessionPersist = {
+    // Signal neutre : un module qui modifie la session sans rendu ni geste peut le dire (sinon le filet suffit).
+    marquerSale:  _marquerSale,
+    // Le geste en cours n'a fait que changer l'affichage (niveau, filtres) : sa fenêtre est retirée, celle des gestes
+    // d'avant reste. ⚠️ À n'appeler que d'un chemin d'affichage pur : un chemin qui modifie la session sans signal
+    // perdrait sa fenêtre (le filet de 30 s et la fermeture le rattrapent quand même).
+    ignorerGeste: function() { if (Date.now() - _dernierGeste <= RAFALE_MS) _saleJusqua = _saleAvantRafale; },
+    // Diagnostic (checkup) : ticks sautés / sérialisations complètes, état sale.
+    etatTick:     function() { return { sautes: _ticks.sautes, complets: _ticks.complets, sale: _sale,
+      geste: Date.now() < _saleJusqua }; },
     onPlanLoaded: onPlanLoaded,
     onPlanUnload: onPlanUnload,
     save:         save,

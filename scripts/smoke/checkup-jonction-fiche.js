@@ -122,8 +122,7 @@ function etatJonction(page) {
     let fiche = false, ronds = 0;
     const H = window.APP_CONFIG.imageHeight;
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c === "string" && c.indexOf('data-kta-uid="rd_jct"') >= 0) fiche = true;
       if (l instanceof L.CircleMarker && l.options && l.options.radius === 7 && l.getLatLng) {
         const ll = l.getLatLng();
@@ -156,8 +155,7 @@ async function ouvrirFiche(page) {
     let cible = null;
     window.map.eachLayer(function (l) {
       if (cible) return;
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c === "string" && c.indexOf('data-kta-uid="rd_jct"') >= 0) cible = l;
     });
     if (!cible) return false;
@@ -201,8 +199,7 @@ async function partieJonction(page) {
     window.renderRoads();
     let fiche = false;
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c === "string" && c.indexOf('data-kta-uid="rd_jct"') >= 0) fiche = true;
     });
     window.modeRoad = null;

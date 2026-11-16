@@ -125,7 +125,8 @@ function charger(fichier, nomGlobal, prealables) {
 // ───────── volumeExploite.js (défruitement d'un secteur) ─────────
 // ⚠️ Valeurs attendues calculées À LA MAIN (rectangles, losanges, L) : échelle 2 px/m, donc 1 m² = 4 px².
 (function () {
-  const VE = charger("js/volumeExploite.js", "KtaVolumeExploite");
+  // styleResolver d'abord : la part d'une masse au sol est lue par window.ktaCombleZone, jamais recopiée.
+  const VE = charger("js/volumeExploite.js", "KtaVolumeExploite", ["js/styleResolver.js"]);
   if (!VE) return;
   const R = function (x0, y0, x1, y1) { return [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }]; };
   const pil = function (pts, extra) { return Object.assign({ type: "pilier-1", points: pts }, extra || {}); };
@@ -193,6 +194,147 @@ function charger(fichier, nomGlobal, prealables) {
   t("volume : secteur de moins de 3 points → refus",
     calc({ secteur: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }).raison === "secteur");
 
+  // Masses au sol (paliers) — carré 100×100 px, 2 px/m (1 m² = 4 px²), hauteur 2 m sauf mention.
+  const msol = function (pts, comble, extra) {
+    return Object.assign({ type: "masse-sol", points: pts, comble: comble }, extra || {});
+  };
+  // Masse seule ½ sur 40×50 px = 2 000 px² = 500 m² ; volume 500 × ½ × 2 = 500 m³ ; vide 2 500 × 2 − 500 = 4 500 m³.
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5)] });
+  t("volume : masse seule ½ (500 m²) → 500 m³ retranchés, vide 4 500 m³, surface du vide inchangée",
+    r.masseSol && proche(r.masseM2, 500) && proche(r.masseM3, 500) && proche(r.videM2, 2500) &&
+    proche(r.videM3, 4500) && proche(r.remblaisM2, 0) && !r.abaisse);
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50))] });
+  t("volume : masse sans part → ½ (ktaCombleZone), 500 m³", proche(r.masseM3, 500));
+  // Paliers : A ¼ sur x 0-60, B ¾ sur x 40-100 (bandes de 50 px de haut), chevauchement x 40-60.
+  // Union 5 000 px² = 1 250 m² ; palier ¼ : 1 250 × ¼ = 312,5 ; palier ¾ : B seule 750 m² × (¾ − ¼) = 375 ;
+  // 687,5 × 2 m = 1 375 m³ (contrôle : A seule 500 m² × ¼ × 2 = 250, B 750 m² × ¾ × 2 = 1 125).
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 60, 50), 0.25), msol(R(40, 0, 100, 50), 0.75)] });
+  t("volume : deux masses ¼ et ¾ qui se chevauchent → union 1 250 m², 1 375 m³ (paliers, rien compté deux fois)",
+    proche(r.masseM2, 1250) && proche(r.masseM3, 1375) && proche(r.videM3, 5000 - 1375));
+  // Masse ½ sur x 25-75 à cheval sur un Comblé x 0-50 : seule la part x 50-75 = 2 500 px² = 625 m² → 625 m³.
+  r = calc({ secteur: carre, zones: [{ type: "remblais", points: R(0, 0, 50, 100) }, msol(R(25, 0, 75, 100), 0.5)] });
+  t("volume : masse sur un Comblé → le Comblé l'emporte (625 m² et 625 m³ retranchés, Comblé 1 250 m²)",
+    proche(r.remblaisM2, 1250) && proche(r.masseM2, 625) && proche(r.masseM3, 625) &&
+    proche(r.videM2, 1250) && proche(r.videM3, 2500 - 625));
+  // Sol abaissé −½ sur 100×20 px = 500 m² → 500 m³ AJOUTÉS : vide 5 000 + 500 = 5 500 m³.
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 100, 20), -0.5)] });
+  t("volume : sol abaissé −½ (500 m²) → 500 m³ ajoutés au vide (5 500 m³) ET au volume exploité (5 500 m³)",
+    r.abaisse && !r.masseSol && proche(r.abaisseM2, 500) && proche(r.abaisseM3, 500) && proche(r.videM3, 5500) &&
+    proche(r.volumeM3, 5500) && proche(r.exploiteM2, 2500));
+  // Sortes : remblai ½ x 0-40 y 0-50, NON EXPLOITÉE ½ x 60-100 y 0-50, creux −½ x 0-100 y 60-80 : chacune
+  // 2 000 px² = 500 m², ½ × 2 m → 500 m³. Exploité 2 500 m² (surface inchangée). Volume exploité
+  // 2 500 × 2 − 500 (non exploitée) + 500 (creux) = 5 000 m³ ; vide 5 000 − 500 − 500 + 500 = 4 500 m³.
+  const NE = { nature: "non-exploitee" };
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5), msol(R(60, 0, 100, 50), 0.5, NE),
+    msol(R(0, 60, 100, 80), -0.5)] });
+  t("volume : remblai ½ + non exploitée ½ + creux −½ → volume exploité 5 000 m³, vide 4 500 m³, surfaces inchangées",
+    proche(r.volumeM3, 5000) && proche(r.videM3, 4500) && proche(r.exploiteM2, 2500) && proche(r.tauxPct, 100) &&
+    proche(r.videM2, 2500));
+  t("volume : lignes distinctes — remblai 500 m² / 500 m³, non exploitée 500 m² / 500 m³, creux 500 m³",
+    r.remblai && proche(r.remblaiM2, 500) && proche(r.remblaiM3, 500) && r.nonExploitee &&
+    proche(r.nonExploiteeM2, 500) && proche(r.nonExploiteeM3, 500) && r.abaisse && proche(r.abaisseM3, 500) &&
+    proche(r.masseM3, 1000));
+  // Chevauchement : non exploitée ½ x 0-60, remblai ½ x 40-100 (y 0-50). Union 5 000 px² = 1 250 m² → 1 250 m³
+  // retranchés du vide (3 750 m³) ; non exploitée seule 3 000 px² = 750 m² → 750 m³ retranchés de l'exploité
+  // (4 250 m³) ; remblai = le reste, 500 m² / 500 m³ (la non exploitée l'emporte, rien compté deux fois).
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 60, 50), 0.5, NE), msol(R(40, 0, 100, 50), 0.5)] });
+  t("volume : non exploitée sur un remblai → elle l'emporte (exploité 4 250 m³, vide 3 750 m³, remblai 500 m³)",
+    proche(r.volumeM3, 4250) && proche(r.videM3, 3750) && proche(r.nonExploiteeM3, 750) &&
+    proche(r.remblaiM2, 500) && proche(r.remblaiM3, 500));
+  // Nature sur une part négative : ignorée (creux ordinaire, ajouté aux deux).
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 100, 20), -0.5, NE)] });
+  t("volume : nature non-exploitee sur un creux −½ ignorée → ajouté aux deux (5 500 m³)",
+    !r.nonExploitee && proche(r.volumeM3, 5500) && proche(r.videM3, 5500));
+  // Remblai seul : volume exploité inchangé (5 000 m³), comme avant.
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5)] });
+  t("volume : remblai seul → volume exploité inchangé (5 000 m³), seul le vide baisse (4 500 m³)",
+    proche(r.volumeM3, 5000) && proche(r.videM3, 4500) && !r.nonExploitee && r.remblai);
+  // Pilier 20×20 px dans une masse ¾ de 100×40 px : 4 000 − 400 = 3 600 px² = 900 m² ; 900 × ¾ × 2 = 1 350 m³ ;
+  // vide (2 500 − 100) × 2 − 1 350 = 3 450 m³.
+  r = calc({ secteur: carre, structures: [pil(R(40, 10, 60, 30))], zones: [msol(R(0, 0, 100, 40), 0.75)] });
+  t("volume : pilier dans une masse ¾ → retiré de la masse (900 m², 1 350 m³), vide 3 450 m³",
+    proche(r.masseM2, 900) && proche(r.masseM3, 1350) && proche(r.videM3, 3450));
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 0.5, { level: -1 })], niveau: 0 });
+  t("volume : masse d'un autre niveau ignorée", !r.masseSol && proche(r.masseM2, 0) && proche(r.videM3, 5000));
+  r = calc({ secteur: carre, zones: [msol(R(0, 0, 40, 50), 1.4)] });
+  t("volume : part ≥ 1 bornée à la hauteur (500 m² × 2 m = 1 000 m³)", proche(r.masseM3, 1000));
+  // Plan sans masse : le vide garde EXACTEMENT l'ancienne formule (surface × hauteur), aucune ligne de plus.
+  r = calc({ secteur: carre, hauteur: 2.5, structures: [pil(R(40, 10, 60, 30))],
+             zones: [{ type: "remblais", points: R(0, 0, 100, 20) }, { type: "eau", points: R(0, 50, 100, 100) }] });
+  t("volume : plan sans masse → vide = surface × hauteur au bit près, aucune ligne de masse",
+    r.videM3 === r.videM2 * 2.5 && r.volumeM3 === r.exploiteM2 * 2.5 && r.remblaisM3 === r.remblaisM2 * 2.5 &&
+    !r.masseSol && !r.abaisse && r.masseM2 === 0 && r.abaisseM2 === 0);
+
+  // ── Estimation de comblement (pur) — exemple de KARMA : 75 ha de vide × 3 m = 2 250 000 m³ ──
+  // Béton 130 €/m³ + 20 % de pertes : 2 700 000 m³ → 351 M€ ; toupies (8 m³, PERTES COMPRISES) 337 500 ;
+  // piscines 1 080 ; masse × 2,4 = 6 480 000 t ; CO₂ × 0,25 = 675 000 t ; une toupie / 10 min = 3 375 000 min.
+  // Forages : 750 000 m² / 25 = 30 000 → × 1 500 € = 45 M€ ; / 4 par jour = 7 500 jours ouvrés (≈ 357,1 mois).
+  const EC = VE.estimerComblement;
+  const rK = { ok: true, videEqM2: 750000, volumeEqM2: 750000, videM2: 750000, exploiteM2: 750000 };
+  let e = EC(rK, 3, {});
+  t("estimation : 2 250 000 m³ de vide, 2 700 000 avec 20 % de pertes, béton 351 M€ (défauts)",
+    e.ok && proche(e.volumeBaseM3, 2250000) && proche(e.volumePertesM3, 2700000) && proche(e.coutMateriau, 351e6));
+  t("estimation : 30 000 forages, 45 M€, 7 500 jours ouvrés (≈ 357,1 mois), total 396 M€",
+    e.nbForages === 30000 && proche(e.coutForages, 45e6) && e.jours === 7500 && proche(e.mois, 7500 / 21) &&
+    proche(e.coutTotal, 396e6));
+  t("pour le fun : 337 500 toupies (pertes comprises), 1 080 piscines, 6 480 000 t, 675 000 t de CO₂, 3 375 000 min",
+    e.toupies === 337500 && proche(e.piscines, 1080) && proche(e.masseT, 6480000) && proche(e.co2T, 675000) &&
+    e.dureeToupiesMin === 3375000);
+  e = EC(rK, 3, { base: "pct", pct: 50 });
+  t("estimation : 50 % du vide → 1 125 000 m³, mêmes 30 000 forages (un forage traite toute la hauteur)",
+    proche(e.volumeBaseM3, 1125000) && e.nbForages === 30000);
+  e = EC(rK, 3, { base: "hauteur", hauteurM: 1 });
+  t("estimation : jusqu'à 1 m sur 3 m → un tiers du vide, 750 000 m³", proche(e.volumeBaseM3, 750000));
+  e = EC(rK, 3, { base: "hauteur", hauteurM: 5 });
+  t("estimation : hauteur bornée à celle du calcul (5 m → 3 m, tout le vide)", proche(e.volumeBaseM3, 2250000));
+  e = EC({ ok: true, videEqM2: 750000, volumeEqM2: 900000, videM2: 750000, exploiteM2: 800000 }, 3,
+    { base: "exploite" });
+  t("estimation : exploité total (900 000 m² éq. × 3 = 2 700 000 m³), forages sur la surface exploitée (32 000)",
+    proche(e.volumeBaseM3, 2700000) && e.nbForages === 32000);
+  e = EC(rK, 3, { materiau: "coulis", pertesPct: 0 });
+  t("estimation : coulis 80 €/m³ sans pertes → 180 M€, CO₂ 0,12 t/m³ = 270 000 t, densité 1,6",
+    proche(e.coutMateriau, 180e6) && proche(e.co2T, 270000) && proche(e.masseT, 3600000));
+  e = EC(rK, 3, { materiau: "remblai" });
+  t("estimation : remblai inerte 20 €/m³ (+20 %) = 54 M€, CO₂ non compté",
+    proche(e.coutMateriau, 54e6) && e.co2T === null);
+  e = EC({ ok: true, videEqM2: 26, volumeEqM2: 26, videM2: 26, exploiteM2: 26 }, 2, { prix: { beton: "abc" },
+    surfaceForageM2: 25, foragesJour: -1, pertesPct: "x" });
+  t("estimation : 26 m² / 25 → 2 forages (arrondi au-dessus) ; saisie illisible → défaut (130 €, 20 %, 4 / jour)",
+    e.nbForages === 2 && e.jours === 1 && proche(e.coutMateriau, 26 * 2 * 1.2 * 130));
+  t("estimation : hauteur nulle ou résultat absent → ok:false",
+    EC(rK, 0, {}).ok === false && EC(null, 3, {}).ok === false);
+  t("estimation : défauts figés (130 / 80 / 20 €, 2,4 / 1,6 / 1,8 t/m³, 20 %, 25 m², 1 500 €, 4 / jour, 10 min)",
+    VE.ESTIMATION_DEFAUTS.prix.beton === 130 && VE.ESTIMATION_DEFAUTS.prix.coulis === 80 &&
+    VE.ESTIMATION_DEFAUTS.prix.remblai === 20 && VE.ESTIMATION_DEFAUTS.densite.coulis === 1.6 &&
+    VE.ESTIMATION_DEFAUTS.pertesPct === 20 && VE.ESTIMATION_DEFAUTS.surfaceForageM2 === 25 &&
+    VE.ESTIMATION_DEFAUTS.coutForage === 1500 && VE.ESTIMATION_DEFAUTS.foragesJour === 4 &&
+    VE.ESTIMATION_DEFAUTS.toupieMin === 10 && Object.isFrozen(VE.ESTIMATION_DEFAUTS.prix));
+  // ── Plusieurs niveaux (sommerNiveaux) : chacun SON secteur et SA hauteur ──
+  // Niveau 0 : carré 100×100 px = 2 500 m², rien dedans, h 2 m → 5 000 m³. Niveau −1 : 100×50 px = 1 250 m², pilier
+  // 20×20 px = 100 m² → exploité 1 150 m², h 3 m → 3 450 m³. Total : secteur 3 750, piliers 100, exploité 3 650 m²,
+  // taux 97,33 %, volume 8 450 m³, vide 3 650 m² / 8 450 m³.
+  const J = JSON.stringify;
+  const n0 = calc({ secteur: carre, niveau: 0, hauteur: 2 });
+  const nm1 = calc({ secteur: R(0, 0, 100, 50), niveau: -1, hauteur: 3,
+    structures: [pil(R(40, 10, 60, 30), { level: -1 })] });
+  const S2 = VE.sommerNiveaux([{ niveau: 0, r: n0, h: 2 }, { niveau: -1, r: nm1, h: 3 }]);
+  t("niveaux : 0 (2 500 m², 2 m) + −1 (1 250 m², pilier 100 m², 3 m) → secteur 3 750, exploité 3 650 m², 1 pilier",
+    S2.ok && proche(S2.secteurM2, 3750) && proche(S2.piliersM2, 100) && S2.nbPiliers === 1 &&
+    proche(S2.exploiteM2, 3650) && J(S2.niveaux) === J([0, -1]));
+  t("niveaux : volume 5 000 + 3 450 = 8 450 m³ (chaque hauteur), vide 8 450 m³, taux 97,33 %",
+    proche(S2.volumeM3, 8450) && proche(S2.videM3, 8450) && proche(S2.videM2, 3650) &&
+    proche(S2.tauxPct, 3650 / 3750 * 100));
+  t("niveaux : un niveau seul = ses chiffres (5 000 m³) ; aucun lisible → ok:false",
+    proche(VE.sommerNiveaux([{ niveau: 0, r: n0, h: 2 }]).volumeM3, 5000) &&
+    VE.sommerNiveaux([{ niveau: 0, r: { ok: false }, h: 2 }]).ok === false && VE.sommerNiveaux([]).ok === false);
+  // Estimation sur le total : vide 8 450 m³ × 1,2 = 10 140 m³ × 130 € = 1 318 200 € ; forages par niveau 2 500 / 25 =
+  // 100 et 1 150 / 25 = 46 → 146 × 1 500 € = 219 000 € ; ⌈146 / 4⌉ = 37 jours ; ⌈10 140 / 8⌉ = 1 268 toupies.
+  const ET = VE.estimerComblementTotal([{ r: n0, h: 2 }, { r: nm1, h: 3 }], {});
+  t("estimation sur 2 niveaux : 10 140 m³, 1 318 200 €, 146 forages (par niveau), 219 000 €, 37 jours, 1 268 toupies",
+    ET.ok && proche(ET.volumePertesM3, 10140) && proche(ET.coutMateriau, 1318200) && ET.nbForages === 146 &&
+    proche(ET.coutForages, 219000) && ET.jours === 37 && ET.toupies === 1268);
+  t("estimation sur 1 niveau = estimerComblement (mêmes chiffres)",
+    J(VE.estimerComblementTotal([{ r: n0, h: 2 }], {}).coutTotal) === J(VE.estimerComblement(n0, 2, {}).coutTotal));
   // Charge : secteur à 400 sommets (bords subdivisés), 900 piliers 4×4 px dedans = 14 400 px² = 3 600 m².
   const grand = [];
   for (let i = 0; i < 100; i++) grand.push({ x: i * 10, y: 0 });

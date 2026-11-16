@@ -120,7 +120,8 @@ qui vit avec la vue ouverte ; sans greffon, la vue ne crée rien (ni calque, ni 
 | `rendu`, `mode`, `vue`, `commandes`, `court` | `"mixte"` / `"structures"` / `"galerie"` ; `"suivi"` / `"libre"` ; `"yeux"` / `"plongee"` ; `"joystick"` / `"pave"` ; pas rapide en cours |
 | `miniCarte` | `true` quand le médaillon de la mini-carte est montré en haut à droite : le greffon y libère la place (le jeu `mkmg` passe alors son panneau sous ses jauges, à gauche) |
 | `sale()` | demander une image |
-| `bloque(x0, y0, x1, y1)` | règle du pas **de la vue** (jamais une copie) : un corps de 0,8 m ne passe pas (px plan) |
+| `bloque(x0, y0, x1, y1)` | règle du pas **de la vue** (jamais une copie) : un corps de 0,8 m ne passe pas (px plan) ; masses au sol comprises (`_masseBloque` : un bord se monte et se descend partout, refusé seulement si l'arrivée laisse moins de 0,5 m sous le plafond) |
+| `sol(x, y)` | sol local (m) sous (x, y) px, en lecture seule : galerie inclinée ou masse au sol (`_surPente`, `_solMasse` : la règle de la place, jamais une copie), 0 ailleurs ; un greffon y pose ses objets (`position.y`) au lieu de 0 |
 | `ligneBloquee(x0, y0, x1, y1)` | une ligne de vue est coupée (pilier, mur, paroi) |
 | `libre(x, y)` | un corps tient là : ni coincé, ni dans une structure **dessinée**, corps dégagé (un calque masqué n'y compte pas), ni dans ou contre un remblais, un effondrement ou une zone inaccessible du niveau (`galerieEmprise.js > ZONES_BOUCHENT`), ni dans ou contre l'obstacle d'un accès de surface : cône d'un puits comblé, cavage fermé, pierre de taille qui comble un cavage (ouvert ou fermé) jusqu'aux structures (`KtaGalerie.BLOQUE`, posé par `placePassage`, `comblementPorte`) ; dans la galerie inclinée d'un tracé jonction, sa seule règle : le corps entre ses parois |
 | `regler(r)` | réglages de la vue **pour la greffe seulement**, levés au retrait (table ci-dessous) |

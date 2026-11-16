@@ -722,14 +722,16 @@ pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-confi
      tracé imprécis) : sinon chaque pas sortant le couperait et le tracker resterait figé.
    - **Coût** : grille d'index de 128 px par liste, refaite seulement quand la liste change (même tableau, même
      longueur, même somme des `updatedAt` et des nombres de points). ~0,3 ms par pas pour 13 000 piliers (Node, PC).
+     Cette somme (un passage sur toute la liste) n'est relue qu'après un `kta:donneesPlanChange` : toute écriture
+     d'une structure finit par `renderStructures`, qui l'émet. 🩸 Une structure modifiée en place sans rendu garde
+     un index périmé jusqu'au signal suivant.
    - La structure **en cours de tracé** ne compte pas.
    - **Contact** (`_segmentsSeCoupent`) : croisement, extrémité posée sur l'arête, bout commun. 🩸 Un pas
      **colinéaire** à une arête ne compte que s'il la recouvre (un point commun au moins) : longer une face dans son
      prolongement passait pour un contact et figeait le tracker (et la vue 3D) le long d'un pilier aligné.
    - **Exposée** : `window.ktaPasBloqueParStructure(x0, y0, x1, y1[, niveau[, avecPerso]])` (true = refusé),
      `niveau` remplaçant celui du tracker ; `window.ktaSegmentsBloquesParStructure(segments[, niveau[, avecPerso]])`
-     juge un lot de segments en relisant l'index une seule fois (la signature parcourt toutes les structures : quinze
-     appels par pas coûtaient 3,5 ms au PC dans un plan dense, le lot 0,2 ms). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
+     juge un lot de segments en relisant l'index une seule fois (sources, exclusions et index relus à chaque appel). Consommateur : la vue 3D (`js/vue3d.js`), qui s'en sert pour ses déplacements à
      l'écran et au clavier sans recopier la géométrie ni déplacer le tracker.
 
 Le Pathfinder garde ses propres règles (seuls `mur-ligne` et la zone `inaccessible` coupent l'itinéraire,
@@ -1397,21 +1399,104 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   En rendu mixte, les deux règles à la fois (`_juger`) : celle des structures partout
   et `KtaGalerie.paroisBloquent` (les parois **dessinées** des tubes et leurs pans de retour) ; dans une chambre,
   seules les structures arrêtent. Dans les trois rendus s'y ajoutent les zones qui bouchent (règle ci-dessous).
-- **Zones obstacles de la 3D** (décision produit) : un remblais, un effondrement ou une zone inaccessible du niveau
-  arrête le pas dans les trois rendus, en tube comme en chambre (`galerieEmprise.js > ZONES_BOUCHENT`, lu par
-  `KtaGalerie.zonesBloquent` et `dansZone` ; `vue3d.js > _juger` l'ajoute à la règle du rendu). L'inaccessible y
-  est par la constante `INACCESSIBLE_BOUCHE` seule (son rendu, hachures au sol et rideau, n'en dépend pas). Un
-  segment est arrêté s'il finit dans une zone ou entre dans son contour ; ⚠️ contrat (jamais coincé) : une zone qui
-  contient le départ du pas (ou le début du segment) ne l'arrête pas, et un contact au point de départ, sur le bord,
-  ne compte pas. Une place dont le corps touche une zone est coincée (`_coince`) : ramenée au point libre le plus
-  proche, à un corps du bord. Index des zones par niveau, gardé tant que la signature des données ne change pas
-  (`_indexZones`, indépendant du modèle des galeries : le rendu structures n'en construit pas). ⚠️ contrat : la 3D
+- **Zones obstacles de la 3D** (décision produit, révision du 14/11/2026, `docs/ETUDE_REMBLAIS.md`) : un Comblé
+  (`remblais`), un effondrement ou une zone inaccessible du niveau arrête le pas dans les trois rendus, en tube comme
+  en chambre (`galerieEmprise.js > ZONES_BOUCHENT`, lu par `KtaGalerie.zonesBloquent` et `dansZone` ;
+  `vue3d.js > _juger` l'ajoute à la règle du rendu). ⚠️ contrat : Comblé et effondrement (`CREUSABLES`) ne bouchent
+  PAS le long d'un tracé qui les traverse : dans le **couloir** (emprise des tubes du modèle galerie du niveau, niches
+  exclues, `KtaGalerie.dansCouloir`), la galerie reste praticable, creusée dans le volume ; le modèle galerie ne
+  retire plus de son emprise que les zones dures (`enRemblais` = inaccessible). L'inaccessible bouche toujours, même
+  sur un tracé (constante `INACCESSIBLE_BOUCHE` ; son rendu, hachures au sol et rideau, n'en dépend pas). Zones dures :
+  un segment est arrêté s'il finit dans une zone ou entre dans son contour ; creusables : s'il passe, à PAS_M près,
+  par un point de la zone hors du couloir (`_indexCreusables`). ⚠️ contrat (jamais coincé) : une zone qui contient le
+  départ du pas (ou le début du segment, hors couloir pour une creusable) ne l'arrête pas, et un contact au point de
+  départ, sur le bord, ne compte pas. Une place dont le corps touche une zone (hors couloir) est coincée (`_coince`) :
+  ramenée au point libre le plus proche, à un corps du bord. Index des zones par niveau, gardé tant que la signature
+  des données ne change pas (`_indexZones` ; le couloir est lu à la demande, jamais pendant la construction du
+  modèle). Dessin : Comblé jusqu'au ciel (`HAUTEUR_ZONE.remblais`, dessus à `SOUS_CIEL` sous le plafond),
+  effondrement à 60 % ; `_volumeCreuse` retire le couloir du volume (dessus = zone moins les pièces, `_moinsConvexe` ;
+  faces = bords de la zone hors des pièces et parois des pièces prises dans la zone, tournées vers le couloir,
+  décollées de `COULOIR_FACE`) ; en galerie, le tube est le couloir : ses parois dans la zone sont tapissées de
+  remblai ou d'éboulis. L'itinéraire y passe au sol (`ITI_SUR` vide). Masse au sol : hors de ces zones (règle par
+  point, ci-dessous). Garde-fou : `checkup-vue-3d.js > sectionComble` (`KTA_V3D_SEUL=comble`). ⚠️ contrat : la 3D
   seulement ; `ktaSegmentsBloquesParStructure` (pas du tracker), `versGalerie` (recalage), l'itinéraire, le guidage
   et la carte ne lisent aucune de ces zones (l'itinéraire 2D garde sa règle : seul l'inaccessible le coupe).
   Les **obstacles des accès** (cône d'un puits comblé `pc` / `psf`, cavage fermé `caf`, comblement d'un cavage,
   ci-dessous) suivent
   la même règle et le même contrat (`KtaGalerie.BLOQUE`, `_indexObstacles` : contour posé par `placePassage` dans le
   rendu affiché, que `zonesBloquent` / `dansZone` reçoivent de `_juger` et `_coince`).
+- **Masse au sol** (zone `masse-sol`, remblai partiel ; décision produit, révision du 15/11/2026, `docs/ETUDE_REMBLAIS.md`) :
+  hors de `ZONES_BOUCHENT`, règle **par point**. Hauteur H = `ktaCombleZone` × hauteur du niveau. ⚠️ contrat : SANS
+  rampe, la masse est à **pleine hauteur** partout (sol = H dans tout le contour, plus de talus automatique), ses bords
+  sont des **fronts** verticaux. Les pentes n'existent que là où l'utilisateur pose une **rampe** (`zone.rampes` =
+  [{ bord, fin? }] ; `KtaMasseSol.rampes`) : elle monte linéairement de son bord bas (0) jusqu'à sa **fin** (|H|) — la
+  projection de `fin` (px du plan) sur l'axe perpendiculaire au bord, sinon le point du contour le plus loin — puis
+  reste plate au cran ; plusieurs rampes : le **minimum** des profils, plafonné au cran (on monte par n'importe
+  laquelle) ; négatif : même chose en descente. Formule partagée dans **`js/masseSol.js`** (`sol`, `atteinte`,
+  `masseCarte` ; aucune sonde de bord) avec la fiche de la carte et l'itinéraire (`pathfinder.js`). Fronts (décision
+  produit) : un bord sans rampe se **monte et se descend partout**, quelle que soit sa hauteur, sur un tracé ou non ;
+  la seule limite est la règle du vide (`_masseBloque` : moins de `MASSE.ramper` sous le plafond à l'arrivée, et moins
+  qu'au départ ; une masse 0,9 reste fermée). Le MONTER (plus de `MASSE.marche` en un pas) : on est **hissé** sur le
+  dessus, la chute à l'envers (`_pas` : `e.chute` avec `monte`, lissée en `MASSE.chute`, sans amorti,
+  `etat().masses.montees`) ; 🩸 pendant une chute ou une montée,
+  l'abaissement de l'œil dû au vide de la place d'arrivée suit la même fraction que le sol affiché (`_placerCamera`,
+  `e.chute.b0`) : appliqué d'un coup, l'œil plongeait avant la montée (ou se redressait avant la chute) ; checkup
+  `sectionMonteeCamera` (`KTA_V3D_SEUL=monteecamera`, hauteur relevée à chaque image, flèche et joystick) ; ni la
+  géométrie ni l'itinéraire n'en dépendent (checkup `sectionFrontTrace`, `KTA_V3D_SEUL=fronttrace`) ; le DESCENDRE : on **chute**
+  (`_pas` lance `e.chute`, `_solAffiche` fait tomber la caméra du sol de départ au nouveau sol en `MASSE.chute` = 0,3 à
+  0,5 s, accélération simple, amorti de `MASSE.amorti` à l'arrivée ; aucun pas ni rotation pendant la chute,
+  `_enChute`) ; un creux ou une masse plus basse sans rampe se quitte en remontant son bord (jamais un piège). Même
+  règle au bord commun de deux masses de hauteurs différentes ; une rampe est la pente douce qu'on marche, sans saut,
+  ralentie au-delà de 15°. La masse est refaite quand ses rampes ou leurs fins changent (`m.sigRampes`).
+  Carte : chevrons de pente pointés vers le haut sur la seule longueur de pente, trait de fin, à la couleur du contour
+  sur un liseré clair (`zones.js > ktaChevronsRampes`, `masseSol.js > chevrons`, zones de session et calques) ;
+  légende : une ligne « Pente » quand une zone en porte ; fiche : liste (sens de la montée en flèche), « Placer / Déplacer
+  la fin », « Jusqu'au bout », ✕ par pente, « Placer une pente » (`ktaArmerRampe` : bandeau `.kta-iti-floater`, un
+  toucher près d'un bord, tolérance de fermeture × 2, puis la fin ou « Sans fin » ; `ktaArmerFinRampe`).
+  ⚠️ contrat : le sol sous les pieds vient de cette **formule** (`_solMasse`, appelée par `_solPlace` après la galerie
+  inclinée : une jonction posée sur une masse l'emporte), jamais du maillage. Vide = hauteur du niveau − sol :
+  ≥ 1,8 m debout ; 1 à 1,8 m œil abaissé à vide − 0,2 m ; sous 1 m on rampe (œil `CHATIERE.oeil`, transition lissée sur
+  0,3 m de vide, `_oeilMasse`, sans saut) ; sous 0,5 m le pas s'arrête (`_masseBloque` dans `_pas`, au centre et à un
+  corps devant ; en sortir vers plus de vide reste permis) et la place est coincée (`_coince` → `_degager`). Sur une
+  rampe, la **marche ralentit** au-delà de 15° de pente du sol sous les pieds dans le sens du pas (`_ralentiMasse` :
+  1 jusqu'à `MASSE.lent`, puis jusqu'à `MASSE.lentPlancher` = ½ à 30°, montée comme descente, sol abaissé compris ;
+  1 dans une galerie inclinée ou une zone jonction, et en vue plongeante). Plafond inchangé. La fiche de la carte
+  n'affiche que la part comblée (cran et mètres), jamais la hauteur atteinte (décision produit : `atteinteZone` ne sert
+  qu'à la demande, jamais à l'ouverture d'une fiche).
+  **Part négative = sol abaissé** (creusement dans la roche) : même formule, le sol descend vers l'intérieur, le vide
+  grandit (rien n'arrête, on descend debout) ; le sol du niveau (ou du voisin construit, `e.bitsPlans`) est troué sur
+  son contour par le gabarit, comme la bouche d'un puits ; fond, pentes et pans prennent le **sol de pierre du niveau**
+  (matériau des sols des galeries sans gabarit, `_matsPente`, coordonnées en m / `SOL.m`, grain HD compris) ; en
+  galerie, le fond passe sous les parois jusqu'au contour. ⚠️ contrat : jamais plus bas que le plafond du niveau du
+  dessous + `MASSE.margeDessous` (0,3 m) (`_fondMasse`, `m.borne` ; sans niveau dessous, une hauteur de niveau).
+  ⚠️ contrat : un pilier, un mur ou un front posé dans un sol abaissé est **une** géométrie qui descend jusqu'au fond
+  (`_prismePied` : même nuance, coordonnées de texture calées au monde, ombre de contact au nouveau pied ; niveau actif
+  seulement, un voisin montré garde son pied au sol du niveau).
+  Dessin (`_maillageMasse`) : grille de 0,5 m découpée au contour, pas élargi pour tenir ≤ 2 000 triangles par zone
+  (`MASSE.triMax`, pans compris ; une zone est dessinée dans la tuile de son centre) ; en galerie, une case toute dans
+  la roche n'est pas dessinée (sauf sol abaissé) ; remblai 🧱 (décision produit) : dessus et rampes en sol damé du
+  niveau assombri (`_matsPente().solMasse`, carte du sol des galeries × `MASSE_SOL_SOMBRE`, grain HD suivi), fronts
+  verticaux en terre et cailloux (`REMBLAIS.m`, la coupe du remblai : `_maillageMasse` > `pans`) ; 🧱 coupé, la couleur
+  de la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
+  **Masse non exploitée** (`nature: "non-exploitee"`, part comblée > 0, getter `window.ktaMasseNonExploitee` ;
+  `_masseNonExploitee`, décision produit : la roche laissée en place, pas un remblai) : seul l'aspect change, 🧱 allumé
+  seulement — dessus et rampes au sol normal du niveau (`_matsPente().sol`, comme le fond d'un creux), fronts en roche
+  des piliers (`ROCHE.m`, matériau `roche`) ; 🧱 coupé, la couleur de la légende comme le remblai (règle : textures
+  coupées, tout objet 3D hors POI prend la couleur de la légende). Pente, montée,
+  chute, vide, itinéraire et mini-carte sont ceux du remblai ; la nature est une donnée (empreinte de `_majDonnees` :
+  scène refaite, clés des caches par niveau changées). `etat().masses.aspect` (lot du dessus et des fronts par zone) ;
+  checkup `sectionMasseNonExploitee` (`KTA_V3D_SEUL=nonexploitee`).
+  **Posés sur le sol local** (`_solMasse`) : ruban et chevrons de l'itinéraire (`_dessusIti`, morceaux de 0,5 m
+  inclinés), panneaux des POI (sol + œil + 0,4 m sous le plafond ; un panneau à hauteur donnée garde sa hauteur au-dessus
+  du sol local) et leur halo, formes des POI sans bouche (plaque, ossuaire, outil, fontis, véhicule, porte… : tout le
+  volume, `_construireVolume`) ; la chatière suit le sol coupe par coupe (§ Chatière, `_coupesChatiere`) ; un passage troué (puits, galerie inclinée) reste au sol du niveau. Mini-carte :
+  sable selon le cran, obstacle seulement sous 0,5 m de vide (§ Mini-carte). **Rubans des tracés ordinaires** (et liseré du mode galerie, surlignage 📏, ronds
+  d'intersection) : sur le sol local (`_rubanSol`, morceaux de `MASSE.pas` au plus sur une masse, pentes des rampes
+  suivies) ; un front vertical = palier puis contremarche verticale au droit du front, décollée d'1 cm vers le côté bas
+  (`FRONT_RUBAN`). 🩸 Le creux est un trou du sol par le gabarit (bit 1), que le matériau `rubans` respecte : les morceaux
+  sous le sol du niveau passent par `rubansFond` (sans gabarit), sinon le ruban disparaissait au fond. Niveau actif
+  seulement (un voisin garde ses rubans au sol de son niveau). L'itinéraire calculé ne change pas. Mesuré (téléphone émulé × 4) : `KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse`. Garde-fou :
+  `scripts/smoke/checkup-vue-3d.js > sectionMasseSol` (`KTA_V3D_SEUL=massesol`).
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
   (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;
@@ -1427,7 +1512,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   10 cm) touche la structure, coupé à sa face (`_indexStructures > rayon` : premier bord croisé, ceux que juge la règle
   du pas) : ni fente ni bout de paroi orphelin ; aucun pan ne touche → le côté reste fermé. Les pans sont dans
   `paroisDe` (dessin) et `modele.retours` (collision). 🩸 Pas de `ktaSegmentsBloquesParStructure` pour ces pans :
-  chaque appel relit la signature de toutes les structures (2 s de modèle sous émulation téléphone sur le plan dense).
+  il ne dit que oui / non et relit ses sources à chaque appel (2 s de modèle sous émulation téléphone sur le plan dense).
   Aux nœuds, le bord du joint entre deux branches s'ouvre si l'une d'elles a ce côté ouvert (`_joint`, `r.cotesA` /
   `r.cotesB`). Les **deux** côtés ouverts (ou une structure en travers, qui ouvre les deux) = **chambre** : le
   morceau perd ses parois (coupe au seuil exact par dichotomie). Pourquoi 3 m : la paroi d'un tube principal est à 1,25 m de
@@ -1454,7 +1539,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   − / + ne s'ouvre pas (`_hauteurFigee`) : changée seule depuis la 3D, elle recalculait les pentes des jonctions sans
   montrer les autres niveaux. Table fermée : `_reindexer` (hauteurs, sols, pentes) puis marqueurs d'itinéraire. `reglerHauteur` (API) suit la même règle : sans effet, rend la
   hauteur courante ; ⛏️ Volume exploité n'écrit rien non plus (champ de calcul seulement). Les tuiles sont refaites sur place (`_refaireTuiles` : même
-  index, position, cap, niveau, rendu) : structures, murs à 98 %, remblais et effondrements à 60 %, rideaux, tubes, plafond, œil
+  index, position, cap, niveau, rendu) : structures, murs au plafond (98 % en vue d'édition), Comblé jusqu'au ciel et effondrements à 60 %, rideaux, tubes, plafond, œil
   (`_oeil`) et panneaux suivent.
 - **Filtres = ceux de la carte** (décision produit) : ≡ de la vue ouvre **le** panneau ≡ Filtres (`FilterPanel.ouvrir`),
   posé par-dessus ; un seul état : masquer en 3D masque en 2D, et inversement. ⚠️ contrat : la vue dessine ce que
@@ -1541,7 +1626,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   légende (`ktaResolveStyle`) ; itinéraire en ruban lumineux ; un tracé jonction n'est pas un tube : c'est une
   galerie inclinée qu'on marche (ci-dessous). Structures (intégrées et perso)
   ni dessinées ni bloquantes (sauf en rendu mixte, ci-dessus). Zones découpées à chaque pièce (Sutherland-Hodgman, CPU, par tuile) : eau à 4 cm (matériau
-  à profondeur stricte, sinon les recouvrements se mélangent deux fois), remblais et effondrement à 60 % avec une
+  à profondeur stricte, sinon les recouvrements se mélangent deux fois), Comblé (jusqu'au ciel) et effondrement (60 %) avec une
   face seulement là où ils donnent sur la galerie (`_remblaisGalerie`), inaccessible au sol + **rideau rouge hachuré en travers du tube** à chaque point où le
   contour coupe l'axe (`_hachurer`), perso au sol. **POI** à moins de 10 m de l'axe d'un tracé, ramenés
   contre la paroi la plus proche (8 cm devant) s'ils sont au-delà ; plus loin, masqués ; toujours sans test de
@@ -1677,7 +1762,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `versGalerie` ignore (recalage de la 2D inchangé : un tracker recalé n'y entre pas). Une emprise qui ne touche aucun tube n'ajoute rien (pas de boîte murée autour d'un passage isolé). 🩸 Sans
   cela, une paroi du sol au plafond passait au travers de la cage, vue dans le trou en vue d'édition. Filtres ignorés (masquer
   ne retire que le dessin). Les **rubans des tracés** et les liserés (matériau `rubans`) lisent le gabarit du sol comme
-  le sol : coupés à la bouche, jamais suspendus au-dessus du vide ; l'itinéraire (marqueurs à mât) n'est pas coupé.
+  le sol : coupés à la bouche, jamais suspendus au-dessus du vide (au fond d'un creux de masse au sol : `rubansFond`) ; l'itinéraire (marqueurs à mât) n'est pas coupé.
   `checkup-vue-3d.js` § 14 bis (test géométrique, 3 rendus, 2 niveaux) ; POI décalés de 1 à 5 m, carrefour, raccords,
   panneau et 🪜 au volume : § 14 ter.
 - **Accès de surface sans passage** (`vue3d.js > _volumeAcces`, `_acces` ; formes et dimensions :
@@ -1760,7 +1845,14 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   à tous le trou de la galerie la plus étroite ; face trouée au début et à la fin du tracé seulement : le boyau suit les
   coudes. Deux points : longueur (`CHATIERE.court` = 0,4 m au moins) et axe des deux points, au centre de
   `placePassage` du milieu (ancienne forme `x2`, `y2` comprise). Un seul point : la règle de 1,8 m à ce point. Panneau
-  au segment qui porte le milieu du tracé. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
+  au segment qui porte le milieu du tracé. **Sur une masse au sol** (décision produit, `_coupesChatiere`) : le haut de
+  la roche reste au plafond du niveau, le trou suit le sol local par coupes de `CHATIERE.pas` = 0,25 m au plus (une
+  coupe = une ligne en travers, onglet compris aux bouts : les mêmes points du monde que le segment voisin, raccord sans
+  marche ; sol lu sur un disque qui couvre l'écart aux coupes voisines) : plancher = le sol lui-même, flancs descendus au
+  sol le plus bas de la coupe, voûte à 0,6 m au-dessus du plus haut (5 cm sous le plafond au plus) ; faces de roche
+  descendues sous le sol le plus bas de leur largeur (aucun jour, dans un creux compris). Front vertical traversé : la
+  marche reste celle de la masse, la voûte passe au-dessus du sol haut dès la coupe d'avant (jamais moins de 0,6 m de
+  vide). Hors masse : une seule coupe à 0, la forme d'avant à l'identique. La chatière **n'arrête rien** (hors de `BLOQUE`) : à hauteur d'yeux,
   en suivi comme en libre, l'œil descend à 0,35 m dans la roche (tout du long, coudes compris) et sur 1 m de part et
   d'autre en fondu
   (`_baisseChatiere`, `_placerCamera`), puis remonte ; vue d'édition : rien. `ctx.libre` des add-ons reste ouvert
@@ -2063,9 +2155,13 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   passe dessous**, jamais un obstacle de la marche (tracking.js > `_OBST_TYPES` ne connaît pas `arc`) ; ni face où
   poser une plaque (`_facesStructures`), ni structure empruntée par une zone jonction. En mode mixte, il ne fait pas
   d'une galerie une chambre (`galerieEmprise.js > _indexStructures`).
-- **Murs sous les piliers** (décision produit) : un mur (polygone ou `mur-ligne`) monte à 98 % de la hauteur et son
-  matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un pilier ou un front de son niveau,
-  c'est le pilier ou le front qui se voit, sans scintillement.
+- **Murs jusqu'au plafond, sous les piliers vus d'en haut** (décision produit) : un mur (polygone ou `mur-ligne`) est
+  construit à la hauteur du niveau et monte jusqu'au plafond quand la vue en a un (hauteur d'yeux, suivi : aucun jour
+  sous le plafond) ; en vue d'édition, sans plafond, il est ramené à `HAUTEUR_MUR` (98 %) par l'échelle verticale de
+  ses maillages (`_echelleMurs`, famille « murs », depuis y = 0 : aucune reconstruction au changement de vue, rien
+  dans la clé des caches par niveau) ; son matériau est reculé en profondeur (`polygonOffset`) : là où il chevauche un
+  pilier ou un front de son niveau, c'est le pilier ou le front qui se voit, sans scintillement. `etat().yMax.murs` =
+  la hauteur montrée. Checkup `sectionMurPlafond` (`KTA_V3D_SEUL=murplafond`).
 - **Textures des structures et des parois** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif
   par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : couleur de légende du
   tracé) ;
@@ -2128,7 +2224,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   par image. Jamais mesuré sur la carte graphique d'un vrai téléphone.
 - **Mur tracé en ligne en pierre de taille** (même interrupteur 🧱 ; décision produit : la surface fermée garde le
   parpaing, le tracé est bâti en pierre ; la forme est portée par le type, `isStructurePolylineType`) : le
-  `mur-ligne` (épaisseur `EPAISSEUR_MUR_LIGNE`, 98 % de la hauteur) prend la carte et le relief de la pierre de
+  `mur-ligne` (épaisseur `EPAISSEUR_MUR_LIGNE`, jusqu'au plafond) prend la carte et le relief de la pierre de
   taille des parois (`PIERRE`, `e.texPierre`) — même teinte, sans nuance par structure, ombre de contact au pied,
   Textures HD suivies. Lot à lui dans la tuile (`pierreMur`), matériau `murPierre` (`_matMurPierre`) : celui des
   parois ne convient pas tel quel, un mur passe sous un pilier ou un front et doit être reculé en profondeur
@@ -2200,7 +2296,7 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   `effondrement` en éboulis de fontis (`EBOULIS` : motif de 4 m, gros blocs cassés jusqu'à 60 cm, empilés, fissurés,
   peu de terre, relief plus fort). Un seul dessin pour les deux (`_pierraille` : blocs convexes en demi-plans,
   hauteur en facettes, la plus haute surface gardée ; `_poserBloc`), normal map `_carteNormale`. Forme : deux
-  volumes à 60 % de la hauteur (`HAUTEUR_REMBLAIS`, une seule valeur : même obstacle, on voit par-dessus). Un matériau par type (`_matZone` :
+  volumes : Comblé jusqu'au ciel, effondrement à 60 % de la hauteur (`HAUTEUR_ZONE` ; on voit par-dessus l'éboulis), creusés le long des tracés (`_volumeCreuse`). Un matériau par type (`_matZone` :
   `remblais`, `eboulis`), fait à la première zone du type, un lot par tuile (chambres et tubes ensemble). ⚠️ contrat :
   coordonnées de texture en mètres, comme `_prisme` : dessus projeté au sol, flancs u = abscisse sur le contour de
   la zone depuis la même origine (`_origineMotif`), v = hauteur ; découpé au tube (`_remblaisGalerie`), un flanc
@@ -2293,11 +2389,12 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   de tons ; chevrons posés sur l'abscisse du trajet (`abscisses` de chaque morceau, comptée aussi sur les tronçons d'un
   autre niveau, qui n'en portent aucun) : ils ne glissent pas et se suivent d'un segment et d'une tuile à l'autre. Ils
   tombent entre les chevrons dorés du guidage (`_majChevrons`, à 0, 2, 4 m…), plus grands et au-dessus. ⚠️ contrat (décision
-  produit) : sur un remblais ou un effondrement dessiné (`ITI_SUR`, zones montrées du niveau, `_volumesIti` à chaque
-  `_reindexer`), ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`,
-  HAUTEUR_REMBLAIS de la hauteur) à leur hauteur propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une
-  contremarche verticale (`_contremarche`, ruban et liseré) monte le long de la face, à `ITI_FACE` (3 cm) devant
-  elle : ni ruban dans le volume, ni rampe en l'air. Refait au réglage ⛏️ de la hauteur. Tracé 2D et rubans des
+  produit) : sur un volume enjambé (`_volumesIti` à chaque `_reindexer` : cône d'un puits comblé, margelle d'un
+  bassin ; plus Comblé ni effondrement, `ITI_SUR` vide : le tracé y creuse la galerie, l'itinéraire y reste au sol),
+  ruban, liseré, chevrons et marqueurs d'étape sont posés sur le dessus du volume (`_dessusIti`) à leur hauteur
+  propre ; chaque segment est coupé aux faces (`_morceauxIti`) et une contremarche verticale (`_contremarche`, ruban et
+  liseré) monte le long de la face, à `ITI_FACE` (3 cm) devant elle : ni ruban dans le volume, ni rampe en l'air. Sur
+  une masse au sol, le ruban suit son sol. Refait au réglage ⛏️ de la hauteur. Tracé 2D et rubans des
   tracés ordinaires inchangés. Marqueurs
   (`_majMarqueursIti`, à chaque `_reindexer`) : disque et mât de 0,6 m à chaque `road.raccords` de rôle « etape »
   (à son point sur le trajet, au niveau du point du trajet le plus proche), panneau « 🏁 » (et le nom de l'arrivée)
@@ -2523,9 +2620,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (`interfaceDistanceTotale.js > ktaDistanceTotaleSurlignage`) et pose un ruban au sol de `SURLIGNE.larg` à la couleur
   du surlignage de la carte (`ktaSwatchColor("traces", "jonction")`), un seul maillage hors tuiles (`_majDistTot`),
   refait à `kta:distanceTotaleChange` (case, ❌ Effacer, réouverture) et à chaque reconstruction, jamais l'inverse ;
-  au sol comme les rubans des tracés. Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
-  panneau (`ktaDistanceTotaleRafraichir`). ⛏️ lit la surface ♦️ posée dans la vue (rien de neuf à dessiner) ; sans
-  surface, le message de la carte.
+  sur le sol local comme les rubans des tracés (`_rubanSol`). Niveau de la vue changé ou vue fermée : la carte rejoue son surlignage et son
+  panneau (`ktaDistanceTotaleRafraichir`). ⛏️ dessine son secteur dans la vue (geste de ♦️, niveau de la vue) ; sans
+  secteur, la fenêtre de la carte le dit (`session-data.md` § 49.3 bis).
 - **Droits** : ceux de la carte (armement refusé en lecture seule, groupe grisé recopié ; 📐 permise). Greffe
   `fiches: false` : ni barre ni sommet (`addons.md`).
 - **🗺️ Plan au sol** (décision produit : livré si la mémoire suit) : interrupteur de la barre, coupé par défaut, gardé
@@ -2604,6 +2701,29 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   (altitude, hauteur, rendu, 🧱, données, filtres) est gardé quand la scène change de niveau (galerie inclinée, ▲▼).
   Mesures : `ETUDE_VUE_3D.md` § Niveaux voisins. Relevé : `etat().voisins` ; checkup `checkup-vue-3d.js` § 44
   (`KTA_V3D_SEUL=voisins`, `KTA_V3D_PERF=voisins` pour le plan lourd).
+- **Caches par niveau** (`_cacheNiveau`, `_cleNiveau`, décision produit : un aller-retour de niveau ne recalcule
+  rien) : faces des structures (`_facesStructures`), volumes d'un niveau (`_volumesDuNiveau` : modèles intacts, rendus
+  en copies neuves, places de panneau et POI retrouvés dans les données relues — 🩸 les calques rendent des objets neufs
+  à chaque lecture), grille des structures (`_grilleVolumes`), et **tuiles d'un voisin quitté**, gardées cachées
+  (`_garderVoisin`) ;
+  structures et zones filtrées et niveaux occupés (`ktaNiveauxOccupes`) relus seulement quand les données changent.
+  Clé : niveau de la scène, contexte (actif / voisin), hauteur et altitude de chaque niveau (réglages écart / hauteur),
+  `_sigVoisins` (empreinte des données de `_majDonnees`, filtres ≡, calques, niveaux visibles, rendu, 🧱, HD). 🩸 Toute
+  modification change l'empreinte : la clé ne correspond plus et **tout** est vidé (`_purgerCachesNiveau`, voisins
+  gardés libérés) — jamais une scène périmée ; « tout » refait (hauteur, 🧱) vide aussi. **Mémoire bornée** (décision
+  produit) : chaque entrée porte la scène (niveau actif, `e.sceneNiveau`) qui l'a lue en dernier ; seules restent celles
+  des scènes du niveau actif ± 1 dans l'ordre de ▲▼ (`_bornerCachesNiveau`, après chaque `_voisinsPreparer` ; voisins
+  gardés libérés) : revenir au niveau quitté ne recalcule rien, la mémoire plafonne à trois scènes. Dans `_e` (vidés à
+  la fermeture). 🩸 L'empreinte des données est calculée **avant** le premier `_reindexer` de l'ouverture : calculée
+  après, elle changeait la clé, tout était purgé au premier passage et le retour au niveau de départ gelait. Mesuré (relevé fictif de 14 283 structures sur 3 niveaux, processeur
+  × 4) : passage 0 ↔ 1 à chaud 370 → 58 ms, pire image qui suit 56 → 35 ms ; coût +18 Mo de tas JS et +32 géométries
+  GPU (tuiles des voisins gardées). Ce qui reste : tuiles du niveau actif (~13 ms), signature de `KtaGalerie.modele`
+  (~12 ms). `etat().reindex` (étapes de `_reindexer`), `etat().cacheNiveaux` ; `ouvrir({ cacheNiveaux: false })` coupe
+  les caches (mesure avant / après). Checkup `sectionCacheNiveaux` (`KTA_V3D_SEUL=cacheniveaux`) : zéro recalcul à
+  chaud, 1er retour au niveau d'ouverture sans raté, scènes en cache au niveau actif ± 1 et tas plafonné sur 5
+  niveaux visités (CDP après ramasse-miettes), pilier déplacé au niveau 1 depuis le 0 qui barre le pas en y revenant,
+  ajouté / retiré dans la scène et dans l'index du voisin. Hors de ces caches : `KtaGalerie` garde un modèle par
+  niveau et par rendu (`galerieEmprise.js > modele`, `_cache`), sans borne.
 
 ### Niveaux entremêlés et zones jonction (QCM du 08/11/2026, lot D du multi-niveau en 3D)
 
@@ -2652,7 +2772,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 - **Structures en pente** (`_structurePente`, `_structureSurPente`) : piliers, murs et fronts dont le centre est dans
   une zone jonction, et murs et fronts (polygones `mur`, lignes) dont tous les sommets sont à moins de `ENTRE.longe`
   (1 m) du bord d'une galerie inclinée : contour coupé à 1 m, prisme plat puis sommets relevés (`_releverPente` :
-  y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur garde sa part `HAUTEUR_MUR`). Emprise relevée
+  y = 0 → sol en pente, y = h → plafond en pente, proportionnel ; un mur comme un pilier, ramené en vue d'édition par `_echelleMurs`). Emprise relevée
   (`entremeles().structures`). La règle du pas reste celle de la 2D (contour au sol).
 - **Structures dans une trémie** (décision produit, `_structureSurTremie`, `_prolongerDansZone`) : une structure qui
   n'est pas posée sur la pente (centre hors de la zone) mais dont l'emprise déborde sur une zone jonction n'est jamais
@@ -2660,7 +2780,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   niveau) jusqu'à l'appui : le plafond de la zone là où il passe sous la base (la roche qui porte), sinon son sol (la
   base serait dans le vide de la zone) ; rien là où le sol de la zone est déjà au-dessus de la base. Elle **monte** de
   son sommet jusqu'au plafond de la zone là où ce sommet est dans le vide de la zone (sol dessous, plafond dessus) :
-  le niveau du bas vu en montant ; un mur garde son retrait sous le plafond (`HAUTEUR_MUR`). Faces latérales seules,
+  le niveau du bas vu en montant ; un mur comme un pilier (ramené en vue d'édition, `_echelleMurs`). Faces latérales seules,
   coupées aux bords de la zone (dehors, c'est la roche ; un prolongement qui en sortirait passerait sous le sol ou
   au-dessus du plafond, dans la tranche d'un niveau entremêlé), tous les `ENTRE.pas` m et là où une borne change de
   règle. Même règle pour le niveau actif et pour un voisin (`e.pentes` du voisin dans sa tuile), en mixte et en
@@ -2704,8 +2824,12 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
 - **Rendu** (décision produit) : un canvas 2D dessiné par `vue3d.js` à partir de ce que la scène a déjà lu à
   `_reindexer` (`_donneesMiniCarte` : objets de `_collecter`, donc **mêmes filtres ≡** de la carte, calques cochés et
   niveaux visibles) — jamais une seconde carte Leaflet, une image du plan ni une seconde caméra three.js. **Niveau actif
-  de la 3D** en plein : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible),
-  structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
+  de la 3D** en plein : zones qui bouchent (`KtaGalerie.ZONES_BOUCHENT` : remblais, effondrement, inaccessible ;
+  Comblé et effondrement avec le **couloir** des tracés qui les traversent laissé ouvert, pièces du modèle galerie comme
+  `KtaGalerie.dansCouloir`) et **masses au sol** (`_masseMiniCarte`, décision produit : sable du canon, opacité
+  `MINI_CARTE.masse` selon |cran|, contour tireté ; sol abaissé presque transparent, `MINI_CARTE.creux` ; hachure de
+  l'inaccessible seulement si le cran laisse moins de `MASSE.ramper` sous le plafond ; rampes en chevrons,
+  `KtaMasseSol.chevrons`, illisibles au-delà de quelques mètres de rayon : jamais un obstacle sinon), structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
   **tous les POI** montrés par les filtres, en pastille avec leur icône (`getIconUrlForPoint`, liseré
   `--kta-texte-3`) ; par-dessus eux, liseré propre : **passage** vers un autre niveau (`_estPassage`, liseré du tracé
   jonction et ↕ au coin, la marque du panneau), **danger** (`_estDanger`, liseré `--kta-erreur`), **sortie**
@@ -2767,7 +2891,7 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   avant un pas, une remise puis rien à l'arrêt, ≤ 1 remise par 0,5 m en marchant, rien sous 10° de rotation,
   `null` en suivi et à la fermeture, tracker inchangé, membre « en 3D » marqué ; sortie : carte au niveau et à la place de la 3D (libre,
   après Non, en suivi), Oui recale aussi le niveau. Hauteur ⛏️ (structures et galerie) : réglée à 3 m → piliers,
-  murs à 98 %, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getHauteurNiveau(niveau de la vue)` = 3, relue à la
+  murs, parois, plafond et rideaux à 3 m, remblais à 1,8 m, `getHauteurNiveau(niveau de la vue)` = 3, relue à la
   réouverture et par ⛏️ Volume exploité (et l'inverse) ; bornes 1,5 / 20 m ; par niveau : niveau actif changé pendant
   la vue → hauteur de ce niveau reprise, `setHauteurNiveau` (Réglages) pour lui seul, `reglerHauteur` sans effet ;
   ⛏️ grisé sur le relevé fictif (multi-niveau), titre, toucher sans effet ; − / +, Échap et le réglage à 3 m contrôlés

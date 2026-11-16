@@ -443,6 +443,11 @@
     delete neuf.toLevel;
     delete neuf.jonction;
     if (familleCible !== "zones") delete neuf.niveaux;   // plusieurs niveaux : propre aux zones (et aux POI)
+    if (typeCible !== "masse-sol") {   // part comblée, sorte et rampes : propres à la masse au sol
+      delete neuf.comble;
+      delete neuf.nature;
+      delete neuf.rampes;
+    }
     if (familleCible === "zones" && typeCible === "pente" && niv && Number.isInteger(niv.de) &&
         Number.isInteger(niv.vers) && niv.de !== niv.vers) {
       neuf.level = niv.de;
@@ -658,6 +663,157 @@
     return true;
   }
 
+  // ── Part comblée d'une masse au sol (fiche de la zone, crans ¼ ½ ¾ ou « Autre ») ──────────
+  // `valeur` = part de la hauteur de galerie (> 0) ; une valeur ≥ 1 est refusée ici : la fiche propose d'abord de
+  // passer en Comblé (convertir vers `remblais`). Une valeur pour tous les niveaux d'une zone multi-niveau.
+  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro), comme changerNiveauxZone ; rien à invalider côté
+  // itinéraire : pathfinder.js refait son graphe (et le coût des masses) à chaque calcul.
+  function changerComble(obj, valeur) {
+    // 🔒 lecture seule
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    const v = Number(valeur);
+    if (!obj || obj.type !== "masse-sol" || !_combleValide(v)) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") {
+      console.warn("[Convertir] setteur manquant pour la part comblée d'une zone");
+      return false;
+    }
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx];
+    if (cible.type !== "masse-sol" || cible.comble === v) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    cible.comble = v;
+    // Sol abaissé : la sorte n'a pas de sens (styleResolver.js > ktaMasseNonExploitee).
+    if (v < 0) delete cible.nature;
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      const part = window.ktaTexteComble ? window.ktaTexteComble(v) : v;
+      window.HistoryManager.record(_t("masseSol.histoire", { part: part }), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
+  // ── Sorte d'une masse au sol : remblai (défaut, champ absent) / masse non exploitée ──────────
+  // ⚠️ contrat : `nature: "non-exploitee"` écrit seulement pour une part > 0 ; « remblai » RETIRE le champ (aucun
+  // plan existant ne change). Lecture : styleResolver.js > ktaMasseNonExploitee. Même objet muté (uid, touch).
+  // ⚠️ contrat : la règle UNIQUE d'écriture de la sorte d'une masse au sol, sur l'objet donné (rien d'autre n'est
+  // écrit) : "non-exploitee" pose le champ (part > 0 seulement), "remblai" le retire. Utilisée par changerNature (fiche),
+  // appliquerTableau et le Tableur (copie éditée). → true si l'objet a changé.
+  function poserNature(obj, nature) {
+    if (!obj || obj.type !== "masse-sol") return false;
+    if (nature === "remblai") {
+      if (obj.nature === undefined) return false;
+      delete obj.nature;
+      return true;
+    }
+    if (nature !== "non-exploitee") return false;
+    const comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(obj) : 0.5;
+    if (!(comble > 0) || obj.nature === "non-exploitee") return false;
+    obj.nature = "non-exploitee";
+    return true;
+  }
+
+  function changerNature(obj, nature) {
+    // 🔒 lecture seule
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!obj || obj.type !== "masse-sol" || (nature !== "remblai" && nature !== "non-exploitee")) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") return false;
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx];
+    const comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(cible) : 0.5;
+    if (cible.type !== "masse-sol" || !(comble > 0)) return false;
+    const ne = nature === "non-exploitee";
+    if ((cible.nature === "non-exploitee") === ne) return false;   // rien à annuler
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    poserNature(cible, nature);
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      const lib = _t(ne ? "masseSol.nature.nonExploitee" : "masseSol.nature.remblai");
+      window.HistoryManager.record(_t("masseSol.nature.histoire", { nature: lib }), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
+  // ── Rampes d'une masse au sol (fiche : « Placer une pente », ✕ d'une pente) ──────────
+  // `rampes` = [{ bord, fin? }] (bord = segment points[bord] → points[bord + 1], un bord une fois ; fin = { x, y } px
+  // du
+  // plan où la pente atteint le cran ; masseSol.js > rampes). Poser un bord déjà pris ou retirer un bord absent : rien
+  // à
+  // annuler. Liste vide → champ retiré (masse à pleine hauteur, fronts). Les fins des autres rampes sont gardées.
+  // 🩸 Même objet muté en place (uid gardé, touch pour la synchro), une entrée ⏪ par geste.
+  function _finLisible(f) { return !!f && Number.isFinite(f.x) && Number.isFinite(f.y); }
+  function _changerRampes(obj, bord, poser, fin) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!obj || obj.type !== "masse-sol" || !Number.isInteger(bord)) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") return false;
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx], n = Array.isArray(cible.points) ? cible.points.length : 0;
+    if (cible.type !== "masse-sol" || bord < 0 || bord >= n) return false;
+    const bords = (window.KtaMasseSol ? window.KtaMasseSol.rampesValides(cible) : []).slice();
+    const i = bords.indexOf(bord);
+    if (poser ? i >= 0 : i < 0) return false;
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    if (poser) bords.push(bord); else bords.splice(i, 1);
+    bords.sort(function (a, b) { return a - b; });
+    const fins = {};
+    (cible.rampes || []).forEach(function (r) {
+      if (r && _finLisible(r.fin) && !(r.bord in fins)) fins[r.bord] = r.fin;
+    });
+    if (poser && _finLisible(fin)) fins[bord] = { x: Math.round(fin.x * 100) / 100, y: Math.round(fin.y * 100) / 100 };
+    if (bords.length) {
+      cible.rampes = bords.map(function (b) { return fins[b] ? { bord: b, fin: fins[b] } : { bord: b }; });
+    } else delete cible.rampes;
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t(poser ? "masseSol.rampe.histoirePose" : "masseSol.rampe.histoireRetrait"),
+        avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+  function ajouterRampe(obj, bord, fin) { return _changerRampes(obj, bord, true, fin); }
+  function retirerRampe(obj, bord) { return _changerRampes(obj, bord, false); }
+  // Fin d'une rampe posée : { x, y } px du plan, ou null pour la retirer (la pente va alors jusqu'au bout de la zone).
+  function changerFinRampe(obj, bord, fin) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    if (!obj || obj.type !== "masse-sol" || !Number.isInteger(bord)) return false;
+    if (fin !== null && !_finLisible(fin)) return false;
+    const ecrire = _ecrivain("zones");
+    if (typeof ecrire !== "function") return false;
+    const liste = _lire("zones").slice();
+    const idx = _indexDe(liste, obj);
+    if (idx < 0) return _introuvable("zones");
+    const cible = liste[idx], r = (cible.rampes || []).filter(function (q) { return q && q.bord === bord; })[0];
+    if (!r) return false;
+    const avant = (window.HistoryManager && window.HistoryManager.captureState)
+      ? window.HistoryManager.captureState("zones") : null;
+    if (fin === null) delete r.fin;
+    else r.fin = { x: Math.round(fin.x * 100) / 100, y: Math.round(fin.y * 100) / 100 };
+    if (window.KtaUid) window.KtaUid.touch(cible);
+    ecrire(liste);
+    if (window.HistoryManager && avant && window.HistoryManager.record) {
+      window.HistoryManager.record(_t("masseSol.rampe.histoireFin"), avant, "zones");
+    }
+    if (window.SessionPersist && window.SessionPersist.save) window.SessionPersist.save();
+    return true;
+  }
+
   // ── Niveaux d'une zone jonction (fiche de la zone, « Du niveau » / « Au niveau ») ──────────
   // `level` = de, `niveaux` = [de, vers] : exactement deux niveaux, DIFFÉRENTS (comme un tracé jonction). Le sens de
   // la pente reste celui du tracé jonction qui la traverse (galerieEmprise.js > penteDeZone), pas l'ordre choisi ici.
@@ -811,7 +967,8 @@
   //     HistoryManager.record comme pour toute réapparition.
   //   - itinéraire calculé et aperçus (`_preview`) : jamais pris au tableau, toujours gardés.
   // Toutes les lignes sont validées AVANT toute écriture : la première fautive arrête tout →
-  // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau.
+  // { erreur: { ligne (1 = première), code, type } }, code ∈ typeInconnu | typeIncompatible | typeInterdit | niveau |
+  // comble.
   // `opts.simuler` : rien n'est écrit (compte des suppressions avant la confirmation d'un plan partagé).
   // `opts.acces` = { lire, ecrire, categorie } : liste hors vecteurs (les POI du Tableur) — mêmes règles par uid,
   // sans validation de type (un point n'en a pas), `categorie` = celle de l'historique. ⚠️ L'appelant fournit la liste,
@@ -828,6 +985,22 @@
     return out;
   }
 
+  // `comble` d'une masse au sol : absent, ou part de la hauteur dans [−1 ; 1[ sauf 0 (négative = sol abaissé ; ≥ 1 =
+  // un Comblé : la colonne `type` le dit, pas cette valeur). Règle unique : styleResolver.js > ktaCombleValide.
+  function _combleValide(v) {
+    return typeof window.ktaCombleValide === "function" ? window.ktaCombleValide(v)
+      : Number.isFinite(v) && v !== 0 && v >= -1 && v < 1;
+  }
+  function _combleLisible(v) { return v === undefined || v === null || _combleValide(v); }
+  // Sorte lue dans une ligne du Tableur, comme l'import SIG (sigImport.js > natureDe : « Non exploitée »,
+  // non_exploitee…) → "non-exploitee" | "remblai" (absente, vide ou « remblai ») | null (illisible).
+  function _natureDeLigne(v) {
+    if (v === undefined || v === null || String(v).trim() === "") return "remblai";
+    const S = window.SigImport;
+    if (S && typeof S.natureDe === "function" && S.natureDe({ nature: v })) return "non-exploitee";
+    return String(v).trim().toLowerCase() === "remblai" ? "remblai" : null;
+  }
+  function _natureLisible(v) { return _natureDeLigne(v) !== null; }
   // `niveaux` d'un passage entre niveaux (poiJonction.js) : absent, ou liste d'entiers.
   function _niveauxLisibles(v) {
     return v == null || (Array.isArray(v) && v.every(Number.isInteger));
@@ -878,6 +1051,8 @@
         if (vecteur && connus.indexOf(l.type) < 0) return fautive("typeInconnu");
         if (l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
         if (!_niveauxLisibles(l.niveaux)) return fautive("niveau");
+        if (!_combleLisible(l.comble)) return fautive("comble");
+        if (!_natureLisible(l.nature)) return fautive("nature");
         plan.push({ neuf: l });
         continue;
       }
@@ -894,6 +1069,8 @@
       }
       if (touche("level") && l.level != null && !Number.isInteger(l.level)) return fautive("niveau");
       if (touche("niveaux") && !_niveauxLisibles(l.niveaux)) return fautive("niveau");
+      if (touche("comble") && !_combleLisible(l.comble)) return fautive("comble");
+      if (touche("nature") && !_natureLisible(l.nature)) return fautive("nature");
       if (touche("level") && l.level != null && l.level !== niveauDe(obj)) {
         if (CIBLES_INTERDITES[op.type || obj.type]) return fautive("niveau");
         // Zone jonction : ses deux niveaux se changent dans sa fiche (changerNiveauxPente), comme une jonction.
@@ -901,15 +1078,21 @@
         op.niveau = l.level;
       }
       Object.keys(l).forEach(function (k) {
-        if (PAS_COLONNE[k] || k.charAt(0) === "_" || l[k] === undefined || !touche(k) || meme(l[k], obj[k])) return;
+        if (PAS_COLONNE[k] || k === "nature" || k.charAt(0) === "_" || l[k] === undefined || !touche(k) ||
+          meme(l[k], obj[k])) return;
         (op.champs = op.champs || {})[k] = l[k];
       });
+      // Sorte d'une masse au sol (poserNature) : « Remblai » = clé absente de la ligne, qui retire donc le champ.
+      if (touche("nature")) {
+        const voulue = _natureDeLigne(l.nature);
+        if ((voulue === "non-exploitee") !== (obj.nature === "non-exploitee")) op.nature = voulue;
+      }
       plan.push(op);
     }
     const bilan = { modifies: 0, ajoutes: 0, supprimes: 0, ignores: ignores };
     plan.forEach(function (op) {
       if (op.neuf) bilan.ajoutes++;
-      else if (op.type || op.niveau !== null || op.champs) bilan.modifies++;
+      else if (op.type || op.niveau !== null || op.champs || op.nature) bilan.modifies++;
     });
     parUid.forEach(function (o, uid) { if (!vus.has(uid)) bilan.supprimes++; });
     if (opts.simuler) return bilan;
@@ -923,6 +1106,11 @@
         const neuf = JSON.parse(JSON.stringify(op.neuf));
         if (typeof neuf.uid === "string" && parUid.has(neuf.uid)) delete neuf.uid;   // doublon : identité neuve
         if (window.KtaUid) window.KtaUid.touch(neuf);
+        if (neuf.nature !== undefined) {
+          const v = _natureDeLigne(neuf.nature);
+          delete neuf.nature;
+          poserNature(neuf, v);
+        }
         return neuf;
       }
       let obj = op.obj;
@@ -931,8 +1119,12 @@
         if (window.KtaUid) window.KtaUid.touch(obj);
       }
       if (op.type) obj = _versType(obj, op.type, famille);
+      if (op.nature && poserNature(obj, op.nature) && window.KtaUid) window.KtaUid.touch(obj);
       if (op.niveau !== null) _poserNiveau(obj, op.niveau);
       _normaliserNiveaux(obj);   // `niveaux` saisi au Tableur : `level` toujours inclus
+      // Part passée en négatif au Tableur : la sorte n'a plus de sens (styleResolver.js > ktaMasseNonExploitee).
+      if (obj.type === "masse-sol" && obj.nature !== undefined && typeof window.ktaCombleZone === "function" &&
+          !(window.ktaCombleZone(obj) > 0)) delete obj.nature;
       return obj;
     }).concat(session.filter(horsJeu));
     ecrire(liste);
@@ -1187,6 +1379,12 @@
     changerNiveau: changerNiveau,   // liste « Niveau » de la popup (multi-niveau)
     changerNiveauxJonction: changerNiveauxJonction,   // fiche d'une jonction (fromLevel / toLevel)
     changerNiveauxZone: changerNiveauxZone,   // fiche d'une zone (niveaux en plus de `level`)
+    changerComble: changerComble,   // fiche d'une masse au sol (part comblée)
+    changerNature: changerNature,   // fiche d'une masse au sol (remblai / masse non exploitée)
+    poserNature:   poserNature,     // règle de la sorte sur un objet donné (Tableur : la copie éditée)
+    ajouterRampe:  ajouterRampe,    // fiche d'une masse au sol : « Placer une pente » (bord bas)
+    retirerRampe:  retirerRampe,    // fiche d'une masse au sol : ✕ d'une pente
+    changerFinRampe: changerFinRampe,   // fiche d'une masse au sol : fin d'une pente (posée, déplacée, retirée)
     // Règle seule, sans écriture ni historique : niveau en lot de la sélection (selectionZone.js > niveauLot).
     poserNiveau:   _poserNiveau,
     changerNiveauxPente: changerNiveauxPente,   // fiche d'une zone jonction (du niveau … au niveau …)

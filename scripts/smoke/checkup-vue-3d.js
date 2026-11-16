@@ -3057,6 +3057,1887 @@ async function sectionPenteLargeur(page) {
 
 // Captures de la galerie inclinée (KTA_V3D_CAPTURES, hors dépôt) : réseau de § 14 octies, sols du lot A, trois
 // rendus ; entrée vue du 0, dedans, passé au −1, bas vue du −1, vue d'édition.
+// ── 24 quinquies. Masse au sol (remblai partiel) : talus, vide restant, règle du pas ─────────────────────────────
+// Tube principal d'ouest en est au niveau 0 (hauteur 2,4 m) et au −1, une jonction 0 → −1 à x = 40. Masses de
+// 12 m de large (z −6 à 6) en travers du tube : ¼ (x −50 à −40), ½ (−30 à −20), ¾ (−10 à 2), 0,9 (15 à 30), ½ sur la
+// jonction (37 à 43) ; au −1, ¾ sous la ¼. Dans les trois rendus : sol = formule (talus 30° depuis les bords ouverts,
+// plafonné à comble × hauteur), œil debout / abaissé / rampant selon le vide, sans saut d'un pas de 0,1 m à l'autre,
+// pas arrêté sous 0,5 m de vide (on en ressort), pas de rigole contre la paroi du tube (bords dans la roche fermés),
+// pilier posé à cheval sur un bord (structures) = bord fermé ; la masse d'un autre niveau ne compte pas ; sur la
+// jonction, la galerie inclinée l'emporte. Triangles par zone ≤ 2 000 (grande masse de 40 × 12 m comprise).
+// Sol abaissé (part négative, −½ et −¾) en galerie et en structures : le sol descend en talus inversé, vide plus grand,
+// on descend debout sans être arrêté ; sans sols réglés, le −¾ est borné par le repli (2 m de roche) ; sols
+// réglés (0 à −25, −1 à −28, 2,4 m chacun) : jamais plus bas que le plafond du −1 + 0,3 m (−0,3 m, m.borne).
+async function sectionMasseSol(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc, PID = "v3d-checkup-masse";
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, smart: C.smartNav,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = true; C.availableLevels = [-1, 0]; C.visibleLevels = [-1, 0]; C.activeLevel = 0;
+    C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setEditorPoints([]);
+    av.lignesSol = window.getVue3DLignesSol();
+    window.setVue3DLignesSol(true);
+    window.setRoads([
+      { uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] },
+      { uid: "rd_ms_m1", type: "principal", level: -1, points: [P(-60, 12), P(60, 12)] },
+      { uid: "rd_ms_j", type: "jonction", level: 0, fromLevel: 0, toLevel: -1, points: [P(40, 0), P(40, 12)] }
+    ]);
+    // Rampe ouest (bord 3) dont la fin donne une pente de 30° : L = H / tan 30° (plateau au cran au-delà).
+    const rp30 = function (x0, comble) {
+      return [{ bord: 3, fin: P(x0 + comble * 2.4 / Math.tan(Math.PI / 6), 0) }];
+    };
+    const MASSES = [
+      { uid: "zn_ms_q", type: "masse-sol", level: 0, comble: 0.25, points: rect(-50, -6, -40, 6), rampes: rp30(-50, 0.25) },
+      { uid: "zn_ms_d", type: "masse-sol", level: 0, comble: 0.5, points: rect(-30, -6, -20, 6), rampes: rp30(-30, 0.5) },
+      { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6), rampes: rp30(-10, 0.75) },
+      { uid: "zn_ms_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(15, -6, 30, 6), rampes: rp30(15, 0.9) },
+      { uid: "zn_ms_j", type: "masse-sol", level: 0, comble: 0.5, points: rect(37, 2, 43, 10) },
+      { uid: "zn_ms_m1", type: "masse-sol", level: -1, comble: 0.75, points: rect(-50, 6, -40, 18) }
+    ];
+    window.setZones(MASSES.slice());
+    window.setStructures([]);
+    window.effacerReglagesNiveaux(PID);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4, "-1": 2.4 });
+    window.ktaSetActiveLevel(0);
+    const relx = function () { return +(K.etat().pos.x / sc - ox).toFixed(3); };
+    // Quadrilatères des rubans des tracés le long du tracé z = 0 : [x, z, yMin, yMax] (m, relatifs).
+    const rubansRel = function () {
+      const it = K.etat({ profilIti: true }).itineraire;
+      return ((it && it.rubans) || []).map(function (q) {
+        return [+(q[0] - ox).toFixed(3), +(q[1] - oz).toFixed(3), q[2], q[3]];
+      }).filter(function (q) { return Math.abs(q[1]) < 0.5; });
+    };
+    const lire = function () {
+      const e = K.etat();
+      return { x: relx(), z: +(e.pos.y / sc - oz).toFixed(3), cam: e.cameraY, oeil: e.oeil, ramper: e.ramper,
+        sol: e.masses.sol, vide: e.masses.vide, niveau: e.niveau, sur: e.pente ? e.pente.sur : null };
+    };
+    const ici = async function (x, z, cap) {
+      const p = P(x, z);
+      K.placer(p.x, p.y, cap === undefined ? 90 : cap);
+      await pause(30);
+      // Deux images : la caméra est replacée à l'image qui suit (e.sale), plus lente tant que les tuiles se font.
+      await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
+      return lire();
+    };
+    const marcher = async function (x, n, pas) {
+      await ici(x, 0, 90);
+      const rel = [];
+      for (let i = 0; i < n; i++) {
+        const ok = K.avancer(pas || 0.1);
+        await pause(25);
+        const l = lire();
+        l.ok = ok;
+        rel.push(l);
+      }
+      return rel;
+    };
+    const r = { cas: [] };
+    for (const rendu of ["galerie", "mixte", "structures"]) {
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setStructures(rendu === "structures"
+        ? [{ uid: "st_ms_p", type: "pilier-1", level: 0, points: rect(-6, 5, -4, 7) }] : []);
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-55, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      const e = K.etat(), c = { rendu: e.rendu, hauteur: e.hauteur, masses: e.masses };
+      c.points = {
+        quart: await ici(-45, 0), demi: await ici(-25, 0), troisQuarts: await ici(-4, 0),
+        talus: await ici(-8.5, 0), talusParoi: await ici(-8.5, 1.15), hors: await ici(-35, 0)
+      };
+      if (rendu === "structures") c.points.pilier = await ici(-5, 4.85);
+      c.montee = { quart: await marcher(-52, 70), demi: await marcher(-32, 70), troisQuarts: await marcher(-12, 70) };
+      // Marche ralentie sur le talus (> 15°) : un pas de 0,1 m demandé, distance parcourue et facteur ; à plat, sur le
+      // plateau, sur la jonction : la vitesse normale.
+      const unPas = async function (x, z, cap) {
+        await ici(x, z, cap);
+        const a = K.etat().pos;
+        K.avancer(0.1);
+        await pause(25);
+        const b = K.etat();
+        return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
+      };
+      c.vitesse = { plat: await unPas(-35, 0, 90), talus: await unPas(-29, 0, 90), descente: await unPas(-29, 0, 270),
+        plateau: await unPas(-25, 0, 90), jonction: await unPas(40, 5, 180) };
+      c.bloque = await marcher(12, 140);
+      // Ressortir : demi-tour, 2 m vers l'ouest (au plus 4 m demandés : le talus ralentit).
+      const p0 = K.etat().pos;
+      K.tourner(180);
+      for (let i = 0; i < 40; i++) K.avancer(0.1);
+      await pause(30);
+      c.ressort = { dx: +((p0.x - K.etat().pos.x) / sc).toFixed(2), apres: lire() };
+      // Départ posé sous 0,5 m de vide (x = 26, vide 0,24 m) : ramené là où l'on tient, on repart.
+      await K.fermer();
+      await K.ouvrir({ depart: Object.assign(P(26, 0), { cap: 270, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      c.departDedans = lire();
+      c.departDedans.degage = K.etat().degagements;
+      // Jonction posée sur une masse : la galerie inclinée l'emporte.
+      c.jonction = await ici(40, 5, 180);
+      c.rubans = rubansRel();
+      r.cas.push(c);
+    }
+    // Multi-niveau : au −1, la masse ¾ (sous la ¼ du 0) ; au 0, la ¼ seule.
+    await K.fermer();
+    window.setStructures([]);
+    window.setPlanRenduVue3D(null, "galerie");
+    window.KtaGalerie.invalider();
+    window.ktaSetActiveLevel(-1);
+    await K.ouvrir({ depart: Object.assign(P(-55, 12), { cap: 90, niveau: -1 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.moinsUn = { niveau: K.etat().niveau, masses: K.etat().masses.n, centre: await ici(-45, 12) };
+    await K.fermer();
+    window.ktaSetActiveLevel(0);
+    // Sol abaissé : −½ (x −30 à −20) et −¾ (x −10 à 2) au 0, sans sols réglés (pas de borne), puis sols réglés (borne).
+    window.setZones([
+      { uid: "zn_ms_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(-30, -6, -20, 6), rampes: rp30(-30, 0.5) },
+      { uid: "zn_ms_n2", type: "masse-sol", level: 0, comble: -0.75, points: rect(-10, -6, 2, 6) }
+    ]);
+    r.creux = {};
+    for (const rendu of ["galerie", "structures"]) {
+      // Structures : un pilier au milieu du sol abaissé (son pied descend jusqu'au fond).
+      window.setStructures(rendu === "structures"
+        ? [{ uid: "st_ms_creux", type: "pilier-1", level: 0, points: rect(-26, 3, -24, 5) }] : []);
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      r.creux[rendu] = { masses: K.etat().masses, centre: await ici(-25, 0), talus: await ici(-28.5, 0),
+        descente: await marcher(-32, 90), vitesse: await (async function () {
+          await ici(-29, 0, 90);
+          const a = K.etat().pos;
+          K.avancer(0.1);
+          await pause(25);
+          const b = K.etat();
+          return { d: +(Math.hypot(b.pos.x - a.x, b.pos.y - a.y) / sc).toFixed(4), ralenti: b.masses.ralenti };
+        })() };
+      // −¾ sans rampe (x −10 à 2) : on y descend en chutant, et l'on en ressort hissé sur son bord (front partout).
+      const cs0 = K.etat().masses.chutes, cm0 = K.etat().masses.montees;
+      await marcher(-12, 40);
+      await pause(700);
+      const fondSR = lire(), pSR = P(-8.5, 0);
+      K.placer(pSR.x, pSR.y, 270);
+      await pause(60);
+      for (let i = 0; i < 60; i++) { K.avancer(0.1); await pause(20); }
+      await pause(700);
+      r.creux[rendu].sansRampe = { chutes: K.etat().masses.chutes - cs0, montees: K.etat().masses.montees - cm0,
+        fond: fondSR, sortie: lire() };
+      // Fond du −¾ : borné au-dessus du plafond du niveau −1 (vue3d.js > _fondMasse), lu à la 3D.
+      r.creux[rendu].solFond = (await ici(-4, 0)).sol;
+      r.creux[rendu].rubans = rubansRel();
+      await K.fermer();
+    }
+    window.setStructures([]);
+    window.setPlanProfondeurs(PID, { "0": -25, "-1": -28 });
+    window.setPlanRenduVue3D(null, "galerie");
+    window.KtaGalerie.invalider();
+    await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.borne = { masses: K.etat().masses, centre: await ici(-4, 0) };
+    await K.fermer();
+    window.setPlanProfondeurs(PID, { "0": null, "-1": null });
+    // Bords jamais ouverts contre une structure (structures, mixte) : masse ½ (x 60 à 72) dont le contour s'écarte de
+    // 0,6 m autour d'un pilier (encoche), masse ½ jointive (x 72 à 78) ; deux piliers posés dedans. Sol à 0,4 m de
+    // l'encoche, du bord commun et de la face d'un pilier : le cran (1,2 m), jamais un talus.
+    window.setRoads([{ uid: "rd_ms_b", type: "principal", level: 0, points: [P(50, 0), P(90, 0)] }]);
+    window.setZones([
+      { uid: "zn_ms_enc", type: "masse-sol", level: 0, comble: 0.5, points: [P(60, -6), P(72, -6), P(72, 6), P(67.6, 6),
+        P(67.6, 1.4), P(64.4, 1.4), P(64.4, 6), P(60, 6)] },
+      { uid: "zn_ms_joint", type: "masse-sol", level: 0, comble: 0.5, points: rect(72, -6, 78, 6) }
+    ]);
+    window.setStructures([
+      { uid: "st_ms_enc", type: "pilier-1", level: 0, points: rect(65, 2, 67, 4) },
+      { uid: "st_ms_in1", type: "pilier-1", level: 0, points: rect(63, -4, 64, -3) },
+      { uid: "st_ms_in2", type: "pilier-1", level: 0, points: rect(69, -4, 70, -3) }
+    ]);
+    r.piliers = {};
+    for (const rendu of ["structures", "mixte"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(55, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      r.piliers[rendu] = { encoche: await ici(66, 1.0), joint: await ici(71.6, 0), face: await ici(62.6, -3.5),
+        bout: await ici(61, 0), masses: K.etat().masses };
+      await K.fermer();
+    }
+    // POI posés sur le sol local : un point de danger (halo) et un outil de carrier (forme au sol) sur la ½ (x −30 à
+    // −20), puis sur la −½.
+    window.setStructures([]);
+    window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    r.poi = {};
+    for (const c of [0.5, -0.5]) {
+      window.setZones([{ uid: "zn_ms_poi", type: "masse-sol", level: 0, comble: c, points: rect(-30, -6, -20, 6) }]);
+      window.setEditorPoints([
+        Object.assign({ id: "POI masse info", level: 0, tags: ["danger"] }, P(-25, 0.5)),
+        Object.assign({ id: "POI masse outil", level: 0, tags: ["outil"] }, P(-24, -0.5))
+      ]);
+      window.setPlanRenduVue3D(null, "structures");
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-35, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(400);
+      const e = K.etat();
+      r.poi[c] = { oeil: e.oeil, hauteur: e.hauteur,
+        panneau: e.panneaux.filter(function (q) { return q.nom === "POI masse info"; })[0] || null,
+        ossuaire: e.volumes.filter(function (v) { return v.genre === "poi" && v.construit; }).map(function (v) {
+          return { construit: v.construit, solLocal: v.solLocal };
+        })[0] || null };
+      await K.fermer();
+    }
+    window.setEditorPoints([]);
+    // Rampes (structures) : masse ½ de x 0 à 10 m, z −6 à 6, rampes sur le bord ouest (bord 3) et le bord est (bord 1).
+    // Monter par chacune, buter sur un bord sans rampe, profils qui se rejoignent au milieu sans marche ; une rampe
+    // retirée, l'autre seule ; sol abaissé avec une rampe ; plus aucune rampe : pleine hauteur.
+    window.setEditorPoints([]);
+    window.setStructures([]);
+    window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([{ uid: "zn_ms_rp", type: "masse-sol", level: 0, comble: 0.5, points: rect(0, -6, 10, 6) }]);
+    const zr = function () { return window.getZones().filter(function (z) { return z.uid === "zn_ms_rp"; })[0]; };
+    const KC = window.KtaConvertir;
+    r.rampes = { pose: [KC.ajouterRampe(zr(), 3), KC.ajouterRampe(zr(), 1), KC.ajouterRampe(zr(), 1)],
+      donnee: JSON.stringify(zr().rampes) };
+    window.setPlanRenduVue3D(null, "structures");
+    window.KtaGalerie.invalider();
+    const marche = async function (x, z, cap, n) {
+      await ici(x, z, cap);
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const ok = K.avancer(0.1);
+        await pause(20);
+        const l = lire();
+        l.ok = ok;
+        out.push(l);
+      }
+      return out;
+    };
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.masses = K.etat().masses;
+    r.rampes.ouest = await marche(-2, 0, 90, 140);
+    r.rampes.est = await marche(12, 0, 270, 140);
+    r.rampes.milieu = await ici(5, 0);
+    r.rampes.cote = await marche(5, -8, 180, 40);
+    await K.fermer();
+    r.rampes.retrait = KC.retirerRampe(zr(), 1);
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    // Hors du tracé (z = 1,5 m) : un front se monte partout (sectionFrontTrace).
+    r.rampes.seule = { haut: await ici(9.8, 0), estBute: await marche(12, 1.5, 270, 40) };
+    // Chute : du plateau (x 9,6) vers l'est, le front descend de ~1,15 m : le pas passe, la caméra tombe.
+    await ici(9.6, 0, 90);
+    const ch0 = K.etat().masses.chutes, cam0 = K.etat().cameraY;
+    let passe = false;
+    for (let i = 0; i < 10 && !passe; i++) { passe = K.avancer(0.1) && K.etat().masses.chute; }
+    const pendant = { chute: K.etat().masses.chute, refus: !K.avancer(0.1), camHaut: K.etat().cameraY };
+    const t0 = performance.now();
+    while (K.etat().masses.chute && performance.now() - t0 < 2000) await pause(16);
+    const duree = performance.now() - t0;
+    await pause(300);
+    const apres = lire();
+    r.rampes.chuteHaut = { chutes: K.etat().masses.chutes - ch0, derniere: K.etat().masses.derniereChute, cam0: cam0,
+      pendant: pendant, duree: Math.round(duree), apres: apres };
+    await K.fermer();
+    window.setZones([Object.assign({}, zr(), { comble: -0.5 })]);
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.creux = { descente: await marche(-2, 0, 90, 90) };
+    const cc0 = K.etat().masses.chutes;
+    r.rampes.creux.cote = await marche(5, -8, 180, 60);
+    await pause(700);
+    r.rampes.creux.chutes = K.etat().masses.chutes - cc0;
+    r.rampes.creux.fond = lire();
+    // Ressortir : vers l'ouest, par la rampe (le sol remonte en douceur jusqu'au bord ouest).
+    r.rampes.creux.sortie = await marche(5, r.rampes.creux.fond.z, 270, 90);
+    await K.fermer();
+    r.rampes.sansRampe = KC.retirerRampe(zr(), 3) && !("rampes" in zr());
+    window.setZones([Object.assign({}, zr(), { comble: 0.5 })]);
+    await K.ouvrir({ depart: Object.assign(P(-3, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+    await pause(300);
+    r.rampes.talus = await ici(1, 0);
+    const cp0 = K.etat().masses.chutes;
+    const desc = await marche(5, 0, 90, 60);
+    await pause(700);
+    const auSol = lire();
+    const remonte = await marche(auSol.x, 1.5, 270, 40);   // hors du tracé : hissé quand même (sectionFrontTrace)
+    r.rampes.positif = { chutes: K.etat().masses.chutes - cp0, auSol: auSol, remonte: remonte[remonte.length - 1],
+      arrets: remonte.filter(function (q) { return !q.ok; }).length, desc: desc[desc.length - 1] };
+    await K.fermer();
+    window.setZones([]);
+    // Budget : une masse de 40 × 12 m (480 m²), 🧱 allumé puis coupé.
+    window.setZones([{ uid: "zn_ms_g", type: "masse-sol", level: 0, comble: 0.75, points: rect(-40, -6, 0, 6) }]);
+    window.setPlanRenduVue3D(null, "structures");
+    r.budget = {};
+    for (const tex of [true, false]) {
+      window.setVue3DTextures(tex);
+      await K.ouvrir({ depart: Object.assign(P(-45, 0), { cap: 90, niveau: 0 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      r.budget[tex ? "textures" : "aplat"] = K.etat().masses;
+      await K.fermer();
+    }
+    window.setVue3DTextures(true);
+    window.setVue3DLignesSol(av.lignesSol);
+
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  const T30 = Math.tan(Math.PI / 6), HN = 2.4;
+  // Œil attendu (m au-dessus du sol) pour un vide v : vue3d.js > _oeilMasse.
+  const lisse = function (t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+  const oeilAtt = function (oeil, v) {
+    if (v === null || v >= 1) return Math.min(oeil, v === null ? Infinity : v - 0.2);
+    const k = lisse((1 - v) / 0.3);
+    return Math.min(oeil, 0.8) * (1 - k) + Math.min(oeil, 0.35) * k;
+  };
+  const camOk = function (q) { return pr(q.cam, q.sol + oeilAtt(q.oeil, q.vide), 0.02); };
+  // Rubans des tracés sur le sol local (vue3d.js > _rubanSol) : horizontaux (ou inclinés) à sol + 3 cm (liseré du mode
+  // galerie : + 1,5 cm), contremarche verticale au droit d'un front, décollée de 1 cm vers le côté bas.
+  const RUB = function (q) { return (q[2] + q[3]) / 2; };
+  const plats = function (l, x0, x1) {
+    return l.filter(function (q) { return q[3] - q[2] < 0.3 && q[0] > x0 && q[0] < x1; });
+  };
+  const autour = function (y, att) { return y >= att + 0.005 && y <= att + 0.045; };
+  const fronts = function (l, x0, x1, ya, yb) {
+    return l.filter(function (q) {
+      return q[3] - q[2] > 0.3 && q[0] >= x0 && q[0] <= x1 && q[2] <= ya + 0.05 && q[3] >= yb + 0.01;
+    });
+  };
+  R.cas.forEach(function (c) {
+    const k = "tracé sur masse au sol, " + c.rendu, l = c.rubans || [];
+    const hors = plats(l, -38, -32), haut = plats(l, -6.4, 1.6), pente = plats(l, -9.6, -7.2);
+    const fr = fronts(l, 1.99, 2.05, 0.03, 1.8);
+    // Sol de la rampe de la ¾ (bord ouest à x = −10, fin à 30° : L = 1,8 / tan 30° = 3,118 m).
+    const solRampe = function (x) { return 1.8 * Math.max(0, Math.min(1, (x + 10) / (1.8 / T30))); };
+    verifier(l.length > 0 && hors.length > 0 && hors.every(function (q) { return autour(RUB(q), 0); }),
+      k + " : hors masse, le ruban reste au sol du niveau (+ 3 cm)", hors.slice(0, 3));
+    verifier(haut.length > 0 && haut.every(function (q) { return autour(q[2], 1.8) && autour(q[3], 1.8); }),
+      k + " : sur la ¾ (1,8 m), le ruban est posé sur le dessus, jamais dessous (" + haut.length + " morceaux)",
+      haut.slice(0, 3));
+    verifier(pente.length > 0 && pente.every(function (q) { return Math.abs(RUB(q) - solRampe(q[0]) - 0.025) < 0.09; }),
+      k + " : sur la rampe à 30°, le ruban suit la pente (morceaux inclinés)", pente.slice(0, 4));
+    verifier(fr.length >= 1, k + " : au front est de la ¾ (sans rampe), contremarche verticale de 0 à 1,8 m au droit " +
+      "du front, sans trou", { fronts: fr, n: l.filter(function (q) { return q[3] - q[2] > 0.3; }).length });
+  });
+  ["galerie", "structures"].forEach(function (rendu) {
+    const cr = R.creux[rendu], l = (cr && cr.rubans) || [], k = "tracé dans un creux, " + rendu;
+    const sf = cr ? cr.solFond : NaN, fond = plats(l, -8, 0), fondRampe = plats(l, -27.5, -20.5);
+    const fo = fronts(l, -10.01, -9.95, sf, 0), fe = fronts(l, 1.95, 2.01, sf, 0);
+    verifier(sf < -1.5 && fond.length > 0 && fond.every(function (q) { return autour(q[2], sf) && autour(q[3], sf); }),
+      k + " : dans le −¾ sans rampe, le ruban est au fond (" + sf + " m, la 3D), plus au sol du niveau",
+      { fond: fond.slice(0, 3), sf: sf });
+    verifier(fondRampe.length > 0 && fondRampe.every(function (q) { return autour(RUB(q), -1.2); }),
+      k + " : dans le −½ avec rampe, au fond après la pente (−1,2 m)", fondRampe.slice(0, 3));
+    verifier(fo.length >= 1 && fe.length >= 1,
+      k + " : contremarches aux deux bords droits du creux, décollées vers le fond", { ouest: fo, est: fe });
+  });
+  R.cas.forEach(function (c) {
+    const k = "masse au sol, " + c.rendu, p = c.points;
+    verifier(c.masses.n === 5 && c.hauteur === HN,
+      k + " : 5 masses au niveau 0 (celle du −1 à part), hauteur " + HN + " m", { n: c.masses.n, h: c.hauteur });
+    verifier(pr(p.quart.sol, 0.6) && pr(p.quart.vide, 1.8) && p.quart.ramper === 0 && camOk(p.quart),
+      k + " : sur ¼, sol 0,6 m, debout (vide 1,8 m)", p.quart);
+    verifier(pr(p.demi.sol, 1.2) && pr(p.demi.vide, 1.2) && p.demi.ramper === 0 && camOk(p.demi) &&
+      pr(p.demi.cam - p.demi.sol, 1.0, 0.02),
+      k + " : sur ½, sol 1,2 m, courbé (œil à vide − 0,2 = 1 m)", p.demi);
+    verifier(pr(p.troisQuarts.sol, 1.8) && pr(p.troisQuarts.vide, 0.6) && p.troisQuarts.ramper === 1 &&
+      pr(p.troisQuarts.cam - p.troisQuarts.sol, 0.35, 0.02),
+      k + " : sur ¾, sol 1,8 m, on rampe (œil 0,35 m)", p.troisQuarts);
+    verifier(pr(p.talus.sol, T30 * 1.5) && pr(p.talusParoi.sol, p.talus.sol, 0.005),
+      k + " : talus à 30° depuis le bord ouvert (1,5 m → " + (T30 * 1.5).toFixed(3) + " m), même sol contre la " +
+      "paroi du tube (pas de rigole)", { axe: p.talus, paroi: p.talusParoi });
+    verifier(p.hors.sol === 0 && p.hors.vide === null && camOk(p.hors), k + " : hors masse, sol 0 et vue inchangée",
+      p.hors);
+    if (p.pilier) {
+      // Bords à moins de LOIN (1,2 m) du pilier fermés aussi (sondes en biais) : la pente part plus loin du pilier.
+      verifier(p.pilier.sol > T30 * Math.hypot(1, 1.15) + 0.1 && p.pilier.sol <= 1.8,
+        k + " : pilier à cheval sur le bord = bord fermé, à plat contre lui (talus depuis les bords libres, loin du " +
+        "pilier)", p.pilier);
+    }
+    ["quart", "demi", "troisQuarts"].forEach(function (n) {
+      const m = c.montee[n];
+      let saut = 0;
+      for (let i = 1; i < m.length; i++) saut = Math.max(saut, Math.abs(m[i].cam - m[i - 1].cam));
+      const tous = m.every(function (q) { return q.ok && camOk(q); });
+      const haut = m[m.length - 1];
+      verifier(tous && saut < 0.12 && haut.sol > 0,
+        k + " : montée sur " + n + " par le talus au pas de 0,1 m, caméra = sol + œil à chaque pas, plus grand écart " +
+        saut.toFixed(3) + " m (< 0,12)",
+        { saut: saut, fin: haut, ko: m.filter(function (q) { return !q.ok || !camOk(q); }).slice(0, 3) });
+    });
+    const b = c.bloque, fin = b[b.length - 1], arrets = b.filter(function (q) { return !q.ok; }).length;
+    verifier(arrets > 0 && fin.vide !== null && fin.vide >= 0.5 && fin.x > 17 && fin.x < 18.6,
+      k + " : masse 0,9 (vide 0,24 m au sommet) : le pas s'arrête avant 0,5 m de vide (x = " + fin.x + ")",
+      { fin: fin, arrets: arrets });
+    verifier(c.ressort.dx > 1.5, k + " : demi-tour, on ressort de la masse", c.ressort);
+    const v = c.vitesse;
+    verifier(pr(v.plat.d, 0.1, 0.002) && v.plat.ralenti === 1 && pr(v.plateau.d, 0.1, 0.002) &&
+      pr(v.talus.ralenti, 0.5, 0.02) && pr(v.talus.d, 0.05, 0.003) && pr(v.descente.ralenti, 0.5, 0.02) &&
+      v.jonction.ralenti === 1,
+      k + " : marche ralentie de moitié sur le talus à 30° (montée et descente), normale à plat, sur le plateau et " +
+      "sur la jonction", v);
+    verifier(c.departDedans.vide === null || c.departDedans.vide >= 0.5,
+      k + " : départ posé sous 0,5 m de vide → ramené où l'on tient", c.departDedans);
+    verifier(c.jonction.sur === true && c.jonction.vide === null && c.jonction.ramper === 0,
+      k + " : jonction posée sur une masse : la galerie inclinée l'emporte", c.jonction);
+  });
+  verifier(R.moinsUn.niveau === -1 && R.moinsUn.masses === 1 && pr(R.moinsUn.centre.sol, 1.8),
+    "masse au sol, multi-niveau : au −1, seule la ¾ du −1 compte (sol 1,8 m) ; au 0, la ¼ (0,6 m)", R.moinsUn);
+  Object.keys(R.creux).forEach(function (rendu) {
+    const c = R.creux[rendu], k = "sol abaissé, " + rendu, d = c.descente;
+    verifier(pr(c.vitesse.ralenti, 0.5, 0.02) && pr(c.vitesse.d, 0.05, 0.003),
+      k + " : la descente dans le talus à 30° ralentit de moitié", c.vitesse);
+    let saut = 0;
+    for (let i = 1; i < d.length; i++) saut = Math.max(saut, Math.abs(d[i].cam - d[i - 1].cam));
+    // Sols non réglés : 2 m de roche entre niveaux par défaut → plafond du −1 à −2 m, borne à −1,7 m.
+    verifier(JSON.stringify(c.masses.fonds) === JSON.stringify([-1.2, -1.7]) &&
+      JSON.stringify(c.masses.bornes) === JSON.stringify([false, true]),
+      k + " : −½ à −1,2 m ; −¾ (−1,8 m) borné à −1,7 m par le plafond du −1 (2 m de roche par défaut) + 0,3 m",
+      c.masses);
+    verifier(pr(c.centre.sol, -1.2) && c.centre.vide === null && c.centre.ramper === 0 && camOk(c.centre),
+      k + " : au milieu de −½, sol 1,2 m plus bas, debout (vide 3,6 m)", c.centre);
+    verifier(pr(c.talus.sol, -T30 * 1.5), k + " : pente de la rampe à 30° en descente (1,5 m → −" +
+      (T30 * 1.5).toFixed(3) + " m)", c.talus);
+    const sr = c.sansRampe;
+    verifier(sr.chutes >= 1 && sr.fond.sol < -1 && sr.montees >= 1 && sr.sortie.sol === 0 && sr.sortie.x < -10,
+      k + " : creux sans rampe : on y descend en chutant (" + sr.fond.sol + " m) et l'on en ressort hissé sur son bord",
+      sr);
+    verifier(d.every(function (q) { return q.ok && camOk(q); }) && saut < 0.12 && pr(d[d.length - 1].sol, -1.2),
+      k + " : descente au pas de 0,1 m sans arrêt, caméra = sol + œil, plus grand écart " + saut.toFixed(3) + " m",
+      { saut: saut, ko: d.filter(function (q) { return !q.ok || !camOk(q); }).slice(0, 3) });
+  });
+  verifier(R.creux.structures.masses.pieds >= 1 && R.creux.galerie.masses.pieds === 0,
+    "sol abaissé : le pied du pilier posé dedans descend jusqu'au fond (structures)", R.creux.structures.masses);
+  verifier(R.borne.masses.bornes.every(Boolean) && R.borne.masses.fonds.every(function (v) { return pr(v, -0.3); }) &&
+    pr(R.borne.centre.sol, -0.3), "sol abaissé, multi-niveau : sols −25 / −28 (2,4 m) → jamais sous le plafond du −1 " +
+    "+ 0,3 m (−0,3 m), borne signalée", R.borne);
+  Object.keys(R.piliers).forEach(function (rendu) {
+    const p = R.piliers[rendu];
+    verifier(pr(p.encoche.sol, 1.2) && pr(p.joint.sol, 1.2) && pr(p.face.sol, 1.2) && pr(p.bout.sol, 1.2),
+      "masse au sol, " + rendu + " : à plat (1,2 m) contre l'encoche d'un pilier, contre le bord d'une masse " +
+      "jointive " +
+      "et contre la face d'un pilier posé dedans ; la pente reste à l'extrémité (1 m → " + T30.toFixed(3) + " m)", p);
+  });
+  [0.5, -0.5].forEach(function (c) {
+    const q = R.poi[c], sol = c * 2.4, att = Math.min(sol + q.oeil + 0.4, q.hauteur - 0.3);
+    verifier(!!q.panneau && pr(q.panneau.y, att, 0.02) && pr(q.panneau.haloY, 0.03 + sol, 0.02) && !!q.ossuaire &&
+      q.ossuaire.construit && Math.sign(q.ossuaire.solLocal) === Math.sign(c) && Math.abs(q.ossuaire.solLocal) > 0.3,
+      "masse au sol " + (c > 0 ? "½" : "−½") + " : panneau, halo et forme (outil de carrier) posés sur le sol local (" + sol +
+      " m)", q);
+  });
+  {
+    const q = R.rampes, saut = function (l) {
+      let m = 0;
+      for (let i = 1; i < l.length; i++) m = Math.max(m, Math.abs(l[i].cam - l[i - 1].cam));
+      return m;
+    };
+    verifier(JSON.stringify(q.pose) === "[true,true,false]" && q.donnee === JSON.stringify([{ bord: 1 }, { bord: 3 }]) &&
+      JSON.stringify(q.masses.rampes) === "[[1,3]]",
+      "rampes : deux bords bas posés (ouest et est), le même bord refusé deux fois, lus par la 3D", q);
+    const o = q.ouest, e = q.est;
+    verifier(o.every(function (l) { return l.ok; }) && saut(o) < 0.12 && pr(q.milieu.sol, 0.6, 0.02) &&
+      e.every(function (l) { return l.ok; }) && saut(e) < 0.12,
+      "rampes : on monte par chacune (ouest et est) sans arrêt ni saut (" + saut(o).toFixed(3) + " / " +
+      saut(e).toFixed(3) + " m), les deux profils se rejoignent au milieu (minimum : 0,6 m)", { milieu: q.milieu });
+    const c = q.cote, cf = c[c.length - 1];
+    verifier(cf.z > -6 && cf.sol > 0.5,
+      "rampes : un bord sans rampe (front vertical) se monte : hissé sur la masse (" + cf.sol + " m)", cf);
+    const eb = q.seule.estBute[q.seule.estBute.length - 1];
+    verifier(q.retrait && pr(q.seule.haut.sol, 1.2 * 9.8 / 10, 0.03) && eb.x < 10 && eb.sol > 1,
+      "rampes : la rampe est retirée, l'ouest seule monte jusqu'au cran à l'est, le bord est devient un front, qui se " +
+      "monte (hissé, hors tracé : " + eb.sol + " m)", q.seule);
+    const d = q.creux.descente;
+    verifier(d.every(function (l) { return l.ok; }) && saut(d) < 0.12 && d[d.length - 1].sol < -0.4,
+      "rampes, sol abaissé : on descend par la rampe sans arrêt", { fin: d[d.length - 1] });
+    const so = q.creux.sortie, sf = so[so.length - 1];
+    verifier(q.creux.chutes >= 1 && q.creux.fond.sol < -0.4 && q.creux.fond.z > -6 && sf.x < 0 && sf.sol === 0,
+      "rampes, sol abaissé : un bord sans rampe se franchit en chutant au fond, et l'on ressort par la rampe",
+      { chutes: q.creux.chutes, fond: q.creux.fond, sortie: sf });
+    const ch = q.chuteHaut;
+    verifier(ch.chutes === 1 && ch.pendant.chute && ch.pendant.refus && ch.derniere && ch.derniere.h > 1 &&
+      ch.derniere.d >= 0.3 && ch.derniere.d <= 0.5 && ch.duree <= 700 && ch.apres.sol === 0 && ch.apres.x >= 9.99 &&
+      pr(ch.apres.cam, ch.apres.oeil, 0.03),
+      "rampes : descendre un front = chute du plateau au sol (" + (ch.derniere ? ch.derniere.h + " m en " +
+      ch.derniere.d + " s" : "?") + "), aucun pas pendant la chute, caméra au sol à l'arrivée", ch);
+    verifier(q.sansRampe && pr(q.talus.sol, 1.2),
+      "rampes : plus aucune rampe → pleine hauteur partout (1 m du bord : 1,2 m), plus de talus", q.talus);
+    const po = q.positif;
+    verifier(po.chutes >= 1 && po.auSol.sol === 0 && po.auSol.x > 10 && po.remonte.x < 10 && po.remonte.sol > 1,
+      "rampes : masse sans rampe → on en descend en chutant vers le sol du niveau, et l'on y remonte hissé (hors tracé)",
+      po);
+  }
+  ["textures", "aplat"].forEach(function (t) {
+    const m = R.budget[t];
+    verifier(m && m.n === 1 && m.triMax > 0 && m.triMax <= 2000,
+      "masse au sol, 40 × 12 m (" + t + ") : " + (m && m.triMax) + " triangles (≤ 2 000)", m);
+  });
+  console.log("  ℹ️ masse au sol : triangles par zone " + JSON.stringify(R.cas.map(function (c) {
+    return c.rendu + " " + c.masses.triMax; })) + ", grande masse " + R.budget.textures.triMax);
+}
+
+// Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : pied du talus de la ½, son sommet (courbé), sur la ¾ (on rampe),
+// dans les trois rendus, 🧱 allumé puis coupé (talus) ; sol abaissé −½ vu du bord (aussi 🧱 coupé) et du fond
+// (pilier en structures) ; rampe (bord ouest) vue du bas, front latéral, creux avec rampe ; ruban d'un tracé au front
+// est de la ¾ (contremarche), sur une rampe, dans un creux (lignes au sol allumées) ; rampe et sommet en Textures HD
+// (dessus du remblai en sol damé plus foncé, fronts en terre et cailloux).
+// ── Chatière sur une masse au sol (KTA_V3D_SEUL=chatieremasse) : haut de la roche au plafond du niveau, trou au sol
+// local à chaque bout (+½, −½, rampe), chatière en 3 points à cheval sur un front raccordée sans marche, œil à
+// 0,35 m du sol local dedans ; hors masse, la chatière d'avant (une coupe, plancher à 0). Sol de référence :
+// KtaMasseSol.masseCarte + KtaMasseSol.sol (la règle du plan), pas celle de la vue 3D. ──
+const CHATIERES_MASSE = function (P, rect) {
+  return {
+    zones: [
+      { uid: "zn_cm_p", type: "masse-sol", level: 0, comble: 0.5, points: rect(-50, -6, -40, 6) },
+      { uid: "zn_cm_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_cm_r", type: "masse-sol", level: 0, comble: 0.5, points: rect(-10, -6, 2, 6),
+        rampes: [{ bord: 3, fin: P(-10 + 1.2 / Math.tan(Math.PI / 6), 0) }] },
+      { uid: "zn_cm_f", type: "masse-sol", level: 0, comble: 0.25, points: rect(15, -6, 30, 6) }
+    ],
+    points: [
+      { id: "pt_cm_p", nom: "Chatière fictive +", uid: "pt_cm_p", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(-45, 0.5).x, y: P(-45, 0.5).y },
+      { id: "pt_cm_n", nom: "Chatière fictive −", uid: "pt_cm_n", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(-25, 0.5).x, y: P(-25, 0.5).y },
+      { id: "pt_cm_r", nom: "Chatière fictive rampe", uid: "pt_cm_r", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(-9, 0.5).x, y: P(-9, 0.5).y },
+      { id: "pt_cm_f", nom: "Chatière fictive front", uid: "pt_cm_f", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(14.6, 0.5).x, y: P(14.6, 0.5).y,
+        precis: { pts: [P(12.6, -0.3), P(14.6, 0.3), P(16.6, -0.3)] } },
+      { id: "pt_cm_0", nom: "Chatière fictive hors masse", uid: "pt_cm_0", level: 0, tags: ["chatiere"], updatedAt: 1000, x: P(45, 0.5).x, y: P(45, 0.5).y }
+    ]
+  };
+};
+
+async function sectionChatiereMasse(page) {
+  const R = await page.evaluate(async function (FIX) {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-chatiere-masse";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    const fx = (new Function("return " + FIX))()(P, rect);
+    window.setStructures([]);
+    window.setRoads([{ uid: "rd_cm", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones(fx.zones);
+    window.setEditorPoints(fx.points);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    // Sol de référence du plan (règle de masseSol.js) : le plus haut des remblais, sinon le plus bas des creux.
+    const M = fx.zones.map(function (z) { return window.KtaMasseSol.masseCarte(z).m; });
+    const dans = function (ring, x, z) {
+      let r = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const p = ring[i], q = ring[j];
+        if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
+      }
+      return r;
+    };
+    const solRef = function (x, z) {
+      let hi = 0, lo = 0;
+      M.forEach(function (m) {
+        if (!m || !dans(m.ring, x, z)) return;
+        const y = window.KtaMasseSol.sol(m, x, z);
+        hi = Math.max(hi, y); lo = Math.min(lo, y);
+      });
+      return hi > 0 ? hi : lo;
+    };
+    const out = {};
+    for (const rendu of ["mixte", "galerie", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(0, 0), { cap: 90, niveau: 0 }), distanceVue: 200, commandes: "pave",
+        tuiles: false });
+      await pause(200);
+      await images(3);
+      const e = K.etat(), h = e.hauteur;
+      const vols = e.volumes.filter(function (v) { return v.tag === "chatiere"; }).map(function (v) {
+        return { x: +(v.x / sc - ox).toFixed(2), toit: v.toit, plat: v.plat, coupes: v.coupes, segment: v.segment,
+          hautTrou: v.hautTrou, bords: v.bordsFaces, faces: v.faces, videMin: v.videMin, solLocal: v.solLocal,
+          bouts: (v.bouts || []).map(function (b) {
+            return { x: +(b.x - ox).toFixed(3), z: +(b.z - oz).toFixed(3), sol: b.sol, ref: +solRef(b.x, b.z).toFixed(3),
+              bas: b.bas, voute: b.voute };
+          }) };
+      }).sort(function (a, b) { return a.x - b.x; });
+      // Œil dans la chatière : au milieu de chaque roche (masse +½, −½, rampe) et dans la 3 points des deux côtés du
+      // front ; caméra relue après deux images.
+      const oeil = {};
+      for (const q of [["p", -45, 0], ["n", -25, 0], ["r", -9, 0], ["fBas", 14, 0.05], ["fHaut", 16, 0.05], ["zero", 45, 0]]) {
+        const p = P(q[1], q[2]);
+        K.placer(p.x, p.y, 90);
+        await pause(30);
+        await images(2);
+        const et = K.etat();
+        oeil[q[0]] = { cam: et.cameraY, ramper: et.ramper, sol: +solRef(q[1] + ox, q[2] + oz).toFixed(3) };
+      }
+      out[rendu] = { h: h, vols: vols, oeil: oeil, erreurs: (window.__v3dErreurs || []).length };
+      await K.fermer();
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  }, CHATIERES_MASSE.toString());
+
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  console.log("§ chatière sur masse au sol");
+  Object.keys(R).forEach(function (rendu) {
+    const r = R[rendu], h = r.h, T = 0.6, k = "chatière sur masse, " + rendu + " : ";
+    const pres = function (x) { return r.vols.filter(function (v) { return Math.abs(v.x - x) < 2.5; }); };
+    const vp = pres(-45)[0], vn = pres(-25)[0], vr = pres(-9)[0], v0 = pres(45)[0];
+    const vf = pres(14.6).sort(function (a, b) { return a.segment[0] - b.segment[0]; });
+    const tous = [vp, vn, vr, v0].concat(vf);
+    verifier(tous.every(Boolean) && vf.length === 2,
+      k + "les 5 chatières construites (front : 2 segments)", r.vols.map(function (v) { return [v.x, v.segment]; }));
+    if (!tous.every(Boolean) || vf.length !== 2) return;
+    verifier(tous.every(function (v) { return pr(v.toit, h) && v.solLocal === 0; }),
+      k + "haut de la roche au plafond du niveau (" + h + " m) partout, jamais posée en bloc sur le sol de son centre",
+      tous.map(function (v) { return [v.x, v.toit, v.solLocal]; }));
+    // Trou au sol local à chaque bout : plancher au sol (plateau) ou juste dessous (rampe : le disque de la coupe),
+    // voûte à 0,6 m au moins au-dessus.
+    const auSol = function (v, tolBas) {
+      return v.bouts.length === 2 && v.bouts.every(function (b) {
+        return pr(b.sol, b.ref, 0.002) && b.bas <= b.ref + 0.001 && b.ref - b.bas <= tolBas &&
+          b.voute >= Math.min(b.ref + T, h - 0.05) - 0.001;
+      });
+    };
+    verifier(auSol(vp, 0.002) && vp.bouts.every(function (b) { return pr(b.ref, 1.2); }),
+      k + "masse +½ : trou au ras du dessus (1,2 m) aux deux bouts, voûte à 0,6 m au-dessus", vp.bouts);
+    verifier(auSol(vn, 0.002) && vn.bouts.every(function (b) { return pr(b.ref, -1.2); }) &&
+      vn.bords.every(function (y) { return y <= -1.2; }),
+      k + "masse −½ : trou au fond (−1,2 m), faces de roche descendues sous le fond (aucun jour)",
+      { bouts: vn.bouts, bords: vn.bords });
+    verifier(auSol(vr, 0.2) && vr.coupes >= 8 && Math.abs(vr.bouts[1].ref - vr.bouts[0].ref) > 0.5 &&
+      vr.videMin >= T - 0.001,
+      k + "rampe : trou qui monte avec le sol (" + vr.bouts[0].ref + " → " + vr.bouts[1].ref + " m, " + vr.coupes +
+      " coupes), jamais moins de 0,6 m sous la voûte", vr);
+    verifier(auSol(vf[0], 0.002) && auSol(vf[1], 0.002) && vf[0].videMin >= T - 0.001 && vf[1].videMin >= T - 0.001,
+      k + "3 points à cheval sur un front : trou au sol local à chaque bout (" + vf[0].bouts[0].ref + " → " +
+      vf[1].bouts[1].ref + " m), voûte au-dessus du sol haut", vf);
+    const a = vf[0].bouts[1], b = vf[1].bouts[0];
+    verifier(pr(a.x, b.x, 0.002) && pr(a.z, b.z, 0.002) && pr(a.bas, b.bas, 0.001) && pr(a.voute, b.voute, 0.001),
+      k + "3 points : segments raccordés au coude sans marche (plancher " + a.bas + " / " + b.bas + ", voûte " +
+      a.voute + " / " + b.voute + ")", { a: a, b: b });
+    verifier(v0.plat === true && v0.coupes === 2 && pr(v0.hautTrou, T) && v0.bouts.every(function (q) {
+      return q.bas === 0 && pr(q.voute, T);
+    }) && v0.bords.every(function (y) { return y === 0; }),
+      k + "hors masse : chatière d'avant (une coupe, plancher à 0, trou de 0,6 m, faces au sol)", v0);
+    const o = r.oeil, rel = function (q) { return +(q.cam - q.sol).toFixed(3); };
+    verifier(["p", "n", "r", "fBas", "fHaut", "zero"].every(function (n) { return o[n] && o[n].ramper > 0.999 &&
+      pr(rel(o[n]), 0.35, 0.03); }),
+      k + "œil à 0,35 m du sol local dans la roche (+½ " + rel(o.p) + ", −½ " + rel(o.n) + ", rampe " + rel(o.r) +
+      ", front bas " + rel(o.fBas) + " / haut " + rel(o.fHaut) + ", hors masse " + rel(o.zero) + ")", o);
+  });
+}
+
+async function capturesChatiereMasse(page) {
+  const vues = [["chatiere-masse-plus", -49, 0, 90], ["chatiere-masse-plus-dedans", -45.3, 0, 90],
+    ["chatiere-masse-creux", -29.5, 0, 90], ["chatiere-masse-creux-dedans", -25.3, 0, 90],
+    ["chatiere-masse-rampe", -14, 0, 90], ["chatiere-masse-front", 9, 0.1, 90], ["chatiere-masse-front-dos", 19, 0.1, 270]];
+  for (const rendu of ["mixte", "galerie"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-chatiere-masse";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
+        window._currentLoadedPlanId = PID;
+        const fx = (new Function("return " + c.fix))()(P, rect);
+        window.setStructures([]);
+        window.setRoads([{ uid: "rd_cm", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        window.setZones(fx.zones);
+        window.setEditorPoints(fx.points);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(true);
+        window.ktaSetActiveLevel(0);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3], niveau: 0 }, commandes: "pave", tuiles: false });
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu, fix: CHATIERES_MASSE.toString() });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.effacerReglagesNiveaux("v3d-checkup-chatiere-masse");
+    window.setZones([]);
+    window.setEditorPoints([]);
+  });
+}
+
+// ── Changement de niveau sur un relevé lourd (KTA_V3D_SEUL=cacheniveaux ; vue3d.js > _cacheNiveau) : relevé FICTIF
+// en mémoire, 3 niveaux de piliers (≈ 13 000 structures, couloirs libres le long des tracés), plaques loin des tubes
+// (faces des structures lues), puits 0 ↔ 1 au départ, niveaux voisins montrés ; processeur ralenti × 4 (Chromium).
+// Allers-retours 0 ↔ 1 mesurés caches coupés (ouvrir({ cacheNiveaux: false }) : l'avant) puis allumés ; à chaud,
+// aucun recalcul (ratés du cache constants, voisins repris). Piège du cache : un pilier DÉPLACÉ au niveau 1 (même
+// nombre de structures) pendant qu'on est au 0 barre le pas en y revenant, remis à sa place il ne barre plus ; un
+// pilier ajouté puis retiré se compte dans la scène et dans l'index du voisin. ──
+// Mémoire bornée (sectionCacheNiveaux) : relevé FICTIF de 5 niveaux (−4 à 0, ≈ 2 000 piliers chacun), vue d'édition,
+// ▲▼ vers le bas un niveau à la fois ; tas JS après ramasse-miettes (CDP) et scènes en cache à chaque niveau.
+// → { etapes: [{ niveau, tas, scenes }] } | null (sans CDP).
+async function memoireBornee(page, cdp) {
+  if (!cdp) return null;
+  await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, P = window.__cnP, rect = window.__cnRect;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.__mbAv = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, smart: C.smartNav,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = "v3d-checkup-cache-borne";
+    C.multiLevel = true; C.smartNav = false;
+    window.setPlanRenduVue3D(null, "mixte");
+    window.setZones([]);
+    const st = [], roads = [];
+    [-4, -3, -2, -1, 0].forEach(function (n) {
+      for (let i = 0; i < 48; i++) {
+        for (let j = 0; j < 48; j++) {
+          const x = -144 + i * 6 + 2, z = -144 + j * 6 + 2;
+          if ((z < 4 && z + 2 > -2) || (x < 4 && x + 2 > -2)) continue;
+          st.push({ uid: "st_mb_" + n + "_" + i + "_" + j, type: "pilier-1", level: n, points: rect(x, z, x + 2, z + 2) });
+        }
+      }
+      roads.push({ uid: "rd_mb_x" + n, type: "principal", level: n, points: [P(-144, 1), P(144, 1)] });
+    });
+    C.availableLevels = [-4, -3, -2, -1, 0]; C.visibleLevels = [-4, -3, -2, -1, 0]; C.activeLevel = 0;
+    window.setStructures(st);
+    window.setRoads(roads);
+    window.setEditorPoints([]);
+    window.ktaSetActiveLevel(0);
+    window.KtaGalerie.invalider();
+    const d = P(1.5, 1);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "pave", tuiles: true, distanceVue: 30 });
+    K.reglerNiveauxVus("voisins");
+    K.basculerVue();
+    await new Promise(function (ok) { setTimeout(ok, 400); });
+  });
+  const etapes = [];
+  for (let i = 0; i < 5; i++) {
+    if (i) {
+      await page.evaluate(async function () {
+        window.KtaVue3D.niveauEdition("bas");
+        for (let k = 0; k < 30; k++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      });
+    }
+    await cdp.send("HeapProfiler.enable").catch(function () { /* non pris en charge */ });
+    await cdp.send("HeapProfiler.collectGarbage").catch(function () { /* non pris en charge */ });
+    const u = await cdp.send("Runtime.getHeapUsage").catch(function () { return null; });
+    const e = await page.evaluate(function () {
+      const x = window.KtaVue3D.etat();
+      return { niveau: x.niveau, scenes: x.cacheNiveaux.scenes || [] };
+    });
+    etapes.push({ niveau: e.niveau, tas: u ? u.usedSize : 0, scenes: e.scenes });
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    const av = window.__mbAv, C = window.APP_CONFIG;
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+  });
+  return { etapes: etapes };
+}
+
+async function sectionCacheNiveaux(page) {
+  let cdp = null;
+  try {
+    if (page.context().browser().browserType().name() === "chromium") cdp = await page.context().newCDPSession(page);
+  } catch (err) { cdp = null; }
+  const prep = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-cache-niveaux";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    window.__cnAv = { ml: C.multiLevel, dispo: C.availableLevels, vis: C.visibleLevels, actif: C.activeLevel,
+      r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+      s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId, smart: C.smartNav,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(),
+      vus: typeof window.getVue3DNiveauxVus === "function" ? window.getVue3DNiveauxVus() : null };
+    window.__cnP = P; window.__cnRect = rect;
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    if (K.etat().ouvert !== false) await K.fermer();
+    C.multiLevel = true; C.availableLevels = [-1, 0, 1]; C.visibleLevels = [-1, 0, 1]; C.activeLevel = 0;
+    C.smartNav = false;
+    const st = [], roads = [], pts = [];
+    [-1, 0, 1].forEach(function (n) {
+      for (let i = 0; i < 70; i++) {
+        for (let j = 0; j < 70; j++) {
+          const x = -210 + i * 6 + 2, z = -210 + j * 6 + 2;
+          // Couloirs libres de 6 m le long des tracés (x = 1 et z = 1) : on y marche.
+          if ((z < 4 && z + 2 > -2) || (x < 4 && x + 2 > -2)) continue;
+          st.push({ uid: "st_cn_" + n + "_" + i + "_" + j, type: "pilier-1", level: n, points: rect(x, z, x + 2, z + 2) });
+        }
+      }
+      roads.push({ uid: "rd_cn_x" + n, type: "principal", level: n, points: [P(-210, 1), P(210, 1)] });
+      roads.push({ uid: "rd_cn_z" + n, type: "principal", level: n, points: [P(1, -210), P(1, 210)] });
+      for (let k = 0; k < 12; k++) {
+        const x = -150 + k * 25 + 1, z = 40 + (k % 3) * 18 + 1;
+        pts.push({ id: "pt_cn_pl_" + n + "_" + k, uid: "pt_cn_pl_" + n + "_" + k, nom: "Plaque fictive " + k,
+          level: n, tags: ["plaque"], updatedAt: 1000, x: P(x, z).x, y: P(x, z).y });
+      }
+    });
+    pts.push({ id: "pt_cn_puits", uid: "pt_cn_puits", nom: "Puits fictif", level: 0, tags: ["jpe"], updatedAt: 1000,
+      x: P(1, 1).x, y: P(1, 1).y, niveaux: [0, 1], accroches: [{ level: 1, x: P(1, 1).x, y: P(1, 1).y }] });
+    window.setStructures(st);
+    window.setRoads(roads);
+    window.setZones([]);
+    window.setEditorPoints(pts);
+    window.effacerReglagesNiveaux(PID);
+    window.ktaSetActiveLevel(0);
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    return { structures: st.length, parNiveau: st.length / 3 };
+  });
+  // Allers-retours : passage 1 (froid) puis 6 ; durée du passage (changerNiveau, synchrone sans geste), étapes de
+  // _reindexer (etat().reindex), pire image des 40 suivantes (tuiles des voisins construites quelques-unes par image).
+  const allersRetours = async function (avecCache) {
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const r = await page.evaluate(async function (avec) {
+      const K = window.KtaVue3D, P = window.__cnP;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const images = async function (n) {
+        for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+      };
+      const d = P(1.5, 1);
+      if (K.etat().ouvert !== false) await K.fermer();
+      await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "pave", tuiles: true, distanceVue: 30,
+        cacheNiveaux: avec });
+      K.reglerNiveauxVus("voisins");
+      K.gesteAnime(false);
+      await pause(400);
+      await images(10);
+      const pas = [];
+      for (let i = 0; i < 7; i++) {
+        const sens = i % 2 === 0 ? "haut" : "bas";
+        const t0 = performance.now();
+        const fait = K.changerNiveau(sens);
+        const ms = performance.now() - t0;
+        const e = K.etat();
+        K.placer(d.x, d.y, 90);
+        let lourdes = 0, pire = 0, avant = performance.now();
+        for (let k = 0; k < 40; k++) {
+          await images(1);
+          const now = performance.now();
+          pire = Math.max(pire, now - avant);
+          if (now - avant > 50) lourdes++;
+          avant = now;
+        }
+        pas.push({ sens: sens, fait: fait, niveau: e.niveau, ms: Math.round(ms), reindex: e.reindex,
+          imagePire: Math.round(pire), imagesLourdes: lourdes, cache: K.etat().cacheNiveaux });
+        await pause(200);
+      }
+      return { pas: pas, geometries: K.etat().geometries };
+    }, avecCache);
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }).catch(function () { /* fermée */ });
+    // Tas JS exact, vue encore ouverte au niveau 1 (caches remplis s'ils sont allumés), après un ramasse-miettes.
+    if (cdp) {
+      await cdp.send("HeapProfiler.enable").catch(function () { /* non pris en charge */ });
+      await cdp.send("HeapProfiler.collectGarbage").catch(function () { /* non pris en charge */ });
+      const u = await cdp.send("Runtime.getHeapUsage").catch(function () { return null; });
+      r.tas = u ? u.usedSize : null;
+    }
+    await page.evaluate(function () { return window.KtaVue3D.fermer(); });
+    return r;
+  };
+  const SANS = await allersRetours(false);
+  const AVEC = await allersRetours(true);
+  // Piège du cache (processeur normal).
+  const I = await page.evaluate(async function () {
+    const K = window.KtaVue3D, P = window.__cnP, rect = window.__cnRect;
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const d = P(1.5, 1);
+    await K.ouvrir({ depart: { x: d.x, y: d.y, cap: 90, niveau: 0 }, commandes: "pave", tuiles: true, distanceVue: 30 });
+    K.reglerNiveauxVus("voisins");
+    K.gesteAnime(false);
+    await pause(300);
+    const attendre = async function (n0) {
+      for (let i = 0; i < 40; i++) {
+        await pause(50);
+        const e = K.etat();
+        if (!e.donnees.attente && e.donnees.refaites > n0) break;
+      }
+      await pause(100);
+      await images(4);
+    };
+    const changer = async function (liste) {
+      const n0 = K.etat().donnees.refaites;
+      window.setStructures(liste);
+      if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan();
+      await attendre(n0);
+    };
+    // Au puits d'abord (un passage se prend de près), puis le passage.
+    const aller = async function (sens) {
+      K.placer(d.x, d.y, 90);
+      await images(2);
+      K.changerNiveau(sens);
+      K.placer(d.x, d.y, 90);
+      await pause(150);
+      await images(6);
+    };
+    // Marche vers l'est le long du tracé du niveau 1 depuis le puits : x atteint (m, relatif) après 4 m demandés.
+    const marche = async function () {
+      K.placer(d.x, d.y, 90);
+      await images(2);
+      for (let i = 0; i < 40; i++) { K.avancer(0.1); await images(1); }
+      return +(K.etat().pos.x / window.APP_CONFIG.scale - (d.x / window.APP_CONFIG.scale - 1.5)).toFixed(2);
+    };
+    const voisin1 = function () {
+      const q = (K.etat().cacheNiveaux.voisinsStructures || []).filter(function (x) { return x[0] === 1; })[0];
+      return q ? q[1] : null;
+    };
+    const out = {};
+    // Chauffe : 0 → 1 → 0 (caches remplis), marche libre au 1.
+    await aller("haut");
+    out.n1 = K.etat().compte.structures;
+    out.marcheLibre = await marche();
+    await aller("bas");
+    out.v1Avant = voisin1();
+    const base = window.getStructures().slice();
+    const cible = base.filter(function (q) { return q.level === 1; })[0];
+    // Déplacé en travers du couloir du niveau 1, à 5 m du puits (même nombre de structures).
+    const purges0 = K.etat().cacheNiveaux.purges;
+    await changer(base.map(function (q) {
+      return q === cible ? Object.assign({}, q, { points: rect(4.5, -2, 6.5, 4) }) : q;
+    }));
+    out.auZeroDeplace = { niveau: K.etat().niveau, purges: K.etat().cacheNiveaux.purges - purges0, v1: voisin1() };
+    await aller("haut");
+    out.n1Deplace = K.etat().compte.structures;
+    out.marcheBarree = await marche();
+    await aller("bas");
+    await changer(base);
+    await aller("haut");
+    out.marcheRemise = await marche();
+    await aller("bas");
+    // Ajouté puis retiré.
+    await changer(base.concat([{ uid: "st_cn_neuf", type: "pilier-1", level: 1, points: rect(-30, 10, -28, 12) }]));
+    out.v1Ajout = voisin1();
+    await aller("haut");
+    out.n1Ajout = K.etat().compte.structures;
+    await aller("bas");
+    await changer(base);
+    out.v1Retrait = voisin1();
+    await aller("haut");
+    out.n1Retrait = K.etat().compte.structures;
+    out.erreurs = 0;
+    await K.fermer();
+    const av = window.__cnAv, C = window.APP_CONFIG;
+    window.effacerReglagesNiveaux("v3d-checkup-cache-niveaux");
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.availableLevels = av.dispo; C.visibleLevels = av.vis; C.activeLevel = av.actif;
+    C.smartNav = av.smart;
+    if (av.vus && typeof window.setVue3DNiveauxVus === "function") window.setVue3DNiveauxVus(av.vus);
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ changement de niveau sur un relevé lourd (" + prep.structures + " structures fictives, × 4)");
+  const med = function (l) { const s = l.slice().sort(function (a, b) { return a - b; }); return s[Math.floor(s.length / 2)]; };
+  const chauds = function (R) { return R.pas.slice(2); };
+  [["caches coupés", SANS], ["caches", AVEC]].forEach(function (q) {
+    q[1].pas.forEach(function (p, i) {
+      console.log("  📏 " + q[0] + ", passage " + (i + 1) + " → " + p.niveau + " : " + p.ms + " ms, pire image ensuite " +
+        p.imagePire + " ms " + JSON.stringify(p.reindex));
+    });
+  });
+  const mSans = med(chauds(SANS).map(function (p) { return p.ms; })), mAvec = med(chauds(AVEC).map(function (p) { return p.ms; }));
+  const iSans = med(chauds(SANS).map(function (p) { return p.imagePire; })), iAvec = med(chauds(AVEC).map(function (p) { return p.imagePire; }));
+  ok("mesure (info) : aller-retour 0 ↔ 1 à chaud, médiane " + mSans + " ms caches coupés → " + mAvec +
+    " ms ; pire image qui suit " + iSans + " → " + iAvec + " ms ; tas JS (après ramasse-miettes) " +
+    (SANS.tas && AVEC.tas ? (SANS.tas / 1048576).toFixed(1) + " → " + (AVEC.tas / 1048576).toFixed(1) + " Mo" : "non mesuré") +
+    " ; géométries GPU " + SANS.geometries + " → " + AVEC.geometries);
+  verifier(SANS.pas.concat(AVEC.pas).every(function (p) { return p.fait; }) &&
+    AVEC.pas.every(function (p, i) { return p.niveau === (i % 2 === 0 ? 1 : 0); }),
+    "cache par niveau : 7 passages par le puits, 0 → 1 → 0 …", AVEC.pas.map(function (p) { return p.niveau; }));
+  const ch = chauds(AVEC);
+  verifier(ch.every(function (p) { return p.cache.rates === ch[0].cache.rates && p.reindex.faces === 0; }) &&
+    ch[ch.length - 1].cache.voisinsRepris - ch[0].cache.voisinsRepris >= ch.length - 1,
+    "cache par niveau : à chaud, un aller-retour ne recalcule rien (ratés constants à " + ch[0].cache.rates +
+    ", faces 0 ms, voisins repris à chaque passage)", ch.map(function (p) { return p.cache; }));
+  verifier(mAvec < mSans * 0.6, "cache par niveau : passage à chaud plus court (" + mSans + " → " + mAvec + " ms)",
+    { sans: mSans, avec: mAvec });
+  verifier(AVEC.pas[1].niveau === 0 && AVEC.pas[1].cache.rates === AVEC.pas[0].cache.rates,
+    "cache par niveau : 1er retour au niveau d'ouverture sans aucun raté (rempli à l'ouverture : " +
+    AVEC.pas[0].cache.rates + " → " + AVEC.pas[1].cache.rates + " ratés, " + AVEC.pas[1].ms + " ms)",
+    { aller: AVEC.pas[0].cache, retour: AVEC.pas[1].cache });
+  // Mémoire bornée : 5 niveaux descendus un à un (▲▼ de la vue d'édition), tas JS après ramasse-miettes à chaque
+  // niveau ; scènes en cache toujours au niveau actif ± 1.
+  const MB = await memoireBornee(page, cdp);
+  if (MB) {
+    const mo = function (o) { return (o / 1048576).toFixed(1); };
+    ok("mesure (info) : tas JS par niveau visité (0 → −4), après ramasse-miettes : " +
+      MB.etapes.map(function (q) { return q.niveau + " " + mo(q.tas) + " Mo"; }).join(", "));
+    const t = MB.etapes.map(function (q) { return q.tas; });
+    verifier(MB.etapes.length === 5 && MB.etapes.every(function (q, i) {
+      return q.niveau === -i && q.scenes.every(function (n) { return Math.abs(n - q.niveau) <= 1; });
+    }), "cache par niveau : 5 niveaux visités, scènes en cache toujours au niveau actif ± 1",
+    MB.etapes.map(function (q) { return [q.niveau, q.scenes]; }));
+    // Le tas du départ porte les sections précédentes (ramasse-miettes lent) : le plafond se juge sur le 5e niveau,
+    // jamais au-dessus du plus haut des trois premiers + 4 Mo.
+    const haut3 = Math.max(t[0], t[1], t[2]);
+    verifier(t.length === 5 && t[4] <= haut3 + 4 * 1048576,
+      "cache par niveau : la mémoire plafonne (5e niveau " + mo(t[4]) + " Mo, au plus haut des trois premiers " +
+      mo(haut3) + " Mo)", MB.etapes);
+  }
+  verifier(I.marcheLibre > 5.3 && I.marcheBarree < 4.6 && I.marcheRemise > 5.3 && I.n1Deplace === I.n1 &&
+    I.auZeroDeplace.purges >= 1,
+    "cache par niveau : pilier DÉPLACÉ au niveau 1 depuis le 0 (même nombre de structures) → il barre le pas en y " +
+    "revenant (" + I.marcheLibre + " → " + I.marcheBarree + " m), remis → libre (" + I.marcheRemise + " m)", I);
+  verifier(Number.isInteger(I.v1Avant) && I.auZeroDeplace.niveau === 0 && I.v1Ajout === I.v1Avant + 1 &&
+    I.n1Ajout === I.n1 + 1 && I.v1Retrait === I.v1Avant && I.n1Retrait === I.n1,
+    "cache par niveau : pilier ajouté au niveau 1 depuis le 0 → dans l'index du voisin (" + I.v1Avant + " → " +
+    I.v1Ajout + ") et dans la scène en y montant ; retiré → absent des deux", I);
+}
+
+// ── Front d'une masse au sol monté partout (KTA_V3D_SEUL=fronttrace ; vue3d.js > _masseBloque, _pas) : masse ¾ sans
+// rampe : hissé sur le dessus (montée animée, comptée) sur le tracé comme à 1 m de lui ; masse 0,9 (0,24 m de vide) :
+// on bute, même sur le tracé (règle du vide) ; creux −½ sans rampe : on y descend en chutant et l'on en ressort
+// hissé. Rendus mixte et structures. ──
+async function sectionFrontTrace(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-front-trace";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const images = async function (n) {
+      for (let i = 0; i < (n || 2); i++) await new Promise(function (ok) { requestAnimationFrame(ok); });
+    };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setStructures([]);
+    window.setEditorPoints([]);
+    window.setRoads([{ uid: "rd_ft", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([
+      { uid: "zn_ft_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) },
+      { uid: "zn_ft_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(15, -6, 27, 6) },
+      { uid: "zn_ft_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(40, -6, 52, 6) }
+    ]);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const out = {};
+    for (const rendu of ["mixte", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-14, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      // Marche vers l'est depuis (x, z) : n pas de 0,1 m ; fin, sol, montées, chute ou montée vue en cours.
+      const marcher = async function (x, z, n, cap) {
+        const p = P(x, z);
+        K.placer(p.x, p.y, cap === undefined ? 90 : cap);
+        await images(3);
+        const m0 = K.etat().masses.montees, c0 = K.etat().masses.chutes;
+        let anime = 0, cams = [];
+        for (let i = 0; i < n; i++) {
+          K.avancer(0.1);
+          await images(1);
+          // Pendant la montée animée, aucun pas n'est pris : on attend qu'elle finisse en notant la caméra.
+          for (let k = 0; k < 40 && K.etat().masses.chute; k++) {
+            anime++;
+            cams.push(K.etat().cameraY);
+            await images(1);
+          }
+        }
+        await pause(80);
+        const e = K.etat();
+        return { x: +(e.pos.x / sc - ox).toFixed(2), sol: e.masses.sol, montees: e.masses.montees - m0,
+          chutes: e.masses.chutes - c0, anime: anime, derniere: e.masses.derniereMontee,
+          monotone: cams.every(function (y, i) { return !i || y >= cams[i - 1] - 1e-6; }), cams: cams.length };
+      };
+      out[rendu] = {
+        trace: await marcher(-14, 0, 60),
+        cote: await marcher(-14, 1, 60),
+        bas: await marcher(11, 0, 60),
+        creux: await marcher(36, 0, 60),
+        sortie: await marcher(43, 0, 60, 270)
+      };
+      await K.fermer();
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ front d'une masse au sol monté partout");
+  Object.keys(R).forEach(function (rendu) {
+    const q = R[rendu], k = "front monté partout, " + rendu + " : ";
+    verifier(q.trace.x > -9.5 && Math.abs(q.trace.sol - 1.8) < 0.02 && q.trace.montees === 1 && q.trace.anime >= 3 &&
+      q.trace.monotone && q.trace.derniere && q.trace.derniere.d >= 0.3 && q.trace.derniere.d <= 0.5,
+      k + "masse ¾ sans rampe : sur le tracé, hissé sur le dessus (1,8 m) en " + (q.trace.derniere && q.trace.derniere.d) +
+      " s, montée animée (" + q.trace.anime + " images), comptée", q.trace);
+    verifier(q.cote.x > -9.5 && Math.abs(q.cote.sol - 1.8) < 0.02 && q.cote.montees === 1 && q.cote.monotone,
+      k + "à 1 m du tracé aussi, hissé sur le dessus (un front se monte partout)", q.cote);
+    verifier(q.bas.x < 15 && q.bas.montees === 0,
+      k + "masse 0,9 (0,24 m de vide) : on bute même sur le tracé (la règle du vide reste)", q.bas);
+    verifier(q.creux.x > 40 && q.creux.chutes === 1 && Math.abs(q.creux.sol + 1.2) < 0.02,
+      k + "creux −½ sans rampe : on y descend en chutant (" + q.creux.sol + " m)", q.creux);
+    verifier(q.sortie.x < 40 && q.sortie.sol === 0 && q.sortie.montees === 1 && q.sortie.monotone,
+      k + "creux −½ sans rampe : on en ressort hissé sur son bord", q.sortie);
+  });
+}
+
+// ── Mur jusqu'au plafond (KTA_V3D_SEUL=murplafond ; vue3d.js > _echelleMurs) : à hauteur d'yeux, mur en ligne et mur
+// polygone montent à h (aucun jour sous le plafond) ; en vue d'édition, ramenés à 0,98 h (sous le pilier qu'ils
+// traversent) sans reconstruire la scène (mêmes tuiles, mêmes maillages) ; retour à hauteur d'yeux : h. Mixte et
+// structures ; capture à hauteur d'yeux. ──
+async function sectionMurPlafond(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-mur-plafond";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setEditorPoints([]);
+    window.setZones([]);
+    window.setRoads([{ uid: "rd_mp", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] }]);
+    // Mur en ligne en travers de la galerie à x = 6, qui traverse un pilier ; mur polygone plus loin.
+    window.setStructures([
+      { uid: "st_mp_l", type: "mur-ligne", level: 0, points: [P(6, -4), P(6, 4)] },
+      { uid: "st_mp_p", type: "pilier-1", level: 0, points: rect(5, 2.5, 7, 4.5) },
+      { uid: "st_mp_m", type: "mur", level: 0, points: rect(12, -3, 12.6, 3) }
+    ]);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const out = {};
+    for (const rendu of ["mixte", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(1, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      const lire = function () {
+        const e = K.etat();
+        return { vue: e.vue, murs: +e.yMax.murs.toFixed(4), opaque: +e.yMax.opaque.toFixed(4), h: e.hauteur,
+          reindex: e.reindexations, construites: e.construites };
+      };
+      const yeux = lire();
+      K.basculerVue();
+      await pause(150);
+      const edition = lire();
+      K.basculerVue();
+      await pause(150);
+      out[rendu] = { yeux: yeux, edition: edition, retour: lire() };
+      await K.fermer();
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ mur jusqu'au plafond");
+  Object.keys(R).forEach(function (rendu) {
+    const q = R[rendu], k = "mur jusqu'au plafond, " + rendu + " : ", h = q.yeux.h;
+    verifier(Math.abs(q.yeux.murs - h) < 1e-4 && Math.abs(q.yeux.opaque - h) < 1e-4,
+      k + "à hauteur d'yeux, haut du mur à h (" + q.yeux.murs + " m = " + h + " m, comme le pilier)", q.yeux);
+    verifier(Math.abs(q.edition.murs - h * 0.98) < 1e-4 && q.edition.vue === "plongee" &&
+      Math.abs(q.edition.opaque - h) < 1e-4,
+      k + "en vue d'édition, ramené à 0,98 h (" + q.edition.murs + " m) sous le pilier qu'il traverse", q.edition);
+    verifier(q.edition.reindex === q.yeux.reindex && q.retour.reindex === q.yeux.reindex &&
+      Math.abs(q.retour.murs - h) < 1e-4,
+      k + "changer de vue ne refait pas la scène (réindexations " + q.yeux.reindex + " → " + q.retour.reindex +
+      "), retour à h", q);
+  });
+  if (CAPTURES) {
+    for (const rendu of ["mixte", "structures"]) {
+      await page.evaluate(async function (rd) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-mur-plafond";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        window._currentLoadedPlanId = PID;
+        window.setEditorPoints([]); window.setZones([]);
+        window.setRoads([{ uid: "rd_mp", type: "principal", level: 0, points: [P(-30, 0), P(30, 0)] }]);
+        window.setStructures([
+          { uid: "st_mp_l", type: "mur-ligne", level: 0, points: [P(6, -4), P(6, 4)] },
+          { uid: "st_mp_p", type: "pilier-1", level: 0, points: rect(5, 2.5, 7, 4.5) }]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, rd);
+        window.setVue3DTextures(true);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        await K.ouvrir({ depart: Object.assign(P(4.2, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+        K.reglerPleinJour(true);   // jonction mur / plafond éclairée (rétabli à la fermeture ci-dessous)
+        K.incliner(30);
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, rendu);
+      await capture(page, "mur-plafond-" + rendu);
+    }
+    await page.evaluate(async function () {
+      window.KtaVue3D.reglerPleinJour(false);
+      await window.KtaVue3D.fermer();
+      window.effacerReglagesNiveaux("v3d-checkup-mur-plafond");
+      window.setStructures([]); window.setRoads([]);
+    });
+  }
+}
+
+// ── Montée et chute relevées image par image (KTA_V3D_SEUL=monteecamera ; vue3d.js > _pas, _solAffiche,
+// _placerCamera) : masses ½ et ¾ sans rampe traversées par un tracé, flèche ↑ tenue (clavier) puis joystick tenu vers
+// l'avant ; la hauteur de la caméra est lue à CHAQUE image pendant la marche. Montée : jamais en haut avant la fin de
+// l'animation (aucune image à la hauteur d'arrivée avant la dernière image de montée), hauteur croissante pendant la
+// montée. Chute (demi-tour depuis le dessus) : décroissante, jamais en bas avant la fin. ──
+async function sectionMonteeCamera(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-montee-camera";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setStructures([]);
+    window.setEditorPoints([]);
+    window.setRoads([{ uid: "rd_mc", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([
+      { uid: "zn_mc_d", type: "masse-sol", level: 0, comble: 0.5, points: rect(-10, -6, 2, 6) },
+      { uid: "zn_mc_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(20, -6, 32, 6) }
+    ]);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    window.setPlanRenduVue3D(null, "mixte");
+    window.KtaGalerie.invalider();
+    // Relevé à chaque image pendant `ms` : hauteur de caméra, sol de la place, animation en cours.
+    const relever = async function (ms) {
+      const out = [], t0 = performance.now();
+      while (performance.now() - t0 < ms) {
+        await new Promise(function (ok) { requestAnimationFrame(ok); });
+        const e = K.etat();
+        out.push({ cam: e.cameraY, sol: e.masses.sol, anim: e.masses.chute, x: +(e.pos.x / sc - ox).toFixed(2) });
+      }
+      return out;
+    };
+    const touche = function (type, key) {
+      window.dispatchEvent(new KeyboardEvent(type, { key: key, code: key, bubbles: true }));
+      document.dispatchEvent(new KeyboardEvent(type, { key: key, code: key, bubbles: true }));
+    };
+    const out = {};
+    for (const cmd of ["pave", "joystick"]) {
+      for (const m of [["d", -14, 90, -8.5], ["t", 16, 90, 21.5]]) {
+        await K.ouvrir({ depart: Object.assign(P(m[1], 0), { cap: m[2] }), commandes: cmd, tuiles: false });
+        await pause(300);
+        // Marche vers l'est (front à x0 de la masse), 2,6 s ; puis demi-tour et retour vers l'ouest (chute).
+        const tenir = async function (ms) {
+          if (cmd === "pave") {
+            touche("keydown", "ArrowUp");
+            const r = await relever(ms);
+            touche("keyup", "ArrowUp");
+            return r;
+          }
+          const z = document.querySelector("#kta-vue3d .kta-v3d-stick-zone"), zr = z.getBoundingClientRect();
+          const x0 = zr.left + 100, y0 = zr.top + zr.height / 2;
+          const ev = function (type, x, y) {
+            z.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch",
+              isPrimary: true, clientX: x, clientY: y }));
+          };
+          ev("pointerdown", x0, y0); ev("pointermove", x0, y0 - 60);
+          const r = await relever(ms);
+          ev("pointerup", x0, y0 - 60);
+          return r;
+        };
+        const montee = await tenir(3500);
+        await pause(300);
+        // Chute : replacé sur le dessus, à 1,5 m du front ouest, tourné vers lui.
+        const h = P(m[3], 0);
+        K.placer(h.x, h.y, 270);
+        await pause(300);
+        const chute = await tenir(2500);
+        out[cmd + "-" + m[0]] = { montee: montee, chute: chute };
+        await K.fermer();
+      }
+    }
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ montée et chute relevées image par image");
+  // Fenêtre de l'animation : des images avant la première image animée jusqu'à la stabilisation au sol d'arrivée.
+  const juger = function (l, monte) {
+    const i0 = l.findIndex(function (q) { return q.anim; });
+    if (i0 < 0) return { anim: false };
+    let i1 = i0;
+    while (i1 + 1 < l.length && l[i1 + 1].anim) i1++;
+    const avant = l[Math.max(0, i0 - 1)].cam, fin = l[Math.min(l.length - 1, i1 + 3)].cam;
+    const seg = l.slice(Math.max(0, i0 - 1), Math.min(l.length, i1 + 4)).map(function (q) { return q.cam; });
+    const sens = monte ? 1 : -1, tol = 1e-3;
+    const monotone = seg.every(function (y, i) { return !i || sens * (y - seg[i - 1]) >= -tol; });
+    // Aucune image à la hauteur d'arrivée (ou au-delà) avant la dernière image animée (seg[i1 − i0 + 1]).
+    const dern = i1 - Math.max(0, i0 - 1);
+    const tot = seg.slice(0, dern).filter(function (y) { return sens * (y - fin) >= -1e-3; }).length;
+    return { anim: true, images: i1 - i0 + 1, avant: +avant.toFixed(3), fin: +fin.toFixed(3), monotone: monotone,
+      enAvance: tot, seg: seg.map(function (y) { return +y.toFixed(3); }) };
+  };
+  Object.keys(R).forEach(function (k) {
+    const m = juger(R[k].montee, true), c = juger(R[k].chute, false);
+    verifier(m.anim && m.fin > m.avant + 0.5 && m.monotone && m.enAvance === 0 && m.images >= 5,
+      "montée relevée image par image, " + k + " : de " + m.avant + " à " + m.fin + " m en " + m.images +
+      " images, croissante, jamais en haut avant la fin", m);
+    verifier(c.anim && c.fin < c.avant - 0.5 && c.monotone && c.enAvance === 0,
+      "chute relevée image par image, " + k + " : de " + c.avant + " à " + c.fin + " m, décroissante, jamais en " +
+      "bas avant la fin", c);
+  });
+}
+
+// ── Masse non exploitée (KTA_V3D_SEUL=nonexploitee ; vue3d.js > _masseNonExploitee, _masseSol) : deux masses ½ côte
+// à côte, remblai et non exploitée (nature "non-exploitee"), traversées par le tracé. 🧱 allumé : remblai = dessus en
+// sol damé (solMasse) et fronts en terre (remblais), non exploitée = dessus au sol normal et fronts en roche ; 🧱 coupé :
+// la couleur de la légende pour les deux (aspect du remblai : tout objet 3D hors POI). Même sol et même montée (hissé) pour les deux ; la nature changée
+// pendant la vue refait la scène (empreinte des données). Trois rendus. ──
+async function sectionMasseNonExploitee(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-non-exploitee";
+    const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(), roads: window.getRoads().slice(),
+      st: window.getStructures().slice(), zn: window.getZones().slice(), smart: C.smartNav };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setStructures([]);
+    window.setEditorPoints([]);
+    window.setRoads([{ uid: "rd_ne", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+    const Z = function (nature) {
+      return [
+        { uid: "zn_ne_r", type: "masse-sol", level: 0, comble: 0.5, points: rect(-14, -6, -2, 6) },
+        Object.assign({ uid: "zn_ne_n", type: "masse-sol", level: 0, comble: 0.5, points: rect(4, -6, 16, 6) },
+          nature ? { nature: nature } : {})
+      ];
+    };
+    window.setZones(Z("non-exploitee"));
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const out = {};
+    for (const rendu of ["mixte", "structures", "galerie"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      out[rendu] = {};
+      for (const tx of [true, false]) {
+        window.setVue3DTextures(tx);
+        window.KtaGalerie.invalider();
+        await K.ouvrir({ depart: Object.assign(P(-20, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+        await pause(250);
+        const asp = K.etat().masses.aspect;
+        const sol = function (x) { const p = P(x, 0); K.placer(p.x, p.y, 90); return K.etat().masses.sol; };
+        const r = { aspect: { r: asp.zn_ne_r || null, n: asp.zn_ne_n || null }, solR: sol(-8), solN: sol(10) };
+        if (tx && rendu === "mixte") {
+          // Montée identique : hissé sur chacune depuis l'ouest, sur le tracé.
+          const monter = async function (x) {
+            const p = P(x, 0);
+            K.placer(p.x, p.y, 90);
+            await pause(60);
+            const m0 = K.etat().masses.montees;
+            for (let i = 0; i < 40; i++) { K.avancer(0.1); await pause(20); }
+            await pause(600);
+            return { montees: K.etat().masses.montees - m0, sol: K.etat().masses.sol };
+          };
+          r.monteR = await monter(-16);
+          r.monteN = await monter(2);
+          // Nature retirée pendant la vue : la scène est refaite, la masse redevient un remblai.
+          const n0 = K.etat().donnees.refaites;
+          window.setZones(Z(null));
+          if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan();
+          for (let i = 0; i < 40 && K.etat().donnees.refaites === n0; i++) await pause(50);
+          await pause(150);
+          r.apresRetrait = K.etat().masses.aspect.zn_ne_n || null;
+          window.setZones(Z("non-exploitee"));
+          if (typeof window.ktaSignalerDonneesPlan === "function") window.ktaSignalerDonneesPlan();
+          const n1 = K.etat().donnees.refaites;
+          for (let i = 0; i < 40 && K.etat().donnees.refaites === n1; i++) await pause(50);
+          await pause(150);
+          r.apresRemise = K.etat().masses.aspect.zn_ne_n || null;
+        }
+        out[rendu][tx ? "textures" : "aplat"] = r;
+        await K.fermer();
+      }
+    }
+    window.setVue3DTextures(true);
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return out;
+  });
+  console.log("§ masse non exploitée");
+  const pr = function (a, b) { return Number.isFinite(a) && Math.abs(a - b) <= 0.011; };
+  Object.keys(R).forEach(function (rendu) {
+    const T = R[rendu].textures, A = R[rendu].aplat, k = "masse non exploitée, " + rendu + " : ";
+    verifier(T.aspect.r && T.aspect.r.dessus === "solMasse" && T.aspect.r.fronts === "remblais" &&
+      T.aspect.n && T.aspect.n.dessus === "sol" && T.aspect.n.fronts === "roche",
+      k + "🧱 : remblai = sol damé + terre (inchangé), non exploitée = sol normal + roche", T.aspect);
+    verifier(A.aspect.r && A.aspect.n && JSON.stringify(A.aspect.n) === JSON.stringify(A.aspect.r) &&
+      A.aspect.n.dessus === "uni" && A.aspect.n.fronts === "uni",
+      k + "🧱 coupé : la non exploitée à la couleur de la légende, comme le remblai (aucune autre différence)", A.aspect);
+    verifier(pr(T.solR, 1.2) && pr(T.solN, 1.2) && pr(A.solR, 1.2) && pr(A.solN, 1.2),
+      k + "même sol pour les deux (1,2 m)", { t: [T.solR, T.solN], a: [A.solR, A.solN] });
+    if (T.monteR) {
+      verifier(T.monteR.montees === 1 && T.monteN.montees === 1 && pr(T.monteR.sol, 1.2) && pr(T.monteN.sol, 1.2),
+        k + "même montée (hissé sur chacune)", { r: T.monteR, n: T.monteN });
+      verifier(T.apresRetrait && T.apresRetrait.fronts === "remblais" && T.apresRemise && T.apresRemise.fronts === "roche",
+        k + "nature changée pendant la vue : scène refaite (remblai, puis roche à nouveau)",
+        { retrait: T.apresRetrait, remise: T.apresRemise });
+    }
+  });
+}
+
+async function capturesMasseNonExploitee(page) {
+  for (const tx of [true, false]) {
+    for (const rendu of ["mixte", "galerie"]) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-non-exploitee";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        window._currentLoadedPlanId = PID;
+        if (!window.__neAv) {
+          window.__neAv = { r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones, p: window.getAllEmbeddedPoints,
+            s: window.getAllEmbeddedStructures };
+        }
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.setStructures([]); window.setEditorPoints([]);
+        window.setRoads([{ uid: "rd_ne", type: "principal", level: 0, points: [P(-40, 0), P(40, 0)] }]);
+        window.setZones([
+          { uid: "zn_ne_r", type: "masse-sol", level: 0, comble: 0.5, points: rect(-14, -6, -2, 6) },
+          { uid: "zn_ne_n", type: "masse-sol", level: 0, comble: 0.5, points: rect(4, -6, 16, 6), nature: "non-exploitee" }]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(c.tx);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        await K.ouvrir({ depart: Object.assign(P(1, 9), { cap: 0 }), commandes: "pave", tuiles: false });
+        K.basculerVue();
+        K.zoomer(1.6);
+        await new Promise(function (ok) { setTimeout(ok, 800); });
+      }, { tx: tx, rendu: rendu });
+      await capture(page, "non-exploitee-" + rendu + (tx ? "" : "-aplat"));
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.setVue3DTextures(true);
+    window.effacerReglagesNiveaux("v3d-checkup-non-exploitee");
+    window.setZones([]); window.setRoads([]);
+    const av = window.__neAv;
+    if (av) {
+      window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+      window.getAllEmbeddedStructures = av.s;
+      window.__neAv = null;
+    }
+  });
+}
+
+async function capturesMasseSol(page) {
+  const vues = [["masse-talus", -33, 0, 90, true], ["masse-sommet", -25, 0, 90, true],
+    ["masse-ramper", -6, 0, 90, true], ["masse-talus-aplat", -33, 0, 90, false],
+    ["creux-bord", -33, 0, 90, true, true], ["creux-fond", -27, -2, 60, true, true],
+    ["creux-bord-aplat", -33, 0, 90, false, true], ["masse-sommet-aplat", -25, 0, 90, false],
+    ["creux-pilier", -28.5, 0.5, 130, true, true],
+    ["creux-pilier-hd", -28.5, 0.5, 130, true, true, true],
+    ["rampe-bas", -33, 0, 90, true, false, false, true], ["rampe-front", -25, -9, 180, true, false, false, true],
+    ["rampe-creux", -33, 0, 90, true, true, false, true], ["rampe-fin", -34, 0, 90, true, false, false, "fin"],
+    ["masse-piliers", -14, 0.3, 90, true, false, false, false, true], ["trace-front", 6, 0.6, 270, true],
+    ["trace-rampe", -33, 0.6, 90, true, false, false, "fin"], ["trace-creux", -33, 0.6, 90, true, true],
+    ["rampe-bas-hd", -33, 0, 90, true, false, true, true], ["masse-sommet-hd", -25, 0, 90, true, false, true]];
+  const lignesSol = await page.evaluate(function () {
+    const v = window.getVue3DLignesSol();
+    window.setVue3DLignesSol(true);
+    return v;
+  });
+  for (const rendu of ["galerie", "mixte", "structures"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-masse";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
+        window._currentLoadedPlanId = PID;
+        const pil = [];
+        if (c.q[5] && c.rendu === "structures") pil.push({ uid: "st_ms_creux", type: "pilier-1", level: 0, points: rect(-26, 3, -24, 5) });
+        // ¾ sans rampe, deux piliers dedans : pleine hauteur partout, à plat contre les piliers.
+        if (c.q[8]) {
+          pil.push({ uid: "st_ms_p1", type: "pilier-1", level: 0, points: rect(-6, -3, -4, -1) });
+          pil.push({ uid: "st_ms_p2", type: "pilier-1", level: 0, points: rect(-2, 1, 0, 3) });
+        }
+        window.setStructures(c.q[8] && c.rendu === "galerie" ? [] : pil);
+        window.setEditorPoints([]);
+        window.setRoads([{ uid: "rd_ms_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        window.setZones([
+          Object.assign({ uid: "zn_ms_d", type: "masse-sol", level: 0, comble: c.q[5] ? -0.5 : 0.5,
+            points: rect(-30, -6, -20, 6) }, c.q[7] === "fin" ? { rampes: [{ bord: 3, fin: P(-27, 0) }] }
+            : c.q[7] ? { rampes: [{ bord: 3 }] } : {}),
+          { uid: "zn_ms_t", type: "masse-sol", level: 0, comble: 0.75, points: rect(-10, -6, 2, 6) }
+        ]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(c.q[4]);
+        window.setVue3DTexturesHD(!!c.q[6]);
+        window.ktaSetActiveLevel(0);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3], niveau: 0 }, commandes: "pave", tuiles: false });
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function (v) {
+    await window.KtaVue3D.fermer();
+    window.setVue3DTextures(true);
+    window.setVue3DTexturesHD(false);
+    window.setVue3DLignesSol(v);
+    window.effacerReglagesNiveaux("v3d-checkup-masse");
+  }, lignesSol);
+}
+
+// Mesure (KTA_V3D_SEUL=massesol KTA_V3D_PERF=masse) : téléphone émulé (iPhone 393 × 852 × 3, processeur ralenti × 4,
+// Chromium), réseau de galeries en grille (9 galeries est-ouest de 100 m, 6 nord-sud) en mixte, 🧱 allumé, sans puis
+// avec 18 masses au sol (8 × 6 m, ¼ / ½ / ¾) ; Textures HD coupées puis allumées : ouverture, construction des
+// masses, triangles, images/s en rotation continue 3 s.
+async function perfMasseSol(nav) {
+  const chromiumNav = nav.browserType().name() === "chromium";
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-masse-perf", [0], { "0": -25 }, { "0": 2.4 }, function () {
+    const P = window.__fxP, roads = [], masses = [];
+    for (let i = 0; i < 9; i++) {
+      const z = -40 + i * 10;
+      roads.push({ uid: "rd_mp_ew" + i, type: "principal", level: 0, points: [P(-50, z), P(50, z)] });
+      [-25, 15].forEach(function (x, j) {
+        masses.push({ uid: "zn_mp_" + i + "_" + j, type: "masse-sol", level: 0, comble: [0.25, 0.5, 0.75][(i + j) % 3],
+          points: [P(x, z - 3), P(x + 8, z - 3), P(x + 8, z + 3), P(x, z + 3)] });
+      });
+    }
+    for (let k = 0; k < 6; k++) {
+      const x = -50 + k * 20;
+      roads.push({ uid: "rd_mp_ns" + k, type: "secondaire", level: 0, points: [P(x, -40), P(x, 40)] });
+    }
+    window.setRoads(roads);
+    window.__mpMasses = masses;
+  }, chromiumNav ? { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
+    : undefined);
+  const page = t.page;
+  let cdp = null;
+  try {
+    if (chromiumNav) {
+      cdp = await t.ctx.newCDPSession(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    }
+    const lignes = [];
+    for (const hd of [false, true]) {
+      for (const avec of [false, true]) {
+        const m = await page.evaluate(async function (a) {
+          const K = window.KtaVue3D;
+          window.setZones(a.avec ? window.__mpMasses.slice() : []);
+          window.setVue3DTextures(true);
+          window.setVue3DTexturesHD(a.hd);
+          // Une ouverture de chauffe, puis la médiane de 3 (la dernière reste ouverte pour la rotation).
+          await window.__fxOuvrir(-30, 0, 90, 0, "mixte");
+          const t = [];
+          let e = null;
+          for (let i = 0; i < 3; i++) { e = await window.__fxOuvrir(-30, 0, 90, 0, "mixte"); t.push(e.msOuverture); }
+          t.sort(function (p, q) { return p - q; });
+          return { ms: t[1], masses: e.masses, hd: JSON.stringify(K.textures().hd) };
+        }, { avec: avec, hd: hd });
+        await page.evaluate(function () { window.__v3dImg0 = window.KtaVue3D.etat().images; });
+        await page.keyboard.down("ArrowLeft");
+        await page.waitForTimeout(3000);
+        await page.keyboard.up("ArrowLeft");
+        const n = await page.evaluate(async function () {
+          const k = window.KtaVue3D.etat().images - window.__v3dImg0;
+          await window.KtaVue3D.fermer();
+          return k;
+        });
+        m.ips = Math.round(n / 3);
+        lignes.push(m);
+        console.log("  📏 masse au sol, téléphone × 4, HD " + (hd ? "allumées" : "coupées") + ", " +
+          (avec ? "18 masses" : "sans masse") + " : ouverture " + m.ms + " ms, masses " + m.masses.n + " (" +
+          m.masses.triangles + " triangles, max " + m.masses.triMax + " par zone, construction " + m.masses.ms +
+          " ms), " + m.ips + " images/s (HD effective : " + m.hd + ")");
+      }
+    }
+    verifier(lignes.every(function (l) { return l.ips > 0; }) && lignes[1].masses.n === 18 &&
+      lignes[1].masses.triMax <= 2000, "mesure (info) : masse au sol au téléphone × 4, rotation continue mesurée",
+      lignes);
+  } finally {
+    if (cdp) await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }).catch(function () { /* fermée */ });
+    await page.evaluate(function () { window.setVue3DTexturesHD(false); }).catch(function () { /* fermée */ });
+    await t.ctx.close();
+  }
+}
+
+// ── 24 sexies. Comblé et effondrement creusés le long d'un tracé (révision du 14/11/2026) ─────────────────────────
+// Tracé principal d'ouest en est au niveau 0 (hauteur 2,4 m) ; Comblé de x −30 à −20 et effondrement de 0 à 10 (z −6
+// à 6) en travers ; inaccessible de 25 à 30. Dans les trois rendus : on marche le long du tracé à travers le Comblé et
+// l'effondrement, l'inaccessible arrête ; un pas de côté hors du couloir (emprise du tracé) bute ; départ posé dans la
+// zone hors couloir = ramené ; Comblé jusqu'au ciel (sous le plafond), effondrement à 60 % ; faces creusées le long
+// du couloir ; l'itinéraire ne passe plus par-dessus (aucun volume enjambé).
+async function sectionComble(page) {
+  const R = await page.evaluate(async function () {
+    const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale;
+    const W = window.PLAN_CONFIG.plan.imageWidth, H = window.PLAN_CONFIG.plan.imageHeight;
+    const ox = W / 2 / sc, oz = H / 2 / sc, PID = "v3d-checkup-comble";
+    const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    const av = { ml: C.multiLevel, r: window.getAllEmbeddedRoads, z: window.getAllEmbeddedZones,
+      p: window.getAllEmbeddedPoints, s: window.getAllEmbeddedStructures, id: window._currentLoadedPlanId,
+      smart: C.smartNav, rendu: window.getPlanRenduVue3D(), pts: window.getEditorPoints().slice(),
+      roads: window.getRoads().slice(), st: window.getStructures().slice(), zn: window.getZones().slice() };
+    const vide = function () { return []; };
+    window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+    window.getAllEmbeddedStructures = vide;
+    window.__v3dReleve.aligner();
+    window._currentLoadedPlanId = PID;
+    C.multiLevel = false; C.smartNav = false;
+    if (K.etat().ouvert !== false) await K.fermer();
+    window.setEditorPoints([]); window.setStructures([]);
+    window.setRoads([{ uid: "rd_cb_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+    window.setZones([
+      { uid: "zn_cb_c", type: "remblais", level: 0, points: rect(-30, -6, -20, 6) },
+      { uid: "zn_cb_e", type: "effondrement", level: 0, points: rect(0, -6, 10, 6) },
+      { uid: "zn_cb_i", type: "inaccessible", level: 0, points: rect(25, -6, 30, 6) }
+    ]);
+    window.effacerReglagesNiveaux(PID);
+    window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+    const lire = function () {
+      const e = K.etat();
+      return { x: +(e.pos.x / sc - ox).toFixed(3), z: +(e.pos.y / sc - oz).toFixed(3) };
+    };
+    const marche = async function (x, z, cap, n, pas) {
+      const d = P(x, z);
+      K.placer(d.x, d.y, cap);
+      await pause(30);
+      let arrets = 0;
+      for (let i = 0; i < n; i++) { if (!K.avancer(pas || 0.2)) arrets++; }
+      await pause(30);
+      return Object.assign(lire(), { arrets: arrets });
+    };
+    const r = { cas: [] };
+    window.setVue3DTextures(true);
+    for (const rendu of ["galerie", "mixte", "structures"]) {
+      window.setPlanRenduVue3D(null, rendu);
+      window.KtaGalerie.invalider();
+      await K.ouvrir({ depart: Object.assign(P(-40, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(300);
+      const e = K.etat(), b = e.boites || {};
+      const c = { rendu: e.rendu, hauteur: e.hauteur, creusees: e.zonesCreusees, faces: e.facesRemblais,
+        facesEb: e.facesEboulis, yComble: b.remblais ? +b.remblais.y1.toFixed(3) : null,
+        yEboulis: b.effondrement ? +b.effondrement.y1.toFixed(3) : null };
+      c.long = await marche(-40, 0, 90, 400);               // le long du tracé : Comblé, effondrement, puis inaccessible
+      c.cote = await marche(-25, 0, 180, 40, 0.1);          // dans le Comblé, pas de côté hors du couloir
+      c.coteEb = await marche(5, 0, 180, 40, 0.1);          // dans l'effondrement, idem
+      c.dansCouloir = window.KtaGalerie.dansCouloir(P(-25, 0).x, P(-25, 0).y, 0);
+      c.horsCouloir = window.KtaGalerie.dansCouloir(P(-25, 3).x, P(-25, 3).y, 0);
+      c.zoneDure = window.KtaGalerie.dansZone(P(27, 0).x, P(27, 0).y, 0, rendu);
+      c.zoneCouloir = window.KtaGalerie.dansZone(P(-25, 0).x, P(-25, 0).y, 0, rendu);
+      await K.fermer();
+      // Départ posé dans le Comblé hors du couloir : ramené là où l'on tient.
+      await K.ouvrir({ depart: Object.assign(P(-25, 4), { cap: 90 }), commandes: "pave", tuiles: false });
+      await pause(200);
+      c.depart = Object.assign(lire(), { degage: K.etat().degagements });
+      await K.fermer();
+      r.cas.push(c);
+    }
+    // Itinéraire à travers le Comblé : plus aucun volume enjambé (ruban au sol, dans la galerie creusée).
+    window.setPlanRenduVue3D(null, "mixte");
+    await K.ouvrir({ depart: Object.assign(P(-40, 0), { cap: 90 }), commandes: "pave", tuiles: false });
+    await pause(200);
+    r.volumesIti = K.etat().volumesIti;
+    await K.fermer();
+    window.effacerReglagesNiveaux(PID);
+    window.getAllEmbeddedRoads = av.r; window.getAllEmbeddedZones = av.z; window.getAllEmbeddedPoints = av.p;
+    window.getAllEmbeddedStructures = av.s; window._currentLoadedPlanId = av.id;
+    window.__v3dReleve.aligner();
+    C.multiLevel = av.ml; C.smartNav = av.smart;
+    window.setPlanRenduVue3D(null, av.rendu);
+    window.setRoads(av.roads); window.setStructures(av.st); window.setZones(av.zn); window.setEditorPoints(av.pts);
+    window.KtaGalerie.invalider();
+    return r;
+  });
+  const pr = function (a, b, tol) { return Number.isFinite(a) && Math.abs(a - b) <= (tol || 0.011); };
+  R.cas.forEach(function (c) {
+    const k = "Comblé, " + c.rendu;
+    verifier(c.long.x > 23 && c.long.x < 25 && c.long.arrets > 0,
+      k + " : le long du tracé, on traverse le Comblé et l'effondrement ; l'inaccessible arrête (x = " + c.long.x + ")",
+      c.long);
+    verifier(c.cote.z > 0.3 && c.cote.z < 1.25 && c.cote.arrets > 0 && c.coteEb.z < 1.25 && c.coteEb.arrets > 0,
+      k + " : un pas de côté hors du couloir bute dans le Comblé et l'effondrement (z " + c.cote.z + " / " +
+      c.coteEb.z + ")", { cote: c.cote, coteEb: c.coteEb });
+    verifier(c.dansCouloir && !c.horsCouloir && c.zoneDure && !c.zoneCouloir,
+      k + " : couloir = emprise du tracé ; dans le couloir, la zone ne bouche plus ; l'inaccessible bouche toujours", c);
+    verifier(Math.abs(c.depart.z) < 1.25 || c.depart.degage > 0,
+      k + " : départ dans le Comblé hors du couloir → ramené", c.depart);
+    if (c.rendu !== "galerie") {
+      verifier(pr(c.yComble, c.hauteur - 0.004, 0.01) && pr(c.yEboulis, c.hauteur * 0.6, 0.01) && c.creusees >= 2,
+        k + " : Comblé jusqu'au ciel (" + c.yComble + " m), effondrement à 60 % (" + c.yEboulis + " m), creusés le " +
+        "long du tracé", c);
+    } else {
+      verifier(c.creusees >= 2 && c.faces > 0 && c.facesEb > 0,
+        k + " : parois du tube tapissées de remblai et d'éboulis dans les zones (galerie creusée)", c);
+    }
+  });
+  verifier(R.volumesIti === 0, "Comblé : l'itinéraire n'enjambe plus aucun volume (ruban au sol dans la galerie creusée)",
+    R.volumesIti);
+}
+
+// Captures à hauteur d'yeux (KTA_V3D_CAPTURES) : entrée du couloir dans le Comblé, dedans, effondrement, dans les trois
+// rendus.
+async function capturesComble(page) {
+  const vues = [["comble-entree", -34, 0, 90], ["comble-dedans", -26, 0.3, 80], ["comble-effondrement", -4, 0, 90],
+    ["comble-cote", -25, 4.5, 270]];
+  for (const rendu of ["galerie", "mixte", "structures"]) {
+    for (const q of vues) {
+      await page.evaluate(async function (c) {
+        const K = window.KtaVue3D, C = window.APP_CONFIG, sc = C.scale, PID = "v3d-checkup-comble";
+        const ox = window.PLAN_CONFIG.plan.imageWidth / 2 / sc, oz = window.PLAN_CONFIG.plan.imageHeight / 2 / sc;
+        const P = function (x, z) { return { x: (ox + x) * sc, y: (oz + z) * sc }; };
+        const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+        const vide = function () { return []; };
+        window.getAllEmbeddedRoads = window.getAllEmbeddedZones = window.getAllEmbeddedPoints = vide;
+        window.getAllEmbeddedStructures = vide;
+        window.__v3dReleve.aligner();
+        window._currentLoadedPlanId = PID;
+        window.setStructures([]); window.setEditorPoints([]);
+        window.setRoads([{ uid: "rd_cb_0", type: "principal", level: 0, points: [P(-60, 0), P(60, 0)] }]);
+        window.setZones([
+          { uid: "zn_cb_c", type: "remblais", level: 0, points: rect(-30, -6, -20, 6) },
+          { uid: "zn_cb_e", type: "effondrement", level: 0, points: rect(0, -6, 10, 6) }
+        ]);
+        window.setPlanHauteursNiveaux(PID, { "0": 2.4 });
+        window.setPlanRenduVue3D(null, c.rendu);
+        window.setVue3DTextures(true);
+        window.KtaGalerie.invalider();
+        if (K.etat().ouvert !== false) await K.fermer();
+        const d = P(c.q[1], c.q[2]);
+        await K.ouvrir({ depart: { x: d.x, y: d.y, cap: c.q[3] }, commandes: "pave", tuiles: false });
+        await new Promise(function (ok) { setTimeout(ok, 700); });
+      }, { q: q, rendu: rendu });
+      await capture(page, q[0] + "-" + rendu);
+    }
+  }
+  await page.evaluate(async function () {
+    await window.KtaVue3D.fermer();
+    window.effacerReglagesNiveaux("v3d-checkup-comble");
+  });
+}
+
 async function capturesPente(page) {
   const vues = [["pente-entree", 0, -3, 180, 0], ["pente-dedans", 0, 3, 180, 0], ["pente-bas", 0, 9, 180, 0],
     ["pente-du-bas", 0, 15, 0, -1], ["pente-montee", 0, 9, 0, -1], ["pente-edition", 3, -2, 200, 0, true]];
@@ -8762,21 +10643,16 @@ async function sectionMesures3D(nav, mode) {
     await ouvrirPanneauMesure();
     await tapEcran(await sousAction("ui.subaction.mesureVolume"));
     await page.waitForTimeout(300);
+    // Secteur du volume : par plan et par niveau (volumeExploite.js), aucun au départ pour ce relevé.
     const v1 = await page.evaluate(function () {
-      const b = document.querySelector("#kta-confirm-oui");
-      const m = b && b.closest(".kta-readme-modal-overlay");
-      let dessus = false;
-      if (b) {
-        const r = b.getBoundingClientRect(), el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        dessus = el === b || (!!el && b.contains(el));
-      }
-      return { message: m ? m.textContent.indexOf(window.I18n.t("volume.sansSecteur")) >= 0 : false,
-        modale: !!document.getElementById("kta-volume-modal"), dessus: dessus };
+      const m = document.getElementById("kta-volume-modal");
+      const msg = m && m.querySelector(".kta-volume-sans");
+      return { message: !!msg && msg.textContent === window.I18n.t("volume.sansSecteur"), modale: !!m,
+        dessiner: !!(m && m.querySelector('[data-va="dessiner"][data-vn="-1"]')) };
     });
-    verifier(v1.message && !v1.modale && v1.dessus,
-      nom + "⛏️ sans surface ♦️ : le message de la carte, par-dessus la vue", v1);
-    await tapEcran(await centre("#kta-confirm-oui"));
-    await page.waitForTimeout(800);
+    const vz1 = await dessus("#kta-volume-modal");
+    verifier(v1.message && v1.modale && v1.dessiner && !!vz1 && vz1.dessus,
+      nom + "⛏️ sans secteur : la fenêtre le dit et propose « Dessiner » au niveau de la vue, par-dessus la vue", v1);
     // Surface ♦️ posée au toucher dans la vue : rectangle de 4 × 3 m autour du point visé ; pilier de 1 m² au −1
     // dedans (compté), pilier de 1,96 m² au 0 à côté (pas compté : la carte est au 0, la vue au −1).
     const S = await page.evaluate(function () {
@@ -8790,9 +10666,10 @@ async function sectionMesures3D(nav, mode) {
       return { cx: cx, cz: cz };
     });
     await page.waitForTimeout(900);   // scène refaite (structures changées)
-    await ouvrirPanneauMesure();
-    await tapEcran(await sousAction("ui.subaction.mesureSurface"));
-    await page.waitForTimeout(800);   // le toucher qui ferme le panneau d'un groupe est avalé (DESSIN_AVALER)
+    // « Dessiner le secteur » (niveau −1, celui de la vue) : la fenêtre se cache, le geste de ♦️ Surface s'arme DANS
+    // la vue (KtaSelectionZone), les touchers posent les sommets, « Valider » rend la fenêtre.
+    await tapEcran(await centre('#kta-volume-modal [data-va="dessiner"][data-vn="-1"]'));
+    await page.waitForTimeout(800);
     const coins = [[-2, -1.5], [2, -1.5], [2, 1.5], [-2, 1.5]];
     for (const c of coins) {
       const ec = await page.evaluate(function (a) {
@@ -8808,12 +10685,14 @@ async function sectionMesures3D(nav, mode) {
       await page.waitForTimeout(250);
     }
     const nSurf = await page.evaluate(function () { return (window.getMeasurePointsSurface() || []).length; });
-    await ouvrirPanneauMesure();
-    await tapEcran(await sousAction("ui.subaction.mesureVolume"));
+    const vzb = await dessus(".kta-volume-dessin-barre [data-vd=\"valider\"]");
+    verifier(!!vzb && vzb.dessus, nom + "⛏️ : barre du dessin (Valider) par-dessus la vue", vzb);
+    await tapEcran(await centre(".kta-volume-dessin-barre [data-vd=\"valider\"]"));
     await page.waitForTimeout(400);
     const v2 = await page.evaluate(function () {
       const m = document.getElementById("kta-volume-modal"), V = window.KtaVolumeExploite;
-      const pts = window.getMeasurePointsSurface(), sc = window.APP_CONFIG.scale;
+      const pts = window.KtaVolumeExploite.secteurs.lire(window._currentLoadedPlanId).niveaux["-1"] || [];
+      const sc = window.APP_CONFIG.scale;
       const calc = function (n) {
         return V.calculer({ secteur: pts, structures: window.getStructures(), zones: [], niveau: n, scale: sc,
           hauteur: 2 });
@@ -8827,14 +10706,16 @@ async function sectionMesures3D(nav, mode) {
       };
       const nv = m && m.querySelector(".kta-volume-niveau");
       return { modale: !!m, niveau: nv ? nv.textContent : null,
-        attenduNiveau: window.I18n.t("volume.niveau", { lvl: "−1" }),
+        attenduNiveau: window.I18n.t("volume.niveauCalcul", { liste: "−1" }), nSecteur: pts.length,
+        mesureRendue: (window.getMeasurePointsSurface() || []).length === 0,
         secteurM2: r.secteurM2, nbPiliers: r.nbPiliers, piliersNiveau0: fmt(r0.piliersM2), exploite: td("volume.exploite"),
         attenduExploite: fmt(r.exploiteM2), piliers: td("volume.piliers"),
         attenduPiliers: window.I18n.t("volume.piliersVal", { s: fmt(r.piliersM2), n: r.nbPiliers }) };
     });
     const vz2 = await dessus("#kta-volume-modal");
-    verifier(nSurf === 4 && v2.modale && !!vz2 && vz2.dessus,
-      nom + "⛏️ : surface ♦️ de 4 sommets posée dans la vue, panneau du volume par-dessus la vue", { nSurf: nSurf, vz2: vz2 });
+    verifier(nSurf === 4 && v2.nSecteur === 4 && v2.mesureRendue && v2.modale && !!vz2 && vz2.dessus,
+      nom + "⛏️ : secteur de 4 sommets dessiné dans la vue (geste de ♦️), mesure rendue, panneau par-dessus la vue",
+      { nSurf: nSurf, nSecteur: v2.nSecteur, mesureRendue: v2.mesureRendue, vz2: vz2 });
     verifier(Math.abs(v2.secteurM2 - 12) < 0.4 && v2.nbPiliers === 1 &&
       v2.exploite === v2.attenduExploite && v2.piliers === v2.attenduPiliers && v2.piliers.indexOf(v2.piliersNiveau0) < 0 && v2.niveau === v2.attenduNiveau,
     nom + "⛏️ : volume sur la surface dessinée en 3D (" + (v2.secteurM2 || 0).toFixed(2) + " m²), au niveau de la vue " +
@@ -8849,6 +10730,7 @@ async function sectionMesures3D(nav, mode) {
     verifier(erreurs.length === 0, nom + "aucune erreur de page", erreurs.slice(0, 3));
     await page.evaluate(function () {
       window.setMeasurePointsSurface([]);
+      window.KtaVolumeExploite.secteurs.retirer(window._currentLoadedPlanId);
       window.setStructures([]); window.setRoads([]);
       return window.KtaVue3D.fermer();
     });
@@ -10082,11 +11964,11 @@ async function sectionTexturesSol(nav) {
     nom + "mur en ligne à la taille réelle de la pierre des parois (" + Ws.uv + " motif par mètre, en long, en " +
       "hauteur et sur le dessus)", aL.slice(0, 3));
     // Tête sur une assise entière : v = − MUR_PIERRE.tete (m) au sommet du mur, juste sous un lit du motif.
-    const hs = Ws.hauteur * 0.98;
+    const hs = Ws.hauteur;   // à hauteur d'yeux, jusqu'au plafond (vue3d.js > _echelleMurs)
     const enTete = aL.filter(function (a) { return a.sens === "v" && Math.abs(a.y - hs) < 1e-3; });
     verifier(Math.abs(Ws.yMax.murs - hs) < 1e-3 && pm.tete > 0.018 && pm.tete < 0.1 && enTete.length > 0 &&
       enTete.every(function (a) { return Math.abs(a.v0 + pm.tete) < 1e-4; }),
-    nom + "mur en ligne : monte à 98 % de la hauteur et finit sur une assise entière (tête à " + pm.tete +
+    nom + "mur en ligne : monte jusqu'au plafond et finit sur une assise entière (tête à " + pm.tete +
       " m sous un lit, " + enTete.length + " arêtes)", { hs: hs, yMax: Ws.yMax, tete: enTete.slice(0, 3) });
     verifier(Ws.teintes.join() === "#808080,#ffffff",
       nom + "mur en ligne : ombre de contact au pied (teinte × 0,5), blanc au-delà, aucune nuance par structure",
@@ -11660,6 +13542,103 @@ async function sectionMkmgNiveaux(nav) {
 // KTA_V3D_SEUL=mkmg) ──────────────────────────────────────────────────────────────────────────────────────────────
 // Plan FICTIF en mémoire : une galerie est-ouest de 160 m (un sommet tous les 5 m), un POI à 70 m du départ. Partie en
 // facile, monde vidé, chrono repoussé ; chaque situation est posée par KtaAddons.mkmg.essai.
+// ── 23 ter. Jeu sur une masse au sol (KTA_V3D_SEUL=mkmgmasse ; vue3d.js > _ctxGreffe : ctx.sol, ctx.bloque ;
+// addons/mkmg) : plan FICTIF en mémoire, masse +½ et creux −½ traversés par le tracé ; entités du jeu (rampant,
+// égaré, butin) posées dans chacune : leur maillage au sol local (±1,25 m), suivi en marchant ; puis la prise seule :
+// ctx.sol = le sol local, ctx.bloque refuse d'entrer dans une masse 0,9 (vide 0,25 m < 0,5 m, la règle du pas) et
+// laisse monter sur la ½. ──
+async function sectionMkmgMasse(nav) {
+  const nom = "§ 23 ter ";
+  console.log("§ 23 ter — jeu sur une masse au sol : entités et prise (ctx.sol, ctx.bloque)");
+  const t = await pageNiveauxFictifs(nav, "v3d-checkup-mkmg-masse", [0], { "0": -25 }, { "0": 2.5 }, function () {
+    const P = window.__fxP, pts = [];
+    const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
+    for (let x = -80; x <= 80; x += 5) pts.push(P(x, 0));
+    window.setRoads([{ uid: "rd_mm", type: "principal", level: 0, points: pts }]);
+    window.setZones([
+      { uid: "zn_mm_p", type: "masse-sol", level: 0, comble: 0.5, points: rect(-10, -6, 2, 6) },
+      { uid: "zn_mm_n", type: "masse-sol", level: 0, comble: -0.5, points: rect(20, -6, 32, 6) },
+      { uid: "zn_mm_b", type: "masse-sol", level: 0, comble: 0.9, points: rect(50, -6, 62, 6) }
+    ]);
+    window.setEditorPoints([Object.assign({ id: "mm1", nom: "Salle fictive", uid: "pt_mm_1", level: 0, tags: [] },
+      P(70, 0))]);
+  });
+  const page = t.page;
+  try {
+    const r = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      const pause = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+      const q = function (s) { return document.querySelector(s); };
+      const M = function () { return window.KtaAddons && window.KtaAddons.mkmg; };
+      const appui = function (b) {
+        b.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 2 }));
+        window.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 2 }));
+      };
+      await window.__fxOuvrir(-30, 0, 90, 0, "mixte");
+      appui(q('#kta-vue3d [data-v3d="av"]'));
+      for (let k = 0; k < 6; k++) { appui(q('#kta-vue3d [data-v3d="ar"]')); await pause(30); }
+      for (let k = 0; k < 60 && !q("#kta-confirm-oui"); k++) await pause(50);
+      if (!q("#kta-confirm-oui")) return { erreur: "pas de confirmation" };
+      q("#kta-confirm-oui").click();
+      for (let k = 0; k < 100 && !(M() && M().etat().cible); k++) await pause(30);
+      const X = M().essai, out = {};
+      X.vider();
+      // Entités posées : rampant sur la ½ (x −4), égaré dans le creux (x 26), butin (pile) sur chacune.
+      const a = P(-4, 2), b = P(26, -2), c = P(-6, -3), d = P(28, 3);
+      X.poser("rampant", a.x, a.y);
+      X.poser("egare", b.x, b.y);
+      X.poser("pile", c.x, c.y);
+      X.poser("pile", d.x, d.y);
+      await window.__fxImages(4);
+      const lire = function () {
+        const e = M().etat();
+        return { ennemis: e.ennemis.map(function (o) { return { type: o.type, rel: window.__fxRel(o), y: o.yMesh }; }),
+          objets: e.objets.map(function (o) { return { type: o.type, rel: window.__fxRel(o), y: o.yMesh }; }) };
+      };
+      out.poses = lire();
+      // Elles marchent vers le joueur, placé sur la ½ à 3 m du rampant : relevé après 1,5 s.
+      const j = P(-1, 2);
+      K.placer(j.x, j.y, 270);
+      await pause(1500);
+      out.marche = lire();
+      M().quitter();
+      await pause(300);
+      // La prise seule : une greffe d'essai lit ctx.sol et ctx.bloque.
+      let cx = null;
+      const deg = K.greffer({ nom: "v3d-checkup-prise-sol", scene: function (ctx) { cx = ctx; } });
+      await window.__fxImages(2);
+      const p0 = P(-20, 0), p05 = P(-4, 0), pn = P(26, 0), pb = P(56, 0), avant05 = P(-11, 0), avantB = P(49, 0);
+      out.prise = { sol0: cx.sol(p0.x, p0.y), solPlus: cx.sol(p05.x, p05.y), solMoins: cx.sol(pn.x, pn.y),
+        solB: cx.sol(pb.x, pb.y),
+        monteDemi: cx.bloque(avant05.x, avant05.y, P(-9.6, 0).x, P(-9.6, 0).y),
+        entreB: cx.bloque(avantB.x, avantB.y, P(50.4, 0).x, P(50.4, 0).y),
+        fronts: K.etat().masses.fronts };
+      if (deg) deg();
+      await K.fermer();
+      return out;
+    });
+    const pr = function (a, b) { return Number.isFinite(a) && Math.abs(a - b) <= 0.011; };
+    if (r.erreur) { verifier(false, nom + "jeu lancé", r); return; }
+    const sur = function (l, x) { return l.filter(function (o) { return Math.abs(o.rel[0] - x) < 2.5; }); };
+    const E = r.poses;
+    const rp = sur(E.ennemis, -4)[0], eg = sur(E.ennemis, 26)[0], b1 = sur(E.objets, -6)[0], b2 = sur(E.objets, 28)[0];
+    verifier(rp && eg && b1 && b2 && pr(rp.y, 1.25) && pr(eg.y, -1.25) && pr(b1.y, 1.25) && pr(b2.y, -1.25),
+      nom + "entités posées sur le sol local : rampant et butin sur la masse +½ (1,25 m), égaré et butin au fond du " +
+      "creux −½ (−1,25 m)", E);
+    const rm = r.marche.ennemis.filter(function (o) { return o.type === "rampant"; })[0];
+    verifier(rm && Math.abs(rm.rel[0] - (-4)) > 0.2 && pr(rm.y, rm.rel[0] > -10 && rm.rel[0] < 2 ? 1.25 : 0),
+      nom + "en marchant vers le joueur, le rampant reste posé sur le sol local (" + (rm && rm.y) + " m)", r.marche);
+    const P_ = r.prise;
+    verifier(pr(P_.sol0, 0) && pr(P_.solPlus, 1.25) && pr(P_.solMoins, -1.25) && pr(P_.solB, 2.25),
+      nom + "prise : ctx.sol = sol local (0 / 1,25 / −1,25 / 2,25 m)", P_);
+    verifier(P_.monteDemi === false && P_.entreB === true,
+      nom + "prise : ctx.bloque laisse monter sur la ½ et refuse d'entrer dans la 0,9 (règle du vide du pas)", P_);
+    verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
+  } finally {
+    await t.ctx.close();
+  }
+}
+
 async function sectionMkmgArsenal(nav) {
   const nom = "§ 23 bis ";
   console.log("§ 23 bis — jeu : silhouette (deux allures, présence, contact, tir, pile), fumigène, coups portés, écran de fin");
@@ -12801,7 +14780,7 @@ async function sectionZoneJonction(nav) {
         "2,5 m au-dessus), zone sans tracé à plat", { a: r.a, b: r.b, c: r.c, seule: r.seule });
       verifier(!!p0 && !!pm1 && !!mur && proche(p0.yMin, -6.5 / 6, 0.03) && proche(p0.yMax, -5.5 / 6 + 2.5, 0.03) &&
         proche(pm1.yMin, -14.5 / 6, 0.03) && proche(pm1.yMax, -13.5 / 6 + 2.5, 0.03) && proche(mur.yMin, -28.2 / 6, 0.03) &&
-        proche(mur.yMax, -21.8 / 6 + 2.5 * 0.98, 0.03),
+        proche(mur.yMax, -21.8 / 6 + 2.5, 0.03),
         nom + rendu + " : piliers du 0 et du −1 posés sur le sol en pente, jusqu'au plafond en pente ; mur en ligne le " +
         "long du tracé qui suit la pente", { p0: p0, pm1: pm1, mur: mur });
       verifier(r.paroisZone === 0, nom + rendu + " : galerie inclinée sans paroi dans la zone (la chambre la remplace)",
@@ -13488,6 +15467,61 @@ async function sectionMiniCarte(nav) {
       "agrandissement compris : " + c.marche.msFondMax + " ms au plus pour un fond)");
     verifier(c.marche.majs >= 5 && c.marche.majs <= Math.ceil(c.marche.ms / 100) + 2 && c.marche.fonds <= 2,
       nom + "mises à jour bornées à 10 par seconde, fond refait seulement au bord de sa fenêtre", c.marche);
+    // ── Zones : masse au sol selon son cran (obstacle seulement sous 0,5 m de vide), rampe en chevrons ; Comblé
+    // traversé par le tracé : couloir laissé ouvert (vue3d.js > _masseMiniCarte, _donneesMiniCarte) ──
+    const zm = await page.evaluate(async function () {
+      const K = window.KtaVue3D, P = window.__fxP;
+      const carre = function (x, z, c) { return [P(x - c, z - c), P(x + c, z - c), P(x + c, z + c), P(x - c, z + c)]; };
+      const av = { z: window.getZones().slice(), s: window.getStructures().slice() };
+      if (K.etat().ouvert !== false) await K.fermer();
+      window.setStructures([]);
+      window.setZones([
+        { uid: "zn_mc_q", type: "masse-sol", level: 0, comble: 0.25, points: carre(-12, 8, 2) },
+        { uid: "zn_mc_d", type: "masse-sol", level: 0, comble: 0.5, points: carre(-6, 8, 2), rampes: [{ bord: 3 }] },
+        { uid: "zn_mc_t", type: "masse-sol", level: 0, comble: 0.75, points: carre(0, 8, 2) },
+        { uid: "zn_mc_b", type: "masse-sol", level: 0, comble: 0.9, points: carre(6, 8, 2) },
+        { uid: "zn_mc_n", type: "masse-sol", level: 0, comble: -0.5, points: carre(12, 8, 2) },
+        { uid: "zn_mc_c", type: "remblais", level: 0, points: [P(-20, -3), P(-14, -3), P(-14, 3), P(-20, 3)] }
+      ]);
+      await window.__fxOuvrir(-8, 0, 90, 0, "structures");
+      await window.__fxImages(20);
+      const m = window.__mc(), b = window.__mcEl().getBoundingClientRect();
+      return { zones: m.zones, boite: { x: b.left, y: b.top, width: b.width, height: b.height }, av: true,
+        restaurer: JSON.stringify({ n: av.z.length }) };
+    });
+    if (CAPTURES) {
+      await page.screenshot({ path: path.join(CAPTURES, "minicarte-zones.png"), clip: zm.boite });
+      const bg = await page.evaluate(async function () {
+        window.__mcEl().click();
+        await new Promise(function (ok) { setTimeout(ok, 300); });
+        await window.__fxImages(10);
+        const b = window.__mcEl().getBoundingClientRect();
+        return { x: b.left, y: b.top, width: b.width, height: b.height };
+      });
+      await page.screenshot({ path: path.join(CAPTURES, "minicarte-zones-grande.png"), clip: bg });
+      await page.evaluate(function () { window.__mcEl().click(); });
+    }
+    await page.evaluate(async function () {
+      await window.KtaVue3D.fermer();
+      window.setZones([]);
+    });
+    const ms = (zm.zones || []).filter(function (q) { return q.cle === "masse-sol"; });
+    const parCran = function (c) { return ms.filter(function (q) { return Math.abs(q.cran - c) < 1e-6; })[0] || null; };
+    const q1 = parCran(0.25), q2 = parCran(0.5), q3 = parCran(0.75), q9 = parCran(0.9), qn = parCran(-0.5);
+    const cb = (zm.zones || []).filter(function (q) { return q.cle === "remblais"; })[0] || null;
+    verifier(q1 && q2 && q3 && q9 && qn && q1.alpha < q2.alpha && q2.alpha < q3.alpha && q3.alpha < q9.alpha &&
+      ms.every(function (q) { return q.tirets; }),
+      nom + "masse au sol : sable du canon, plus dense avec le cran (¼ " + (q1 && q1.alpha) + " → ¾ " + (q3 && q3.alpha) +
+      "), contour tireté — jamais à la couleur du Comblé", ms);
+    verifier(q1 && q2 && q3 && q9 && !q1.bloque && !q2.bloque && !q3.bloque && q9.bloque,
+      nom + "masse au sol : hachure d'obstacle seulement là où l'on ne passe plus (0,9 : 0,25 m de vide sous 2,5 m ; ¾ " +
+      "laisse 0,62 m)", ms);
+    verifier(qn && qn.alpha <= 0.15 && !qn.bloque, nom + "sol abaissé : sable presque transparent, contour tireté, " +
+      "jamais un obstacle", qn);
+    verifier(q2 && q2.chevrons > 0 && q1 && q1.chevrons === 0, nom + "rampe de la ½ en chevrons (" +
+      (q2 && q2.chevrons) + "), aucune sur une masse sans rampe", { q1: q1, q2: q2 });
+    verifier(cb && cb.couloir > 0, nom + "Comblé traversé par le tracé : couloir creusé laissé ouvert (" +
+      (cb && cb.couloir) + " pièce(s) du modèle galerie)", cb);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
   } catch (err) {
     pb(nom + "exception du harnais : " + (err && err.message));
@@ -15406,7 +17440,7 @@ async function sectionCaseBoutonsZoom(nav) {
       SEUL === "jonction-tremie" ||
       SEUL === "jonction-piliers" || SEUL === "caseZoom" ||
       SEUL === "minicarte" || SEUL === "mcbandeau" || SEUL === "menusHaut" || SEUL === "mkmgniveaux" ||
-      SEUL === "mkmg") {
+      SEUL === "mkmg" || SEUL === "mkmgmasse") {
       ouvert = true;
     } else if (SEUL === "saut" || SEUL === "solniveaux") {
       ouvert = true;
@@ -15455,6 +17489,55 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPente(page);
       await sectionPenteLargeur(page);
       if (CAPTURES) await capturesPente(page);
+    } else if (SEUL === "comble") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionComble(page);
+      if (CAPTURES) await capturesComble(page);
+    } else if (SEUL === "massesol") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMasseSol(page);
+      if (CAPTURES) await capturesMasseSol(page);
+    } else if (SEUL === "tuilecolonne") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await sectionTuileColonne(page);
+      await sectionNiveauEdition(page);
+    } else if (SEUL === "nonexploitee") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMasseNonExploitee(page);
+      if (CAPTURES) await capturesMasseNonExploitee(page);
+    } else if (SEUL === "murplafond") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMurPlafond(page);
+    } else if (SEUL === "monteecamera") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionMonteeCamera(page);
+    } else if (SEUL === "fronttrace") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionFrontTrace(page);
+    } else if (SEUL === "cacheniveaux") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionCacheNiveaux(page);
+    } else if (SEUL === "chatieremasse") {
+      ouvert = true;
+      await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
+      await page.evaluate(function () { window.__v3dPoints = (window.getEditorPoints() || []).slice(); });
+      await sectionChatiereMasse(page);
+      if (CAPTURES) await capturesChatiereMasse(page);
     } else if (SEUL === "pentelargeur") {
       ouvert = true;
       await page.addScriptTag({ url: BASE + "/js/vue3d.js" });
@@ -15851,9 +17934,9 @@ async function sectionCaseBoutonsZoom(nav) {
       verifier(JSON.stringify(e0.titres) === JSON.stringify(e0.attendus), "boutons titrés par le dictionnaire", e0.titres);
       verifier(e0.etat.compte.structures >= 2 && e0.tri > 100, "scène non vide (" + e0.etat.compte.structures +
         " structure(s), " + e0.tri + " triangles, hauteur " + e0.etat.hauteur + " m)", e0.etat);
-      verifier(e0.etat.yMax.murs > 0 && e0.etat.yMax.murs < e0.etat.yMax.opaque && e0.etat.murDecale,
-        "mur qui traverse le pilier : plus bas (" + e0.etat.yMax.murs.toFixed(2) + " m < " +
-        e0.etat.yMax.opaque.toFixed(2) + " m) et reculé en profondeur", e0.etat.yMax);
+      verifier(e0.etat.yMax.murs > 0 && Math.abs(e0.etat.yMax.murs - e0.etat.yMax.opaque) < 1e-6 && e0.etat.murDecale,
+        "mur qui traverse le pilier : à hauteur d'yeux jusqu'au plafond comme lui (" + e0.etat.yMax.murs.toFixed(2) +
+        " m), reculé en profondeur", e0.etat.yMax);
       const pan = e0.etat.panneaux.filter(function (q) { return q.dansVolume; });
       const zFace = prep.y / prep.sc - 3;
       verifier(pan.length === 1 && pan[0].visible && pan[0].depthTest === false && pan[0].ordre >= 10 &&
@@ -16685,10 +18768,10 @@ async function sectionCaseBoutonsZoom(nav) {
       verifier(h3.haut === 20 && h3.bas === 1.5 && h3.v12 === 12 && h3.v12moins === 11.5 && h3.v === 3 && h3.hauteur === 3 &&
         h3.pref === 3 && !h3.plus,
         "réglage borné de 1,5 à 20 m (12 m puis − → 11,5 m, pas de 0,5 au-delà de 5 m) ; à 3 m, getHauteurNiveau(niveau de la vue) vaut 3", h3);
-      verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3 * 0.98) < 1e-6 && h3.oeil === 1.6 &&
+      verifier(Math.abs(h3.yMax.opaque - 3) < 1e-6 && Math.abs(h3.yMax.murs - 3) < 1e-6 && h3.oeil === 1.6 &&
         h3.construites > 0 && h3.rendu === "mixte" &&
         h3.pos.x === h0.pos.x && h3.pos.y === h0.pos.y && h3.cap === h0.cap,
-        "mixte (défaut) : scène refaite à 3 m (piliers 3 m, murs 98 %), position et cap gardés", h3);
+        "mixte (défaut) : scène refaite à 3 m (piliers et murs à 3 m), position et cap gardés", h3);
       const h4 = await page.evaluate(function (p) {
         const K = window.KtaVue3D, r = {};
         return K.fermer().then(function () {
@@ -16698,18 +18781,18 @@ async function sectionCaseBoutonsZoom(nav) {
           return K.fermer();
         }).then(function () {
           // ⛏️ Volume exploité lit le même chiffre, et ce qu'il écrit, la vue le relit.
-          const surf = window.getMeasurePointsSurface;
-          window.getMeasurePointsSurface = function () {
-            const d = 5 * p.sc;
-            return [{ x: p.x - d, y: p.y - d }, { x: p.x + d, y: p.y - d }, { x: p.x + d, y: p.y + d }, { x: p.x - d, y: p.y + d }];
-          };
+          // Secteur du volume posé au niveau du calcul (par plan et par niveau, sur l'appareil).
+          const d = 5 * p.sc, Vx = window.KtaVolumeExploite, id = window._currentLoadedPlanId;
+          const nv = window.APP_CONFIG.multiLevel === true ? (window.APP_CONFIG.activeLevel || 0) : null;
+          Vx.secteurs.poser(id, nv, [{ x: p.x - d, y: p.y - d }, { x: p.x + d, y: p.y - d }, { x: p.x + d, y: p.y + d },
+            { x: p.x - d, y: p.y + d }]);
           window.KtaVolumeExploite.ouvrir();
           const champ = document.getElementById("kta-volume-h");
           r.volume = champ ? champ.value : null;
           if (champ) { champ.value = "2.5"; champ.dispatchEvent(new Event("input", { bubbles: true })); }
           const x = document.querySelector("#kta-volume-modal .kta-panneau-close");
           if (x) x.click();
-          window.getMeasurePointsSurface = surf;
+          Vx.secteurs.retirer(id);
           return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
         }).then(function () {
           r.depuisVolume = K.etat().hauteur;
@@ -16934,7 +19017,8 @@ async function sectionCaseBoutonsZoom(nav) {
         "bouts libres fermés par une paroi ; T : deux parois en travers d'une branche, une en face du départ", ax);
       await capture(page, "galerie-formes");
 
-      // Collisions contre les parois : butée, carrefour passé, coude, remblais qui bouche, eau qui ne bouche pas.
+      // Collisions contre les parois : butée, carrefour passé, coude ; eau et Comblé traversés par le tracé ne bouchent
+      // pas.
       const coll3 = await page.evaluate(function (a) {
         const K = window.KtaVue3D, rel = function (cx) {
           const p = K.etat().pos;
@@ -16959,8 +19043,9 @@ async function sectionCaseBoutonsZoom(nav) {
         coll3.coudeSud > 0.2 && coll3.coudeSud < 0.5 && coll3.coudeEst > 10.5,
         "galerie : on bute contre la paroi (" + coll3.paroiNord + " m de l'axe), on passe le carrefour et le coude",
         coll3);
-      verifier(coll3.remblais > 5.3 && coll3.remblais < 5.65,
-        "galerie : l'eau ne bouche pas, le remblais découpé arrête (" + coll3.remblais + " m, remblais à 6 m)", coll3);
+      verifier(coll3.remblais > 7.7,
+        "galerie : l'eau ne bouche pas, le Comblé traversé par le tracé non plus : galerie creusée (" + coll3.remblais +
+        " m, Comblé de 6 à 8 m)", coll3);
 
       // Zones coupées au tube, rideau en travers ; POI à 2 m et 5 m ramenés dans le tube, à 25 m masqué.
       const zp = await page.evaluate(function (a) {
@@ -16983,8 +19068,8 @@ async function sectionCaseBoutonsZoom(nav) {
         return !!bb && bb.z0 >= -1.26 && bb.z1 <= 1.26 && bb.x0 >= x0 - 0.01 && bb.x1 <= x1 + 0.01;
       };
       verifier(dans(zp.eau, 2, 4) && dans(zp.remblais, 6, 8) && dans(zp.sol, 10, 11) &&
-        Math.abs(zp.remblais.y1 - zp.hauteur * 0.6) < 0.01 && zp.faces === 2,
-        "zones coupées au tube (2,5 m) : eau, remblais à 60 % (faces vers la galerie seulement), inaccessible", zp);
+        Math.abs(zp.remblais.y1 - zp.hauteur) < 0.01 && zp.faces === 2,
+        "zones coupées au tube (2,5 m) : eau, Comblé jusqu'au ciel (parois du tube tapissées), inaccessible", zp);
       verifier(zp.rideaux.length === 2 && zp.rideaux.indexOf(10) >= 0 && zp.rideaux.indexOf(11) >= 0 &&
         dans(zp.rideau, 10, 11), "inaccessible : un rideau en travers du tube à chaque bord qui coupe l'axe", zp.rideaux);
       const p2 = zp.poi.filter(function (q) { return q.nom === "POI 2 m v3d"; })[0];
@@ -16995,7 +19080,8 @@ async function sectionCaseBoutonsZoom(nav) {
         "POI à 2 et 5 m de l'axe : visibles, ramenés contre la paroi ; POI à 25 m : masqué", zp.poi);
       await capture(page, "galerie-zones");
 
-      // Hauteur ⛏️ en mode galerie : tubes, plafond, remblais à 60 % et rideaux refaits à 3 m ; relue à la réouverture.
+      // Hauteur ⛏️ en mode galerie : tubes, plafond, Comblé (sous le plafond) et rideaux refaits à 3 m ; relue à la
+      // réouverture.
       // Plan multi-niveau : reglerHauteur ne règle rien ; la hauteur du niveau s'écrit comme Réglages, vue rouverte.
       const hg = await page.evaluate(function (a) {
         const K = window.KtaVue3D, r = {};
@@ -17025,8 +19111,9 @@ async function sectionCaseBoutonsZoom(nav) {
       }, { dep: pt(200, 5, 0, 90) });
       const pres = function (v, att) { return typeof v === "number" && Math.abs(v - att) < 1e-6; };
       verifier(hg.v === 3 && hg.rendu === "galerie" && hg.pref === 3 && hg.garde && pres(hg.y.parois, 3) &&
-        pres(hg.y.plafond, 3) && pres(hg.y.remblais, 1.8) && pres(hg.y.rideau, 3) && hg.rideaux === 2 && hg.faces === 2,
-        "galerie : niveau à 3 m, parois, plafond et rideaux à 3 m, remblais à 1,8 m, position et cap gardés", hg);
+        pres(hg.y.plafond, 3) && Math.abs(hg.y.remblais - 3) < 0.01 && pres(hg.y.rideau, 3) && hg.rideaux === 2 &&
+        hg.faces === 2,
+        "galerie : niveau à 3 m, parois, plafond et rideaux à 3 m, Comblé sous le plafond, position et cap gardés", hg);
       verifier(hg.rouvert === 3, "galerie : 3 m relus à la réouverture", hg.rouvert);
 
       // ── Filtres partagés : ≡ ouvre le ≡ Filtres de la carte ; masquer d'un côté masque de l'autre ──────────────
@@ -19070,6 +21157,14 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionConePassage(page);
       await sectionPente(page);
       await sectionPenteLargeur(page);
+      await sectionMasseSol(page);
+      await sectionChatiereMasse(page);
+      await sectionCacheNiveaux(page);
+      await sectionFrontTrace(page);
+      await sectionMonteeCamera(page);
+      await sectionMurPlafond(page);
+      await sectionMasseNonExploitee(page);
+      await sectionComble(page);
       await sectionFormesPoi(page);
       await sectionPlaques(page);
       await sectionFormesStructures(page);
@@ -20958,9 +23053,9 @@ async function sectionCaseBoutonsZoom(nav) {
         "la légende (couleurs des sommets : 2e masse de la roche, ombre de contact) ; " +
         "parpaing reculé en profondeur comme les murs (" + D0.ms + " ms pour les dessiner)", D0.materiaux);
       verifier((D0.couleurs.opaque || []).length >= 1 && !contient(D0.couleurs.opaque, "#3c9be0") &&
-        TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs < TX.defaut.yMax.opaque,
+        TX.defaut.yMax.murs > 0 && TX.defaut.yMax.murs <= TX.defaut.yMax.opaque + 1e-6,
         "type perso en roche brute (sa couleur n'est plus dessinée), type inconnu du canon gardé en couleur unie ; " +
-        "mur toujours plus bas que pilier et front", { couleurs: D0.couleurs, yMax: TX.defaut.yMax });
+        "mur jamais plus haut que pilier et front", { couleurs: D0.couleurs, yMax: TX.defaut.yMax });
       // Échelle : chaque arête horizontale ou verticale d'une face texturée, mur de 2 m comme mur de 40 m.
       const echelle = function (filtre) {
         const v = D0.aretes.filter(filtre).map(function (x) { return x.uvParM; });
@@ -21063,12 +23158,14 @@ async function sectionCaseBoutonsZoom(nav) {
         "🧱 coupé : remblais et effondrement à la couleur de la légende (mixte et galerie), comme une vue ouverte " +
         "sans textures", { mixte: C0.couleurs.opaque, galerie: TX.galerieCoupe.t.couleurs.opaque, legende: Lz });
 
-      // ── 24 bis. Remblais, effondrement et inaccessible = obstacles de la 3D dans tous les rendus ; 2D intacte ────
-      // Tube principal à l'ouest (remblais, inaccessible, effondrement en travers), chambre à piliers à l'est (un
-      // effondrement, un remblais, un inaccessible entre deux rangées). Volume dans les trois rendus ; un pas qui
-      // traverse une des trois zones est arrêté au bord dans les 4 contextes (galerie, tube et chambre du mixte,
-      // structures) ; départ dedans = ramené au bord, on repart ; recalage (versGalerie), itinéraire et pas du tracker
-      // identiques avec et sans les zones, et jamais appelés par les règles de zones de la 3D.
+      // ── 24 bis. Comblé et effondrement traversés par un tracé, inaccessible ; 2D intacte ─────────────────────────
+      // Tube principal à l'ouest (Comblé, inaccessible, effondrement en travers), chambre à piliers à l'est (un
+      // effondrement, un Comblé, un inaccessible entre deux rangées), un tracé qui les traverse tous. Volume dans les
+      // trois rendus ; dans les 4 contextes (galerie, tube et chambre du mixte, structures), le pas traverse Comblé et
+      // effondrement le long du tracé (galerie creusée, révision du 14/11/2026) et l'inaccessible l'arrête au bord ;
+      // départ dans un Comblé ou un effondrement = laissé sur place, dans l'inaccessible = ramené au bord ; recalage
+      // (versGalerie), itinéraire et pas du tracker identiques avec et sans les zones, et jamais appelés par les règles
+      // de zones de la 3D.
       const EF = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, G = window.KtaGalerie;
         const P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc }; };
@@ -21193,31 +23290,43 @@ async function sectionCaseBoutonsZoom(nav) {
       const pres2 = function (v, att) { return typeof v === "number" && Math.abs(v - att) < 0.01; };
       verifier(["galerie", "mixte", "structures"].every(function (k) {
         const o = EF[k];
-        return o.rendu === k && o.boite && pres2(o.boite.y1, hEf) && pres2(o.remblaisY, hEf) && o.maillages >= 1 &&
+        return o.rendu === k && o.boite && pres2(o.boite.y1, hEf) && pres2(o.remblaisY, o.hauteur) && o.maillages >= 1 &&
           o.boite.x0 >= -16.01 && o.boite.x1 <= 27.01;
-      }) && EF.galerie.faces === 4 && EF.mixte.faces === 2,
-        "effondrement en volume texturé (éboulis) à la hauteur du remblais (" + hEf.toFixed(2) + " m) en galerie, " +
-        "mixte (tube et chambre) et structures ; découpé au tube, faces vers la galerie seulement",
+      }) && EF.galerie.faces >= 2 && EF.mixte.faces >= 2,
+        "effondrement en volume texturé (éboulis) à 60 % (" + hEf.toFixed(2) + " m), Comblé jusqu'au ciel, en " +
+        "galerie, mixte (tube et chambre) et structures ; creusés le long du tracé (parois tapissées d'éboulis)",
         { g: EF.galerie.boite, m: EF.mixte.boite, s: EF.structures.boite, faces: [EF.galerie.faces, EF.mixte.faces] });
       verifier(EF.Z.every(function (z) { return EF.chambres[z[0]] === (z[5] === "chambre"); }),
         "témoin : les zones de l'ouest sont dans un tube du mixte, celles de l'est dans une chambre", EF.chambres);
       // Arrêt au bord : corps de 0,2 m et balayage prolongé de 0,2 m, pas de 0,1 m → entre 0,3 et 0,6 m avant le bord.
+      // Traversée : la marche de 10 m atteint au moins le bord est de la zone (le Comblé de la chambre est suivi de
+      // l'inaccessible, qui arrête la marche plus loin).
       const arrete = function (v, bord) { return typeof v === "number" && v > bord - 0.6 && v < bord - 0.3; };
+      const nomZ = function (z) {
+        return z[1] === "inaccessible" ? "l'inaccessible" : z[1] === "remblais" ? "le Comblé" : "l'effondrement";
+      };
       ["galerie", "mixte", "structures"].forEach(function (k) {
         EF.Z.forEach(function (z) {
-          const ctx = k === "mixte" ? "mixte (" + z[5] + ")" : k;
-          verifier(arrete(EF[k].marche[z[0]], z[2]),
-            ctx + " : un pas qui traverse " + (z[1] === "inaccessible" ? "l'inaccessible" : "le " + z[1]) +
-            " est arrêté au bord (" + EF[k].marche[z[0]] + " m, bord à " + z[2] + " m)", EF[k].marche);
+          const ctx = k === "mixte" ? "mixte (" + z[5] + ")" : k, v = EF[k].marche[z[0]];
+          if (z[1] === "inaccessible") {
+            verifier(arrete(v, z[2]), ctx + " : un pas qui traverse l'inaccessible est arrêté au bord (" + v +
+              " m, bord à " + z[2] + " m)", EF[k].marche);
+          } else {
+            verifier(typeof v === "number" && v >= z[3] - 0.01, ctx + " : le pas traverse " + nomZ(z) +
+              " le long du tracé, galerie creusée (" + v + " m, zone de " + z[2] + " à " + z[3] + " m)", EF[k].marche);
+          }
         });
       });
       ["galerie", "mixte", "structures"].forEach(function (k) {
         const d = EF[k].dedans;
         verifier(EF.Z.every(function (z) {
-          const o = d[z[0]];
-          return o.degage >= 1 && !o.dansZone && (o.x <= z[2] + 0.01 || o.x >= z[3] - 0.01) && o.repart > 1;
-        }), k + " : départ dans chacune des 6 zones (" + (k === "mixte" ? "3 en tube, 3 en chambre" : "remblais, " +
-          "effondrement, inaccessible") + ") ramené au bord, on repart", d);
+          const o = d[z[0]], c = (z[2] + z[3]) / 2;
+          if (z[1] === "inaccessible") {
+            return o.degage >= 1 && !o.dansZone && (o.x <= z[2] + 0.01 || o.x >= z[3] - 0.01) && o.repart > 1;
+          }
+          return o.degage === 0 && !o.dansZone && Math.abs(o.x - c) < 0.01 && o.repart > 1;
+        }), k + " : départ dans un Comblé ou un effondrement traversé par le tracé = laissé sur place, dans " +
+          "l'inaccessible = ramené au bord ; on repart des " + (k === "mixte" ? "6 (3 en tube, 3 en chambre)" : "6"), d);
       });
       const sansIti = function (o) { return JSON.stringify(Object.assign({}, o, { iti: null })); };
       verifier(JSON.stringify(EF.sans) === JSON.stringify(EF.volumes) && sansIti(EF.sans) === sansIti(EF.avec) &&
@@ -21228,12 +23337,13 @@ async function sectionCaseBoutonsZoom(nav) {
         "itinéraire qui traverse l'effondrement et pas du tracker à travers les 6 zones identiques avec et sans elles ; " +
         "règles de zones de la 3D appelées " + EF.appels2D + " fois par la 2D",
         { sans: EF.sans, volumes: EF.volumes, avec: EF.avec });
-      verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces === 4 && arrete(EF.coupe.tube, -16) &&
+      verifier(EF.coupe.eboulis === 0 && pres2(EF.coupe.y1, hEf) && EF.coupe.faces >= 2 && EF.coupe.tube >= -12.01 &&
         contient(EF.coupe.couleurs, EF.coupe.legende),
-        "🧱 coupé : l'effondrement reste un volume qui arrête, à la couleur de la légende", EF.coupe);
-      // ── 24 ter. Itinéraire par-dessus un remblais ou un effondrement (ruban, tirets, chevrons, étape) ──────────
-      // Tube principal, effondrement de 4 m en travers (-16 → -12), itinéraire de -23,5 à -4 (une face franchie dans
-      // un tiret à l'entrée comme à la sortie), étape sur l'effondrement. Trois rendus ; tracé 2D inchangé.
+        "🧱 coupé : l'effondrement reste un volume à la couleur de la légende, creusé le long du tracé", EF.coupe);
+      // ── 24 ter. Itinéraire à travers un effondrement creusé par le tracé (ruban, chevrons, étape au sol) ────────
+      // Tube principal, effondrement de 4 m en travers (-16 → -12), itinéraire de -23,5 à -4, étape dans
+      // l'effondrement. Le tracé y creuse la galerie : ruban, chevrons et étape restent au sol, sans contremarche.
+      // Trois rendus ; tracé 2D inchangé.
       const IV = await page.evaluate(async function (a) {
         const K = window.KtaVue3D, P = function (x, z) { return { x: (a.ox + x) * a.sc, y: (a.oz + z) * a.sc, level: 0 }; };
         const rect = function (x0, z0, x1, z1) { return [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)]; };
@@ -21281,30 +23391,18 @@ async function sectionCaseBoutonsZoom(nav) {
       ["mixte", "galerie", "structures"].forEach(function (k) {
         const o = IV[k];
         if (!o) return;
-        const hv = o.hauteur * 0.6, pres3 = function (v, att) { return Math.abs(v - att) < 0.012; };
-        // Horizontaux : sur le volume (centre entre -15,8 et -12,2) au dessus + 5 cm ; hors du volume au sol.
         const hor = o.profil.filter(function (q) { return q[3] - q[2] < 0.01; });
-        const dessus = hor.filter(function (q) { return q[0] > -15.8 && q[0] < -12.2; });
-        const sol = hor.filter(function (q) { return q[0] < -16.4 || q[0] > -11.6; });
+        const dans = hor.filter(function (q) { return q[0] > -15.8 && q[0] < -12.2; });
         const vert = o.profil.filter(function (q) { return q[3] - q[2] > 0.3; });
-        const entree = vert.filter(function (q) { return q[0] < -16 && q[0] > -16.1; });
-        const sortie = vert.filter(function (q) { return q[0] > -12 && q[0] < -11.9; });
-        verifier(dessus.length >= 4 && dessus.every(function (q) { return q[2] >= hv + 0.03 && q[2] <= hv + 0.06; }) &&
-          sol.length >= 8 && sol.every(function (q) { return q[2] <= 0.06; }) &&
-          hor.every(function (q) { return !(q[0] > -16 && q[0] < -12 && q[2] < hv); }),
-          k + " : le ruban passe sur l'effondrement (dessus à " + hv.toFixed(2) + " m + 5 cm), au sol ailleurs, jamais " +
-          "dessous ni en l'air", { dessus: dessus.slice(0, 4), sol: sol.slice(0, 3), n: [dessus.length, sol.length] });
-        verifier(entree.length === 2 && sortie.length === 2 && vert.length === 4 && vert.every(function (q) {
-          return pres3(q[2], 0.05) && pres3(q[3], hv + 0.05);
-        }), k + " : une contremarche (ruban et liseré) collée à la face d'entrée et de sortie, du sol au dessus",
-        { entree: entree, sortie: sortie, n: vert.length });
-        const chOn = o.chevrons.filter(function (c) { return c[0] > -15.7 && c[0] < -12.3; });
-        const chOff = o.chevrons.filter(function (c) { return c[0] < -16.3 || c[0] > -11.7; });
-        verifier(o.nChevrons > 0 && chOn.length >= 2 && chOn.every(function (c) { return pres3(c[1], hv + 0.07); }) &&
-          chOff.every(function (c) { return c[1] < 0.1; }),
-          k + " : chevrons de guidage sur le dessus du volume, au sol ailleurs", { on: chOn.slice(0, 6), off: chOff.length });
-        verifier(o.etapes.length === 1 && o.etapes[0][0] === -14 && pres3(o.etapes[0][1], hv),
-          k + " : marqueur d'étape posé sur l'effondrement (" + JSON.stringify(o.etapes) + ")", o.etapes);
+        verifier(dans.length >= 4 && hor.length >= 12 && hor.every(function (q) { return q[2] <= 0.06; }) && !vert.length,
+          k + " : le ruban traverse l'effondrement au sol, dans la galerie creusée (jamais par-dessus, aucune " +
+          "contremarche)", { dans: dans.slice(0, 4), n: [dans.length, hor.length], vert: vert.length });
+        const chDans = o.chevrons.filter(function (c) { return c[0] > -15.7 && c[0] < -12.3; });
+        verifier(o.nChevrons > 0 && chDans.length >= 2 && o.chevrons.every(function (c) { return c[1] < 0.1; }),
+          k + " : chevrons de guidage au sol, dans l'effondrement comme ailleurs",
+          { dans: chDans.slice(0, 6), n: o.chevrons.length });
+        verifier(o.etapes.length === 1 && o.etapes[0][0] === -14 && o.etapes[0][1] < 0.1,
+          k + " : marqueur d'étape au sol dans l'effondrement (" + JSON.stringify(o.etapes) + ")", o.etapes);
         verifier(o.rubansYMax === null || o.rubansYMax <= 0.031,
           k + " : rubans des tracés ordinaires inchangés, au sol (" + o.rubansYMax + ")", o.rubansYMax);
       });
@@ -21843,6 +23941,7 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionPlanSolNiveaux(page);
     }
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
+    if (SEUL === "massesol" && process.env.KTA_V3D_PERF === "masse") await perfMasseSol(nav);
     if (!SEUL || SEUL === "textures") await sectionTexturesSol(nav);
     if (!SEUL || SEUL === "addons") await sectionAddonsVisibles(nav);
     if (!SEUL || SEUL === "colonneedit") await sectionColonneEdition(nav);
@@ -21885,6 +23984,7 @@ async function sectionCaseBoutonsZoom(nav) {
     if (!SEUL || SEUL === "menusHaut") await sectionMenusHaut(nav);
     if (!SEUL || SEUL === "mkmgniveaux") await sectionMkmgNiveaux(nav);
     if (!SEUL || SEUL === "mkmg") await sectionMkmgArsenal(nav);
+    if (!SEUL || SEUL === "mkmgmasse") await sectionMkmgMasse(nav);
     // 🩸 WebKit ne rend la place d'un contexte perdu qu'au passage du ramasse-miettes : après ~16 ouvertures
     // rapprochées il annonce « too many active WebGL contexts » et perd le plus ancien (déjà fermé). Toléré sous
     // WebKit seulement, et seulement ce message : la 21e ouverture ci-dessus prouve que la vue courante vit.

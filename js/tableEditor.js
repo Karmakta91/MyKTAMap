@@ -13,6 +13,11 @@
 // ⚠️ Plan PARTAGÉ (KtaExtensions.importPartage) : un objet retiré reçoit une trace de suppression (sinon il revient
 //   du serveur) ; s'il en retire, il faut `remplacer` de la prise, et une confirmation chiffrée.
 // Plan multi-niveau : colonne « level » toujours présente, en liste (niveaux du plan + niveau actuel).
+// Masse au sol : colonne « comble » (part comblée) dès qu'une zone de ce type est là, éditée par crans ¼ ½ ¾ ou une
+//   valeur libre (_editerComble), en lecture seule sur les autres types ; absente = ½ (affiché « ½ (défaut) »).
+//   Colonne « Sorte » (champ `nature`) : Remblai / Masse non exploitée (_editerSorte, KtaConvertir.poserNature, la
+//   règle de la fiche), seulement pour une part > 0 ; vide et verrouillée sinon ; une part passée à ≤ 0 la vide
+//   aussitôt dans la copie.
 // 🩸 uid/updatedAt ne sont jamais des colonnes ; « Dupliquer » donne un uid neuf (js/ktaUid.js).
 // Garde-fous : scripts/check-resolution-convert.js, scripts/check-uid.js, scripts/check-calque-session.js
 
@@ -723,8 +728,13 @@
     set.delete("uid");
     set.delete("updatedAt");
     if (_niveauxPlan()) set.add("level");   // multi-niveau : toujours là, même sans aucun `level` (0 par défaut)
+    // Masse au sol : la part comblée a sa colonne, même si aucune zone ne la porte encore (absente = ½).
+    // Sorte (remblai / masse non exploitée) : sa colonne aussi, absente = remblai.
+    if (data.some(function(p) { return p && p.type === "masse-sol"; })) { set.add("comble"); set.add("nature"); }
     // Ordre des clés courantes (level à côté de x/y) ; les autres suivent en queue.
-    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "tags", "etat", "description", "points", "profondeur", "date_update", "dateConstat"];
+    const ordreCourant = ["id", "type", "nom", "x", "y", "level", "niveaux", "comble", "nature", "rampes", "tags", "etat",
+      "description",
+      "points", "profondeur", "date_update", "dateConstat"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
     set.forEach(function(k) { ordonnees.push(k); });
@@ -814,7 +824,8 @@
     _colonnes.forEach(function(col) {
       let arrow = "";
       if (_tri.col === col) arrow = ' <span class="tri-arrow">' + (_tri.asc ? "▲" : "▼") + '</span>';
-      html += '<th data-col="' + _escapeAttr(col) + '">' + _escapeHtml(col) + arrow + '</th>';
+      const libelle = col === "nature" ? window.I18n.t("masseSol.nature.titre") : col;
+      html += '<th data-col="' + _escapeAttr(col) + '">' + _escapeHtml(libelle) + arrow + '</th>';
     });
     html += "</tr>";
     thead.innerHTML = html;
@@ -880,7 +891,9 @@
       _colonnes.forEach(function(col) {
         const v = p[col];
         const ro = (col === "id" || col === "points" || col === "accroches" || col === "precis" ||
-                    (col === "level" && _sansNiveau(p)));
+                    (col === "level" && _sansNiveau(p)) || (col === "comble" && p.type !== "masse-sol") ||
+                    (col === "nature" && !_sorteEditable(p)) ||
+                    col === "rampes");
         let cls = "";
         if (ro) cls += "col-readonly";
         const typeInconnu = (col === "type" && typesConnus.length > 0 && v != null && v !== "" &&
@@ -905,6 +918,18 @@
           const pts = Array.isArray(v.pts) ? v.pts.filter(Boolean)
             : [{ x: v.x, y: v.y }].concat(v.x2 !== undefined ? [{ x: v.x2, y: v.y2 }] : []);
           contenu = _escapeHtml(pts.map(function(a) { return q(a.x) + ", " + q(a.y); }).join(" → "));
+        } else if (col === "comble" && p.type === "masse-sol") {
+          // Part comblée : texte du cran (« ½ ») ; absente → la valeur par défaut, dite comme telle.
+          contenu = _escapeHtml(Number.isFinite(v) && v !== 0 ? window.ktaTexteComble(v)
+            : window.I18n.t("tabledit.col.combleDefaut", { part: window.ktaTexteComble(0.5) }));
+        } else if (col === "nature") {
+          // Sorte d'une masse au sol de part > 0 (lue par ktaMasseNonExploitee) ; sinon vide et verrouillée.
+          contenu = !_sorteEditable(p) ? "" : _escapeHtml(window.I18n.t(window.ktaMasseNonExploitee(p)
+            ? "masseSol.nature.nonExploitee" : "masseSol.nature.remblai"));
+        } else if (col === "rampes") {
+          // Rampes d'une masse au sol : posées depuis la fiche de la zone (bord bas), jamais saisies ici.
+          const n = Array.isArray(v) ? v.length : 0;
+          contenu = n ? _escapeHtml(window.I18n.t("tabledit.col.rampes", { n: n })) : "";
         } else if (col === "niveaux" && Array.isArray(v)) {
           contenu = _escapeHtml(v.map(function(n) { return window.ktaFormatNiveau(n); }).join(", "));
         } else if (col === "level" && niveauxPlan && !_sansNiveau(p) && (v == null || Number.isInteger(v))) {
@@ -994,6 +1019,9 @@
     const valOrig = p[col];
 
     if (col === "level" && _niveauxPlan()) { _editerNiveau(td, idx); return; }
+    if (col === "comble") { if (p.type === "masse-sol") _editerComble(td, idx); return; }
+    if (col === "nature") { if (_sorteEditable(p)) _editerSorte(td, idx); return; }
+    if (col === "rampes") return;   // posées depuis la fiche de la zone
     const htmlOrig = td.innerHTML;
     td.classList.add("editing");
 
@@ -1083,6 +1111,121 @@
         valider();
         _focusVoisin(idx, col, e.shiftKey ? "left" : "right");
       }
+    });
+  }
+
+  // Sorte modifiable : masse au sol de part > 0 (comme la fiche).
+  function _sorteEditable(p) {
+    return !!p && p.type === "masse-sol" && typeof window.ktaCombleZone === "function" && window.ktaCombleZone(p) > 0;
+  }
+
+  // Cellule « Sorte » d'une masse au sol : liste Remblai / Masse non exploitée, écrite dans la copie éditée par la
+  // règle de la fiche (KtaConvertir.poserNature) ; appliquée à la session avec le reste du tableau (une entrée ⏪).
+  function _editerSorte(td, idx) {
+    const p = _data[idx];
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", window.I18n.t("masseSol.nature.titre"));
+    const actuel = window.ktaMasseNonExploitee(p) ? "non-exploitee" : "remblai";
+    [["remblai", "masseSol.nature.remblai"], ["non-exploitee", "masseSol.nature.nonExploitee"]].forEach(function(o) {
+      const opt = document.createElement("option");
+      opt.value = o[0];
+      opt.textContent = window.I18n.t(o[1]);
+      if (o[0] === actuel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    td.classList.add("editing");
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+    let fini = false;
+    function ecrire(v) {
+      if (fini) return;
+      fini = true;
+      if (v && window.KtaConvertir && window.KtaConvertir.poserNature(p, v)) { _toucher(p); _modifie = true; }
+      td.classList.remove("editing");
+      _construireCorps();
+      _miseAJourInfos();
+    }
+    sel.addEventListener("change", function() { ecrire(sel.value); });
+    sel.addEventListener("blur", function() { if (sel.isConnected) ecrire(sel.value); });
+    sel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { e.preventDefault(); ecrire(null); }
+      else if (e.key === "Enter") { e.preventDefault(); ecrire(sel.value); _focusVoisin(idx, "nature", "down"); }
+    });
+  }
+
+  // Cellule « comble » d'une masse au sol : liste ¼ ½ ¾ / Autre… ; « Autre… » remplace la liste par une saisie libre
+  // (virgule ou point, signe moins accepté). Une valeur nulle, illisible, sous −1 ou ≥ 1 est refusée (≥ 1 : passer la
+  // zone en Comblé par sa colonne `type`) : la cellule garde son ancienne valeur et le dit.
+  function _editerComble(td, idx) {
+    const p = _data[idx];
+    const actuel = window.ktaCombleZone(p);
+    const crans = [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75];
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", window.I18n.t("masseSol.label"));
+    const options = crans.indexOf(actuel) < 0 ? crans.concat([actuel]).sort(function(a, b) { return a - b; }) : crans;
+    options.forEach(function(c) {
+      const opt = document.createElement("option");
+      opt.value = String(c);
+      opt.textContent = window.ktaTexteComble(c);
+      if (c === actuel) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const optAutre = document.createElement("option");
+    optAutre.value = "autre";
+    optAutre.textContent = window.I18n.t("masseSol.autre") + "…";
+    sel.appendChild(optAutre);
+    td.classList.add("editing");
+    td.innerHTML = "";
+    td.appendChild(sel);
+    sel.focus();
+    let fini = false;
+    function ecrire(v) {
+      if (fini) return;
+      fini = true;
+      if (window.ktaCombleValide(v)) {
+        if (v !== p.comble) {
+          p.comble = v;
+          if (!(v > 0) && window.KtaConvertir && window.KtaConvertir.poserNature) {
+            window.KtaConvertir.poserNature(p, "remblai");   // sorte sans objet sous 0 (même règle que la fiche)
+          }
+          _toucher(p);
+          _modifie = true;
+        }
+      } else if (v !== null && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        const cle = v >= 1 ? "tabledit.comble.versComble" : v < -1 ? "masseSol.tropBas" : "masseSol.invalide";
+        window.OOMGuard.showToast(window.I18n.t(cle), "warn");
+      }
+      td.classList.remove("editing");
+      _construireCorps();
+      _miseAJourInfos();
+    }
+    function libre() {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.inputMode = "decimal";
+      input.value = window.ktaTexteComble(actuel);
+      input.setAttribute("aria-label", window.I18n.t("masseSol.autreAide"));
+      td.innerHTML = "";
+      td.appendChild(input);
+      input.focus();
+      input.select();
+      const lire = function() { return Number(String(input.value).trim().replace(",", ".").replace("−", "-")); };
+      input.addEventListener("blur", function() { ecrire(lire()); });
+      input.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") { e.preventDefault(); ecrire(null); }
+        else if (e.key === "Enter") { e.preventDefault(); ecrire(lire()); _focusVoisin(idx, "comble", "down"); }
+      });
+    }
+    sel.addEventListener("change", function() {
+      if (sel.value === "autre") { libre(); return; }
+      ecrire(Number(sel.value));
+    });
+    sel.addEventListener("blur", function() {
+      if (sel.value !== "autre" && sel.isConnected) ecrire(Number(sel.value));
+    });
+    sel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") { e.preventDefault(); ecrire(null); }
     });
   }
 
@@ -1671,11 +1814,17 @@
       return a && b && a.x === b.x && a.y === b.y
         && (a.level === b.level || (a.level == null && b.level == null));
     };
-    const nettoyer = function(points) {
+    // `g` : l'objet, dont les rampes d'une masse au sol suivent leur segment (masseSol.js > suivreBords, "doublon").
+    const nettoyer = function(points, g) {
       if (!Array.isArray(points) || points.length < 2) return points;
-      const out = [points[0]];
+      const out = [points[0]], M = window.KtaMasseSol;
+      const suivre = !!(g && Array.isArray(g.rampes) && M && typeof M.suivreBords === "function");
       for (let i = 1; i < points.length; i++) {
-        if (memes(points[i], out[out.length - 1])) { bilan.sommets++; continue; }
+        if (memes(points[i], out[out.length - 1])) {
+          bilan.sommets++;
+          if (suivre) M.suivreBords(g, "doublon", out.length, out.length + points.length - i);
+          continue;
+        }
         out.push(points[i]);
       }
       return out;
@@ -1685,7 +1834,7 @@
       obj[k] = obj[k].filter(function(g) {
         if (!g || !Array.isArray(g.points)) return true;
         const avant = g.points.length;
-        g.points = nettoyer(g.points);
+        g.points = nettoyer(g.points, g);
         if (g.points.length === avant) return true;   // rien retiré → jamais supprimé
         const estLigne = (k === "roads")
           || (k === "structures" && !(typeof g.type === "string"

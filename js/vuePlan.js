@@ -10,8 +10,8 @@
 // Stockage : localStorage `myktamap_vue_v1_<planId>` = { v, x, y, zoom, niveau?, suivi, img, le } (coordonnées
 //   plan, ~150 octets). Hors session : la session voyage (export, synchro d'une installation) et s'efface avec
 //   « Effacer la session » ; la vue est propre à l'appareil. Écriture synchrone : tient au pagehide.
-// Mémorisée : main.js > _libererRessourcesPlanPrecedent (fermeture, changement de plan), pagehide et passage en
-//   arrière-plan. Appliquée : main.js > lancerApplication, après la restauration de session.
+// Mémorisée : main.js > _libererRessourcesPlanPrecedent (fermeture, changement de plan), pagehide, passage en
+//   arrière-plan et changement de niveau (interfaceConfig.js > ktaSetActiveLevel). Appliquée : main.js > lancerApplication, après la restauration de session.
 // 🩸 Rien n'est mémorisé avant que la vue du plan ait été appliquée (`_etat`) : un passage en arrière-plan pendant
 //   le chargement écrirait le cadrage par défaut par-dessus la vue laissée.
 // ⚠️ Vue ignorée si l'image du plan a changé (dimensions, fichier de base, version : `img`) ; centre borné à

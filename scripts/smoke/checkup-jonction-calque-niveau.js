@@ -117,8 +117,7 @@ function lireEtat(page) {
     const mk = (window._ktaDataMarkers || []).find(function (m) { return m && m._ktaLayer === g; }) || null;
     let session = false;
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c === "string" && c.indexOf('data-kta-uid="rd_joncsession"') >= 0) session = true;
     });
     return {

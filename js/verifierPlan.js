@@ -8,8 +8,8 @@
 // calques), liste groupée par gravité, revue sur la carte (bandeau Précédent / Suivant), fiche de l'objet, « Vu,
 // normal ». Contrôles : C1 tracé coupé par un obstacle dur (zone d'un type dur, mur en ligne), C2 passage entre
 // niveaux (POI) sans raccord validé à un de ses niveaux (niveau intermédiaire traversé : info), C3 tracé jonction mal
-// posé. Avertit aussi à la saisie (C1).
-// ⚠️ contrat : C1 et C3 lisent les tests du graphe (Pathfinder.controle, PROXIMITY_TOLERANCE), jamais une copie :
+// posé, C12 tracé qui traverse une zone à coût (Comblé, effondrement : à revoir). Avertit aussi à la saisie (C1).
+// ⚠️ contrat : C1, C3, C12 lisent les tests du graphe (Pathfinder.controle, PROXIMITY_TOLERANCE), jamais une copie :
 // sinon l'outil annonce un problème que l'itinéraire n'a pas, ou en tait un. C2 lit KtaPoiJonction.
 // Moteur PUR : analyser(donnees?) → { liste, vus } ; sans argument, il lit le plan ouvert (collecter()). Éprouvé en
 // Node par scripts/check-verifier-plan.js, en navigateur par scripts/smoke/checkup-verifier-plan.js.
@@ -26,11 +26,13 @@ window.KtaVerifierPlan = (function () {
 
   const BORD_M = 0.5;                  // en deçà, l'obstacle n'est touché que « au bord » (souvent un dessin raté)
   const GRAVITES = ["bloquant", "revoir", "info"];
-  const CONTROLES = { C1: "bloquant", C2: "bloquant", C3: "bloquant" };
+  // C12 n'est pas une erreur : un tracé posé exprès à travers un Comblé dit que ça passe (l'itinéraire l'évite
+  // seulement) ; il est à confirmer (décision produit).
+  const CONTROLES = { C1: "bloquant", C2: "bloquant", C3: "bloquant", C12: "revoir" };
   // C2 sur un niveau INTERMÉDIAIRE sans raccord : le pathfinder traverse ce niveau sans y déboucher (puits de 0 à 2
   // sans sortie au 1), l'itinéraire n'est pas trompé (décision produit).
   const GRAVITE_C2_TRAVERSE = "info";
-  const ORDRE_CONTROLES = ["C1", "C2", "C3"];
+  const ORDRE_CONTROLES = ["C1", "C2", "C3", "C12"];
   const SAISIE_MS = 700;               // rafale de rendus (dessin, annulation) : une vérification à la fin
 
   let _liste = [];
@@ -121,7 +123,35 @@ window.KtaVerifierPlan = (function () {
     const C = _ctl();
     if (!C) return [];
     // Plan ouvert : la collecte même de l'itinéraire ; données fournies : le même filtre sur elles.
-    const obstacles = d.planOuvert ? C.obstaclesDuPlan() : C.obstaclesDe(d.zones, d.structures);
+    return _traversees(d, seulement, "C1", d.planOuvert ? C.obstaclesDuPlan() : C.obstaclesDe(d.zones, d.structures));
+  }
+
+  // ── C12 : tracé qui traverse une zone à coût (Comblé, effondrement) ──────────
+  // Mêmes paires et même mesure que C1, sur les zones à coût que lit le graphe : l'itinéraire les évite quand il peut
+  // et dit quand il y passe ; ici on confirme le tracé (galerie creusée dans le remblai) ou on corrige la zone.
+  // ⚠️ contrat : même tolérance que le graphe (Pathfinder.controle.toleranceZonePx, traverseesTrace) — une traversée
+  // continue de moins d'1 m est un contour un peu large, ignoré ici comme par l'itinéraire.
+  function _c12(d) {
+    const C = _ctl();
+    if (!C || typeof C.zonesCoutDuPlan !== "function") return [];
+    const paires = _traversees(d, null, "C12", d.planOuvert ? C.zonesCoutDuPlan() : C.zonesCoutDe(d.zones));
+    const tol = typeof C.toleranceZonePx === "function" ? C.toleranceZonePx(d.echelle) : 0;
+    if (!(tol > 0)) return paires;
+    const bord = seuilBordPx(d.echelle);
+    return paires.filter(function (e) {
+      const zone = e.autre && Array.isArray(e.autre.points) ? e.autre.points : null;
+      if (!zone || !e.objet || !Array.isArray(e.objet.points)) return true;
+      const gardees = C.traverseesTrace(e.objet.points, zone).filter(function (t) { return t.px >= tol; });
+      if (!gardees.length) return false;
+      e.longueurPx = gardees.reduce(function (s, t) { return s + t.px; }, 0);
+      e.auBord = e.longueurPx < bord;
+      return true;
+    });
+  }
+
+  // Paires (tracé, obstacle) d'un contrôle de traversée (C1, C12).
+  function _traversees(d, seulement, controle, obstacles) {
+    const C = _ctl();
     if (!obstacles.length) return [];
     const prep = C.preparer(obstacles);
     const grille = C.grilleZones(prep.polys);
@@ -131,10 +161,10 @@ window.KtaVerifierPlan = (function () {
     if (seulement) obstacles.forEach(function (o) { if (seulement.has(o.objet)) obstacleSaisi = true; });
 
     function _paire(road, obst, famille, type, niveau) {
-      const cle = "C1|" + _identite(road) + "|" + _identite(obst);
+      const cle = controle + "|" + _identite(road) + "|" + _identite(obst);
       let e = paires.get(cle);
       if (!e) {
-        e = { controle: "C1", gravite: CONTROLES.C1, cle: cle, motif: type, niveau: niveau,
+        e = { controle: controle, gravite: CONTROLES[controle], cle: cle, motif: type, niveau: niveau,
           objet: road, famille: "roads", autre: obst, autreFamille: famille,
           longueurPx: 0, bordPx: Infinity, segments: 0, ancre: null,
           boite: { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity } };
@@ -282,7 +312,7 @@ window.KtaVerifierPlan = (function () {
   function analyser(donnees, opts) {
     const d = donnees || collecter();
     const vus = new Set((opts && Array.isArray(opts.vus)) ? opts.vus : _vusDuPlan());
-    const tous = _c1(d).concat(_c2(d), _c3(d));
+    const tous = _c1(d).concat(_c2(d), _c3(d), _c12(d));
     return {
       liste: _trier(tous.filter(function (c) { return !vus.has(c.cle); })),
       vus: _trier(tous.filter(function (c) { return vus.has(c.cle); }))
@@ -348,10 +378,10 @@ window.KtaVerifierPlan = (function () {
   function _libelle(c) {
     const objet = _nomObjet(c.famille, c.objet);
     let detail = "";
-    if (c.controle === "C1") {
+    if (c.controle === "C1" || c.controle === "C12") {
       const obst = _nomObjet(c.autreFamille, c.autre);
       detail = c.motif === "zone"
-        ? _t("verif.c1.zone", { obstacle: obst, d: _distTexte(c.longueurPx) })
+        ? _t("verif." + c.controle.toLowerCase() + ".zone", { obstacle: obst, d: _distTexte(c.longueurPx) })
         : _t("verif.c1.mur", { obstacle: obst });
       if (c.auBord) detail += " · " + _t("verif.c1.auBord");
     } else if (c.controle === "C2") {
@@ -363,7 +393,8 @@ window.KtaVerifierPlan = (function () {
         ? _t("verif.c3.meme", { n: _fmtNiv(c.niveau) })
         : _t("verif.c3.bout", { n: _fmtNiv(c.niveau), d: _distTexte(c.distPx) });
     }
-    const niveau = _multi() && c.controle === "C1" ? " · " + _t("verif.niveau", { n: _fmtNiv(c.niveau) }) : "";
+    const traverse = c.controle === "C1" || c.controle === "C12";
+    const niveau = _multi() && traverse ? " · " + _t("verif.niveau", { n: _fmtNiv(c.niveau) }) : "";
     return { objet: objet + niveau, detail: detail };
   }
 

@@ -2506,11 +2506,14 @@
     }, 50);
   }
 
-  // Options brancard de « Évacuer » : les types de zones du plan (session + embarquées) sont proposés, eau et
-  // remblais cochés d'office. Les zones inaccessibles restent infranchissables sauf case cochée (dernier
-  // recours, décochée). ⚠️ Évitements SOUPLES : sans chemin qui les respecte, le moteur les traverse et la
-  // fenêtre de la sortie le dit. Rappel : onChoix({ avoidZones, respecterInaccessibles }).
-  const BRANCARD_COCHES = ["eau", "remblais"];
+  // Options brancard de « Évacuer » : les types de zones évitables du plan (session + embarquées) sont proposés,
+  // l'eau cochée d'office. Comblé et effondrement n'y figurent pas : le moteur les évite toujours dès qu'un autre
+  // chemin existe, sans jamais bloquer (pathfinder.js > TYPES_ZONES_COUT). Les zones inaccessibles restent
+  // infranchissables sauf case cochée (dernier recours, décochée). ⚠️ Évitements SOUPLES : sans chemin qui les
+  // respecte, le moteur les traverse et la fenêtre de la sortie le dit. `brancard: true` : le moteur évite d'office
+  // une masse au sol qui laisse moins de 1,8 m de vide (pathfinder.js > _coutMasseSegment). Rappel :
+  // onChoix({ avoidZones, respecterInaccessibles, brancard }).
+  const BRANCARD_COCHES = ["eau"];
   // « POI de la zone » : types (tags) à exclure des étapes, avec leur nombre. Un POI reste s'il a au moins un
   // type gardé ; sans type = « Sans type ». Choix gardé dans le scénario (s.tagsExclusPoiZone) pour toutes
   // les équipes. Un seul type présent : pas de question.
@@ -2608,7 +2611,7 @@
         .map(function(i) { return i.getAttribute("data-ztype"); });
       const inacc = overlay.querySelector("input[data-inacc]");
       _close();
-      onChoix({ avoidZones: zones, respecterInaccessibles: !(inacc && inacc.checked) });
+      onChoix({ avoidZones: zones, respecterInaccessibles: !(inacc && inacc.checked), brancard: true });
     });
   }
 
@@ -11639,6 +11642,8 @@
         if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
           lignesCalc.push(t("secours.toast.itiTraverse", { n: r.avoidedThrough.length }));
         }
+        const zonesCout = window.Pathfinder.texteZonesTraversees(r.zonesTraversees);   // Comblé, effondrement
+        if (zonesCout) lignesCalc.push("⚠️ " + zonesCout);
         const loin = _texteEtapesLoin(_etapesLoin(r.raccords));   // toutes, plus seulement la pire
         if (loin) lignesCalc.push("⚠️ " + loin);
         const gMaj = (get(scenarioId).groupes || []).find(function(x) { return x.id === groupeId; });

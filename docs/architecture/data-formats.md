@@ -114,6 +114,43 @@ unique avec les passages : `poiJonction.js > ktaNiveauxObjet`. Gardé par la ses
 `getAllEmbeddedZones`), le Tableur, l'export anonymisé, KMZ (`mkm:niveaux`, une copie par autre niveau marquée
 `mkm:copie`) et GeoJSON (propriété `niveaux`, une entité). Retiré quand la zone devient une structure. Voir
 `multilevel-pathfinding.md` §26.12.
+→ **Masse au sol** : `"type": "masse-sol"` (remblai partiel), `"comble": 0.75` = part de la hauteur de galerie
+comblée, nombre dans **[−1 ; 1[ sauf 0** (`ktaCombleValide`) ; **négatif = sol abaissé** de cette part de la hauteur
+(−1 = une hauteur de niveau plus bas) ; **absent = ½** (`styleResolver.js > ktaCombleZone`, seule règle de lecture).
+Une valeur pour tous les niveaux d'une zone multi-niveau. Crans de saisie −¾ −½ −¼ ¼ ½ ¾ ou valeur libre (fiche :
+`KtaConvertir.changerComble`, une entrée ⏪ ; Tableur : colonne `comble`, code d'erreur `comble`) ; ≥ 1 n'est jamais
+écrit : c'est un Comblé (`remblais`), proposé à la place ; sous −1, refusé avec un message. Retiré quand la zone
+change de type. Gardé par la session,
+les calques (registre `_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:comble`, style `#zone_masse-sol`), GeoJSON
+(propriété `comble`, toujours écrite, ½ par défaut) ; import SIG : synonymes `ms`, `masse au sol`, `remblai partiel`,
+colonne de hauteur facultative (`sigImport.js > combleDe` : 0,5 = part, 50 % ou 1-100 = pourcentage, signe moins =
+sol abaissé : « -0,5 », « -50 % ») ; KMZ et GeoJSON écrivent la valeur signée ; **défaut d'un
+polygone SIG non reconnu = `masse-sol`** (Générateur compris). Garde-fou : `scripts/check-masse-sol.js`.
+→ **Sorte d'une masse au sol** : `"nature": "non-exploitee"` = **masse non exploitée** (roche laissée en place) ;
+**absent ou toute autre valeur = remblai** (aucun plan existant ne change). N'a de sens que pour une part > 0 :
+jamais écrit pour une part négative, ignoré s'il s'y trouve. ⚠️ Lecture unique : `styleResolver.js >
+ktaMasseNonExploitee(zone)` (part > 0 ET `nature === "non-exploitee"`), carte, volume, fiche, exports et vue 3D ;
+personne ne relit le champ en direct. Fiche : `KtaConvertir.changerNature` (une entrée ⏪ ; « remblai » retire le
+champ) ; passer la part en négatif (fiche, Tableur) ou changer de type le retire. Gardé par la session, la fusion
+par uid, les calques (`_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:nature`), GeoJSON (propriété `nature`,
+écrite seulement pour une masse non exploitée) et l'import SIG (colonne `nature`, sans casse ni accents :
+`sigImport.js > natureDe`). Volume : `volumeExploite.js` (retirée du volume exploité et du vide). Garde-fous :
+`check-style-resolver.js`, `check-api-surface.js` (volume), `checkup-masse-non-exploitee.js`.
+→ **Rampes d'une masse au sol** : `"rampes": [{ "bord": 3, "fin": { "x": 1250.5, "y": 840 } }, { "bord": 1 }]` = bords bas
+des pentes, `bord` = indice du segment `points[bord]` → `points[bord + 1]` (le dernier rejoint le premier), un bord au
+plus une fois, liste triée ; `fin` (facultative, px du plan) = l'endroit où la pente atteint le cran (au-delà : plat ;
+sans fin : jusqu'au point du contour le plus loin). Absent = aucune rampe : la masse est à pleine hauteur, bords en
+fronts verticaux. Seule règle de lecture : `masseSol.js > rampesValides` / `rampes` (indices hors du contour ou en
+double écartés). Posé, fin déplacée et retiré depuis la fiche (`KtaConvertir.ajouterRampe` / `changerFinRampe` /
+`retirerRampe`, une entrée ⏪, uid touché) ; retiré quand la zone change de type. Gardé par la session, les calques
+(`_ktaDataPolygons`, `getAllEmbeddedZones`), KMZ (`mkm:rampes` « 1,3 » ou « 3:lng;lat,1 », fin en WGS84, revalidé et
+reprojeté à la relecture ; l'ancien format reste lu), GeoJSON (propriété `rampes` : entiers, ou `{ bord, fin: [lng,
+lat] }` en WGS84 quelle que soit la projection ; relue par l'import SIG, `sigImport.js > rampesDe`) ; Tableur : colonne
+`rampes` en lecture seule. ⚠️ Un sommet ajouté ou retiré au contour décale les indices : la rampe suit son SEGMENT
+(`masseSol.js > suivreBords`, appelée par `ajusterSommets.js` en 2D comme en 3D et par le dédoublonnage du Tableur) —
+sommet inséré avant : l'indice avance ; sommet né sur le bord de la rampe : elle garde la première moitié ; sommet
+supprimé à un bout de son bord : le segment disparaît, la rampe aussi. La fin, en coordonnées du plan, ne bouge pas
+(voulu).
 → **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
 `niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction
 qui la traverse (`galerieEmprise.js > penteDeZone`). Couleur, libellé et visibilité de légende : ceux du tracé jonction

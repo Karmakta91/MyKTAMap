@@ -1784,6 +1784,12 @@ window.proposerRedemarrageLangue = function() {
   // - sinon (accès community déjà ouvert) : EN PREMIER, avant toute gate.
   // 🩸 Avant une gate, au-dessus d'elle : lancée après, la gate légale (z 99999) passait DERRIÈRE l'UnlockGate
   // (z 100100) ; à l'entrée, elle s'ouvre au-dessus (LegalGate.ouvrirGate({ auDessus })).
+  // Stockage du site refusé par le navigateur (utils.js > ktaStockageIndispo) : dit AVANT les conditions, une fois ;
+  // jamais bloquant, rien n'est effacé — conditions et entrée seront gardées en mémoire pour la session.
+  if (window.ktaStockageIndispo && typeof window.ktaSignalerStockageIndispo === "function") {
+    await _splashAvantGate();
+    await window.ktaSignalerStockageIndispo();
+  }
   const _legalAFaire = !!(window.LegalGate && typeof window.LegalGate.ouvrirGate === "function"
     && !window.LegalGate.isAccepted() && !(window.IncognitoMode && window.IncognitoMode.active));
   const _scOn = !!(_scBoot && _scBoot.state === "on");

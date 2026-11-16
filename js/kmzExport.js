@@ -841,6 +841,16 @@
         parts.push('<Data name="mkm:niveaux"><value>' + extra.niveaux.join(",") + '</value></Data>');
       }
       if (extra && extra.copie) parts.push('<Data name="mkm:copie"><value>1</value></Data>');
+      // Masse au sol : part comblée (0-1), absente = ½ à la relecture.
+      if (extra && Number.isFinite(extra.comble)) {
+        parts.push('<Data name="mkm:comble"><value>' + extra.comble + '</value></Data>');
+      }
+      // Masse non exploitée : `nature` (absente = remblai à la relecture).
+      if (extra && extra.nature) parts.push('<Data name="mkm:nature"><value>' + extra.nature + '</value></Data>');
+      // Masse au sol : rampes (bords bas, indices des sommets du contour : « 0,2 » ; fin en WGS84 : « 0:2.31;48.85 »).
+      if (extra && Array.isArray(extra.rampes) && extra.rampes.length) {
+        parts.push('<Data name="mkm:rampes"><value>' + extra.rampes.join(",") + '</value></Data>');
+      }
       // POI danger : jour du constat (« AAAA-MM-JJ », déjà validé par poiDanger.js).
       if (extra && extra.dateConstat) {
         parts.push('<Data name="mkm:dateConstat"><value>' + _xmlEsc(extra.dateConstat) + '</value></Data>');
@@ -903,8 +913,20 @@
       else if (zone.type === "pente") nom = "🪜 Jonction";   // même nom que le tracé jonction (#zone_pente)
       else nom = _nomType(zone.type);
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
-      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null,
-        multi ? { niveaux: multi.niveaux, copie: multi.copie } : null);
+      const extra = multi ? { niveaux: multi.niveaux, copie: multi.copie } : {};
+      if (zone.type === "masse-sol" && Number.isFinite(zone.comble)) extra.comble = zone.comble;
+      if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(zone)) {
+        extra.nature = "non-exploitee";
+      }
+      if (zone.type === "masse-sol" && window.KtaMasseSol) {
+        extra.rampes = window.KtaMasseSol.rampesValides(zone).map(function (b) {
+          const r = (zone.rampes || []).filter(function (q) { return q && q.bord === b; })[0];
+          if (!r || !r.fin || !Number.isFinite(r.fin.x) || !Number.isFinite(r.fin.y)) return String(b);
+          const ll = planToGps(t, r.fin.x, r.fin.y);
+          return b + ":" + Number(ll.lng.toFixed(8)) + ";" + Number(ll.lat.toFixed(8));
+        });
+      }
+      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null, extra);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +

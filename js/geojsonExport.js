@@ -174,6 +174,26 @@
         if (!Array.isArray(z.points) || z.points.length < 3) return;
         const props = proprietes("zone", z.type, _libelle("zones", z.type), z, KE.styleResolu("zones", z.type));
         if (multi) props.niveaux = nv;
+        // Masse au sol : part comblée (0-1), absente = ½ (relue par l'import SIG, colonne « comble »).
+        if (z.type === "masse-sol") {
+          props.comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z)
+            : (Number.isFinite(z.comble) && z.comble > 0 ? z.comble : 0.5);
+          // Masse non exploitée : `nature` (absente = remblai ; relue par l'import SIG, colonne « nature »).
+          if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(z)) {
+            props.nature = "non-exploitee";
+          }
+          // Rampes : indices des bords bas, ou { bord, fin: [lng, lat] } (fin en WGS84 quelle que soit la projection ;
+          // relues par l'import SIG, colonne « rampes »).
+          const rp = window.KtaMasseSol ? window.KtaMasseSol.rampesValides(z) : [];
+          if (rp.length) {
+            props.rampes = rp.map(function (b) {
+              const r = (z.rampes || []).filter(function (q) { return q && q.bord === b; })[0];
+              if (!r || !r.fin || !Number.isFinite(r.fin.x) || !Number.isFinite(r.fin.y)) return b;
+              const ll = window.KmzExport.planToGps(opts.transform, r.fin.x, r.fin.y);
+              return { bord: b, fin: [Number(ll.lng.toFixed(8)), Number(ll.lat.toFixed(8))] };
+            });
+          }
+        }
         ajouter(polygone(z.points), props, z.uid);
       });
     }

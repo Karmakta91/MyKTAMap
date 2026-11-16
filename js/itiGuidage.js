@@ -82,6 +82,22 @@
     return { x: pts[lo].x + t * (pts[hi].x - pts[lo].x), y: pts[lo].y + t * (pts[hi].y - pts[lo].y) };
   }
 
+  // Ralentissement (px) des masses au sol entre l'abscisse s et l'arrivée (ch.surcout, interpolé dans le segment).
+  function _surcoutApres(ch, s) {
+    const sc = ch.surcout, cum = ch.cum;
+    if (!sc || sc.length !== cum.length) return 0;
+    const fin = sc[sc.length - 1];
+    if (s <= 0) return fin;
+    if (s >= ch.total) return 0;
+    let lo = 0, hi = cum.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (cum[mid] <= s) lo = mid; else hi = mid;
+    }
+    const seg = cum[hi] - cum[lo], t = seg > 0 ? (s - cum[lo]) / seg : 0;
+    return Math.max(0, fin - (sc[lo] + t * (sc[hi] - sc[lo])));
+  }
+
   // `niveau` (entier, facultatif) : seuls les segments de ce niveau comptent (ch.nivSeg : ses deux bouts à ce niveau,
   // ou un changement de niveau qui le touche — la galerie inclinée d'un tracé jonction se marche en vue 3D).
   function _projeter(ch, p, sMin, sMax, niveau) {
@@ -206,6 +222,9 @@
       return (q && q.level === undefined && !q.via) ? nivDefaut : null;
     });
     ch.nivSeg = _niveauxSegments(ch.niv);
+    // Ralentissement cumulé dans les masses au sol (px, un par point) : le temps restant le compte, la distance non.
+    ch.surcout = (window.Pathfinder && typeof window.Pathfinder.surcoutMasseTrajet === "function")
+      ? window.Pathfinder.surcoutMasseTrajet(road.points) : null;
     const L = ch.total;
     const W = Math.max(3, FENETRE_M * e);
     const ecartPx = ZONE_ECART_M * e;
@@ -635,8 +654,9 @@
   // recalage, recalcul : la road change), jamais de chemin. Distance = le long du trajet depuis l'abscisse `s`,
   // raccords restants compris (étape hors tracé ×2, arrivée ×1, comme _distanceItineraireMeters), plus `horsM`
   // (position hors du trajet, « rejoindre »). Temps = réglage de vitesse et pauses de l'itinéraire
-  // (interfaceItineraire.js > getItiTempsMinutes), « ~ » et arrondi à la minute : la marche sous terre varie trop
-  // pour mieux. Toujours affiché, jamais replié : une seule ligne, rien à gagner (décision produit).
+  // (interfaceItineraire.js > getItiTempsMinutes) sur la distance plus le ralentissement des masses au sol restantes
+  // (pathfinder.js > surcoutMasseTrajet), « ~ » et arrondi à la minute : la marche sous terre varie trop pour mieux.
+  // Toujours affiché, jamais replié : une seule ligne, rien à gagner (décision produit).
   const VITESSE_REPLI_M_MIN = 3000 / 60;             // sans interfaceItineraire.js : son défaut, « lente »
   // Clé de l'encart repliable d'avant : plus lue, effacée au chargement (idempotent).
   try { localStorage.removeItem("myktamap_guidage_encart_v1"); } catch(e) {}
@@ -668,8 +688,10 @@
       else if (c.type === "arrivee") px += (c.raccordPx || 0);
     });
     const resteM = px / e + Math.max(0, horsM || 0);
+    // Temps : la distance plus le ralentissement des masses au sol restantes (courbé ×1,5, ramper ×3).
+    const tempsM = resteM + _surcoutApres(guide.ch, s) / e;
     const tempsMin = (typeof window.getItiTempsMinutes === "function")
-      ? window.getItiTempsMinutes(resteM, 2 + etapes) : resteM / VITESSE_REPLI_M_MIN;
+      ? window.getItiTempsMinutes(tempsM, 2 + etapes) : tempsM / VITESSE_REPLI_M_MIN;
     const niv = guide.ch.niv[guide.ch.niv.length - 1];
     const niveau = (_multiNiveau() && Number.isInteger(niv) && Number.isInteger(niveauIci) && niv !== niveauIci)
       ? niv : null;

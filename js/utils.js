@@ -665,6 +665,48 @@ window.ktaAlerte = function(message, opts) {
   }
 };
 
+// ── Stockage du site refusé ──────────
+// 🩸 Navigateur qui refuse d'écrire (Chrome : « Cookies et données des sites » bloqués → SecurityError ; mémoire
+// pleine → QuotaExceededError) : sans détection, « J'accepte » ne s'enregistrait pas et les conditions revenaient
+// en boucle derrière la descente de l'écran Bienvenue. Clé témoin écrite, relue et retirée au chargement.
+// window.ktaStockageIndispo : null si le stockage marche, sinon la raison ("absent" | nom de l'erreur). Les
+// conditions et l'écran Bienvenue passent alors en mémoire pour la session (LegalGate, UnlockGate).
+// window.ktaEcrireStockage(clé, valeur) → true si l'écriture est relue telle quelle, false sinon (jamais d'exception).
+// window.ktaSignalerStockageIndispo() → Promise : le message, une fois par page.
+// ⚠️ Ne bloque jamais l'app, n'efface rien.
+window.ktaStockageIndispo = (function() {
+  const CLE = "myktamap_temoin_ecriture";
+  try {
+    if (typeof localStorage === "undefined" || !localStorage) return "absent";
+    const v = String(Date.now());
+    localStorage.setItem(CLE, v);
+    const ok = localStorage.getItem(CLE) === v;
+    localStorage.removeItem(CLE);
+    return ok ? null : "relecture";
+  } catch (e) {
+    return (e && e.name) || "erreur";
+  }
+})();
+if (window.ktaStockageIndispo) console.warn("[Stockage] écriture refusée par le navigateur :", window.ktaStockageIndispo);
+
+window.ktaEcrireStockage = function(cle, valeur) {
+  try {
+    localStorage.setItem(cle, valeur);
+    return localStorage.getItem(cle) === String(valeur);
+  } catch (e) {
+    console.warn("[Stockage] écriture refusée :", cle, e && e.name);
+    return false;
+  }
+};
+
+let _ktaStockageSignale = null;
+window.ktaSignalerStockageIndispo = function() {
+  if (_ktaStockageSignale) return _ktaStockageSignale;
+  const t = function(k) { return (window.I18n && window.I18n.t) ? window.I18n.t(k) : k; };
+  _ktaStockageSignale = window.ktaAlerte(t("stockage.refuse.message"), { titre: t("stockage.refuse.titre") });
+  return _ktaStockageSignale;
+};
+
 // Branche les boutons « 📋 Copier » du bandeau de cohérence. Idempotent ; à appeler après insertion du HTML.
 function attacherBoutonCopierEchelleGps(container) {
   if (!container || !container.querySelectorAll) return;
@@ -725,6 +767,8 @@ function _icoFiche(nom) { return typeof window.ktaIcone === "function" ? window.
 // readonly (data layer) : texte seul, setDescr peut être null. À ne binder QUE si une note existe (c'est à
 // l'appelant de tester `description`), sinon un clic sur un data layer muet ouvrirait une popup vide.
 // Mêmes classes que les popups de point (.kta-popup-point) : thème clair/sombre hérité.
+// ⚠️ Fiche construite à l'ouverture (contenu = fonction) : getContent() n'est pas du HTML, lire par
+// ktaHtmlFiche(layer).
 //
 // 🩸 Pendant un mode tracé / zone / structure, les ghost polylines (épaisses, transparentes,
 // bubblingMouseEvents: false) mangeraient les clics du tracé. Les rendus (renderRoads, renderStructures,
@@ -912,8 +956,12 @@ window._kta_resetDataLayerNoteGhosts = function() {
 // aussi sans rien changer (option de la carte, filtres) ; l'abonné relit sa propre empreinte avant de refaire
 // quoi que ce soit (vue3d.js > _empreinteDonnees). Sans abonné, rien d'autre que l'envoi. Doc : tracking.md
 // § Vue 3D.
+// `detail.affichage` : émis pendant un redessin d'affichage seul (window._ktaRenduAffichage > 0, posé par
+// interfaceConfig.js > appliquerFiltreNiveau) ; la sauvegarde de session l'ignore, les autres abonnés relisent.
 window.ktaSignalerDonneesPlan = function(source) {
-  try { window.dispatchEvent(new CustomEvent("kta:donneesPlanChange", { detail: { source: source || "" } })); }
+  const affichage = (window._ktaRenduAffichage || 0) > 0;
+  const detail = { source: source || "", affichage: affichage };
+  try { window.dispatchEvent(new CustomEvent("kta:donneesPlanChange", { detail: detail })); }
   catch (e) { /* rien : un abonné en erreur ne bloque pas le rendu */ }
 };
 
@@ -999,6 +1047,14 @@ const _fichesObjets = new WeakMap();
 window.ktaFicheObjetDe = function(o) {
   return (o && Array.isArray(o.points) && _fichesObjets.get(o.points)) || null;
 };
+// HTML de la fiche d'un layer de la carte, ou null. Le contenu d'une fiche est une fonction appelée à l'ouverture
+// (attacherNotePopup) : la lire comme une chaîne ne marche pas, passer par ici.
+window.ktaHtmlFiche = function(layer) {
+  const p = layer && typeof layer.getPopup === "function" ? layer.getPopup() : null;
+  const c = p && typeof p.getContent === "function" ? p.getContent() : null;
+  const h = typeof c === "function" ? c(layer) : c;
+  return typeof h === "string" ? h : null;
+};
 
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
@@ -1073,6 +1129,113 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                '</button>' +
              '</div>' +
            '</div>';
+  }
+
+  // Masse au sol : « Part comblée » (champ `comble`, absent = ½) — crans −¾ −½ −¼ (sol abaissé) ¼ ½ ¾ ou « Autre »
+  // (valeur libre, signée), avec les
+  // mètres de remblai d'après la hauteur du niveau (styleResolver.js > ktaMetresComble), appliqués par un bouton (un
+  // geste, une entrée ⏪ : KtaConvertir.changerComble). Lecture seule (zone embarquée, plan en lecture) : la valeur
+  // seule. Une valeur ≥ 1 propose de passer en Comblé (le gestionnaire du bouton, plus bas).
+  function _combleHtml() {
+    const o = (opts.convertir && opts.convertir.obj) || opts.objet;
+    if (!o || o.type !== "masse-sol" || typeof window.ktaCombleZone !== "function") return "";
+    const v = window.ktaCombleZone(o);
+    const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.label")) + '</span>';
+    const metres = '<div class="kta-note-popup-comble-metres">' + _esc(_texteMetresComble(o, v)) + '</div>';
+    if (!opts.convertir || mode === "readonly") {
+      const ne = typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(o);
+      return '<div class="kta-note-popup-comble">' + titre + ' <strong>' + _esc(window.ktaTexteComble(v)) +
+             '</strong>' + (ne ? '<div class="kta-note-popup-nature-lue">' +
+               _esc(window.I18n.t("masseSol.nature.nonExploitee")) + '</div>' : "") +
+             metres + _rampesHtml(o, false) + '</div>';
+    }
+    const crans = [-0.75, -0.5, -0.25, 0.25, 0.5, 0.75], autre = crans.indexOf(v) < 0;
+    const radio = function (val, txt, coche) {
+      return '<label class="kta-note-popup-comble-cran"><input type="radio" name="kta-comble" value="' + val + '"' +
+             (coche ? " checked" : "") + '><span>' + _esc(txt) + '</span></label>';
+    };
+    return '<div class="kta-note-popup-comble">' + titre +
+             '<div class="kta-note-popup-comble-crans">' +
+               crans.map(function (c) { return radio(c, window.ktaTexteComble(c), c === v); }).join("") +
+               radio("autre", window.I18n.t("masseSol.autre"), autre) +
+               '<input class="kta-note-popup-comble-autre" type="text" inputmode="decimal" size="4" value="' +
+                 (autre ? _esc(window.ktaTexteComble(v)) : "") + '" aria-label="' +
+                 _esc(window.I18n.t("masseSol.autreAide")) + '" title="' +
+                 _esc(window.I18n.t("masseSol.autreAide")) + '">' +
+             '</div>' + metres +
+             '<div class="kta-popup-actions kta-note-popup-actions">' +
+               '<button class="kta-popup-btn kta-note-popup-comble-appliquer" type="button">' +
+                 _esc(window.I18n.t("masseSol.appliquer")) +
+               '</button>' +
+             '</div>' + _natureHtml(o, v) + _rampesHtml(o, true) +
+           '</div>';
+  }
+  // Sorte d'une masse au sol : Remblai (défaut) / Masse non exploitée, appliquée au choix (KtaConvertir.changerNature,
+  // une entrée ⏪). ⚠️ Cachée pour une part négative (sol abaissé : le champ n'a pas de sens), aussi en direct quand
+  // on coche une part négative avant d'appliquer.
+  function _natureHtml(o, v) {
+    const ne = typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(o);
+    const radio = function (val, cle, coche) {
+      return '<label class="kta-note-popup-nature-option"><input type="radio" name="kta-nature" value="' + val +
+             '"' + (coche ? " checked" : "") + '><span>' + _esc(window.I18n.t(cle)) + '</span></label>';
+    };
+    return '<div class="kta-note-popup-nature"' + (v > 0 ? "" : " hidden") + '>' +
+             '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.nature.titre")) +
+             '</span><div class="kta-note-popup-nature-choix">' +
+               radio("remblai", "masseSol.nature.remblai", !ne) +
+               radio("non-exploitee", "masseSol.nature.nonExploitee", ne) +
+             '</div></div>';
+  }
+  // Pentes (rampes) d'une masse au sol : une ligne par bord bas (« Pente 1 — bord 3 », ✕ pour la retirer), « Placer une
+  // pente » (zones.js > ktaArmerRampe) ; sans pente, la pleine hauteur est rappelée. Lecture seule : le nombre.
+  // Sens de la montée d'une rampe (bord bas `b`) en flèche, dans le repère du plan (haut de l'image = ↑).
+  function _sensRampe(o, b) {
+    const sc = Number(window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
+    const r = (window.KtaMasseSol ? window.KtaMasseSol.rampes(o, sc) : []).filter(function (q) {
+      return q.bord === b;
+    })[0];
+    if (!r) return "";
+    const k = Math.round(((Math.atan2(r.nx, -r.nz) * 180 / Math.PI) + 360) % 360 / 45) % 8;
+    return ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"][k];
+  }
+  function _rampesHtml(o, edit) {
+    const bords = window.KtaMasseSol ? window.KtaMasseSol.rampesValides(o) : [];
+    const titre = '<span class="kta-note-popup-comble-titre">' + _esc(window.I18n.t("masseSol.rampe.titre")) +
+      '</span>';
+    const vide = '<div class="kta-note-popup-comble-metres">' + _esc(window.I18n.t("masseSol.rampe.aucune")) + '</div>';
+    if (!edit) {
+      return '<div class="kta-note-popup-rampes">' + titre + ' <strong>' + bords.length + '</strong></div>';
+    }
+    const croix = typeof window.ktaIcone === "function" ? window.ktaIcone("x") : "";
+    return '<div class="kta-note-popup-rampes">' + titre +
+      (bords.length ? bords.map(function (b, i) {
+        const lib = window.I18n.t("masseSol.rampe.ligne", { n: i + 1, sens: _sensRampe(o, b) });
+        const r = (o.rampes || []).filter(function (q) { return q && q.bord === b; })[0], aFin = !!(r && r.fin);
+        // Fin : la poser ou la déplacer (un toucher), la retirer (la pente va alors jusqu'au bout de la zone).
+        return '<div class="kta-note-popup-rampe"><span>' + _esc(lib) +
+          (aFin ? ' <span class="kta-tx-muted">' + _esc(window.I18n.t("masseSol.rampe.avecFin")) + '</span>' : "") +
+          '</span><span class="kta-note-popup-rampe-boutons">' +
+          '<button class="kta-popup-btn kta-note-popup-rampe-fin" type="button" data-bord="' + b + '">' +
+          _esc(window.I18n.t(aFin ? "masseSol.rampe.finDeplacer" : "masseSol.rampe.finPlacer")) + '</button>' +
+          (aFin ? '<button class="kta-popup-btn kta-note-popup-rampe-sansfin" type="button" data-bord="' + b + '">' +
+            _esc(window.I18n.t("masseSol.rampe.finRetirer")) + '</button>' : "") +
+          '<button class="kta-popup-btn kta-note-popup-rampe-retirer" type="button" data-bord="' + b + '" title="' +
+          _esc(window.I18n.t("masseSol.rampe.retirer")) + '" aria-label="' +
+          _esc(window.I18n.t("masseSol.rampe.retirer")) + ' ' + _esc(lib) + '">' + croix + '</button></span></div>';
+      }).join("") : vide) +
+      '<div class="kta-popup-actions kta-note-popup-actions">' +
+        '<button class="kta-popup-btn kta-note-popup-rampe-placer" type="button">' +
+          _esc(window.I18n.t("masseSol.rampe.placer")) + '</button>' +
+      '</div></div>';
+  }
+  function _texteMetresComble(o, v) {
+    const mh = window.ktaMetresComble(o, v);
+    const f = function (x) { return window.formatDistance(x, 1); };
+    if (mh.m < 0) return window.I18n.t("masseSol.metresBas", { m: f(-mh.m), h: f(mh.h) });
+    if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(o)) {
+      return window.I18n.t("masseSol.metresNe", { m: f(mh.m), h: f(mh.h) });
+    }
+    return window.I18n.t("masseSol.metres", { m: f(mh.m), h: f(mh.h) });
   }
 
   // Zone jonction (type `pente`) : « Du niveau » (`level`) et « Au niveau » (l'autre), appliqués ensemble par un
@@ -1156,7 +1319,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                (_uidLu ? ' data-kta-uid="' + _esc(_uidLu).replace(/"/g, "&quot;") + '"' : "") + '>' +
                '<b>' + _titreHtml() + '</b>' +
                '<div class="kta-note-popup-readonly-label">' + _esc(window.I18n.t("utils.note.lectureSeule")) + '</div>' +
-               corps +
+               corps + _combleHtml() +
              '</div>';
     }
     const _uid = opts.convertir && opts.convertir.obj && opts.convertir.obj.uid;
@@ -1180,7 +1343,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
                      '</button>'
                    : '') +
                '</div>' +
-               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml() + _niveauxZoneHtml()) +
+               (opts.jonction ? _niveauxJonctionHtml() : _niveauHtml() + _combleHtml() + _niveauxZoneHtml()) +
                // Supprimer : ligne séparée, classe danger (comme la popup d'un point, une action destructrice ne se
                // pose pas à côté de « Sauver »). `opts.convertir` = { famille, obj } sert aux DEUX boutons.
                (opts.convertir
@@ -1195,14 +1358,30 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
            '</div>';
   }
 
-  layer.bindPopup(_renderPopupHtml(), window.KTA_POPUP_OPTS || { autoPan: true, closeButton: true });
+  // Fiche construite à l'OUVERTURE seulement (Leaflet appelle la fonction dans Popup.update, avant popupopen) : un rendu
+  // de famille (changement de niveau, filtres) attache des milliers de fiches qu'on n'ouvrira pas ; les construire à
+  // l'avance (HTML + liste des niveaux) coûtait ~1 s sur un relevé réel lourd. ⚠️ contrat : getContent() d'une fiche
+  // de la carte rend cette FONCTION (l'appeler avec le layer pour avoir le HTML) ; l'hôte de la vue 3D (`horsCarte`)
+  // reçoit toujours le HTML, il l'écrit lui-même aussitôt (vue3d.js > _ouvrirFicheObjet).
+  const _contenuFiche = function() { _majMode(); return _renderPopupHtml(); };
+  layer.bindPopup(opts.horsCarte ? _renderPopupHtml() : _contenuFiche,
+    window.KTA_POPUP_OPTS || { autoPan: true, closeButton: true });
 
   // popupopen : Leaflet le déclenche après l'injection DOM ; on rebranche le save à chaque ouverture.
   layer.on("popupopen", function(evt) {
     _majMode();
     // contenu re-rendu : la note a pu changer (undo/redo)
-    const fresh = _renderPopupHtml();
-    if (evt && evt.popup) evt.popup.setContent(fresh);
+    // 🩸 Contenu remplacé seulement s'il a changé : setContent refait toute la mise en page de la fiche
+    // (Leaflet > _updateLayout, une mise en page forcée du document) juste après celle de l'ouverture, et double le
+    // temps du toucher sur un plan chargé. ⚠️ contrat : l'hôte de la fiche de la vue 3D (vue3d.js > _ouvrirFicheObjet)
+    // passe un faux popup SANS getContent : on y écrit toujours.
+    // Contenu en fonction (fiche de la carte) : Leaflet vient de la construire, fraîche, rien à refaire.
+    const pop = evt && evt.popup;
+    const actuel = pop && typeof pop.getContent === "function" ? pop.getContent() : null;
+    if (typeof actuel !== "function") {
+      const fresh = _renderPopupHtml();
+      if (pop && typeof pop.setContent === "function" && actuel !== fresh) pop.setContent(fresh);
+    }
     if (mode === "readonly") return;
     setTimeout(function() {
       // 🩸 Cherché DANS la popup ouverte, jamais dans tout le document : la popup qu'on vient de quitter reste dans le
@@ -1262,6 +1441,118 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
           }
         });
       }
+      // Part comblée d'une masse au sol : mètres mis à jour en direct ; Appliquer écrit la valeur (une entrée ⏪), ou
+      // propose Comblé à partir de 1 (décision produit : un remblai jusqu'au ciel EST un Comblé). Saisie illisible,
+      // nulle ou sous −1 (sol abaissé de plus d'une hauteur de niveau) : refusée DANS la fiche, qui reste ouverte.
+      const cbBtn = popupRoot.querySelector(".kta-note-popup-comble-appliquer");
+      if (cbBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerComble) {
+        const cbAutre = popupRoot.querySelector(".kta-note-popup-comble-autre");
+        const cbMetres = popupRoot.querySelector(".kta-note-popup-comble-metres");
+        const lireComble = function () {
+          const r = popupRoot.querySelector('.kta-note-popup-comble-crans input[type="radio"]:checked');
+          if (!r) return NaN;
+          if (r.value !== "autre") return Number(r.value);
+          return Number(String(cbAutre ? cbAutre.value : "").trim().replace(",", ".").replace("−", "-"));
+        };
+        const natureBloc = popupRoot.querySelector(".kta-note-popup-nature");
+        const majMetres = function () {
+          const v = lireComble();
+          if (natureBloc) natureBloc.hidden = !(Number.isFinite(v) && v > 0);
+          if (cbMetres && Number.isFinite(v) && v !== 0) {
+            cbMetres.textContent = _texteMetresComble(opts.convertir.obj, v);
+          }
+        };
+        popupRoot.querySelectorAll('.kta-note-popup-comble-crans input[type="radio"]').forEach(function (r) {
+          r.addEventListener("change", function () {
+            if (r.value === "autre" && cbAutre) cbAutre.focus();
+            majMetres();
+          });
+        });
+        if (cbAutre) {
+          cbAutre.addEventListener("input", function () {
+            const ra = popupRoot.querySelector('.kta-note-popup-comble-crans input[value="autre"]');
+            if (ra) ra.checked = true;
+            majMetres();
+          });
+        }
+        cbBtn.addEventListener("click", function () {
+          const v = lireComble();
+          const statut = popupRoot.querySelector(".kta-note-popup-status");
+          if (!Number.isFinite(v) || v === 0 || v < -1) {
+            const cle = Number.isFinite(v) && v < -1 ? "masseSol.tropBas" : "masseSol.invalide";
+            if (statut) { statut.textContent = window.I18n.t(cle); statut.style.display = ""; }
+            return;
+          }
+          const obj = opts.convertir.obj;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (v >= 1) {
+            if (typeof window.ktaConfirm !== "function") return;
+            window.ktaConfirm(window.ktaEsc(window.I18n.t("masseSol.versComble.texte")), {
+              titre: window.ktaEsc(window.I18n.t("masseSol.versComble.titre")),
+              okLabel: window.ktaEsc(window.I18n.t("masseSol.versComble.oui")),
+              cancelLabel: window.ktaEsc(window.I18n.t("masseSol.versComble.non"))
+            }).then(function (ok) {
+              if (ok) window.KtaConvertir.convertir("zones", obj, "zones", "remblais");
+            });
+            return;
+          }
+          if (window.KtaConvertir.changerComble(obj, v) && window.OOMGuard &&
+              typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("masseSol.toast", { part: window.ktaTexteComble(v) }), "success");
+          }
+        });
+      }
+      // Sorte d'une masse au sol : appliquée au choix ; popup fermée AVANT le setteur (il re-rend la famille).
+      popupRoot.querySelectorAll('.kta-note-popup-nature input[name="kta-nature"]').forEach(function (r) {
+        if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.changerNature) return;
+        r.addEventListener("change", function () {
+          if (!r.checked) return;
+          const obj = opts.convertir.obj;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.changerNature(obj, r.value) && window.OOMGuard &&
+              typeof window.OOMGuard.showToast === "function") {
+            const cle = r.value === "non-exploitee" ? "masseSol.nature.nonExploitee" : "masseSol.nature.remblai";
+            window.OOMGuard.showToast(window.I18n.t("masseSol.nature.toast", { nature: window.I18n.t(cle) }),
+              "success");
+          }
+        });
+      });
+      // Pentes d'une masse au sol : « Placer une pente » arme le toucher du bord bas (zones.js > ktaArmerRampe) ;
+      // ✕ retire cette pente (une entrée ⏪), la fiche se ferme (la zone est redessinée).
+      const rpPlacer = popupRoot.querySelector(".kta-note-popup-rampe-placer");
+      if (rpPlacer && opts.convertir && typeof window.ktaArmerRampe === "function") {
+        rpPlacer.addEventListener("click", function () {
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          window.ktaArmerRampe(opts.convertir.obj);
+        });
+      }
+      popupRoot.querySelectorAll(".kta-note-popup-rampe-fin").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          if (!opts.convertir || typeof window.ktaArmerFinRampe !== "function") return;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          window.ktaArmerFinRampe(opts.convertir.obj, Number(bt.dataset.bord));
+        });
+      });
+      popupRoot.querySelectorAll(".kta-note-popup-rampe-sansfin").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.changerFinRampe) return;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          const ok = window.KtaConvertir.changerFinRampe(opts.convertir.obj, Number(bt.dataset.bord), null);
+          if (ok && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("masseSol.rampe.finRetiree"), "success");
+          }
+        });
+      });
+      popupRoot.querySelectorAll(".kta-note-popup-rampe-retirer").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          if (!opts.convertir || !window.KtaConvertir || !window.KtaConvertir.retirerRampe) return;
+          try { if (layer && layer.closePopup) layer.closePopup(); } catch(e) {}
+          if (window.KtaConvertir.retirerRampe(opts.convertir.obj, Number(bt.dataset.bord)) && window.OOMGuard &&
+              typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(window.I18n.t("masseSol.rampe.retiree"), "success");
+          }
+        });
+      });
       // Niveaux d'une zone jonction : deux niveaux identiques refusés DANS la fiche, comme pour un tracé jonction.
       const penteBtn = popupRoot.querySelector(".kta-note-popup-pente-appliquer");
       if (penteBtn && opts.convertir && window.KtaConvertir && window.KtaConvertir.changerNiveauxPente) {
@@ -1989,13 +2280,14 @@ function normaliserPoints(json) {
 // canvas d'export ({ flat: true }, aplat de repli du type : le motif ne part pas dans un fichier).
 // `repli` = type utilisé si `type` est introuvable ; `null` pour ne rien rendre.
 
-function _ktaStyleMap(categorie, type, repli) {
+// `opts` : options de ktaResolveStyle (ex. { comble } d'une masse au sol).
+function _ktaStyleMap(categorie, type, repli, opts) {
   const R = window.ktaResolveStyle;
   if (typeof R !== "function") {
     console.error("[Utils] window.ktaResolveStyle absent — styles indisponibles.");
     return null;
   }
-  return R(categorie, type) || (repli ? R(categorie, repli) : null);
+  return R(categorie, type, opts) || (repli ? R(categorie, repli) : null);
 }
 
 function _ktaStyleCanvas(categorie, type, repli) {
@@ -2279,9 +2571,9 @@ window.ktaZoneLue = function(z) {
   return c;
 };
 
-// Zones embarquées → [{type, points, level, niveaux?, layerId, description?, uid?, updatedAt?}], même format que
-// window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement la session.
-// Calque en modification exclu.
+// Zones embarquées → [{type, points, level, niveaux?, comble?, nature?, layerId, description?, uid?, updatedAt?}],
+// même format que window.getZones() : les exports (KMZ en tête) incluent tout le contenu visible, pas seulement
+// la session. Calque en modification exclu.
 window.getAllEmbeddedZones = function() {
   if (!Array.isArray(window._ktaDataPolygons)) return [];
   const exclus = window.ktaCalquesEnModification();
@@ -2293,6 +2585,11 @@ window.getAllEmbeddedZones = function() {
     .map(function(e) {
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (Array.isArray(e.niveaux) && e.niveaux.length >= 2) out.niveaux = e.niveaux.slice();
+      if (Number.isFinite(e.comble)) out.comble = e.comble;
+      if (e.nature) out.nature = e.nature;
+      if (Array.isArray(e.rampes) && e.rampes.length) {
+        out.rampes = e.rampes.map(function (r) { return r.fin ? { bord: r.bord, fin: r.fin } : { bord: r.bord }; });
+      }
       if (e.description) out.description = e.description;
       if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
@@ -2839,33 +3136,43 @@ function ajouterPointsDepuisJSON(url, layer) {
         });
       }
 
-      // Zones embarquées en lecture seule. Ordre : jonction (arrière) → eau → remblais → effondrement (avant).
+      // Zones embarquées en lecture seule. Ordre (KTA_ORDRE_ZONES) : jonction (arrière) → eau → masse au sol →
+      // remblais → effondrement → inaccessible (avant).
       if (Array.isArray(json.zones) && json.zones.length > 0) {
         // `inaccessible` : hachures en CanvasPattern (styleResolver.js), sur le canvas commun comme les autres.
         const zonesTriees = json.zones.map(window.ktaZoneLue).sort(function(a, b) {
-          const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+          const ordre = window.KTA_ORDRE_ZONES || {};
           return (ordre[a && a.type] ?? 99) - (ordre[b && b.type] ?? 99);
         });
         zonesTriees.forEach(function(zone) {
           if (!zone || !zone.points || zone.points.length < 3) return;
-          const style = _ktaStyleMap("zones", zone.type, "remblais");
+          const style = _ktaStyleMap("zones", zone.type, "remblais", 
+            typeof window.ktaStyleOptsZone === "function" ? window.ktaStyleOptsZone(zone) : undefined);
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-          const hasNoteROZone = !!(zone.description && String(zone.description).trim());
+          // Masse au sol : fiche même sans note (elle seule dit sa part comblée).
+          const hasNoteROZone = !!(zone.description && String(zone.description).trim()) || zone.type === "masse-sol";
           const polyOpts = Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
+          // Masse au sol : chevrons de pente de ses rampes (zones.js > ktaChevronsRampes).
+          if (typeof window.ktaChevronsRampes === "function") window.ktaChevronsRampes(zone, layer, style.color);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
-            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔", pente: "🪜" };
+            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", "masse-sol": "", effondrement: "🟥",
+              inaccessible: "⛔", pente: "🪜" };
             function _zoneROTitle(t) {
               if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
                 if (String(t).startsWith("cust-")) {
                   const e = window.LegendCustomization.findCustomEntry(t);
                   if (e) return e.label;
                 }
-                if (_zoneEmojisRO[t]) return window.LegendCustomization.getLabel("zones", t);
+                // Type built-in (clé présente, même sans émoji : masse au sol) → libellé de la légende.
+                if (Object.prototype.hasOwnProperty.call(_zoneEmojisRO, t)) {
+                  return window.LegendCustomization.getLabel("zones", t);
+                }
               }
               const LBL = {
                 eau:          "💧 Eau",
-                remblais:     "⬛ Remblais",
+                remblais:     "⬛ Comblé",
+                "masse-sol":  "Masse au sol",
                 effondrement: "🟥 Effondrement",
                 inaccessible: "⛔ Inaccessible",
                 pente:        "🪜 Zone Jonction"
@@ -2892,6 +3199,15 @@ function ajouterPointsDepuisJSON(url, layer) {
             // Zone sur plusieurs niveaux (poiJonction.js > ktaNiveauxObjet) : liste normalisée, `level` inclus.
             niveaux:         (Array.isArray(zone.niveaux) && typeof window.ktaNiveauxObjet === "function")
                                ? window.ktaNiveauxObjet(zone) : undefined,
+            // Masse au sol : part comblée (une valeur pour tous ses niveaux), gardée telle quelle.
+            comble:          Number.isFinite(zone.comble) ? zone.comble : undefined,
+            // Masse non exploitée : `nature` gardée telle quelle (lue par styleResolver.js > ktaMasseNonExploitee).
+            nature:          (zone.type === "masse-sol" && zone.nature === "non-exploitee") ? zone.nature : undefined,
+            // Masse au sol : rampes (bords bas, masseSol.js > rampes), gardées telles quelles.
+            rampes:          Array.isArray(zone.rampes) && zone.rampes.length
+                               ? zone.rampes.map(function (r) {
+                                   return r.fin ? { bord: r.bord, fin: { x: r.fin.x, y: r.fin.y } } : { bord: r.bord };
+                                 }) : undefined,
             description:     zone.description || undefined,
             uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,
@@ -3123,9 +3439,9 @@ async function telechargerPlan() {
             continue;
           }
 
-          // zones embarquées (arrière-plan) : eau → remblais → effondrement → inaccessible ; filtre visibleLevels
+          // zones embarquées (arrière-plan, KTA_ORDRE_ZONES) ; filtre visibleLevels
           if (Array.isArray(json.zones) && json.zones.length > 0) {
-            const ordreZ = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+            const ordreZ = window.KTA_ORDRE_ZONES || {};
             json.zones.map(window.ktaZoneLue).sort(function(a, b) {
               return (ordreZ[a && a.type] ?? 99) - (ordreZ[b && b.type] ?? 99);
             }).forEach(function(z) {
@@ -3206,7 +3522,7 @@ async function telechargerPlan() {
       return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(z);
     });
     for (const zone of [...zones].sort(function(a, b) {
-      const ordre = { pente: -1, eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      const ordre = window.KTA_ORDRE_ZONES || {};
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
       _poser(function () { drawPolygon(zone.points || [], _ktaStyleCanvas("zones", zone.type, "remblais")); });

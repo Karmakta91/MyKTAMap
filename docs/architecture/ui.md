@@ -1027,15 +1027,18 @@ window._ktaRuntimeFilters = {
 
 #### 64.4 Cascade re-render — `window.appliquerFiltreRuntime`
 
-Helper global dans `interface.js`, alias de `appliquerFiltreNiveau` :
+Helper global dans `interfaceConfig.js`, alias de `appliquerFiltreNiveau` (options transmises) :
 
 ```js
-window.appliquerFiltreRuntime = function() {
+window.appliquerFiltreRuntime = function(opts) {
   if (typeof window.appliquerFiltreNiveau === "function") {
-    window.appliquerFiltreNiveau();
+    window.appliquerFiltreNiveau(opts);
   }
 };
 ```
+
+`opts.sessionRendue === true` saute le re-rendu complet des tracés, zones et structures de session (ils viennent
+d'être rendus avec les filtres courants) et refiltre tout le reste. Seul appelant : la restauration de session (§64.8).
 
 **Pourquoi un alias ?** Les modules level-aware (renderRoads, renderZones, renderStructures, _applyLevelFilterToData*) appliquent runtime+niveau dans la même passe de rendu. Pas besoin de 2 passes distinctes.
 
@@ -1096,28 +1099,12 @@ Chaque toggle (input change, mini-action Tout/Aucun, reset all) appelle `_schedu
 runtimeFilters: _serializeRuntimeFilters()  // {tags: [...]|null, roadTypes: [...]|null, ...}
 ```
 
-**Restore** : Array → Set via `_toSet(arr)` dans `_restore()` :
-```js
-if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
-  const rf = payload.runtimeFilters;
-  if (!window._ktaRuntimeFilters) {
-    window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
-  }
-  function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
-  window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
-  window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
-  window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
-  window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
-  // Apply après timeout 200ms pour laisser les markers session être restaurés (phase 2 itineraries)
-  setTimeout(function() {
-    if (typeof window.appliquerFiltreRuntime === "function") {
-      try { window.appliquerFiltreRuntime(); } catch(e) {}
-    }
-  }, 200);
-}
-```
-
-⚠️ **Timing 200ms** : aligné avec la phase 2 de restore des itineraries (cf §9). Sinon, les markers session ne seraient pas encore re-créés → filter inopérant.
+**Restore** (`sessionPersist.js > _applyRestore`) : Array → Set via `_toSet(arr)`, plan de base (`planDeBase`)
+compris, **avant** les setters (`setEditorPoints`, `setRoads`, `setZones`, `setStructures`) : chacun rend déjà
+filtré, donc un seul rendu des objets de session au chargement. À +200 ms, `appliquerFiltreRuntime({ sessionRendue })`
+refiltre le reste de la carte (calques DATA, plan de base, tracker, calques image, badges), puis pastille ≡ et toast
+« filtres restaurés ». `sessionRendue` n'est vrai que si le payload portait les trois familles (tracés, zones,
+structures) : sinon les objets déjà là sont re-rendus avec les filtres.
 
 #### 64.9 Sync M-LVL bidirectionnel
 
@@ -1151,7 +1138,7 @@ Si 0 tag → section affiche "Aucun point dans cette session."
 - ❌ Filtrer `road.type === "itinerary"` ou `s === currentStructure` — toujours bypass (cf §64.6)
 - ❌ Stocker `_ktaRuntimeFilters` dans une key localStorage globale séparée — utiliser le payload SessionPersist (`runtimeFilters` champ) pour cohérence per-plan
 - ❌ Sérialiser des Sets en JSON direct (`JSON.stringify(new Set(...))` retourne `"{}"`) — toujours convertir en Array via `Array.from(set)` avant
-- ❌ Appliquer `appliquerFiltreRuntime()` synchroniquement au boot SessionPersist — utiliser `setTimeout(_, 200)` pour laisser la phase 2 restore (itineraries) finir
+- ❌ Poser les filtres de session APRÈS les setters de `_applyRestore` — chaque objet de session serait rendu deux fois au chargement (un rendu complet des zones de trop, coûteux avec des masses au sol)
 - ❌ Appeler `_enumerateTags()` ou `_enumerateTypes()` dans une boucle de render — coûteux (itère session + embedded à chaque appel). Cache l'résultat si utilisé plusieurs fois dans la même passe de render
 - ❌ Modifier `window._ktaRuntimeFilters` directement depuis un autre module — passer par `FilterPanel.setFilters({...})` pour bénéficier de `_scheduleApply` + `_notify`
 
@@ -1904,7 +1891,7 @@ Tuile de l'accueil de l'Éditeur, avant les Raccords, **plan affiché seulement*
 
 - **Fenêtre** `#kta-verif-modal` (`kta-readme-modal-overlay`, boîte des raccords) : note, compte « À revoir : N · vus, normaux : V », puis la liste **groupée par gravité** (`kta-verif-g-bloquant` / `-revoir` / `-info`, titre avec l'icône `triangle-alert`) et, dans chaque gravité, par contrôle (titre + nombre) ; une ligne par constat (objet nommé par son type de légende et son nom, niveau en multi-niveau ; dessous, ce qui ne va pas). Un passage entre niveaux qui traverse un niveau intermédiaire sans raccord est rangé en « Pour info », pas en « Bloquant ». « Vus, normaux (V) » déplie la liste des vus, chacun avec **Rétablir**, et **Tout rétablir**. Liste vide : phrase « rien à signaler ».
 - **Clic sur une ligne** : la fenêtre part, la carte passe au niveau du constat (`ktaSetActiveLevel`) et le cadre (`fitBounds` sur les segments en cause, marge 10 m) ; l'objet est surligné (`kta-verif-objet`, `--kta-accent`), l'obstacle cerné en tireté (`kta-verif-obstacle`, `--kta-erreur`), l'endroit entouré (`kta-verif-cercle`) ; calque `L.svg` à part. La **fiche** de l'objet s'ouvre 150 ms après (couches rattachées au déplacement) : celle que la carte a attachée à l'objet (`utils.js > ktaFicheObjetDe`) pour un tracé, une zone, une structure ; le marqueur à sa position pour un point. Objet masqué (filtres, niveau) : toast `warn`, pas de fiche.
-- **Bandeau** `#kta-verif-bandeau` (allure de `.kta-racc-bandeau`, sans `.kta-iti-floater`, même raison) : « ◀ Précédent · i / N · Suivant ▶ » (circulaire, la fiche suit), l'objet et le constat, **Ouvrir la fiche**, **Fiche de l'obstacle** (C1 seulement), **Vu, normal**, **Fermer**. Vu, normal recalcule et passe au suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Échap et Fermer rendent la fenêtre ; `kta:donneesPlanChange` recalcule (300 ms) ; `mktm:plan-ferme` ferme tout.
+- **Bandeau** `#kta-verif-bandeau` (allure de `.kta-racc-bandeau`, sans `.kta-iti-floater`, même raison) : « ◀ Précédent · i / N · Suivant ▶ » (circulaire, la fiche suit), l'objet et le constat, **Ouvrir la fiche**, **Fiche de l'obstacle** (C1 et C12), **Vu, normal**, **Fermer**. Vu, normal recalcule et passe au suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Échap et Fermer rendent la fenêtre ; `kta:donneesPlanChange` recalcule (300 ms) ; `mktm:plan-ferme` ferme tout.
 - **Saisie** : un tracé, une zone d'un type dur ou un mur en ligne saisi qui crée une coupure → toast `warn` (`verif.saisie.*`) qui renvoie à l'outil ; une fois par coupure et par plan ouvert.
 
 Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native, aucune surface réseau, rien d'écrit dans les données.
@@ -2530,14 +2517,19 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 - **Déplacer un sommet** : appui long (`APPUI_MS`, 500 ms) sur le sommet, puis glisser ; aperçu en pointillé doré
   pendant le glisser (SVG, classes `.kta-ajuster-apercu` / `.kta-ajuster-poignee`, jetons `--kta-accent`), objet
   écrit au lâcher.
-- **Ajouter** : appui long au milieu d'un segment (segment de fermeture compris pour une forme fermée) ; le sommet
-  naît là et se glisse aussitôt ; lâché sans bouger, il reste au milieu.
+- **Ajouter** : appui long n'importe où sur un segment (segment de fermeture compris pour une forme fermée), à moins
+  de `RAYON_PX` d'écran du trait ; le sommet naît au point touché et se glisse aussitôt ; lâché sans bouger, il reste
+  là. 🩸 La distance se mesure au SEGMENT (projection, `_chercher`), pas à son milieu : sur une grande zone aux côtés
+  longs, toucher le contour loin du milieu ne trouvait rien. Garde-fou : `checkup-ajuster-zone-vaste.js`.
 - **Supprimer** : appui long sur un sommet sans bouger, puis **🗑️** posé au-dessus du point, à côté de **＋**
   (marqueur Leaflet, `htmlMenu` : cibles de 44 px dans `.kta-ajuster-boutons`, contre-tourné sous le plan orienté,
   retiré seul après 6 s ou au premier toucher ailleurs ; ce toucher est avalé — ni fiche, ni outil — mais 🩸 pas son
   appui long : posé sur un sommet ou un milieu, il l'ajuste, même règle qu'en vue 3D ; une souris tenue immobile
   ouvre ce menu à coup sûr, et l'appui suivant sur le sommet partait en pan). Sous le minimum de la forme (2 sommets pour une ligne, 3 pour
   une surface), pas de 🗑️ : un toast dit pourquoi.
+- **Rampes d'une masse au sol** : elles suivent leur segment quand un sommet est ajouté, inséré ou supprimé
+  (`masseSol.js > suivreBords`, appelée avant chaque `splice` de `_ecrire` et `_poser`) ; une rampe dont le segment
+  disparaît est retirée, dans la même entrée ⏪. Règle : `data-formats.md` § rampes.
 - **✂️ Couper un tracé** (décision du 08/11/2026) : même menu, troisième bouton `.kta-ajuster-couper`, seulement sur un
   **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary`) et
   `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
@@ -2593,8 +2585,13 @@ extension), hors objet en cours de tracé.
   le même `pointerId` reposé, ferme l'ancien geste au lieu de laisser ses mouvements avalés.
 - 🩸 **Position** : `map.mouseEventToLatLng` (rotation défaite par le patch de `mouseEventToContainerPoint`) ;
   `clientX` ne sert qu'aux seuils. Le sommet garde son décalage au doigt (il ne saute pas sous lui).
-- **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon milieu de segment ; un balayage des
-  objets visibles au `pointerdown`, jamais au `pointermove`.
+- **Repérage** : rayon de 24 px d'écran, sommet le plus proche d'abord, sinon point du segment le plus proche.
+  🩸 **Paresseux** (`_viser`) : le `pointerdown` n'ouvre qu'un appui sans cible ; la position plan (mise en page lue
+  par `mouseEventToLatLng`) et le balayage des objets visibles n'ont lieu qu'à l'apparition de la poignée
+  (`VISUEL_MS`, 150 ms) ou à l'appui long, jamais au `pointermove`. Un tap ou un début de pan ne paie plus le balayage
+  (≈ 4 ms → 0,2 ms par appui, tâche de l'appui ≈ 22 → 6 ms, plan fictif + 1 600 objets, CPU ×4). Sans cible,
+  l'appui est rendu sans compter de geste (`enCours()`, `etat()` et `annules` ne voient que les appuis ciblés) ;
+  comme avant, les mouvements de moins de `BOUGE_PX` sont retenus pendant l'attente.
 - **Ronds dorés de la mesure** (décision produit) : chaque sommet des deux mesures 📐 porte un rond doré
   (`measure.js > _majSommetsMesure`, `.kta-mesure-sommet` : `--kta-accent`, liseré `--kta-sur-accent`, renderer SVG
   propre créé après le canvas des mesures, donc au-dessus du trait ; non interactif), refait à chaque `updateMesure` :
@@ -2707,7 +2704,8 @@ Décision du lot D : la doc entière passe en SVG à l'affichage (§ Substitutio
 - Élément statique : `data-kta-ico="nom"`, rempli au chargement par `KtaIcones.poser()` (accueil, Configuration et
   ses fenêtres) ; ailleurs, le gabarit appelle `window.ktaIcone("nom")` devant le libellé. Le bouton garde son `title`
   / `aria-label` : le SVG est `aria-hidden`. Un libellé posé par `textContent` ne peut pas porter l'icône : le module
-  passe par `innerHTML` (icône + texte échappé) ou un nœud texte après l'icône ; un attribut (`title`, `placeholder`),
+  passe par `innerHTML` (icône + texte échappé) ou un nœud texte après l'icône (`check-icone-texte.js` refuse
+  `ktaIcone(` posé en `textContent`, directement ou via une fonction du fichier) ; un attribut (`title`, `placeholder`),
   une `<option>` et un titre d'alerte restent du texte sans icône. Devant un libellé traduit,
   l'icône est un `span` FRÈRE de l'élément `data-i18n` (qui réécrit tout son contenu) ; une clé `data-i18n-html` ne
   porte jamais l'emoji ni le SVG.

@@ -375,7 +375,8 @@
       function _evalAchievements() {
         if (!window.ProfileAchievements || !_jeuProfilActif()) return;
         // 1er calcul (clé absente) : accord rétroactif SANS toast.
-        const firstRun = (localStorage.getItem(_ACH_LS_KEY) === null);
+        let firstRun = true;   // stockage refusé : traité comme un 1er calcul (aucun toast)
+        try { firstRun = (localStorage.getItem(_ACH_LS_KEY) === null); } catch (e) { /* stockage refusé */ }
         const m = _collectGamifMetrics();
         const ids = window.ProfileAchievements.unlockedIds(m);
         const stored = _readUnlockedAch();

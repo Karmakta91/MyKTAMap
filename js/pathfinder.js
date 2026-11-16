@@ -12,11 +12,14 @@
 // Expose window.Pathfinder : computeRoute (async, 2 passes), computeRouteOnRoads (sync, réseau fourni),
 //   computeReachable (isochrone du Mode Perdu), buildNetworkGraph / snapPointToGraph (roadGraph.js),
 //   resolvePointById, aDesTraces, carrefoursSurChemin, nbObstaclesDurs, grapheDeTraces / collecterTraces
-//   (outil des raccords, raccordsTraces.js), estZoneDure / TYPES_ZONES_DURS, controle (« Vérifier le plan »,
-//   verifierPlan.js : mêmes tests que le graphe). Et window.getAvoidableZoneTypes.
+//   (raccordsTraces.js), estZoneDure / TYPES_ZONES_DURS, estZoneCout / TYPES_ZONES_COUT, texteZonesTraversees,
+//   controle (« Vérifier le plan », verifierPlan.js : mêmes tests que le graphe). Et window.getAvoidableZoneTypes.
 // ⚠️ Contraintes DURES : zones dont le type est dans TYPES_ZONES_DURS et murs en ligne (`mur-ligne`), levées
-//   ensemble par `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte.
-// ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours }.
+//   ensemble par `respecterInaccessibles: false` (case de la modale) ; aucune autre structure ne compte. Zones À
+//   COÛT (TYPES_ZONES_COUT) : évitées dès qu'un autre chemin existe, jamais bloquantes. Masse au sol : coût selon
+//   le vide restant, passage coupé sous 0,5 m (_coutMasseSegment, sol de masseSol.js).
+// ⚠️ computeRoute → { path:[{x, y, level}], totalDistance, segmentCount, snappedPoints, raccords, carrefours, cout,
+//   zonesTraversees:[{ type, longueurPx, objet }] } ; `cout` ≠ `totalDistance` dès qu'une zone à coût est traversée.
 //   `level` = entier du niveau s'il est UNIVOQUE, sinon null (nœud fusionné multi-niveaux, milieu de jonction).
 // Coordonnées en système image (x, y plan) ; la conversion Leaflet se fait au rendu (road.js > renderRoads).
 // Doc : docs/architecture/multilevel-pathfinding.md
@@ -95,6 +98,213 @@
   // part laisserait un de ces chemins traverser un type devenu dur.
   const TYPES_ZONES_DURS = ["inaccessible"];
   function _estZoneDure(type) { return TYPES_ZONES_DURS.indexOf(type) >= 0; }
+
+  // ── Zones à coût : Comblé (`remblais`) et effondrement ──────────
+  // ⚠️ contrat (décision produit) : une zone mal comprise ou posée à tort ne casse jamais un itinéraire, et un tracé
+  // qui la traverse dit que ça passe. Elle n'est donc jamais dure : chaque pixel parcouru dedans pèse
+  // PENALITE_ZONE_COUT pixels de plus. Tout autre chemin l'emporte en pratique, mais le coût reste fini : sans autre
+  // chemin, l'itinéraire passe et le dit (sortie d'urgence et inter-plans compris). TYPES_ZONES_COUT est la SEULE
+  // table de ces types : évitables, inter-plans et « Vérifier le plan » la lisent par estZoneCout.
+  // 🩸 Le coût vit à côté de la longueur (arête { weight: coût, len: longueur }) : `totalDistance` reste la somme des
+  // longueurs, sinon les mètres annoncés, le classement des sorties et l'inter-plans seraient gonflés.
+  const TYPES_ZONES_COUT = ["remblais", "effondrement"];
+  const PENALITE_ZONE_COUT = 1e6;
+  function _estZoneCout(type) { return TYPES_ZONES_COUT.indexOf(type) >= 0; }
+  // ⚠️ contrat (décision produit) : une traversée CONTINUE d'un tracé dans une zone à coût de moins de
+  // TOLERANCE_ZONE_COUT_M mètres est ignorée — ni pénalité, ni mention, ni C12 — : c'est un contour dessiné un peu
+  // large, pas un passage dans le remblai. Même seuil partout (itinéraire, sortie d'urgence, inter-plans, Vérifier le
+  // plan), lu par toleranceZonePx. Sans échelle du plan : aucune tolérance (repli strict, rien n'est supposé).
+  // 🩸 Mesurée par traversée du TRACÉ (_traverseesTrace), jamais par arête : un tracé dense découpe une longue
+  // traversée en arêtes de quelques pixels, qui passeraient toutes sous le seuil.
+  const TOLERANCE_ZONE_COUT_M = 1;
+  function _toleranceZonePx(echelle) {
+    const e = _echelleReseau(echelle, 0);
+    return e > 0 ? TOLERANCE_ZONE_COUT_M * e : 0;
+  }
+  // Traversées continues des points d'un tracé dans un polygone → [{ px, segs: [indices des segments] }], dans
+  // l'ordre du tracé. Une traversée se poursuit tant que le sommet commun est dans le polygone.
+  function _traverseesTrace(pts, poly) {
+    const out = [];
+    let cur = null;
+    for (let i = 1; i < pts.length; i++) {
+      const l = _longueurDansPolygone(pts[i - 1], pts[i], poly);
+      if (l > 1e-6) {
+        if (!cur) cur = { px: 0, segs: [] };
+        cur.px += l;
+        cur.segs.push(i);
+        if (!_pointInPolygon(pts[i], poly)) { out.push(cur); cur = null; }
+      } else if (cur) { out.push(cur); cur = null; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+
+  // ── Masse au sol : coût selon le vide restant ──────────
+  // ⚠️ contrat (décision produit, docs/ETUDE_REMBLAIS.md § 8) : la longueur parcourue dans une masse au sol
+  // (`masse-sol`) coûte selon le VIDE = hauteur du niveau − sol local : ≥ 1,8 m debout ×1, 1 à 1,8 m courbé ×1,5,
+  // 0,5 à 1 m ramper ×3, sous 0,5 m passage COUPÉ (pour tous, case « Respecter… » et passe 2 comprises). Sol
+  // abaissé : ×1. Brancard (`opts.brancard`, Secours « Évacuer ») : moins de 1,8 m de vide pèse comme une zone à coût
+  // (évité, jamais bloquant). Aucun effet sur TYPES_ZONES_COUT ni sur leur tolérance.
+  // 🩸 Le sol local est celui de la 3D et de la fiche (masseSol.js > masseCarte, sol), jamais une copie : les rampes
+  // et la règle des bords y vivent. Le vide est pris point par point le long de l'arête (PAS_MASSE_M), jamais une
+  // moyenne de la zone (le talus monte depuis les bords ouverts). Le coût vit à côté de la longueur, comme pour les
+  // zones à coût : la distance affichée reste la vraie. Sans échelle du plan, aucune masse ne compte (pas de mètres).
+  const MASSE_VIDE = { debout: 1.8, courbe: 1, ramper: 0.5 };
+  const MASSE_FACTEUR = { courbe: 1.5, ramper: 3 };
+  const PAS_MASSE_M = 0.1;
+  function _facteurVide(v) {
+    if (v >= MASSE_VIDE.debout) return 1;
+    if (v >= MASSE_VIDE.courbe) return MASSE_FACTEUR.courbe;
+    if (v >= MASSE_VIDE.ramper) return MASSE_FACTEUR.ramper;
+    return Infinity;
+  }
+  // Masses d'une liste de zones → grille (_grilleZones) de [_zoneBloquante + lire()] et `brancard`, null sans masse
+  // ou sans masseSol.js. `fabrique(zone)` → { m, h, sc } | null, appelée à la première arête qui touche la zone.
+  function _preparerMasses(liste, fabrique, brancard) {
+    const S = window.KtaMasseSol;
+    if (!S || typeof S.sol !== "function") return null;
+    const polys = [];
+    (Array.isArray(liste) ? liste : []).forEach(function(z) {
+      if (!z || z.type !== "masse-sol" || !Array.isArray(z.points) || z.points.length < 3) return;
+      const zb = _zoneBloquante(z);
+      let lu = false, val = null;
+      zb.lire = function() {
+        if (!lu) { lu = true; try { val = fabrique(z); } catch (e) { val = null; } }
+        return val;
+      };
+      polys.push(zb);
+    });
+    if (!polys.length) return null;
+    const g = _grilleZones(polys);
+    g.brancard = !!brancard;
+    return g;
+  }
+  // Masses du plan ouvert : session + calques, construites par masseSol.js > masseCarte (pleine hauteur, rampes).
+  // La sortie d'urgence lance jusqu'à 15 calculs d'affilée : cache par contour (WeakMap sur `points`), clé = part,
+  // niveau, hauteur du niveau, rendu, échelle ; vidé à chaque signal de données (utils.js > ktaSignalerDonneesPlan :
+  // une
+  // rampe posée, retirée ou dont la fin bouge en fait partie).
+  let _cacheMasses = new WeakMap();
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("kta:donneesPlanChange", function() { _cacheMasses = new WeakMap(); });
+  }
+  function _cleMasse(z) {
+    const lvl = Number.isInteger(z.level) ? z.level : 0;
+    let h = "";
+    try { h = typeof window.getNiveauVertical === "function" ? window.getNiveauVertical(lvl).hauteurM : ""; }
+    catch (e) { h = ""; }
+    const rendu = typeof window.getPlanRenduVue3D === "function" ? window.getPlanRenduVue3D() : "";
+    const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : z.comble;
+    return [c, lvl, h, rendu, window.APP_CONFIG && window.APP_CONFIG.scale].join("|");
+  }
+  function _massesDuPlan(brancard) {
+    const S = window.KtaMasseSol;
+    if (!S || typeof S.masseCarte !== "function") return null;
+    const session = (typeof window.getZones === "function") ? window.getZones() : [];
+    return _preparerMasses((session || []).concat(_registre(window._ktaDataPolygons)), function(z) {
+      const cle = _cleMasse(z), c = _cacheMasses.get(z.points);
+      if (c && c.cle === cle) return c.val;
+      const val = S.masseCarte(z);
+      _cacheMasses.set(z.points, { cle: cle, val: val });
+      return val;
+    }, brancard);
+  }
+  // Masses du réseau d'un AUTRE plan (inter-plans) : ni ses structures ni ses hauteurs ne sont chargées. Bords tous
+  // fermés (sol = part × hauteur partout, le cas d'une masse posée entre deux parois) et hauteur par défaut de 2 m :
+  // estimation prudente (multilevel-pathfinding.md § Masse au sol).
+  function _massesReseau(liste, echelle) {
+    const S = window.KtaMasseSol, sc = Number(echelle);
+    if (!S || typeof S.masse !== "function" || !(sc > 0)) return null;
+    const ferme = function() { return true; };
+    return _preparerMasses(liste, function(z) {
+      const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;
+      const m = S.masse(z, sc, Math.max(-1, Math.min(1, c)) * 2, ferme, null);
+      return m ? { m: m, h: 2, sc: sc } : null;
+    }, false);
+  }
+  // Masses traversées par p1→p2 au niveau `lvl` → { extra (px de coût en plus), sousDebout (px sous 1,8 m de vide),
+  // courbe / ramper (px parcourus courbé / à plat ventre), coupe } | null. Sol local = le plus haut des remblais qui couvrent le point (comme vue3d.js > _solMasse).
+  function _coutMasseSegment(masses, p1, p2, lvl) {
+    if (!masses || lvl === "transit") return null;
+    const L = _dist(p1, p2);
+    if (L < 1e-9) return null;
+    const cands = _zonesQuiBloquent(p1, p2, lvl, _zonesCandidates(masses, p1, p2), true);
+    if (!cands.length) return null;
+    const ts = [0, 1];
+    cands.forEach(function(z) {
+      for (let i = 0; i < z.points.length; i++) {
+        const ip = _segmentIntersection(p1, p2, z.points[i], z.points[(i + 1) % z.points.length]);
+        if (ip) ts.push(_dist(p1, ip) / L);
+      }
+    });
+    ts.sort(function(a, b) { return a - b; });
+    const S = window.KtaMasseSol;
+    let extra = 0, sousDebout = 0, courbe = 0, ramper = 0, coupe = false, touche = false;
+    for (let i = 1; i < ts.length && !coupe; i++) {
+      const dt = ts[i] - ts[i - 1];
+      if (dt <= 1e-9) continue;
+      const tm = (ts[i] + ts[i - 1]) / 2;
+      const pm = { x: p1.x + tm * (p2.x - p1.x), y: p1.y + tm * (p2.y - p1.y) };
+      const dedans = cands.filter(function(z) { return _pointInPolygon(pm, z.points); })
+        .map(function(z) { return z.lire(); }).filter(Boolean);
+      if (!dedans.length) continue;
+      touche = true;
+      const lg = dt * L, n = Math.max(1, Math.ceil(lg / (PAS_MASSE_M * dedans[0].sc))), d = lg / n;
+      for (let k = 0; k < n; k++) {
+        const t = ts[i - 1] + dt * (k + 0.5) / n;
+        const x = p1.x + t * (p2.x - p1.x), y = p1.y + t * (p2.y - p1.y);
+        let sol = 0, h = dedans[0].h;
+        dedans.forEach(function(c) {
+          const v = S.sol(c.m, x / c.sc, y / c.sc);
+          if (v > sol) { sol = v; h = c.h; }
+        });
+        const vide = h - sol, f = _facteurVide(vide);
+        if (f === Infinity) { coupe = true; break; }
+        extra += d * (f - 1);
+        if (vide < MASSE_VIDE.debout) sousDebout += d;
+        if (f === MASSE_FACTEUR.courbe) courbe += d;
+        else if (f === MASSE_FACTEUR.ramper) ramper += d;
+      }
+    }
+    return touche ? { extra: extra, sousDebout: sousDebout, courbe: courbe, ramper: ramper, coupe: coupe } : null;
+  }
+  // Ralentissement le long d'un trajet déjà calculé (guidage : temps restant) → cumul en px à chaque point (même
+  // longueur que `points`), masses du plan ouvert, sans le brancard. Un point sans niveau entier (puits, milieu de
+  // jonction) ne compte pas sur multi-niveau ; hors multi-niveau, niveau 0.
+  function surcoutMasseTrajet(points) {
+    if (!Array.isArray(points)) return [];
+    const out = [0];
+    if (points.length < 2) return points.map(function() { return 0; });
+    const masses = _massesDuPlan(false);
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1], b = points[i];
+      let lvl = 0;
+      if (mlOn) lvl = (Number.isInteger(a.level) && a.level === b.level) ? a.level : "transit";
+      const m = masses ? _coutMasseSegment(masses, a, b, lvl) : null;
+      out.push(out[i - 1] + (m && !m.coupe ? m.extra : 0));
+    }
+    return out;
+  }
+
+  // Résumé des masses d'un trajet déjà calculé (fenêtre Itinéraire, sortie d'urgence) → { extraPx (ralentissement en
+  // px, à ajouter à la distance pour le temps), courbePx, ramperPx } ; mêmes masses et même mesure que le guidage.
+  function resumeMasseTrajet(points) {
+    const out = { extraPx: 0, courbePx: 0, ramperPx: 0 };
+    if (!Array.isArray(points) || points.length < 2) return out;
+    const masses = _massesDuPlan(false);
+    if (!masses) return out;
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1], b = points[i];
+      let lvl = 0;
+      if (mlOn) lvl = (Number.isInteger(a.level) && a.level === b.level) ? a.level : "transit";
+      const m = _coutMasseSegment(masses, a, b, lvl);
+      if (!m || m.coupe) continue;
+      out.extraPx += m.extra; out.courbePx += m.courbe; out.ramperPx += m.ramper;
+    }
+    return out;
+  }
 
   // Ray-casting standard, O(n).
   function _pointInPolygon(p, poly) {
@@ -296,6 +506,20 @@
     return out;
   }
 
+  // Zones à coût d'une liste de zones, même forme que les zones dures (même test niveau compris). → [_zoneBloquante].
+  function _zonesCoutDe(liste) {
+    const out = [];
+    (Array.isArray(liste) ? liste : []).forEach(function(z) {
+      if (z && _estZoneCout(z.type) && Array.isArray(z.points) && z.points.length >= 3) out.push(_zoneBloquante(z));
+    });
+    return out;
+  }
+  // Zones à coût du plan ouvert : session (getZones) + embarquées (_ktaDataPolygons).
+  function _collecterZonesCout() {
+    const session = (typeof window.getZones === "function") ? window.getZones() : [];
+    return _zonesCoutDe(session).concat(_zonesCoutDe(_registre(window._ktaDataPolygons)));
+  }
+
   // Murs en ligne d'une liste de structures. → [{ points, level, ligne: true, objet }] ; sans `level` = niveau 0.
   function _mursLigneDe(liste) {
     const out = [];
@@ -393,11 +617,13 @@
     return type || "?";
   }
 
-  // Types évitables distincts, SAUF les types durs (bloqués d'office) → [{ type, label, count }].
+  // Types évitables distincts, SAUF les types durs (bloqués d'office) et à coût (évités d'office)
+  // → [{ type, label, count }].
   function _listerTypesZonesEvitables() {
     var counts = {};
     function _compter(z) {
-      if (!z || _estZoneDure(z.type) || !Array.isArray(z.points) || z.points.length < 3) return;
+      if (!z || _estZoneDure(z.type) || _estZoneCout(z.type)) return;
+      if (!Array.isArray(z.points) || z.points.length < 3) return;
       counts[z.type] = (counts[z.type] || 0) + 1;
     }
     if (typeof window.getZones === "function") {
@@ -411,14 +637,17 @@
   }
   window.getAvoidableZoneTypes = _listerTypesZonesEvitables;
 
-  // Même forme que _collecterZonesInaccessibles → même test géométrique niveau-aware.
+  // Même forme que _collecterZonesInaccessibles → même test géométrique niveau-aware. Un type à coût coché dans des
+  // préférences anciennes est ignoré : son coût l'évite déjà, et l'exclure ici ferait échouer la passe 1 dès qu'il
+  // est le seul passage, ce qui relâcherait en passe 2 tous les autres évitements.
   function _collecterZonesAEviter(avoidTypes) {
     if (!Array.isArray(avoidTypes) || avoidTypes.length === 0) return [];
     var set = {};
     avoidTypes.forEach(function(t) { set[t] = 1; });
     var out = [];
     function _pousser(z) {
-      if (!z || _estZoneDure(z.type) || !set[z.type] || !Array.isArray(z.points) || z.points.length < 3) return;
+      if (!z || _estZoneDure(z.type) || _estZoneCout(z.type) || !set[z.type] || !Array.isArray(z.points) ||
+          z.points.length < 3) return;
       out.push(_zoneBloquante(z));
     }
     if (typeof window.getZones === "function") {
@@ -439,7 +668,10 @@
   function _newGraph() {
     return {
       nodes:      [],   // [{x, y, virtual?:true}]
-      edges:      [],   // edges[i] = [{to: nodeIdx, weight: number}, ...]
+      // edges[i] = [{ to: nodeIdx, weight: coût, len: longueur, zc?: Map(zone à coût → px dedans) }, ...]
+      edges:      [],
+      zonesCout:  null, // grille des zones à coût (_grilleZones) posée par _buildGraph ; null = aucun coût
+      masses:     null, // masses au sol (_preparerMasses) posées par _buildGraph ; null = aucune
       segments:   [],   // [{a: nodeIdx, b: nodeIdx, roadType: string, level: number|"transit"}]
       buckets:    {},   // bucketKey → [nodeIdx, ...]
       // Set<niveau> par nœud : 1 niveau pour un nœud de route, plusieurs pour un nœud fusionné,
@@ -507,10 +739,113 @@
     return false;
   }
 
-  function _addEdge(graph, a, b, weight) {
+  // Niveaux auxquels une arête court : celui fourni, sinon les niveaux numériques communs à ses deux nœuds (aucun :
+  // puits ou milieu de jonction, en l'air). Hors multi-niveau, un seul étage (les zones n'y regardent pas le niveau).
+  function _niveauxArete(graph, a, b, niveau) {
+    if (niveau !== undefined && niveau !== null) return [niveau];
+    if (!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)) return [0];
+    const la = graph.nodeLevels[a], lb = graph.nodeLevels[b], out = [];
+    if (la && lb) la.forEach(function(l) { if (Number.isInteger(l) && lb.has(l)) out.push(l); });
+    return out;
+  }
+
+  // Traversées courtes (sous la tolérance) de chaque zone à coût par les tracés du réseau → Map(zone → [{a, b}]) : les
+  // segments des tracés qui ne la traversent que sur moins de TOLERANCE_ZONE_COUT_M. Seuil 0 (sans échelle) : vide.
+  function _traverseesCourtes(roads, polys, seuilPx) {
+    const out = new Map();
+    if (!(seuilPx > 0) || !polys || !polys.length) return out;
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    (roads || []).forEach(function(road) {
+      if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
+      if (road.type === "itinerary" || road.type === "jonction") return;   // jonction : segments en l'air
+      const lvl = Number.isInteger(road.level) ? road.level : 0;
+      polys.forEach(function(z) {
+        if (mlOn && z.niveaux.indexOf(lvl) < 0) return;
+        _traverseesTrace(road.points, z.points).forEach(function(t) {
+          if (t.px >= seuilPx) return;
+          let l = out.get(z);
+          if (!l) out.set(z, l = []);
+          t.segs.forEach(function(i) { l.push({ a: road.points[i - 1], b: road.points[i] }); });
+        });
+      });
+    });
+    return out;
+  }
+  // L'arête p1→p2 ne fait-elle, dans la zone z, que suivre une traversée courte ? Un point de sa partie intérieure
+  // est cherché sur les segments exemptés (les arêtes découpées aux croisements restent sur leur tracé).
+  function _areteExemptee(courtes, z, p1, p2) {
+    const segs = courtes && courtes.get(z);
+    if (!segs) return false;
+    const p = _pointInterieur(p1, p2, z.points);
+    return !!p && segs.some(function(s) { return _projectOnSegment(p, s.a, s.b).dist < 0.5; });
+  }
+  // Milieu du premier morceau de p1→p2 dans le polygone (coupé à ses intersections avec le contour), ou null.
+  // 🩸 Pas d'échantillonnage régulier : une bande de 2 px tombe entre deux échantillons d'une arête de 100 px.
+  function _pointInterieur(p1, p2, poly) {
+    const L = _dist(p1, p2);
+    if (L < 1e-9) return null;
+    const ts = [0, 1];
+    for (let i = 0; i < poly.length; i++) {
+      const ip = _segmentIntersection(p1, p2, poly[i], poly[(i + 1) % poly.length]);
+      if (ip) ts.push(_dist(p1, ip) / L);
+    }
+    ts.sort(function(a, b) { return a - b; });
+    for (let i = 1; i < ts.length; i++) {
+      if (ts[i] - ts[i - 1] <= 1e-9) continue;
+      const tm = (ts[i] + ts[i - 1]) / 2;
+      const p = { x: p1.x + tm * (p2.x - p1.x), y: p1.y + tm * (p2.y - p1.y) };
+      if (_pointInPolygon(p, poly)) return p;
+    }
+    return null;
+  }
+
+  // Zones à coût que l'arête a→b traverse → { px: longueur dedans, zones: Map(zone → px) } | null. Même test que les
+  // zones dures (_zonesQuiBloquent), puis la longueur dedans : une arête qui touche seulement le bord ne paie rien,
+  // une arête qui suit une traversée courte non plus (TOLERANCE_ZONE_COUT_M).
+  function _coutZonesArete(graph, a, b, niveau) {
+    const g = graph.zonesCout;
+    if (!g || g.polys.length === 0) return null;
+    const p1 = graph.nodes[a], p2 = graph.nodes[b];
+    const cands = _zonesCandidates(g, p1, p2);
+    if (cands.length === 0) return null;
+    let px = 0, zones = null;
+    _niveauxArete(graph, a, b, niveau).forEach(function(lvl) {
+      _zonesQuiBloquent(p1, p2, lvl, cands, true).forEach(function(z) {
+        if (zones && zones.has(z)) return;
+        const l = _longueurDansPolygone(p1, p2, z.points);
+        if (l <= 1e-6) return;
+        if (_areteExemptee(g.courtes, z, p1, p2)) return;
+        if (!zones) zones = new Map();
+        zones.set(z, l);
+        px += l;
+      });
+    });
+    return zones ? { px: px, zones: zones } : null;
+  }
+
+  // `longueur` = distance de l'arête (ce qu'affiche l'itinéraire) ; le coût y ajoute les zones à coût traversées.
+  // `niveau` facultatif : celui du segment quand l'appelant le connaît (sinon déduit des nœuds).
+  // Masse au sol (_coutMasseSegment) : coût selon le vide en plus ; arête COUPÉE (non posée) sous 0,5 m de vide — un
+  // morceau découpé hors du passage bas (croisement, calage) garde la sienne.
+  function _addEdge(graph, a, b, longueur, niveau) {
     if (a === b) return;
-    graph.edges[a].push({ to: b, weight: weight });
-    graph.edges[b].push({ to: a, weight: weight });
+    const c = _coutZonesArete(graph, a, b, niveau);
+    let surcout = 0;
+    if (graph.masses) {
+      const p1 = graph.nodes[a], p2 = graph.nodes[b];
+      const niveaux = _niveauxArete(graph, a, b, niveau);
+      for (let i = 0; i < niveaux.length; i++) {
+        const m = _coutMasseSegment(graph.masses, p1, p2, niveaux[i]);
+        if (!m) continue;
+        if (m.coupe) return;
+        surcout = Math.max(surcout, m.extra + (graph.masses.brancard ? m.sousDebout * PENALITE_ZONE_COUT : 0));
+      }
+    }
+    const ea = { to: b, weight: (c ? longueur + c.px * PENALITE_ZONE_COUT : longueur) + surcout, len: longueur };
+    const eb = { to: a, weight: ea.weight, len: longueur };
+    if (c) { ea.zc = c.zones; eb.zc = c.zones; }
+    graph.edges[a].push(ea);
+    graph.edges[b].push(eb);
   }
 
   // Trace de diagnostic en mode debug seulement : une jonction dont la longueur change mérite d'être vue.
@@ -559,14 +894,23 @@
     return longueurs.map(function(l) { return total > 0 ? l / total : 1 / n; });
   }
 
-  // `ctxPoids` facultatif (cf _profondeurPourPoids) ; absent = plan ouvert.
-  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones, ctxPoids) {
+  // `ctxPoids` facultatif (cf _profondeurPourPoids) ; absent = plan ouvert. `zonesCout` facultatif ([_zoneBloquante]
+  // à coût) : posé AVANT toute arête, l'enrichissement et le calage le relisent dans `graph.zonesCout`.
+  // `masses` facultatif (_preparerMasses) : posé avant toute arête, comme `zonesCout`.
+  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones, ctxPoids, zonesCout,
+                       masses) {
     zonesInacc  = zonesInacc  || [];
     avoidPoints = avoidPoints || [];
     avoidRadius = avoidRadius || 0;
     avoidZones  = avoidZones  || [];   // zones à éviter (souple), même test géométrique que les inaccessibles
     const obstacles = _preparerObstacles(zonesInacc);   // zones inaccessibles + murs en ligne (DUR)
     const graph = _newGraph();
+    graph.masses = masses || null;
+    if (Array.isArray(zonesCout) && zonesCout.length) {
+      graph.zonesCout = _grilleZones(zonesCout);
+      graph.zonesCout.courtes = _traverseesCourtes(roads, graph.zonesCout.polys,
+        _toleranceZonePx(ctxPoids && ctxPoids.echelle));
+    }
 
     for (let r = 0; r < roads.length; r++) {
       const road = roads[r];
@@ -626,7 +970,7 @@
             console.log("[Pathfinder] jonction 3D : plan", _dist(prevP, p).toFixed(1),
               "px → réel", w.toFixed(1), "px");
           }
-          _addEdge(graph, prevIdx, idx, w);
+          _addEdge(graph, prevIdx, idx, w, segLevel);
           graph.segments.push({
             a:        prevIdx,
             b:        idx,
@@ -798,10 +1142,10 @@
         if (_mlOn && segA.level !== "transit") {
           _ajouterNiveauNode(graph, newIdx, segA.level);
         }
-        _addEdge(graph, newIdx, segA.a, Math.hypot(a1.x - inter.x, a1.y - inter.y));
-        _addEdge(graph, newIdx, segA.b, Math.hypot(a2.x - inter.x, a2.y - inter.y));
-        _addEdge(graph, newIdx, segB.a, Math.hypot(b1.x - inter.x, b1.y - inter.y));
-        _addEdge(graph, newIdx, segB.b, Math.hypot(b2.x - inter.x, b2.y - inter.y));
+        _addEdge(graph, newIdx, segA.a, Math.hypot(a1.x - inter.x, a1.y - inter.y), segA.level);
+        _addEdge(graph, newIdx, segA.b, Math.hypot(a2.x - inter.x, a2.y - inter.y), segA.level);
+        _addEdge(graph, newIdx, segB.a, Math.hypot(b1.x - inter.x, b1.y - inter.y), segB.level);
+        _addEdge(graph, newIdx, segB.b, Math.hypot(b2.x - inter.x, b2.y - inter.y), segB.level);
         _poser(i, newIdx, _projectOnSegment(inter, a1, a2).t);
         _poser(j, newIdx, _projectOnSegment(inter, b1, b2).t);
         nbCroisements++;
@@ -939,9 +1283,9 @@
       const b1 = graph.nodes[segB.a], b2 = graph.nodes[segB.b];
       const projIdx = _getOrAddNode(graph, proj.x, proj.y, segB.level);
       if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
-      _addEdge(graph, pr.ep, projIdx, proj.dist);
-      _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y));
-      _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y));
+      _addEdge(graph, pr.ep, projIdx, proj.dist, segB.level);
+      _addEdge(graph, projIdx, segB.a, Math.hypot(b1.x - proj.x, b1.y - proj.y), segB.level);
+      _addEdge(graph, projIdx, segB.b, Math.hypot(b2.x - proj.x, b2.y - proj.y), segB.level);
       _poser(pr.j, projIdx, proj.t);
       nbProximites++;
     }
@@ -957,11 +1301,12 @@
     // ── 4. Chaînage le long d'un segment : ses nœuds posés, reliés de proche en proche (ordre de t) ──
     // 🩸 Chaque nœud posé n'était relié qu'aux DEUX extrémités du segment (l'arête d'origine reste) : entre deux
     // croisements d'un long segment, l'itinéraire repassait par une extrémité (aller-retour, distance gonflée).
-    poses.forEach(function(l) {
+    poses.forEach(function(l, j) {
       if (l.length < 2) return;
       l.sort(function(p, q) { return (p.t - q.t) || (p.idx - q.idx); });
       for (let k = 1; k < l.length; k++) {
-        _addEdge(graph, l[k - 1].idx, l[k].idx, _dist(graph.nodes[l[k - 1].idx], graph.nodes[l[k].idx]));
+        const na = graph.nodes[l[k - 1].idx], nb = graph.nodes[l[k].idx];
+        _addEdge(graph, l[k - 1].idx, l[k].idx, _dist(na, nb), segs[j].level);
       }
     });
 
@@ -1040,8 +1385,8 @@
     if (graph.nodeLevels) {
       _ajouterNiveauNode(graph, newIdx, seg.level);
     }
-    _addEdge(graph, newIdx, seg.a, dToA);
-    _addEdge(graph, newIdx, seg.b, dToB);
+    _addEdge(graph, newIdx, seg.a, dToA, seg.level);
+    _addEdge(graph, newIdx, seg.b, dToB, seg.level);
 
     // 🩸 Le nœud virtuel doit aussi être relié aux nœuds de croisement posés SUR son segment (sur
     // l'arête d'origine, gardée) — le plus proche de chaque côté. Relié aux seules extrémités, le
@@ -1064,8 +1409,8 @@
       if (tk > tV && (!apres || tk < apres.t)) apres = { idx: k, t: tk };
     }
     const lenSeg = Math.sqrt(lenSq);
-    if (avant) _addEdge(graph, newIdx, avant.idx, (tV - avant.t) * lenSeg);
-    if (apres) _addEdge(graph, newIdx, apres.idx, (apres.t - tV) * lenSeg);
+    if (avant) _addEdge(graph, newIdx, avant.idx, (tV - avant.t) * lenSeg, seg.level);
+    if (apres) _addEdge(graph, newIdx, apres.idx, (apres.t - tV) * lenSeg, seg.level);
 
     return {
       nodeIdx:    newIdx,
@@ -1202,10 +1547,15 @@
     return [d, i];
   }
 
+  // Ordonné sur le COÛT (dist) ; la longueur (lg) suit le même chemin. Sans zone à coût, coût = longueur au bit près
+  // (mêmes additions dans le même ordre) : chemins et distances inchangés.
+  // → { nodeIndices, totalDistance: longueur, cout, zonesTraversees: Map(zone → px dedans) } | null.
   function _dijkstra(graph, start, end) {
     const N    = graph.nodes.length;
     const dist = new Array(N).fill(Infinity);
+    const lg   = new Array(N).fill(0);
     const prev = new Array(N).fill(-1);
+    const via  = new Array(N).fill(null);   // arête prise pour arriver au nœud (zones à coût traversées)
     const fait = new Uint8Array(N);
     dist[start] = 0;
     const tas = [];
@@ -1225,7 +1575,9 @@
         const alt = dist[u] + neigh[i].weight;
         if (alt < dist[v]) {
           dist[v] = alt;
+          lg[v] = lg[u] + neigh[i].len;
           prev[v] = u;
+          via[v] = neigh[i];
           _tasPousser(tas, alt, v);
         }
       }
@@ -1234,23 +1586,33 @@
     if (dist[end] === Infinity) return null;
 
     const pathIdx = [];
+    const zones = new Map();
     let u = end;
     while (u >= 0) {
       pathIdx.unshift(u);
+      if (via[u] && via[u].zc) via[u].zc.forEach(function(px, z) { zones.set(z, (zones.get(z) || 0) + px); });
       u = prev[u];
     }
-    return { nodeIndices: pathIdx, totalDistance: dist[end] };
+    return { nodeIndices: pathIdx, totalDistance: lg[end], cout: dist[end], zonesTraversees: zones };
+  }
+
+  // Zones à coût d'un chemin → [{ type, longueurPx, objet }], une entrée par zone, la plus traversée d'abord.
+  function _listeZonesTraversees(zones) {
+    const out = [];
+    zones.forEach(function(px, z) { out.push({ type: z.objet && z.objet.type, longueurPx: px, objet: z.objet }); });
+    return out.sort(function(a, b) { return b.longueurPx - a.longueurPx; });
   }
 
   // ── Calcul interne, une passe ──────────
   // build + enrichissement + calage + Dijkstra ; computeRoute l'appelle en passe 1 puis 2 si besoin.
   // `echelle` (px/m) et `profondeurs` ({ "<niveau>": m|null }) facultatifs : ceux du plan du RÉSEAU
   // quand ce n'est pas le plan ouvert (sinon APP_CONFIG.scale / getProfondeurNiveau). Ils servent aux
-  // carrefours ET au poids des jonctions.
+  // carrefours ET au poids des jonctions. `zonesCout` : zones à coût du réseau (_buildGraph), gardées dans les deux
+  // passes (un coût ne se relâche pas : il ne bloque jamais).
   function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
-                                echelle, profondeurs, jonctions) {
+                                echelle, profondeurs, jonctions, zonesCout, masses) {
     const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius, avoidZones,
-                              { echelle: echelle, profondeurs: profondeurs });
+                              { echelle: echelle, profondeurs: profondeurs }, zonesCout, masses);
     if (graph.nodes.length === 0) {
       // i18n : code + params, localisé au rendu (interfaceItineraire.js).
       const e = new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
@@ -1279,6 +1641,8 @@
     const fullPath    = [];
     let totalDistance = 0;
     let segmentCount  = 0;
+    let cout          = 0;
+    const zonesCumul  = new Map();
 
     for (let i = 0; i < snapResults.length - 1; i++) {
       const a = snapResults[i].nodeIdx;
@@ -1315,12 +1679,16 @@
       for (let k = 0; k < segPoints.length; k++) fullPath.push(segPoints[k]);
       totalDistance += result.totalDistance;
       segmentCount  += result.nodeIndices.length - 1;
+      cout          += result.cout;
+      result.zonesTraversees.forEach(function(px, z) { zonesCumul.set(z, (zonesCumul.get(z) || 0) + px); });
     }
 
     return {
       path:           fullPath,
       totalDistance:  totalDistance,
       segmentCount:   segmentCount,
+      cout:           cout,
+      zonesTraversees: _listeZonesTraversees(zonesCumul),
       snappedPoints:  snapResults.map(function(s) { return s.projection; }),
       // Champs du guidage (`path`/`totalDistance` restent le trajet SUR tracé) :
       //   • raccords : trajet à vol d'oiseau entre chaque waypoint et son tracé (dessiné ET compté) ;
@@ -1536,9 +1904,11 @@
   // ── computeRoute (2 passes) ──────────
   // opts : allowedTypes (défaut principal/secondaire/chemin) · avoidPoints [{x, y, label?}] · avoidTags
   //   (développés en points via SearchPoints) · avoidRadius px (défaut 100) · avoidZones (types) ·
-  //   respecterInaccessibles (false = SUSPEND la seule contrainte dure ; absent = respecter) · corde (true =
-  //   équipe équipée : les puits sans échelon entre niveaux deviennent praticables).
-  // Passe 1 : zones inaccessibles (dur) + évitements (souple). Échec avec évitements → passe 2 sans eux ;
+  //   respecterInaccessibles (false = SUSPEND les contraintes dures ; absent = respecter) · corde (true =
+  //   équipe équipée : les puits sans échelon entre niveaux deviennent praticables) · brancard (true = masse au sol
+  //   sous 1,8 m de vide évitée comme une zone à coût).
+  // Passe 1 : zones inaccessibles (dur) + évitements (souple) + coût des zones à coût. Échec avec évitements →
+  // passe 2 sans eux (le coût reste) ;
   // si elle aboutit : `usedFallback: true` + `avoidedThrough` (points traversés) pour l'UI. Échec de la
   // passe 2 → vraie absence de chemin, l'erreur remonte.
   // ⚠️ ASYNC (SearchPoints.getAllPoints) : `await Pathfinder.computeRoute(…)`.
@@ -1608,6 +1978,10 @@
 
     // Passages entre niveaux du plan ; `opts.corde` (équipe équipée) ouvre les puits sans échelon.
     const jonctions = { pois: _poisJonctionDuPlan(), corde: opts.corde === true };
+    // Zones à coût (Comblé, effondrement) : jamais levées, ni par la case « Respecter… » ni en passe 2.
+    const zonesCout = _collecterZonesCout();
+    // Masses au sol : coût selon le vide, passage coupé sous 0,5 m ; jamais levées (passe 2 comprise).
+    const masses = _massesDuPlan(opts.brancard === true);
 
     let result          = null;
     let usedFallback    = false;
@@ -1616,7 +1990,7 @@
     try {
       result = _computeRouteInterne(
         waypoints, allRoads, allowedTypes,
-        zonesInacc, allAvoidPts, avoidRadius, avoidZones, undefined, undefined, jonctions
+        zonesInacc, allAvoidPts, avoidRadius, avoidZones, undefined, undefined, jonctions, zonesCout, masses
       );
     } catch(e1) {
       // Sans évitements, c'est une vraie absence de chemin → on relance.
@@ -1626,7 +2000,7 @@
       try {
         result = _computeRouteInterne(
           waypoints, allRoads, allowedTypes,
-          zonesInacc, [], 0, [], undefined, undefined, jonctions
+          zonesInacc, [], 0, [], undefined, undefined, jonctions, zonesCout, masses
         );
         usedFallback = true;
         // Points évités que le chemin final traverse quand même (« Impossible d'éviter : X, Y »).
@@ -1652,7 +2026,8 @@
   // SYNCHRONE : pas d'avoidTags — l'appelant résout ses évitements, les données distantes ne sont pas
   // dans les globales.
   // opts : allowedTypes · zones [{type, points, level?}] (types durs = contrainte DURE, estZoneDure) ·
-  //   murs [{points, level?}] (murs en ligne de CE réseau, DURS) · respecterInaccessibles (false = lève les deux) ·
+  //   types à coût = évités d'office, jamais levés · murs [{points, level?}] (murs en ligne de CE réseau, DURS) ·
+  //   respecterInaccessibles (false = lève zones dures et murs) ·
   //   avoidPoints · avoidZonesResolved (zones objets, souple) · avoidRadius (px, 100) ·
   //   echelle (px/m de CE réseau : carrefours 3 m / 5 m et dénivelé) ·
   //   profondeurs ({ "<niveau>": m|null } de CE réseau ; fournie, même {}, fait foi ; absente = plan ouvert) ·
@@ -1679,6 +2054,8 @@
       return { points: m.points, level: Number.isInteger(m.level) ? m.level : 0, ligne: true };
     });
     const zonesInacc = (opts.respecterInaccessibles === false) ? [] : zonesDures.concat(mursDurs);
+    const zonesCout = _zonesCoutDe(opts.zones);
+    const masses = _massesReseau(opts.zones, opts.echelle);
     const avoidPts    = Array.isArray(opts.avoidPoints) ? opts.avoidPoints : [];
     const avoidRadius = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0) ? opts.avoidRadius : 100;
     const avoidZones  = (Array.isArray(opts.avoidZonesResolved) ? opts.avoidZonesResolved : [])
@@ -1691,11 +2068,12 @@
     let result = null, usedFallback = false, avoidedThrough = [];
     try {
       result = _computeRouteInterne(waypoints, roads, allowedTypes, zonesInacc, avoidPts, avoidRadius,
-                                    avoidZones, opts.echelle, opts.profondeurs, jonctions);
+                                    avoidZones, opts.echelle, opts.profondeurs, jonctions, zonesCout, masses);
     } catch(e1) {
       if (!hasAvoid) throw e1;
       result = _computeRouteInterne(waypoints, roads, allowedTypes,
-                                    zonesInacc, [], 0, [], opts.echelle, opts.profondeurs, jonctions);
+                                    zonesInacc, [], 0, [], opts.echelle, opts.profondeurs, jonctions, zonesCout,
+                                    masses);
       usedFallback = true;
       avoidedThrough = avoidPts.filter(function(ap) {
         return _pathPassesNearPoint(result.path, ap, avoidRadius);
@@ -1968,6 +2346,28 @@
     });
   }
 
+  // Alerte « passe par une zone … » d'un résultat, null s'il n'en traverse aucune : la même phrase pour l'itinéraire,
+  // la sortie d'urgence, l'inter-plans et le Secours. Libellés de la légende (renommage compris). `echelle` px/m du
+  // réseau, défaut : plan ouvert (sans échelle, la longueur est dite en px).
+  function texteZonesTraversees(zones, echelle) {
+    if (!Array.isArray(zones) || zones.length === 0) return null;
+    const types = [];
+    let px = 0;
+    zones.forEach(function(z) {
+      const l = _zoneTypeLabel(z.type);
+      if (types.indexOf(l) < 0) types.push(l);
+      px += z.longueurPx || 0;
+    });
+    const ech = window.APP_CONFIG && window.APP_CONFIG.scale > 0 ? window.APP_CONFIG.scale : 0;
+    const e = echelle > 0 ? echelle : ech;
+    const m = e > 0 ? px / e : 0;
+    const d = (e > 0 && typeof window.formatDistance === "function")
+      ? window.formatDistance(m, m < 10 ? 1 : 0) : Math.round(px) + " px";
+    const p = { types: types.join(" / "), d: d };
+    return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t("iti.zonesCout.traverse", p)
+      : "Passe par une zone " + p.types + " sur " + p.d;
+  }
+
   // ── Export ──────────
   window.Pathfinder = {
     aDesTraces:        aDesTraces,
@@ -1975,9 +2375,19 @@
     nbObstaclesDurs:   function() { return _collecterObstaclesDurs().length; },
     TYPES_ZONES_DURS:  TYPES_ZONES_DURS.slice(),
     estZoneDure:       _estZoneDure,
+    TYPES_ZONES_COUT:  TYPES_ZONES_COUT.slice(),
+    estZoneCout:       _estZoneCout,
+    texteZonesTraversees: texteZonesTraversees,
+    // Masse au sol : facteur d'un vide (m) — 1, 1,5, 3 ou Infinity (coupé) — et ralentissement cumulé d'un trajet
+    // (guidage : temps restant), mêmes règles que le graphe.
+    MASSE_VIDE:        Object.assign({}, MASSE_VIDE),
+    facteurVide:       _facteurVide,
+    surcoutMasseTrajet: surcoutMasseTrajet,
+    resumeMasseTrajet: resumeMasseTrajet,
     // « Vérifier le plan » (verifierPlan.js) : les tests du graphe eux-mêmes, jamais une copie, sinon l'outil et
     // l'itinéraire divergent. ⚠️ contrat : obstaclesDuPlan() → la liste que lit _buildGraph (plan ouvert) ;
     // obstaclesDe(zones, structures) → la même, sur des données fournies ;
+    // zonesCoutDuPlan() / zonesCoutDe(zones) → les zones à coût que lit le graphe, même forme ;
     // preparer(obstacles) → { polys, grille (murs) } ; zonesQuiBloquent(p1, p2, niveau, polys) et
     // mursQuiCoupent(p1, p2, niveau, grille) → tous les obstacles qui excluent ce segment du graphe.
     controle: {
@@ -1985,12 +2395,18 @@
       ECHELLE_SANS_CALAGE: ECHELLE_SANS_CALAGE,
       obstaclesDe: function(zones, structures) { return _zonesDuresDe(zones).concat(_mursLigneDe(structures)); },
       obstaclesDuPlan: _collecterObstaclesDurs,
+      zonesCoutDe: _zonesCoutDe,
+      zonesCoutDuPlan: _collecterZonesCout,
       preparer: _preparerObstacles,
       grilleZones: _grilleZones,
       zonesCandidates: _zonesCandidates,
       zonesQuiBloquent: function(p1, p2, niveau, polys) { return _zonesQuiBloquent(p1, p2, niveau, polys, true); },
       mursQuiCoupent: function(p1, p2, niveau, grille) { return _mursQuiCoupent(p1, p2, niveau, grille, true); },
       longueurDansPolygone: _longueurDansPolygone,
+      // Tolérance des zones à coût (TOLERANCE_ZONE_COUT_M) : seuil en px à une échelle, traversées d'un tracé.
+      TOLERANCE_ZONE_COUT_M: TOLERANCE_ZONE_COUT_M,
+      toleranceZonePx: _toleranceZonePx,
+      traverseesTrace: _traverseesTrace,
       projeter: _projectOnSegment
     },
     computeRoute:      computeRoute,

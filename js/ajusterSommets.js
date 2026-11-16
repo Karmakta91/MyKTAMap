@@ -24,7 +24,7 @@
 // 🩸 Position par map.mouseEventToLatLng : la rotation du plan orienté y est défaite (mapBearing.js >
 // _installerPatchConversions) ; clientX ne sert qu'aux seuils de mouvement.
 // Rien sans droit : lecture seule (ktaEditionRefusee), outil ou mode « clic carte » armé, calque non rapatrié (ses
-// objets ne sont pas en session). Repérage : un balayage des objets visibles au pointerdown, jamais au pointermove.
+// objets ne sont pas en session). Repérage paresseux (_viser) : un balayage quand la poignée paraît (VISUEL_MS).
 // Garde-fou : scripts/smoke/checkup-ajuster-sommets.js · Doc : docs/architecture/ui.md § Ajuster une forme
 
 window.KtaAjusterSommets = (function () {
@@ -108,8 +108,11 @@ window.KtaAjusterSommets = (function () {
     return s > 0 ? px / s : 0;
   }
 
-  // Sommet le plus proche dans le rayon, sinon milieu de segment le plus proche ; parmi les prises seulement.
-  // `garder(famille, o)` facultatif : ce que l'appelant montre (vue 3D : son niveau, ses filtres).
+  // Sommet le plus proche dans le rayon, sinon le point du contour le plus proche (genre "milieu" : un sommet y naît) ;
+  // parmi les prises seulement. `garder(famille, o)` facultatif : ce que l'appelant montre (vue 3D : son niveau, ses
+  // filtres). 🩸 Distance au SEGMENT (projection), pas à son milieu : sur une grande zone aux côtés longs, toucher le
+  // contour loin du milieu ne trouvait rien, alors qu'un pilier (côtés courts) répondait partout. `tol` en unités plan
+  // = RAYON_PX d'écran, quel que soit le trait (fin, tireté) ou le motif de la forme.
   function _chercher(m, x, y, tol, garder) {
     const reg = window.ktaFormesAjustables || {};
     const annotations = !window.layerEditor || m.hasLayer(window.layerEditor), seule = _mesureSeule();
@@ -132,7 +135,9 @@ window.KtaAjusterSommets = (function () {
         const nSeg = (n >= 3 && a.ferme(o)) ? n : n - 1;
         for (let i = 0; i < nSeg; i++) {
           const p = pts[i], q = pts[(i + 1) % n];
-          const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, d = Math.hypot(mx - x, my - y);
+          const dx = q.x - p.x, dy = q.y - p.y, L2 = dx * dx + dy * dy;
+          const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / L2)) : 0;
+          const mx = p.x + t * dx, my = p.y + t * dy, d = Math.hypot(mx - x, my - y);
           if (d <= tol && (!mi || d < mi.d)) mi = { genre: "milieu", f: f, a: a, o: o, i: i + 1, x: mx, y: my, d: d };
         }
       }
@@ -265,6 +270,15 @@ window.KtaAjusterSommets = (function () {
     return true;
   }
 
+  // Rampes d'une masse au sol : elles suivent leur segment (masseSol.js > suivreBords), à appeler AVANT le splice
+  // (n = longueur avant). Les autres formes n'ont pas le champ : sans effet.
+  function _suivreBords(o, op, i) {
+    const M = window.KtaMasseSol;
+    if (o && Array.isArray(o.rampes) && M && typeof M.suivreBords === "function") {
+      M.suivreBords(o, op, i, o.points.length);
+    }
+  }
+
   // ── Écriture : un geste = une entrée d'historique, un rendu ──
   function _ecrire(action, c, p, tol) {
     if (!_permis() || !_encorePresent(c)) return false;
@@ -276,6 +290,7 @@ window.KtaAjusterSommets = (function () {
     }
     const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
     if (action === "supprimer") {
+      _suivreBords(o, "retire", c.i);
       o.points.splice(c.i, 1);
     } else {
       let np = { x: p.x, y: p.y };
@@ -285,8 +300,10 @@ window.KtaAjusterSommets = (function () {
         const s = a.aimanter(np.x, np.y, o, exclus.filter(Boolean), tol);
         if (s) np = { x: s.x, y: s.y };
       }
-      if (action === "ajouter") o.points.splice(c.i, 0, np);
-      else o.points[c.i] = Object.assign({}, o.points[c.i], np);
+      if (action === "ajouter") {
+        _suivreBords(o, "insere", c.i);
+        o.points.splice(c.i, 0, np);
+      } else o.points[c.i] = Object.assign({}, o.points[c.i], np);
     }
     if (o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(o);
     try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }
@@ -413,6 +430,7 @@ window.KtaAjusterSommets = (function () {
       if (s) np = { x: s.x, y: s.y };
     }
     const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
+    _suivreBords(o, "insere", st.pose);
     pts.splice(st.pose, 0, np);
     if (o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(o);
     try { a.rendre(); } catch (err) { console.warn("[Ajuster] rendu :", err); }
@@ -456,9 +474,28 @@ window.KtaAjusterSommets = (function () {
   }
   function annuler() {
     if (!_g) return false;
+    const geste = !!_g.c;
     if (_g.arme) _lacherAvale = _g.id;
-    _stats.annules++;
+    if (geste) _stats.annules++;
     _nettoyer();
+    return geste;
+  }
+
+  // ⚠️ contrat : un appui sur la carte ouvre `_g` SANS cible (c: null) ; le balayage des objets (_chercher) et la
+  // position plan (mise en page lue par mouseEventToLatLng) n'ont lieu qu'ici, quand la poignée doit paraître
+  // (VISUEL_MS) ou à l'appui long. 🩸 Au pointerdown, chaque tap ou début de pan payait le balayage de tous les
+  // sommets du plan et une mise en page forcée. Pas de cible : appui rendu tel quel, sans geste compté. Rend true si
+  // `g` a une cible.
+  function _viser(g) {
+    if (g.c) return true;
+    const m = _map(), cont = m && m.getContainer();
+    const p = cont && _permis() ? _plan(m, { clientX: g.cx, clientY: g.cy }) : null;
+    const c = p ? _chercher(m, p.x, p.y, _pxEnPlan(m, RAYON_PX)) : null;
+    if (!c) { if (_g === g) _nettoyer(); return false; }
+    g.depart = p;
+    g.c = c;
+    _stats.gestes++;
+    cont.classList.add("kta-ajuster-attente");
     return true;
   }
 
@@ -466,6 +503,7 @@ window.KtaAjusterSommets = (function () {
     const g = _g, m = _map();
     if (!g || !m) return;
     g.timer = null;
+    if (!_viser(g)) return;
     if (!_permis() || !_encorePresent(g.c)) { annuler(); return; }
     g.arme = true;
     g.dragAvant = !!(m.dragging && m.dragging.enabled());
@@ -486,7 +524,7 @@ window.KtaAjusterSommets = (function () {
     // 🩸 Un appui primaire (premier doigt posé, ou la souris) pendant un geste ouvert, ou le même pointerId reposé :
     // le lâcher de ce geste n'est jamais arrivé. Il est fermé en silence (drag rendu, rien d'écrit) et l'appui compte
     // pour lui-même ; sinon les mouvements restaient avalés et la carte ne suivait plus le doigt.
-    if (_g && (e.isPrimary || e.pointerId === _g.id)) { _stats.annules++; _nettoyer(); }
+    if (_g && (e.isPrimary || e.pointerId === _g.id)) { if (_g.c) _stats.annules++; _nettoyer(); }
     if (!_g) _lacherAvale = null;
     // Insertion ouverte : un appui ne fait que noter d'où part le tap (seuil du pan, _tapInsertion), aucun ajustement.
     if (_ins) {
@@ -507,17 +545,11 @@ window.KtaAjusterSommets = (function () {
     if (!cont || !cont.contains(e.target)) return;
     if (e.target.closest && e.target.closest(".leaflet-marker-icon, .leaflet-popup, .leaflet-control")) return;
     if (!_permis()) return;
-    const p = _plan(m, e);
-    if (!p) return;
-    const c = _chercher(m, p.x, p.y, _pxEnPlan(m, RAYON_PX));
-    if (!c) return;
-    _stats.gestes++;
-    _g = { id: e.pointerId, cx: e.clientX, cy: e.clientY, depart: p, c: c, arme: false, bouge: false,
+    const g = _g = { id: e.pointerId, cx: e.clientX, cy: e.clientY, depart: null, c: null, arme: false, bouge: false,
       timer: setTimeout(_armer, APPUI_MS), timerVisuel: 0, dragAvant: false };
-    _g.timerVisuel = setTimeout(function () {
-      if (_g && !_g.arme) _poignee(_g, "kta-ajuster-poignee kta-ajuster-poignee-attente");
+    g.timerVisuel = setTimeout(function () {
+      if (_g === g && !g.arme && _viser(g)) _poignee(g, "kta-ajuster-poignee kta-ajuster-poignee-attente");
     }, VISUEL_MS);
-    cont.classList.add("kta-ajuster-attente");
   }
 
   function _onMove(e) {
@@ -601,13 +633,13 @@ window.KtaAjusterSommets = (function () {
       if (e.type === "click") _tapInsertion(e);
       return;
     }
-    if (_g ? _g.arme : (_now() < _avalerJusqua && _surCarte(e.target))) {
+    if ((_g && _g.c) ? _g.arme : (_now() < _avalerJusqua && _surCarte(e.target))) {
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }
   }
   function _onContexte(e) {
-    if (_g || _now() < _avalerJusqua || (_ins && _surCarte(e.target))) {
+    if ((_g && _g.c) || _now() < _avalerJusqua || (_ins && _surCarte(e.target))) {
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }
@@ -685,9 +717,9 @@ window.KtaAjusterSommets = (function () {
   }
 
   return {
-    enCours: function () { return !!_g; },
+    enCours: function () { return !!(_g && _g.c); },
     etat: function () {
-      return { enCours: !!_g, arme: !!(_g && _g.arme), menu: !!_menu, gestes: _stats.gestes,
+      return { enCours: !!(_g && _g.c), arme: !!(_g && _g.arme), menu: !!_menu, gestes: _stats.gestes,
         ecritures: _stats.ecritures, annules: _stats.annules, refus: _stats.refus, inseres: _stats.inseres,
         coupes: _stats.coupes, insertion: !!_ins };
     },

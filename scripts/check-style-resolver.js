@@ -46,6 +46,78 @@ t("le style rendu ne fuit aucun champ interne",
   !("_flatFill" in R("zones", "inaccessible")) && !("_flatFillOpacity" in R("zones", "inaccessible", { flat: true })));
 t("jonction a son tirete", R("traces", "jonction").dashArray === "10 6");
 
+// ── Masse au sol : grains dont le nombre suit la part comblée (un motif par cran), contour tireté court ──
+{
+  const ms = R("zones", "masse-sol");
+  t("masse-sol : contour tireté court (4 3), jamais celui de la jonction",
+    ms && ms.dashArray === "4 3" && ms.dashArray !== R("traces", "jonction").dashArray && ms.color === "#6b5532");
+  t("masse-sol sans canvas (Node) = aplat sable à 50 %", ms.fillColor === "#c9b48c" && ms.fillOpacity === 0.5);
+  t("masse-sol { flat } = même aplat", R("zones", "masse-sol", { flat: true }).fillColor === "#c9b48c");
+  t("masse-sol ≠ Comblé (remblais)", ms.fillColor !== R("zones", "remblais").fillColor && ms.color !== R("zones", "remblais").color);
+  // Canvas factice qui compte les grains (arc) et les galets (ellipse) peints dans la tuile.
+  const motifs = [];
+  let grains = 0;
+  let traits = 0;
+  const ctx2d = { fillRect() {}, beginPath() {}, moveTo() {}, lineTo() { traits++; }, stroke() {}, fill() {},
+    arc() { grains++; }, ellipse() { grains++; },
+    createPattern(c) {
+      const m = { motif: true, w: c.width, grains: grains, traits: traits }; grains = 0; traits = 0; motifs.push(m);
+      return m;
+    } };
+  const doc = { createElement: () => ({ getContext: () => ctx2d }) };
+  const w3 = { console: { log(){}, warn(){} }, document: doc };
+  w3.window = w3;
+  vm.runInContext("var window = this;" + fs.readFileSync("js/styleResolver.js", "utf8"), vm.createContext(w3));
+  const Rm = function (c) { return w3.ktaResolveStyle("zones", "masse-sol", c === undefined ? undefined : { comble: c }); };
+  const q = Rm(0.25), d = Rm(0.5), tq = Rm(0.75), au = Rm(0.9), sans = Rm(), q2 = Rm(0.25);
+  t("masse-sol sur la carte = CanvasPattern (tuile 48 px), opacité pleine",
+    q.fillColor && q.fillColor.motif === true && q.fillColor.w === 48 && q.fillOpacity === 1);
+  t("un motif par cran, mis en cache (¼ demandé deux fois = un seul motif)", q.fillColor === q2.fillColor);
+  t("densité croissante ¼ < ½ < ¾ (grains peints, copies de bord comprises)",
+    q.fillColor.grains < d.fillColor.grains && d.fillColor.grains < tq.fillColor.grains);
+  t("¼ ≈ un quart des 110 grains (×9 copies de bord)", q.fillColor.grains === Math.round(0.25 * 110) * 9);
+  t("cran haut plafonné à 85 % des grains (0,9 et 1 identiques, étiquette lisible)",
+    au.fillColor.grains === Math.round(0.85 * 110) * 9 && Rm(1).fillColor === au.fillColor);
+  t("comble absent = ½ (data-formats.md)", sans.fillColor === d.fillColor);
+  t("comble illisible (texte, NaN) = ½", Rm("abc").fillColor === d.fillColor && Rm(NaN).fillColor === d.fillColor);
+  t("aucun champ interne ne fuit (_motif, _flatFill)", !("_motif" in q) && !("_flatFill" in q));
+  // Couleur choisie (Légende → Modifier) : aplat, plus de motif, opacité du repli.
+  w3.LegendCustomization = { getColor: (c, k) => (c === "zones" && k === "masse-sol" ? "#888800" : null),
+    getBorderColor: () => null };
+  const ov = Rm(0.75);
+  t("masse-sol override = aplat, plus de motif, opacité du repli", ov.fillColor === "#888800" && ov.fillOpacity === 0.5);
+  delete w3.LegendCustomization;
+  // Masse NON EXPLOITÉE : même sable, appareil de blocs (traits), AUCUN grain, un seul motif quelle que soit la part.
+  const ne = w3.ktaResolveStyle("zones", "masse-sol", { comble: 0.75, nonExploitee: true });
+  const ne2 = w3.ktaResolveStyle("zones", "masse-sol", { comble: 0.25, nonExploitee: true });
+  t("non exploitée : motif de blocs (tuile 48 px), aucun grain ni galet, des joints",
+    ne.fillColor && ne.fillColor.motif === true && ne.fillColor.w === 48 && ne.fillColor.grains === 0 &&
+    ne.fillColor.traits > 0 && ne.fillColor !== tq.fillColor);
+  t("non exploitée : un seul motif quelle que soit la part (¾ et ¼ identiques)", ne.fillColor === ne2.fillColor);
+  t("non exploitée : même contour que la masse au sol", ne.color === tq.color && ne.dashArray === tq.dashArray);
+  const nePlat = w3.ktaResolveStyle("zones", "masse-sol", { flat: true, nonExploitee: true });
+  const rePlat = w3.ktaResolveStyle("zones", "masse-sol", { flat: true });
+  t("non exploitée sans motif (export, KMZ) : même sable, aplat plus dense (85 % contre 50 %)",
+    nePlat.fillColor === rePlat.fillColor && nePlat.fillOpacity === 0.85 && rePlat.fillOpacity === 0.5);
+  t("aucun champ interne ne fuit (_flatFillOpacityNe)",
+    !("_flatFillOpacityNe" in ne) && !("_flatFillOpacityNe" in nePlat));
+  t("nonExploitee sans effet sur un autre type",
+    w3.ktaResolveStyle("zones", "eau", { flat: true, nonExploitee: true }).fillOpacity ===
+    w3.ktaResolveStyle("zones", "eau", { flat: true }).fillOpacity);
+  // Getter unique (contrat lu aussi par la vue 3D) : part > 0 ET nature === "non-exploitee".
+  const N = w3.ktaMasseNonExploitee;
+  t("ktaMasseNonExploitee : vrai seulement pour une part > 0 et nature non-exploitee",
+    N({ type: "masse-sol", comble: 0.5, nature: "non-exploitee" }) === true &&
+    N({ type: "masse-sol", nature: "non-exploitee" }) === true &&
+    N({ type: "masse-sol", comble: -0.5, nature: "non-exploitee" }) === false &&
+    N({ type: "masse-sol", comble: 0.5 }) === false &&
+    N({ type: "masse-sol", comble: 0.5, nature: "autre" }) === false &&
+    N({ type: "remblais", nature: "non-exploitee" }) === false && N(null) === false);
+  t("ktaStyleOptsZone : part et nature d'une masse, rien pour un autre type",
+    JSON.stringify(w3.ktaStyleOptsZone({ type: "masse-sol", comble: 0.25, nature: "non-exploitee" })) ===
+    JSON.stringify({ comble: 0.25, nonExploitee: true }) && w3.ktaStyleOptsZone({ type: "eau" }) === undefined);
+}
+
 // ── 🩸 Objet NEUF à chaque appel : un consommateur qui mute ne doit contaminer personne ──
 const a = R("traces", "principal"); a.color = "#000000";
 t("mutation d'un style ne contamine pas la table", R("traces", "principal").color === "#00ff00");
@@ -199,7 +271,7 @@ win.LegendCustomization = {
 t("pastille apres override = la couleur choisie", /#ff0000/.test(H("traces", "principal")));
 delete win.LegendCustomization;
 
-t("ktaStyleBuiltins(zones) = 5 types (dont la zone jonction `pente`)", win.ktaStyleBuiltins("zones").length === 5);
+t("ktaStyleBuiltins(zones) = 6 types (dont la zone jonction `pente` et la masse au sol)", win.ktaStyleBuiltins("zones").length === 6);
 t("ktaStyleBuiltins(bidon) = []", win.ktaStyleBuiltins("bidon").length === 0);
 
 // ── 🩸 Empilement : zones sous les structures, sur le même canvas (parcours réel : checkup-inaccessible-sous-structures) ──

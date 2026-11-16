@@ -51,6 +51,15 @@
 
 ## Ensuite
 
+- **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
+  pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
+  haut. Sans rampe placée, talus 30° automatique inchangé. Priorité KARMA (« un gros plus »), juste après talus honnête.
+  `qui: Claude · action: lot après talus honnête · fini: rampe en 2D (chevrons) et 3D, fiche, KMZ, checkup
+  · depuis: 14/11/2026 · taille: M`
+- **Sol abaissé qui débouche sur le niveau du dessous** — décidé 14/11 (après le lot 4 de la masse au sol) : en 3D, le
+  plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
+  jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
+  `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
 - **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
   `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
   `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
@@ -69,13 +78,6 @@
   tant que le nombre ne change pas, au repos ; coût mesuré d'abord sur le plus gros relevé des checkups.
   `qui: Claude · action: mesurer le coût puis lot 4 de ETUDE_VERIFIER_PLAN.md · fini: pastille et toast une fois,
   temps mesuré · depuis: 11/11/2026 · taille: S`
-- **Masse au sol : maquette 2D (remblais, lot 2)** — rendu 2D de la masse au sol à valider avant le code.
-  `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: maquette 2D · fini: maquette validée par KARMA · depuis: 11/11/2026 · taille: S`
-- **Masse au sol, donnée et 2D (remblais, lot 3)** — type ajouté partout, champ `comble`, fiche, Tableur, copies,
-  KMZ / GeoJSON / SIG, légende, exports, défaut d'import ; garde-fou d'aller-retour. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lot 3 de ETUDE_REMBLAIS.md · fini: type partout, aller-retour vert · depuis: 11/11/2026
-  · taille: L`
 - **Masse au sol en 3D (remblais, lot 4)** — sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ;
   mesure de perf. `docs/ETUDE_REMBLAIS.md`.
   `qui: Claude · action: lot 4 de ETUDE_REMBLAIS.md · fini: checkup-vue-3d vert, perf mesurée · depuis: 11/11/2026
@@ -84,6 +86,22 @@
   sol séparé de la distance, temps du guidage. `docs/ETUDE_REMBLAIS.md`.
   `qui: Claude · action: lots 5 puis 6 de ETUDE_REMBLAIS.md · fini: volume et itinéraire conformes à l'étude
   · depuis: 11/11/2026 · taille: M`
+- **Mémoire d'un plan en double** — 3e mesure sur un plan réel (15/11) : 🔬 le ZIP gardé deux fois (`_lazyZipRef` et
+  `_planDataCache[plan].zip`, ~35 Mo), la liste des structures deux fois (`RUNTIME_ASSETS` et `dataLayers`, ~5 Mo),
+  l'index des structures de `galerieEmprise.js` peut-être deux fois (~13 Mo). Borné, pas une fuite.
+  `qui: Claude · action: vérifier les 3 doublons et retirer ceux qui sont sûrs, après le merge v2.28.0
+  · fini: tas mesuré avant/après sur un relevé lourd, ouverture et tuiles vertes · depuis: 15/11/2026 · taille: S`
+
+- **Changement de niveau 2D : ne plus recréer les couches** — mesure sur un plan réel (15/11, CPU ×4) : 2,3 s par
+  changement, dont ~2,1 s dans `renderStructures` (addLayer 0,75 s, removeLayer 0,3 s, ordre des murs, styles).
+  Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
+  `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
+  sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+- **Fenêtre du POI : trop grosse au téléphone, trop chargée au PC** — retour de KARMA (16/11). Au téléphone, la
+  fiche d'un point couvre trop la carte ; au PC, elle montre trop d'informations. Le téléphone passe en premier.
+  `qui: Claude · action: topo (captures téléphone et PC, ce qu'on garde, ce qu'on replie) après le merge v2.28.0
+  · fini: fiche du POI validée par KARMA au téléphone, puis au PC · depuis: 16/11/2026 · taille: S`
+
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
@@ -146,6 +164,12 @@
 
 ## Entrant
 
+- **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
+  15/11), déjà présent avant la masse au sol.
+  `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
+- **`checkup-exports-structures` rouge depuis le nouveau relevé fictif** — il attend 10 structures de calque et en voit
+  217 depuis `a1340f74` (14/11) ; hérité, sans lien avec un lot.
+  `qui: Claude · action: adapter le test au relevé enrichi sans l'affaiblir · depuis: 14/11/2026 · taille: XS`
 - **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
   annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
   `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`

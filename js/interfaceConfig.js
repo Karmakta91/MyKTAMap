@@ -2029,6 +2029,11 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
 
   // Propage à tous les modules level-aware ; resynchronise aussi la modale ≡ ouverte (FilterPanel.onLevelChange).
   if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+  // Niveau mémorisé aussitôt dans la vue du plan (vuePlan.js, ~150 octets hors session) : retrouvé même si l'onglet
+  // est tué avant pagehide. Pas pendant l'application de la vue retrouvée (le cadrage n'est pas encore posé).
+  if (opts.source !== "vue-retrouvee" && window.KtaVuePlan && typeof window.KtaVuePlan.memoriser === "function") {
+    try { window.KtaVuePlan.memoriser(); } catch(e) { /* pagehide le rattrape */ }
+  }
   // 📏 compte le niveau affiché : surlignage (même fenêtre fermée) et fenêtre recalculés.
   if (typeof window.ktaDistanceTotaleRafraichir === "function") {
     try { window.ktaDistanceTotaleRafraichir(); } catch(e) {}
@@ -2042,7 +2047,21 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
 
 // Re-rend / re-filtre TOUS les modules level-aware après un changement de visibleLevels (chacun expose
 // _applyLevelFilterTo*()).
-window.appliquerFiltreNiveau = function() {
+// ⚠️ `opts.sessionRendue` : tracés, zones et structures de session viennent d'être rendus avec les filtres et
+// niveaux courants (restauration de session) ; leur re-rendu complet est sauté, tout le reste est refiltré.
+// ⚠️ Affichage seul : aucune donnée de session n'est modifiée ici. Les rendus émettent `kta:donneesPlanChange` avec
+// `affichage: true` (utils.js > ktaSignalerDonneesPlan) et le geste qui l'a déclenché ne salit pas la session
+// (sessionPersist.js > ignorerGeste) : sans ça, chaque changement de niveau resérialisait toute la session.
+// Les filtres, qui en font partie, sont vus par l'empreinte légère de la sauvegarde.
+window.appliquerFiltreNiveau = function(opts) {
+  window._ktaRenduAffichage = (window._ktaRenduAffichage || 0) + 1;
+  try { _appliquerFiltreNiveau(opts); } finally { window._ktaRenduAffichage--; }
+  if (window.SessionPersist && typeof window.SessionPersist.ignorerGeste === "function") {
+    try { window.SessionPersist.ignorerGeste(); } catch(e) { /* rien */ }
+  }
+};
+function _appliquerFiltreNiveau(opts) {
+  const sessionRendue = !!(opts && opts.sessionRendue === true);
   // Présences / itinéraires d'une installation reliée : atténuation « hors niveau » recalculée.
   if (window.KtaPresences && typeof window.KtaPresences.redessiner === "function") {
     try { window.KtaPresences.redessiner(); } catch(e) {}
@@ -2052,14 +2071,14 @@ window.appliquerFiltreNiveau = function() {
     try { window.SecoursMode.redessinerOverlay(); } catch(e) {}
   }
   // Roads + zones de session : re-rendu complet (filtre appliqué au build).
-  if (typeof window.renderRoads === "function") {
+  if (!sessionRendue && typeof window.renderRoads === "function") {
     try { window.renderRoads(); } catch(e) {}
   }
-  if (typeof window.renderZones === "function") {
+  if (!sessionRendue && typeof window.renderZones === "function") {
     try { window.renderZones(); } catch(e) {}
   }
   // Structures de session.
-  if (typeof window.renderStructures === "function") {
+  if (!sessionRendue && typeof window.renderStructures === "function") {
     try { window.renderStructures(); } catch(e) {}
   }
   // Points des calques DATA.
@@ -2106,13 +2125,13 @@ window.appliquerFiltreNiveau = function() {
   if (window.InterPlanLinks && typeof window.InterPlanLinks.refreshBadges === "function") {
     try { window.InterPlanLinks.refreshBadges(); } catch(e) {}
   }
-};
+}
 
 // Re-rendu après changement des filtres runtime (tags, types…) : alias de appliquerFiltreNiveau, les modules
 // appliquent aussi window._ktaRuntimeFilters dans la même passe.
-window.appliquerFiltreRuntime = function() {
+window.appliquerFiltreRuntime = function(opts) {
   if (typeof window.appliquerFiltreNiveau === "function") {
-    window.appliquerFiltreNiveau();
+    window.appliquerFiltreNiveau(opts);
   }
 };
 

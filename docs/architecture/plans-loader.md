@@ -629,7 +629,8 @@ urgence et Mode Histoire ne ramènent pas à l'accueil d'eux-mêmes.
   reste arrêté (l'utilisateur le relance).
 - **Vue retrouvée** (`js/vuePlan.js`, décision produit) : centre, zoom et niveau actif du plan, par plan, sur
   l'appareil, sans limite de durée. Mémorisée au début de `_libererRessourcesPlanPrecedent` (avant l'arrêt du suivi
-  et le démontage), au `pagehide` et au passage en arrière-plan ; appliquée par `lancerApplication` après la
+  et le démontage), au `pagehide`, au passage en arrière-plan et à chaque changement de niveau
+  (`interfaceConfig.js > ktaSetActiveLevel` : le niveau tient même si l'onglet est tué) ; appliquée par `lancerApplication` après la
   restauration de session. Suivi actif au départ : la vue se recentre sur la dernière position du tracker, à son
   niveau ; sinon la vue telle qu'elle était. Sans vue mémorisée : cadrage initial (position de départ, zoom 0, ou
   dernière position du tracker si la session a un tracé).

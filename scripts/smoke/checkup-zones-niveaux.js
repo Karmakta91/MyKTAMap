@@ -109,8 +109,7 @@ function surCarte(page, uid) {
   return page.evaluate(function (uid) {
     let session = false, calque = null;
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c === "string" && c.indexOf('data-kta-uid="' + uid + '"') >= 0) session = true;
     });
     const e = (window._ktaDataPolygons || []).find(function (x) { return x.uid === "zn_calque"; });
@@ -182,8 +181,7 @@ function longueurAuMoins2(page) {
     const fiche = await page.evaluate(function (uid) {
       let cible = null;
       window.map.eachLayer(function (l) {
-        const p = l.getPopup && l.getPopup();
-        const c = p && p.getContent && p.getContent();
+        const c = window.ktaHtmlFiche(l);
         if (!cible && typeof c === "string" && c.indexOf('data-kta-uid="' + uid + '"') >= 0) cible = l;
       });
       if (!cible) return null;
@@ -351,8 +349,7 @@ function longueurAuMoins2(page) {
         window.map.closePopup();
         let cible = null;
         window.map.eachLayer(function (l) {
-          const p = l.getPopup && l.getPopup();
-          const c = p && p.getContent && p.getContent();
+          const c = window.ktaHtmlFiche(l);
           if (!cible && typeof c === "string" && c.indexOf('data-kta-uid="' + u + '"') >= 0) cible = l;
         });
         if (cible) cible.openPopup(cible.getBounds().getCenter());
@@ -403,7 +400,7 @@ function longueurAuMoins2(page) {
       LC.setColor("traces", "jonction", "#22aa55");
       let poly = null;
       window.map.eachLayer(function (l) {
-        const c = l.getPopup && l.getPopup() && l.getPopup().getContent();
+        const c = window.ktaHtmlFiche(l);
         if (typeof c === "string" && c.indexOf("kta-note-popup") >= 0 && l.options && l.options.fillColor === "#22aa55") poly = l;
       });
       out.carte = !!poly;
@@ -426,7 +423,7 @@ function longueurAuMoins2(page) {
       return page.evaluate(function (u) {
         let vu = false;
         window.map.eachLayer(function (l) {
-          const c = l.getPopup && l.getPopup() && l.getPopup().getContent();
+          const c = window.ktaHtmlFiche(l);
           if (typeof c === "string" && c.indexOf('data-kta-uid="' + u + '"') >= 0) vu = true;
         });
         return vu;

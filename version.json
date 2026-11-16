@@ -1,9 +1,10 @@
 {
-  "version": "v2.27.0",
-  "released": "2026-11-14",
+  "version": "v2.28.0",
+  "released": "2026-11-16",
   "notes": [
-    "🗺️ Le fond OpenStreetMap d'un plan s'affiche désormais directement sous le plan, depuis le bouton carte : transparence, ma position, enregistrement hors ligne.",
-    "🧊 En 3D, le plan au sol reste net même sans limite de portée ; ✏️ noms plus justes : Plaque/indication, Épure/graffiti.",
-    "📍 Un calage corrigé dans les Réglages s'applique partout et se garde quand on met le plan à jour."
+    "⛰️ Nouveau type de zone Masse au sol : remblai ou masse non exploitée, avec sa hauteur (¼, ½, ¾…) et des pentes que l'on pose soi-même ; l'itinéraire et le calcul de volume en tiennent compte.",
+    "🧊 En 3D, on marche sur la masse au sol : on monte sur un bord ou on en chute, ou l'on prend une pente ; le Comblé (ancien Remblais) monte jusqu'au plafond sauf le long d'un tracé, et l'itinéraire l'évite sans jamais s'y bloquer.",
+    "⚡ Plus rapide : changement de niveau en 2D et en 3D, ouverture des fiches, sauvegarde ; fin des conditions d'utilisation qui revenaient en boucle sur certains téléphones.",
+    "⛏️ Le calcul de volume se fait sur un secteur à lui, sur un ou plusieurs niveaux ; il estime le coût d'un comblement (béton, coulis, remblai, forages, durée) et donne quelques équivalences pour le fun."
   ]
 }

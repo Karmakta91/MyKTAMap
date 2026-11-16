@@ -70,8 +70,7 @@ async function ouvrirFiche(page, uid) {
   const trouvee = await page.evaluate(function (uid) {
     let cible = null;
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (!cible && typeof c === "string" && c.indexOf('data-kta-uid="' + uid + '"') >= 0) cible = l;
     });
     if (!cible) return false;

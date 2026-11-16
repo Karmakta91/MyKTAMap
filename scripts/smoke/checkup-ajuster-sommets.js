@@ -80,6 +80,35 @@ async function ouvrirPlan(page) {
     window.map.setView(window.map.getCenter(), window.map.getMaxZoom() - 1, { animate: false });
   });
   await page.waitForTimeout(800);
+  // 🩸 Les objets semés (semer : ±450 × −350…+300 px ×0,8 autour du centre de la fenêtre) doivent tomber sur une partie
+  // VIDE du plan : un appui long qui démarre sur l'icône d'un point du relevé ouvre sa fiche (voulu), et le relevé
+  // fictif enrichi en pose sous le mur en ligne. On déplace la vue jusqu'à un rectangle sans icône.
+  const vide = await page.evaluate(async function () {
+    const dans = function () {
+      const cx = innerWidth / 2, cy = innerHeight / 2 - 40;
+      const x0 = cx - 0.8 * 450 - 60, x1 = cx + 0.8 * 450 + 60, y0 = cy - 0.8 * 350 - 60, y1 = cy + 0.8 * 300 + 60;
+      return Array.prototype.some.call(document.querySelectorAll(".leaflet-marker-icon"), function (el) {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.right > x0 && r.left < x1 && r.bottom > y0 && r.top < y1;
+      });
+    };
+    const pas = [[0, 0]];
+    for (let d = 1; d <= 6; d++) {
+      [[d, 0], [-d, 0], [0, d], [0, -d], [d, d], [-d, -d], [d, -d], [-d, d]].forEach(function (p) { pas.push(p); });
+    }
+    const depart = window.map.getCenter();
+    for (const p of pas) {
+      window.map.setView(depart, window.map.getZoom(), { animate: false });
+      window.map.panBy([p[0] * 700, p[1] * 700], { animate: false });
+      await new Promise(function (r) { setTimeout(r, 250); });
+      if (!dans()) return p;
+    }
+    window.map.setView(depart, window.map.getZoom(), { animate: false });
+    return null;
+  });
+  if (!vide) inf("aucune vue sans icône trouvée : la scène peut tomber sous un point du relevé");
+  else inf("vue déplacée de " + JSON.stringify(vide.map(function (v) { return v * 700; })) + " px pour une partie vide du plan");
+  await page.waitForTimeout(500);
 }
 
 // Objets en px d'écran (×0,8) autour du centre de la FENÊTRE (le conteneur de la carte la déborde, la barre d'état

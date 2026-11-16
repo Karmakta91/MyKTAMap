@@ -20,7 +20,7 @@
 //   checkup : sol en pente, niveaux entremêlés) } ;
 //   code « six vers le bas » : kta:vue3dCode ;
 //   opts : { distanceVue (m), tuiles (bool), depart {x, y, cap, niveau}, densiteMax, stats, attenteReprise (ms),
-//   retourFocus,
+//   retourFocus, cacheNiveaux (false : caches par niveau coupés, checkup avant / après),
 //   commandes ("joystick" | "pave" : sinon joystick au téléphone, pavé au PC ou option ⚙️, _commandesVoulues) }.
 // Scène (m : x = x image / scale, z = y image / scale, y = hauteur), trois rendus retenus par plan : MIXTE (défaut :
 // structures dressées partout, tracés en tubes seulement loin d'elles, ouverts en entrant dans une chambre),
@@ -162,10 +162,16 @@
   // Joystick (téléphone) : débattement en px pour 0 → VITESSE, zone morte, course au-delà de `course` du
   // débattement tenu APPUI_LONG ; tailles de l'anneau et du bouton (px, posées par css/vue3d.css).
   const JOYSTICK = { debattement: 40, morte: 12, course: 0.85 };
-  // Part de la hauteur du plan : remblais ET effondrement, deux volumes qui bouchent la galerie de la même façon
-  // (même règle du pas, KtaGalerie). Une seule valeur : à 60 %, on voit par-dessus et on lit la galerie au-delà ;
-  // un éboulis plus haut ferait un mur sans relief à hauteur d'yeux.
-  const HAUTEUR_REMBLAIS = 0.6;
+  // Part de la hauteur du plan des deux volumes qui bouchent (même règle du pas, KtaGalerie) : ⚠️ contrat (décision
+  // produit, révision du 14/11/2026) : Comblé (`remblais`) monte JUSQU'AU CIEL (comblement total) ; l'effondrement
+  // garde 60 % (on voit par-dessus l'éboulis). Le long d'un tracé qui les traverse, la galerie est creusée dedans
+  // (_volumeCreuse, couloir = KtaGalerie.dansCouloir).
+  const HAUTEUR_ZONE = { remblais: 1, effondrement: 0.6 };
+  // Effondrement : la hauteur des volumes posés « comme un éboulis » (cône d'un puits comblé, itinéraire enjambé).
+  const HAUTEUR_REMBLAIS = HAUTEUR_ZONE.effondrement;
+  // Comblé jusqu'au ciel : dessus un peu sous le plafond (pas de scintillement avec lui) ; faces du couloir décollées
+  // de COULOIR_FACE vers l'intérieur (pas de scintillement avec la paroi d'un tube).
+  const SOUS_CIEL = 0.004, COULOIR_FACE = 0.02;
   const PANNEAU = { l: 1.6, h: 0.5 };   // m : taille d'un panneau de POI de près
   // De près : rien sous PRES.min, fondu jusqu'à PRES.net ; jamais plus large que PRES.ecran de la largeur de l'écran
   // (au téléphone en portrait, un panneau de 1,6 m à 2 m couvrait tout l'écran).
@@ -182,7 +188,7 @@
   // À hauteur d'yeux, seuls les panneaux à plus de `loinYeux` m peuvent être masqués (ceux de près ne bougent pas).
   const DESENCOMBRE = { cellule: 64, marge: 4, loinYeux: 12 };
   const BRUIT_CAP = 2;              // ° : en suivi, un écart de cap plus petit (boussole) ne redessine pas
-  const HAUTEUR_MUR = 0.98;         // part de la hauteur du plan : un mur passe toujours sous pilier et front
+  const HAUTEUR_MUR = 0.98;         // vue d'édition : un mur passe sous pilier et front (_echelleMurs)
   // Sable calcaire : teinte de base du sol et des marches. Couleur de la scène, pas de la charte de l'UI.
   const COULEUR_CALCAIRE = "#c9b48c";
   const HACHURE_PAS = 0.6;   // m : période des hachures d'une zone inaccessible (sol et rideau)
@@ -393,8 +399,10 @@
   // `deborde` m dans les parois (aucun jour au bord). Longueur : 1,8 m par défaut, une chatière courte (un corps
   // allongé, à peine plus), assez pour qu'on la sente passer à hauteur d'yeux ; point précis en points (poiPrecis.js :
   // du début à la fin) : une roche par segment qui suit les coudes (_segmentsChatiere) ; deux points : leur distance,
-  // `court` m au moins, et leur axe.
-  const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3 };
+  // `court` m au moins, et leur axe. Sur une masse au sol, le trou suit le sol local par coupes de `pas` m au plus
+  // (_coupesChatiere) ; la roche va toujours jusqu'au plafond du niveau.
+  const CHATIERE = { long: 1.8, court: 0.4, trou: 0.6, large: 0.9, jeu: 0.2, oeil: 0.35, approche: 1, deborde: 0.3,
+    pas: 0.25 };
   // Profil du trou (t en part de `large`, y en part de `trou`, vers le haut) : sol droit, flancs bas, voûte surbaissée
   // (plus large que haut : on y passe en rampant, pas debout).
   const PROFIL_CHATIERE = [[-0.5, 0], [0.5, 0], [0.5, 0.7], [0.4, 0.9], [0.18, 1], [-0.18, 1], [-0.4, 0.9],
@@ -648,6 +656,20 @@
     return out;
   }
 
+  // Structures et zones montrées par les filtres (tous niveaux), relues seulement quand _sigVoisins change (données :
+  // empreinte de _majDonnees, filtres ≡, calques, niveaux visibles, rendu) : un changement de niveau ne refiltre pas
+  // tout le plan. ⚠️ contrat : listes partagées, jamais modifiées (_collecter en filtre des copies).
+  function _structuresZonesMontrees() {
+    const e = _e, type = function (o) { return o.type; };
+    const cle = e ? _sigVoisins() : null;
+    if (e && !e.sansCache && e.montresMemo && e.montresMemo.cle === cle) return e.montresMemo;
+    const m = { cle: cle,
+      structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type),
+      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type) };
+    if (e) e.montresMemo = m;
+    return m;
+  }
+
   // POI montrés par les filtres de la carte (session et calques), tous niveaux.
   function _pointsMontres() {
     return _filtrer(_tab(window.getEditorPoints), _tab(window.getAllEmbeddedPoints), "tags", _premierTag);
@@ -678,12 +700,11 @@
       .concat(!_permisGreffe("traces") ? [] : _filtrer(sessionRoads.filter(function (r) {
         return r.type !== "itinerary";
       }), embRoads, "roadTypes", type));
-    const points = _pointsDuNiveau(_pointsMontres(), niveau);
+    const points = _pointsDuNiveau(_pointsMontres(), niveau), sz = _structuresZonesMontrees();
     // Objet en cours de dessin depuis la vue : montré par l'aperçu seulement, jusqu'à sa fin (_horsTrace).
     return {
-      structures: _filtrer(_tab(window.getStructures), _tab(window.getAllEmbeddedStructures), "structTypes", type)
-        .filter(ok).filter(_horsTrace),
-      zones: _filtrer(_tab(window.getZones), _tab(window.getAllEmbeddedZones), "zoneTypes", type).filter(function (z) {
+      structures: sz.structures.filter(ok).filter(_horsTrace),
+      zones: sz.zones.filter(function (z) {
         return z && Array.isArray(z.points) && _zoneSurNiveau(z, niveau);
       }).filter(_horsTrace),
       roads: roads.filter(ok).filter(_horsTrace),
@@ -890,10 +911,356 @@
     return best;
   }
 
-  // Sol sous la place : dénivelé de la galerie inclinée qui la porte (m), 0 ailleurs.
+  // Sol sous la place : dénivelé de la galerie inclinée qui la porte (m) ; sinon le dessus d'une masse au sol
+  // (_solMasse) ; 0 ailleurs. ⚠️ contrat (décision produit) : jonction et masse superposées, la jonction d'abord.
   function _solPlace() {
-    const e = _e, q = _surPente(e.pos.x / e.sc, e.pos.y / e.sc, 0);
-    return q ? q.dy : 0;
+    const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, q = _surPente(x, z, 0);
+    return q ? q.dy : _solMasse(x, z);
+  }
+
+  // ── Masse au sol (zone `masse-sol`, remblai partiel : docs/ETUDE_REMBLAIS.md § 6-7) ────────────────────────────
+  // ⚠️ contrat (décision produit, révision du 15/11/2026) : la masse comble `comble` (styleResolver.js >
+  // ktaCombleZone, absente = ½) de la hauteur du niveau. SANS rampe, elle est à pleine hauteur partout : son dessus est
+  // plat au cran, ses bords sont des FRONTS verticaux. Une rampe (`zone.rampes`, posée par l'utilisateur) monte de son
+  // bord bas jusqu'à sa fin puis reste plate ; plusieurs rampes : le minimum des profils (masseSol.js > sol, la règle
+  // partagée avec la fiche et l'itinéraire). Part NÉGATIVE (sol abaissé) : la même chose en descente ; le sol du
+  // niveau y
+  // est troué (gabarit, comme la bouche d'un puits) ; jamais plus bas que le plafond du niveau du dessous +
+  // MASSE.margeDessous (_fondMasse, m.borne). Le sol sous les pieds vient de cette formule (_solMasse), jamais du
+  // maillage (_maillageMasse, qui la dessine). Vide restant = hauteur du niveau − sol : ≥ MASSE.courbe debout (œil
+  // abaissé à vide − MASSE.marge s'il le faut : 1 à 1,8 m), sous MASSE.courbe on rampe (œil CHATIERE.oeil, transition
+  // lissée sur MASSE.transition m de vide), sous MASSE.ramper le pas s'arrête (_masseBloque ; sortir vers plus de vide
+  // reste permis). Front : le monter hisse sur le dessus, le descendre fait chuter (_pas). Plafond inchangé. N'entre pas dans
+  // les zones qui bouchent (galerieEmprise.js > ZONES_BOUCHENT) : règle par point. L'itinéraire lit le même sol
+  // (KtaMasseSol.sol). Sur une rampe, la marche ralentit au-delà de 15° (_ralentiMasse, jusqu'à ½ à 30°).
+  // Garde-fou : scripts/smoke/checkup-vue-3d.js > sectionMasseSol.
+  // pas des maillages : masseSol.js (KtaMasseSol), la règle partagée avec la fiche et l'itinéraire.
+  // Ruban d'un tracé sur une masse au sol (_rubanSol) : marche (m) au-delà de laquelle on cherche un front, nombre de
+  // pas de dichotomie (0,5 m / 2^10 ≈ 0,5 mm), décollement de la contremarche vers le côté bas (m).
+  const FRONT_RUBAN = { seuil: 0.05, iter: 10, decolle: 0.01 };
+  // Dessus et rampes d'un remblai (masse au sol positive, 🧱) : le sol damé du niveau multiplié par ce facteur —
+  // même famille, assez sombre pour distinguer la masse du sol qui l'entoure (_matsPente().solMasse).
+  const MASSE_SOL_SOMBRE = 0.6;
+  const MASSE = { pas: window.KtaMasseSol.PAS, triMax: 2000, debout: 1.8, courbe: 1,
+    ramper: 0.5, marge: 0.2, transition: 0.3, margeDessous: 0.3, ombre: 5, ombreMin: 0.4,
+    lent: 15, lentPlancher: 0.5, marche: 0.2, chute: [0.3, 0.5], amorti: 0.06 };
+
+  // Masse au sol de la zone `z` au niveau de la scène → { z, ring (m, sens positif), H (m), rampes, x0, z0, x1, z1 },
+  // null si son contour est vide. En cache par contour, niveau, hauteur, rendu, état des données et rampes (fins
+  // comprises : les voisins le lisent dans leur propre contexte).
+  function _masseDe(z) {
+    const e = _e;
+    if (!z || !Array.isArray(z.points)) return null;
+    const cle = (e.donnees ? e.donnees.empreinte : "") + "|" + e.niveau + "|" + e.hauteur + "|" + e.rendu;
+    if (!e.massesCache || e.massesCache.cle !== cle) e.massesCache = { cle: cle, parPoints: new Map() };
+    const C = e.massesCache.parPoints;
+    // Rampes et leurs fins : dans la clé, une rampe posée, retirée ou dont la fin bouge refait la masse.
+    const sig = JSON.stringify(Array.isArray(z.rampes) ? z.rampes : []);
+    if (C.has(z.points) && (!C.get(z.points) || C.get(z.points).sigRampes === sig)) return C.get(z.points);
+    const ring = _anneau(z.points, e.sc);
+    let m = null;
+    if (ring.length >= 3) {
+      const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;
+      let H = Math.max(-1, Math.min(1, c)) * e.hauteur, borne = false;
+      if (H < 0) {
+        const b = _fondMasse();
+        if (H < b) { H = b; borne = true; }
+      }
+      m = { z: z, ring: ring, H: H, borne: borne, ouverts: [], fermes: 0,
+        x0: Infinity, z0: Infinity, x1: -Infinity, z1: -Infinity };
+      ring.forEach(function (q) {
+        m.x0 = Math.min(m.x0, q[0]); m.x1 = Math.max(m.x1, q[0]);
+        m.z0 = Math.min(m.z0, q[1]); m.z1 = Math.max(m.z1, q[1]);
+      });
+      m.rampes = window.KtaMasseSol.rampes(z, e.sc);
+      m.sigRampes = sig;
+    }
+    C.set(z.points, m);
+    return m;
+  }
+
+  // Plus bas permis (m, ≤ 0) pour un sol abaissé au niveau de la scène (contexte d'un voisin compris) : le plafond du
+  // niveau du dessous (ordre de ▲▼) + MASSE.margeDessous ; sans niveau dessous, une hauteur de niveau.
+  function _fondMasse() {
+    const e = _e, l = _niveauxEdition(), i = l.indexOf(e.niveau);
+    let b = -e.hauteur;
+    if (i < 0) return b;
+    [l[i - 1], l[i + 1]].forEach(function (n) {
+      if (!Number.isInteger(n)) return;
+      const a = _altitudeVoisin(n);
+      if (a.dessus) return;
+      b = Math.max(b, Math.min(0, a.dy + _hauteurDuNiveau(n) + MASSE.margeDessous));
+    });
+    return b;
+  }
+
+  // Masses au sol du niveau de la scène (toutes : un filtre ≡ ne retire que le dessin), refaites à _reindexer.
+  function _massesDuNiveau() {
+    const e = _e, out = [];
+    _tab(window.getZones).concat(_tab(window.getAllEmbeddedZones)).forEach(function (z) {
+      if (!z || z.type !== "masse-sol" || !_zoneSurNiveau(z, e.niveau)) return;
+      const m = _masseDe(z);
+      if (m) out.push(m);
+    });
+    return out;
+  }
+
+  // Sol (m, négatif pour un sol abaissé) de la masse `m` en (x, z) m, la place supposée dans son contour.
+  function _solMasseDe(m, x, z) { return window.KtaMasseSol.sol(m, x, z); }
+
+  // Sol (m) des masses au sol du niveau sous (x, z) m : le plus haut des remblais s'il y en a, sinon le plus bas des
+  // sols abaissés, 0 hors de toute masse.
+  function _solMasse(x, z) { return _masseSous(x, z).sol; }
+
+  // Masse qui donne le sol en (x, z) m (la même règle que _solMasse) → { sol, m } ; m = null sur le sol du niveau.
+  function _masseSous(x, z) {
+    const l = (_e && _e.masses) || [];
+    let haut = 0, bas = 0, mh = null, mb = null;
+    for (let i = 0; i < l.length; i++) {
+      const m = l[i];
+      if (x < m.x0 || x > m.x1 || z < m.z0 || z > m.z1 || !_dansRing(m.ring, x, z)) continue;
+      const s = _solMasseDe(m, x, z);
+      if (s > haut) { haut = s; mh = m; }
+      if (s < bas) { bas = s; mb = m; }
+    }
+    return haut > 0 ? { sol: haut, m: mh } : { sol: bas, m: mb };
+  }
+
+  // Fond (m, ≤ 0) sous une structure (contour en m) posée dans un sol abaissé : le sol local le plus bas (sommets et
+  // centre, _solMasse) ; 0 ailleurs. Niveau actif seulement (les masses de e.masses sont les siennes : un voisin
+  // construit n'a pas les siennes ici).
+  function _fondPied(ring) {
+    const e = _e;
+    if (!e.masses || !e.masses.length || e.dyContexte || e.massesNiveau !== e.niveau || ring.length < 3) return 0;
+    let cx = 0, cz = 0, fond = 0;
+    ring.forEach(function (q) {
+      cx += q[0] / ring.length; cz += q[1] / ring.length;
+      fond = Math.min(fond, _solMasse(q[0], q[1]));
+    });
+    fond = Math.min(fond, _solMasse(cx, cz));
+    return fond > -0.01 ? 0 : fond;
+  }
+
+  // ⚠️ contrat (décision produit) : une structure posée dans un sol abaissé est UNE géométrie qui descend jusqu'au fond
+  // (_prisme de `fond` au sommet) : même nuance, mêmes coordonnées de texture calées au monde (v = y / motif), mêmes
+  // normales, ombre de contact posée au nouveau pied (lot.ombre.sol le temps de ce prisme) — jamais un pavé ajouté.
+  function _prismePied(lot, ring, y1, col, dessus, m, u0) {
+    const fond = _fondPied(ring);
+    if (!fond) { _prisme(lot, ring, 0, y1, col, dessus, m, u0); return; }
+    const O = lot.ombre;
+    if (O) lot.ombre = Object.assign({}, O, { sol: fond });
+    try { _prisme(lot, ring, fond, y1, col, dessus, m, u0); } finally { if (O) lot.ombre = O; }
+    _e.piedsMasse = (_e.piedsMasse || 0) + 1;
+  }
+
+  // Vide restant (m) au-dessus d'une masse en (x, z) m ; Infinity hors masse, sur un sol abaissé (plus de vide que le
+  // niveau : rien ne change) ou dans une galerie inclinée (sa règle).
+  function _videMasse(x, z) {
+    const e = _e;
+    if (!e.masses || !e.masses.length || _surPente(x, z, 0)) return Infinity;
+    const s = _solMasse(x, z);
+    return s > 0 ? e.hauteur - s : Infinity;
+  }
+
+  // Œil (m au-dessus du sol) pour un vide `v` : debout (e.oeil, abaissé à v − marge), puis ramper sous MASSE.courbe,
+  // sans saut. → { oeil, ramper (0..1) }.
+  function _oeilMasse(v) {
+    const e = _e, haut = Math.min(e.oeil, v - MASSE.marge);
+    if (v >= MASSE.courbe) return { oeil: haut, ramper: 0 };
+    const k = _lisse((MASSE.courbe - v) / MASSE.transition), bas = Math.min(e.oeil, CHATIERE.oeil);
+    return { oeil: Math.min(e.oeil, MASSE.courbe - MASSE.marge) * (1 - k) + bas * k, ramper: k };
+  }
+
+  // Facteur de vitesse (0..1) sur une masse au sol, dans le sens (ux, uz) : pente du sol sous les pieds (différence
+  // centrée sur ±0,1 m, montée comme descente) ; 1 jusqu'à MASSE.lent degrés, puis décroît jusqu'à MASSE.lentPlancher
+  // à 30° (la pente du talus), sans descendre plus bas. ⚠️ contrat : 1 dans une galerie inclinée ou une zone jonction
+  // (leur règle, _surPente) et hors masse.
+  function _ralentiMasse(ux, uz) {
+    const e = _e;
+    if (!e.masses || !e.masses.length) return 1;
+    const x = e.pos.x / e.sc, z = e.pos.y / e.sc;
+    if (_surPente(x, z, 0)) return 1;
+    const h = 0.1, ds = _solMasse(x + ux * h, z + uz * h) - _solMasse(x - ux * h, z - uz * h);
+    const deg = Math.atan(Math.abs(ds) / (2 * h)) * 180 / Math.PI;
+    if (deg <= MASSE.lent) return 1;
+    const t = Math.min(1, (deg - MASSE.lent) / (30 - MASSE.lent));
+    return 1 - (1 - MASSE.lentPlancher) * t;
+  }
+
+  // Pas de (x0, y0) à (x1, y1) px arrêté par une masse au sol : vide sous MASSE.ramper à l'arrivée (centre ou devant,
+  // à un corps), sauf s'il y a plus de vide qu'au départ (on peut toujours en sortir). Compté dans e.frontsMasse.
+  // ⚠️ contrat (décision produit) : un FRONT (bord sans rampe, bord commun de deux masses de hauteurs différentes) se
+  // MONTE et se DESCEND partout, quelle que soit sa hauteur : monté, on est hissé sur le dessus ; descendu, on chute
+  // (_pas, _solAffiche) ; un creux ou une masse plus basse sans rampe se quitte donc toujours en remontant. Une rampe
+  // est la pente douce qu'on marche, sans saut (ralentie au-delà de 15°). Seule limite : la règle du vide ci-dessus
+  // (une masse qui laisse moins de 0,5 m sous le plafond reste fermée). Ni la géométrie, ni l'itinéraire n'en dépendent.
+  function _masseBloque(x0, y0, x1, y1, ux, uy) {
+    const e = _e, sc = e.sc;
+    if (!e.masses || !e.masses.length) return false;
+    const v0 = _videMasse(x0 / sc, y0 / sc);
+    const v1 = Math.min(_videMasse(x1 / sc, y1 / sc),
+      _videMasse((x1 + ux * RAYON_CORPS * sc) / sc, (y1 + uy * RAYON_CORPS * sc) / sc));
+    if (!(v1 < MASSE.ramper && v1 < v0 - 1e-6)) return false;
+    e.frontsMasse = (e.frontsMasse || 0) + 1;
+    return true;
+  }
+
+  // Dessus de la masse `m` dans le lot (grille découpée au contour, MASSE.pas m, plus large si la zone dépasserait
+  // MASSE.triMax triangles) et ses pans verticaux (le long de chaque bord, du sol du niveau au dessus : le front ;
+  // rien là où une rampe part de 0). `tex` : coordonnées de texture en mètres / `motif` (REMBLAIS.m par défaut, lot
+  // texturé 🧱). `pans` (facultatif) { lot, col, tex, motif } : les pans dans un autre lot que le dessus (remblai : le
+  // dessus en sol damé, la coupe en terre et cailloux, _masseSol). Rend le nombre de triangles posés.
+  function _maillageMasse(lot, m, col, tex, motif, pans) {
+    const w = m.x1 - m.x0, d = m.z1 - m.z0;
+    // Budget : 2 triangles par case (≈ w × d / pas²) + 2 par pan (≈ périmètre / pas) ≤ 90 % de MASSE.triMax (les cases
+    // découpées au contour en ajoutent un peu) → plus petit pas qui tient, jamais sous MASSE.pas.
+    let per = 0;
+    m.ring.forEach(function (q, i) {
+      const r = m.ring[(i + 1) % m.ring.length];
+      per += Math.hypot(r[0] - q[0], r[1] - q[1]);
+    });
+    const T = MASSE.triMax * 0.9;
+    const pas = Math.max(MASSE.pas, (2 * per + Math.sqrt(4 * per * per + 8 * T * w * d)) / (2 * T));
+    const nx = Math.max(1, Math.ceil(w / pas)), nz = Math.max(1, Math.ceil(d / pas));
+    const mt = motif || REMBLAIS.m, P = pans || { lot: lot, col: col, tex: tex, motif: mt };
+    const lp = P.lot, mp = P.motif || REMBLAIS.m, avant = lot.p.length + (lp !== lot ? lp.p.length : 0);
+    const H = function (x, z) { return _solMasseDe(m, x, z); };
+    const uv = function (a, b, c) {
+      return tex ? [a[0] / mt, a[2] / mt, b[0] / mt, b[2] / mt, c[0] / mt, c[2] / mt] : undefined;
+    };
+    // ⚠️ contrat (décision produit) : 🧱 coupé (aplat), la couleur du canon est assombrie selon la pente de la face
+    // (ny = composante verticale de sa normale tournée vers le haut) : plateau et fond à la couleur, talus à 30° ≈ 0,4,
+    // pans à MASSE.ombreMin — la pente se lit sans texture, dans le même sens pour un sol abaissé. 🧱 : la texture.
+    const ombreDe = function (c, t, ny) {
+      if (t) return c;
+      const k = Math.max(MASSE.ombreMin, 1 - MASSE.ombre * (1 - ny));
+      return { r: c.r * k, g: c.g * k, b: c.b * k };
+    };
+    const ombre = function (ny) { return ombreDe(col, tex, ny); };
+    const tri = function (a, b, c) {
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+      let cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+      const l = Math.hypot(cx, cy, cz);
+      if (l < 1e-9) return;
+      if (cy < 0) { cx = -cx; cy = -cy; cz = -cz; }
+      lot.tri(a, b, c, [cx / l, cy / l, cz / l], ombre(cy / l), uv(a, b, c));
+    };
+    // Découpe (Sutherland-Hodgman) de l'anneau par la case [x0, x1] × [z0, z1] (convexe : l'anneau peut être concave).
+    const decouper = function (x0, z0, x1, z1) {
+      let p = m.ring;
+      const bords = [[0, x0, 1], [0, x1, -1], [1, z0, 1], [1, z1, -1]];
+      for (let b = 0; b < 4 && p.length; b++) {
+        const ax = bords[b][0], v = bords[b][1], s = bords[b][2], q = [];
+        for (let i = 0; i < p.length; i++) {
+          const A = p[i], B = p[(i + 1) % p.length], ia = (A[ax] - v) * s >= 0, ib = (B[ax] - v) * s >= 0;
+          if (ia) q.push(A);
+          if (ia !== ib) {
+            const t = (v - A[ax]) / (B[ax] - A[ax]);
+            q.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]);
+          }
+        }
+        p = q;
+      }
+      return p;
+    };
+    // Galerie : une case toute dans la roche (aucun coin dans l'emprise) n'est pas dessinée — vue d'en haut, la masse
+    // ne déborde pas du tube de plus d'une case ; ce qui dépasse reste derrière les parois.
+    const G = window.KtaGalerie, sc = _e.sc, niv = _e.niveau === null ? undefined : _e.niveau;
+    // Sol abaissé : rien n'est coupé (il passe sous les parois du tube jusqu'à son contour, fermé par ses pans).
+    const dansRoche = function (x0, z0, x1, z1) {
+      if (!_e.galerie || m.H < 0 || !G || typeof G.dedans !== "function") return false;
+      return !G.dedans(x0 * sc, z0 * sc, niv) && !G.dedans(x1 * sc, z0 * sc, niv) &&
+        !G.dedans(x1 * sc, z1 * sc, niv) && !G.dedans(x0 * sc, z1 * sc, niv) &&
+        !G.dedans((x0 + x1) / 2 * sc, (z0 + z1) / 2 * sc, niv);
+    };
+    for (let i = 0; i < nx; i++) {
+      for (let j = 0; j < nz; j++) {
+        const x0 = m.x0 + i * pas, z0 = m.z0 + j * pas, x1 = Math.min(m.x1, x0 + pas), z1 = Math.min(m.z1, z0 + pas);
+        if (dansRoche(x0, z0, x1, z1)) continue;
+        const poly = decouper(x0, z0, x1, z1);
+        if (poly.length < 3) continue;
+        const v3 = poly.map(function (q) { return [q[0], H(q[0], q[1]), q[1]]; });
+        let tris;
+        if (poly.length === 3 || poly.length === 4) tris = poly.length === 3 ? [[0, 1, 2]] : [[0, 1, 2], [0, 2, 3]];
+        else {
+          try {
+            const v2 = poly.map(function (q) { return new THREE.Vector2(q[0], q[1]); });
+            tris = THREE.ShapeUtils.triangulateShape(v2, []);
+          } catch (err) { continue; }
+        }
+        tris.forEach(function (t3) { tri(v3[t3[0]], v3[t3[1]], v3[t3[2]]); });
+      }
+    }
+    // Pans : le long de chaque bord, du sol (0) au dessus calculé (ou au fond, tournés vers l'intérieur, pour un sol
+    // abaissé) ; nuls (talus) là où le bord est ouvert.
+    for (let i = 0; i < m.ring.length; i++) {
+      const p = m.ring[i], q = m.ring[(i + 1) % m.ring.length];
+      const dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const k = Math.max(1, Math.ceil(l / pas)), n = m.H < 0 ? [-dz / l, 0, dx / l] : [dz / l, 0, -dx / l];
+      for (let j = 0; j < k; j++) {
+        const ax = p[0] + dx * j / k, az = p[1] + dz * j / k;
+        const bx = p[0] + dx * (j + 1) / k, bz = p[1] + dz * (j + 1) / k;
+        const ha = H(ax, az), hb = H(bx, bz);
+        if ((Math.abs(ha) < 0.01 && Math.abs(hb) < 0.01) || dansRoche(ax, az, bx, bz)) continue;
+        const A = [ax, 0, az], B = [bx, 0, bz], Bh = [bx, hb, bz], Ah = [ax, ha, az];
+        const su = function (a, b, c) {
+          return P.tex ? [a[0] / mp + a[2] / mp, a[1] / mp, b[0] / mp + b[2] / mp, b[1] / mp, c[0] / mp + c[2] / mp,
+            c[1] / mp] : undefined;
+        };
+        const cp = ombreDe(P.col, P.tex, 0);
+        if (Math.abs(ha) > 0.01) lp.tri(A, B, Ah, n, cp, su(A, B, Ah));
+        if (Math.abs(hb) > 0.01) lp.tri(B, Bh, Ah, n, cp, su(B, Bh, Ah));
+      }
+    }
+    return (lot.p.length + (lp !== lot ? lp.p.length : 0) - avant) / 9;
+  }
+
+  // Masse au sol `z` dessinée dans la tuile : texturée (🧱 : lot du remblais, terre et cailloux) ou à la couleur de la
+  // légende (aplat). Compte ses triangles (checkup, mesure de perf : e.trianglesMasses).
+  // ⚠️ contrat (décision produit) : un sol abaissé est un creusement dans la roche, pas un tas : son fond et son talus
+  // prennent le sol de pierre du niveau (`lotCreux`, matériau des sols des galeries sans gabarit : _matsPente, même
+  // carte et même grain HD, coordonnées en mètres / SOL.m comme les dalles) ; 🧱 coupé, la couleur de ce sol.
+  // ⚠️ contrat (décision produit) : le remblai (part positive), 🧱 allumé, a ses surfaces de MARCHE (dessus, rampes) en
+  // sol damé du niveau un peu plus foncé (`lotDessus`, matériau _matsPente().solMasse : la même carte, grain HD suivi,
+  // assombri de MASSE_SOL_SOMBRE) ; ses FRONTS verticaux gardent terre et cailloux (la coupe du remblai, `lotTex`).
+  // 🧱 coupé : la couleur de la légende, ombrée selon la pente (le sol du niveau est noir en aplat).
+  // Masse NON EXPLOITÉE (styleResolver.js > ktaMasseNonExploitee, la règle unique) : la roche laissée en place, pas un
+  // remblai. ⚠️ contrat (décision produit) : seul l'aspect change, et seulement 🧱 allumé (dessus et rampes au sol
+  // normal du niveau, fronts en roche des piliers) ; 🧱 coupé, la couleur de la légende comme tout objet 3D hors POI,
+  // donc l'aspect du remblai. Pente, montée, chute, vide et itinéraire sont ceux du remblai.
+  function _masseNonExploitee(z) {
+    return typeof window.ktaMasseNonExploitee === "function" && !!window.ktaMasseNonExploitee(z);
+  }
+
+  function _masseSol(lotTex, lotUni, z, trous, lotCreux, lotDessus, lotRoche) {
+    const e = _e, t0 = performance.now(), m = _masseDe(z);
+    if (!m) return;
+    // Sol abaissé : le sol du niveau (ou du voisin construit) est troué sur le contour, comme la bouche d'un puits.
+    if (m.H < 0 && trous) {
+      const bit = (e.bitsPlans || { sol: GABARIT.sol }).sol;
+      _dessus(trous[bit] || (trous[bit] = new Lot()), m.ring, 0, BLANC);
+    }
+    const tex = e.textures === true, roche = m.H > 0 && _masseNonExploitee(z);
+    let n;
+    if (m.H < 0 && lotCreux) n = _maillageMasse(lotCreux, m, BLANC, true, SOL.m);
+    else if (roche && tex && lotCreux && lotRoche) {
+      // Non exploitée, 🧱 : dessus au sol normal du niveau (lot du sol des pentes), fronts en roche des piliers.
+      n = _maillageMasse(lotCreux, m, BLANC, true, SOL.m, { lot: lotRoche, col: BLANC, tex: true, motif: ROCHE.m });
+    } else if (tex && lotDessus) {
+      n = _maillageMasse(lotDessus, m, BLANC, true, SOL.m, { lot: lotTex, col: BLANC, tex: true, motif: REMBLAIS.m });
+    } else n = _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
+    e.trianglesMasses = (e.trianglesMasses || 0) + n;
+    e.trianglesMasseMax = Math.max(e.trianglesMasseMax || 0, n);
+    // Ce que le checkup lit (etat().masses.aspect) : lot du dessus et des fronts de chaque masse dessinée.
+    if (z.uid && !e.dyContexte) {
+      e.masseAspect = e.masseAspect || {};
+      e.masseAspect[z.uid] = m.H < 0 ? { dessus: "sol", fronts: "sol" }
+        : roche && tex ? { dessus: "sol", fronts: "roche" }
+          : (tex ? (lotDessus ? { dessus: "solMasse", fronts: "remblais" } : { dessus: "remblais", fronts: "remblais" })
+            : { dessus: "uni", fronts: "uni" });
+    }
+    e.msMasses = (e.msMasses || 0) + performance.now() - t0;
   }
 
   // Au-delà du milieu d'une galerie inclinée (libre, hauteur d'yeux) : la scène passe au niveau d'en face, à la même
@@ -1287,7 +1654,7 @@
     const p0 = points[0];
     let parcouru = m && p0 ? ((p0.x / sc * 0.37 + p0.y / sc * 0.61) % m + m) % m : 0;
     _pavesLigne(points, sc, ep).forEach(function (q) {
-      _prisme(lot, q.ring, 0, h, col, true, m, m ? parcouru : undefined);
+      _prismePied(lot, q.ring, h, col, true, m, m ? parcouru : undefined);
       parcouru += q.l;
     });
   }
@@ -1328,11 +1695,68 @@
   }
 
   // Bande de `larg` m de large de (ax, az) à (bx, bz) (m), à la hauteur y, sans recouvrement aux bouts.
-  function _bande(lot, ax, az, bx, bz, larg, y, col) {
+  function _bande(lot, ax, az, bx, bz, larg, y, col, yb) {
     const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz);
     if (l < 1e-6) return;
-    const nx = -dz / l * larg / 2, nz = dx / l * larg / 2;
-    lot.quad([ax + nx, y, az + nz], [bx + nx, y, bz + nz], [bx - nx, y, bz - nz], [ax - nx, y, az - nz], [0, 1, 0], col);
+    const nx = -dz / l * larg / 2, nz = dx / l * larg / 2, y1 = yb === undefined ? y : yb;
+    lot.quad([ax + nx, y, az + nz], [bx + nx, y1, bz + nz], [bx - nx, y1, bz - nz], [ax - nx, y, az - nz], [0, 1, 0],
+      col);
+  }
+
+  // Une masse au sol du niveau touche-t-elle le rectangle englobant de A–B (m) ?
+  function _masseSurSegment(ax, az, bx, bz) {
+    const l = _e.masses || [], x0 = Math.min(ax, bx), x1 = Math.max(ax, bx);
+    const z0 = Math.min(az, bz), z1 = Math.max(az, bz);
+    for (let i = 0; i < l.length; i++) {
+      if (l[i].x1 >= x0 && l[i].x0 <= x1 && l[i].z1 >= z0 && l[i].z0 <= z1) return true;
+    }
+    return false;
+  }
+
+  // Ruban d'un tracé ordinaire (liseré du mode galerie, surlignage 📏 compris) sur le SOL LOCAL : hors masse au sol,
+  // _ruban à `y` du sol du niveau ; sur une masse (remblai ou creux) du niveau, morceaux de MASSE.pas m au plus posés
+  // à sol + y (_solMasse : la règle du pas, des POI et du ruban d'itinéraire), pentes des rampes comprises.
+  // Niveau actif seulement : les tracés d'un niveau voisin restent au sol de leur niveau.
+  // ⚠️ contrat : un FRONT vertical (la marche ne se resserre pas à la dichotomie, FRONT_RUBAN.iter) se dessine en palier
+  // puis contremarche verticale au droit du front, décollée de FRONT_RUBAN.decolle vers le côté bas : pas de trou, pas
+  // de scintillement avec la face de la masse. Coût borné : L / MASSE.pas appels à _solMasse par segment (plus la
+  // dichotomie aux fronts), à la construction de la tuile seulement, jamais à l'image.
+  // 🩸 Un creux est un trou du sol du niveau par le gabarit (bit 1), que le matériau des rubans respecte (pas de ruban
+  // dans une bouche de puits) : les morceaux sous le sol du niveau (fond, pente et contremarche d'un creux) vont dans
+  // `lotFond` (matériau rubansFond, sans test du gabarit) ; sans lotFond, dans `lot`.
+  function _rubanSol(lot, a, b, sc, larg, y, col, lotFond) {
+    const ax = a.x / sc, az = a.y / sc, bx = b.x / sc, bz = b.y / sc, L = Math.hypot(bx - ax, bz - az);
+    if (L < 1e-6) return;
+    // Niveau actif seulement (comme _fondPied) : un voisin construit n'a pas ses masses dans e.masses.
+    const e = _e, actif = !e.dyContexte && e.massesNiveau === e.niveau;
+    if (!actif || !_masseSurSegment(ax, az, bx, bz)) { _ruban(lot, a, b, sc, larg, y, col); return; }
+    const ux = (bx - ax) / L, uz = (bz - az) / L, w = larg / 2, nx = -uz * w, nz = ux * w;
+    const sol = function (q) { return _solMasse(ax + ux * q, az + uz * q); };
+    const vers = function (s1, s2) { return lotFond && Math.min(s1, s2) < -0.001 ? lotFond : lot; };
+    // Recouvrement aux jointures (comme _ruban) : de −w à L + w.
+    const q0 = -w, q1 = L + w, k = Math.max(1, Math.ceil((q1 - q0) / MASSE.pas));
+    let qa = q0, sa = sol(Math.max(0, Math.min(L, qa)));
+    for (let j = 1; j <= k; j++) {
+      const qb = q0 + (q1 - q0) * j / k, sb = sol(Math.max(0, Math.min(L, qb)));
+      let lo = qa, hi = qb, slo = sa, shi = sb;
+      if (Math.abs(sb - sa) > FRONT_RUBAN.seuil) {
+        for (let i = 0; i < FRONT_RUBAN.iter; i++) {
+          const mi = (lo + hi) / 2, sm = sol(Math.max(0, Math.min(L, mi)));
+          if (Math.abs(sm - slo) >= Math.abs(shi - sm)) { hi = mi; shi = sm; } else { lo = mi; slo = sm; }
+        }
+      }
+      if (Math.abs(shi - slo) > FRONT_RUBAN.seuil) {
+        const fq = (lo + hi) / 2, bas = slo < shi ? -1 : 1, d = FRONT_RUBAN.decolle * bas;
+        const px = ax + ux * (fq + d), pz = az + uz * (fq + d), y0 = Math.min(slo, shi) + y, y1 = Math.max(slo, shi) + y;
+        _bande(vers(sa, slo), ax + ux * qa, az + uz * qa, ax + ux * fq, az + uz * fq, larg, sa + y, col, slo + y);
+        vers(slo, shi).quad([px + nx, y0, pz + nz], [px - nx, y0, pz - nz], [px - nx, y1, pz - nz],
+          [px + nx, y1, pz + nz], [ux * bas, 0, uz * bas], col);
+        _bande(vers(shi, sb), ax + ux * fq, az + uz * fq, ax + ux * qb, az + uz * qb, larg, shi + y, col, sb + y);
+      } else {
+        _bande(vers(sa, sb), ax + ux * qa, az + uz * qa, ax + ux * qb, az + uz * qb, larg, sa + y, col, sb + y);
+      }
+      qa = qb; sa = sb;
+    }
   }
 
   // Segment d'itinéraire { a, b (px), s0 (abscisse de a, px) } : bande claire pleine posée sur une bande sombre plus
@@ -1349,9 +1773,22 @@
     for (let i = 0; i < mc.length; i++) {
       const h = mc[i].h, e0 = i === 0 ? w : 0, e1 = i === mc.length - 1 ? w : 0;
       const q0 = mc[i].d0 - e0, q1 = mc[i].d1 + e1, m0 = e0 ? m : 0, m1 = e1 ? m : 0;
-      _bande(lot, ax + ux * (q0 - m0), az + uz * (q0 - m0), ax + ux * (q1 + m1), az + uz * (q1 + m1),
-        LARGEUR_ITI + 2 * m, h + ITI.y - 0.005, cols.lisere);
-      _bande(lot, ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1, LARGEUR_ITI, h + ITI.y, cols.ruban);
+      // Sur une masse au sol, le ruban suit le talus : morceaux de MASSE.pas m au plus, inclinés de bout en bout.
+      const k = _masseSurSegment(ax + ux * q0, az + uz * q0, ax + ux * q1, az + uz * q1)
+        ? Math.max(1, Math.ceil((q1 - q0) / MASSE.pas)) : 1;
+      const y = function (q) {
+        if (k === 1) return h;
+        const sm = _solMasse(ax + ux * q, az + uz * q);
+        return h > 0 ? Math.max(h, sm) : sm;
+      };
+      for (let j = 0; j < k; j++) {
+        const a = q0 + (q1 - q0) * j / k, b = q0 + (q1 - q0) * (j + 1) / k, ya = y(a), yb = y(b);
+        const la = j === 0 ? a - m0 : a, lb = j === k - 1 ? b + m1 : b;
+        _bande(lot, ax + ux * la, az + uz * la, ax + ux * lb, az + uz * lb, LARGEUR_ITI + 2 * m, ya + ITI.y - 0.005,
+          cols.lisere, yb + ITI.y - 0.005);
+        _bande(lot, ax + ux * a, az + uz * a, ax + ux * b, az + uz * b, LARGEUR_ITI, ya + ITI.y, cols.ruban,
+          yb + ITI.y);
+      }
       if (i > 0 && mc[i].h !== mc[i - 1].h) {
         _contremarche(lot, ax + ux * mc[i].d0, az + uz * mc[i].d0, ux, uz, mc[i].face, mc[i - 1].h, mc[i].h, cols);
       }
@@ -1375,12 +1812,13 @@
     });
   }
 
-  // ── Itinéraire par-dessus les volumes (remblais, effondrement) ────────────────────────────────────────
-  // ⚠️ contrat : ruban, chevrons (de sens et de guidage) et marqueurs de l'itinéraire passent PAR-DESSUS un remblais ou un
-  // effondrement dessiné (zones montrées du niveau, _collecter) : posés sur son dessus (HAUTEUR_REMBLAIS de la
-  // hauteur) à leur hauteur propre, une contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en
-  // sort (ni ruban dans le volume, ni rampe en l'air). Le tracé 2D ne change pas ; les rubans des tracés restent au sol.
-  const ITI_SUR = { remblais: true, effondrement: true };
+  // ── Itinéraire par-dessus un volume (mécanisme gardé, aucun type ne s'en sert) ─────────────────────────────
+  // ⚠️ contrat : pour un type de ITI_SUR, ruban, chevrons (de sens et de guidage) et marqueurs de l'itinéraire passent
+  // PAR-DESSUS la zone dessinée (zones montrées du niveau, _collecter) : posés sur son dessus à leur hauteur propre, une
+  // contremarche verticale à ITI_FACE devant la face là où le trajet y entre et en sort. Comblé et effondrement n'y
+  // sont plus (révision du 14/11/2026) : le tracé y creuse la galerie (_volumeCreuse), l'itinéraire y passe au sol.
+  // Le tracé 2D ne change pas ; les rubans des tracés suivent le sol local (_rubanSol).
+  const ITI_SUR = {};
   const ITI_FACE = 0.03;   // m : contremarche décollée de la face (pas de scintillement)
 
   // Volumes que l'itinéraire enjambe → [{ ring (m), x0, z0, x1, z1 }]. Refaits à _reindexer.
@@ -1402,7 +1840,7 @@
   // Hauteur (m) du dessus du volume sous (x, z), 0 hors volume.
   function _dessusIti(x, z) {
     const l = _e.volumesIti;
-    if (!l || !l.length) return 0;
+    if (!l || !l.length) return _solMasse(x, z);
     for (let i = 0; i < l.length; i++) {
       const v = l[i], a = v.ring;
       if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1) continue;
@@ -1411,9 +1849,9 @@
         const p = a[j], q = a[k];
         if ((p[1] > z) !== (q[1] > z) && x < (q[0] - p[0]) * (z - p[1]) / (q[1] - p[1]) + p[0]) r = !r;
       }
-      if (r) return v.h !== undefined ? v.h : _e.hauteur * HAUTEUR_REMBLAIS;
+      if (r) return Math.max(v.h !== undefined ? v.h : _e.hauteur * HAUTEUR_REMBLAIS, _solMasse(x, z));
     }
-    return 0;
+    return _solMasse(x, z);
   }
 
   // Segment de (ax, az), direction (ux, uz), longueur L (m) coupé aux bords des volumes → [{ d0, d1, h, face }] (d en
@@ -1492,17 +1930,40 @@
       b: base.b * k * (c > 0 ? 1 - c : 1) };
   }
 
-  // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) est toujours SOUS un pilier ou un front de son
-  // niveau. Là où ils se chevauchent, le pilier ou le front l'emporte : le mur monte à HAUTEUR_MUR de la hauteur et
-  // son matériau est reculé en profondeur (polygonOffset), d'où aucun scintillement sur les faces confondues et
-  // un dessus de pilier toujours visible.
+  // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) monte jusqu'au plafond du niveau quand la vue en a
+  // un (hauteur d'yeux, suivi) : aucun jour sous le plafond. Construit à la hauteur h, il est ramené à HAUTEUR_MUR en
+  // vue d'édition (sans plafond) par l'échelle de ses maillages (_echelleMurs : famille « murs », aucune
+  // reconstruction au changement de vue, rien dans la clé des caches) : là où il chevauche un pilier ou un front, le
+  // dessus du pilier reste visible. Son matériau est reculé en profondeur (polygonOffset) : aucun scintillement sur
+  // les faces confondues. 🩸 L'échelle part de y = 0 : en vue d'édition, un mur posé sur une pente ou débordant dans
+  // une trémie est ramené d'autant (2 %), sans conséquence vu d'en haut.
   function _estMur(type) { return type === "mur" || type === "mur-ligne"; }
+
+  // Échelle verticale d'un maillage de murs selon la vue (contrat ci-dessus).
+  function _echelleMur(o) {
+    const k = _e.vue === "plongee" ? HAUTEUR_MUR : 1;
+    if (o.scale.y === k) return;
+    o.scale.y = k;
+    o.updateMatrix();
+  }
+
+  // Murs des tuiles du niveau actif et des voisins remis à l'échelle de la vue (_appliquerVue).
+  function _echelleMurs() {
+    const e = _e, tuiles = function (l) {
+      l.forEach(function (t) {
+        if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "murs") _echelleMur(o); });
+      });
+    };
+    tuiles(e.tuiles);
+    (e.voisins || []).forEach(function (v) { tuiles(v.tuiles); });
+  }
 
   function _construireTuile(t) {
     if (t.iti) { _construireTuileIti(t); return; }
     if (_e.galerie) { _construireTuileGalerie(t); return; }
     const sc = _e.sc, h = _e.hauteur, mx = _e.mixte;
     const opaque = new Lot(), murs = new Lot(), transp = new Lot(), lumineux = new Lot(), rubans = new Lot();
+    const rubansFond = new Lot();   // rubans au fond d'un creux (_rubanSol)
     const hachSol = new Lot(), hachRideau = new Lot();
     // Mixte : parois des tubes (pièces de la tuile, bouts ouverts exclus), zones des tubes découpées comme en galerie.
     const parois = new Lot(), paroisUnies = new Lot(), eauTube = new Lot(), remblaisTube = new Lot();
@@ -1512,7 +1973,7 @@
     if (ombre) parois.ombre = ombre;
     // Niveaux entremêlés et zones jonction (_paroiEntre, _trousEntre, _zoneJonction) : coupes, trous du gabarit et
     // chambres en pente.
-    const trous = {}, solPente = new Lot(), plafondPente = new Lot();
+    const trous = {}, solPente = new Lot(), plafondPente = new Lot(), solMasse = new Lot();
     if (mx) {
       t.parois = []; t.paroisY = [];
       for (let i = 0; i < t.g.length; i++) {
@@ -1533,7 +1994,7 @@
     const remblaisTex = new Lot(), eboulis = new Lot(), arcs = _lotsArc(opaque, h);
     if (ombre) roche.ombre = parpaing.ombre = pierreMur.ombre = ombre;
     roche.brise = true;
-    pierreMur.dv = -(h * HAUTEUR_MUR + MUR_PIERRE.tete) / MUR_PIERRE.m;
+    pierreMur.dv = -(h + MUR_PIERRE.tete) / MUR_PIERRE.m;
     const motifs = { roche: ROCHE.m, parpaing: PARPAING.m, pierre: MUR_PIERRE.m };
     const lotsTex = { roche: roche, parpaing: parpaing, pierre: pierreMur };
     const lotsTube = { opaque: opaque, eau: eauTube, hachSol: hachSol, hachRideau: hachRideau,
@@ -1544,35 +2005,36 @@
       const col = !tex ? _couleur("structures", s.type) : tex === "roche" ? _nuanceRoche(s) : BLANC;
       const m = tex ? motifs[tex] : undefined;
       const lot = tex ? lotsTex[tex] : _estMur(s.type) ? murs : opaque;
-      const hs = _estMur(s.type) ? h * HAUTEUR_MUR : h;
+      const hs = h;   // mur compris : ramené en vue d'édition par _echelleMurs
       const pente = _structurePente(s);
       if (pente) {
         _structureSurPente(lot, s, pente, hs, col, m);
       } else if (_estLigne(s.type)) {
         _murLigne(lot, s.points, sc, _epaisseurLigne(s.type), hs, col, m);
       } else {
-        _prisme(lot, _anneau(s.points, sc), 0, hs, col, true, m);
+        _prismePied(lot, _anneau(s.points, sc), hs, col, true, m);
       }
       if (!pente) _structureSurTremie(lot, s, hs, col, m);
     }
     for (let i = 0; i < t.z.length; i++) {
       const z = t.z[i], ring = _anneau(z.points, sc);
       if (ring.length < 3) continue;
+      // Masse au sol : son dessus en talus (_masseSol), en chambre comme en tube ; ni prisme ni découpe aux parois.
+      if (z.type === "masse-sol") { _masseSol(remblaisTex, opaque, z, trous, solPente, solMasse, roche); continue; }
       const pz = _penteDeLaZone(z);
       if (pz) {
         _zoneJonction(z, pz, { solPente: solPente, plafondPente: plafondPente, parois: parois, trous: trous });
         continue;
       }
+      if (z.type === "remblais" || z.type === "effondrement") {
+        const rb = z.type === "remblais";
+        _volumeCreuse(z, ring, rb ? (tx ? remblaisTex : opaque) : (tx ? eboulis : opaque),
+          tx ? BLANC : _couleur("zones", z.type, "fillColor"), tx ? (rb ? REMBLAIS.m : EBOULIS.m) : undefined, false,
+          rb ? "facesRemblais" : "facesEboulis");
+        continue;
+      }
       if (mx && _zoneDeTube(z, ring, mx)) { _e.zonesTube++; _zoneGalerie(z, mx, lotsTube); continue; }
-      if (z.type === "remblais" && tx) {
-        _prisme(remblaisTex, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, REMBLAIS.m);
-      } else if (z.type === "remblais") {
-        _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
-      } else if (z.type === "effondrement" && tx) {
-        _prisme(eboulis, ring, 0, h * HAUTEUR_REMBLAIS, BLANC, true, EBOULIS.m);
-      } else if (z.type === "effondrement") {
-        _prisme(opaque, ring, 0, h * HAUTEUR_REMBLAIS, _couleur("zones", z.type, "fillColor"), true);
-      } else if (z.type === "eau") {
+      if (z.type === "eau") {
         _dessus(transp, ring, 0.04, _couleur("zones", z.type, "fillColor"));
       } else if (z.type === "inaccessible") {
         // Rouge hachuré comme sur la carte : sol et rideau (visible des deux côtés) en matériaux à hachures.
@@ -1588,7 +2050,7 @@
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
       else if (!_zoneSous((r.a.x + r.b.x) / 2 / sc, (r.a.y + r.b.y) / 2 / sc)) {
-        _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);   // dans une zone jonction : sous son sol en pente
+        _rubanSol(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col, rubansFond);   // zone jonction : sous son sol
       }
     }
     const groupe = new THREE.Group();
@@ -1600,10 +2062,12 @@
       m.renderOrder = ordre;
       m.matrixAutoUpdate = false;
       m.userData.famille = famille;
+      if (famille === "murs") _echelleMur(m);
       groupe.add(m);
     };
     ajouter(opaque, _e.mats.opaque, 0, "opaque");
     ajouter(rubans, _e.mats.rubans, 0, "rubans");
+    ajouter(rubansFond, _e.mats.rubansFond, 0, "rubans");
     ajouter(murs, _e.mats.murs, 0, "murs");
     if (roche.p.length || parpaing.p.length) _matsTextures();
     ajouter(roche, _e.mats.roche, 0, "opaque");
@@ -1623,6 +2087,7 @@
     if (eboulis.p.length) _matZone("eboulis");
     ajouter(eboulis, _e.mats.eboulis, 0, "effondrement");
     ajouter(eauTube, _e.mats.eauGalerie, 2, "eau");
+    if (solMasse.p.length) ajouter(solMasse, _matsPente().solMasse, 0, "remblais");
     if (solPente.p.length || plafondPente.p.length) {
       const mp = _matsPente();
       ajouter(solPente, mp.sol, ORDRE_SOL, "sol");
@@ -1769,7 +2234,7 @@
   function _construireTuileGalerie(t) {
     const e = _e, m = e.galerie, sc = e.sc, h = e.hauteur;
     const sol = new Lot(), plafond = new Lot(), parois = new Lot(), opaque = new Lot(), lumineux = new Lot();
-    const rubans = new Lot(), paroisUnies = new Lot();
+    const rubans = new Lot(), paroisUnies = new Lot(), rubansFond = new Lot();
     const eau = new Lot(), hachSol = new Lot(), hachRideau = new Lot(), remblais = new Lot(), eboulis = new Lot();
     if (e.textures === true) parois.ombre = { sol: 0, plafond: h };   // ombre de contact (OMBRE_CONTACT)
     t.parois = []; t.paroisY = [];
@@ -1792,11 +2257,15 @@
       if (!_lignesSol() || !_typeTraceMontre(r.type)) continue;
       const col = _couleur("traces", r.type, "color");
       _compter(e.liseres, r.type);
-      _ruban(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col);
+      _rubanSol(rubans, { x: r.ax, y: r.ay }, { x: r.bx, y: r.by }, sc, LISERE, 0.015, col, rubansFond);
     }
     // 🧱 : remblais et effondrement texturés (_zoneGalerie), le lot du remblais prend alors le matériau `remblais`.
     const tx = e.textures === true;
-    const lots = { opaque: opaque, eau: eau, hachSol: hachSol, hachRideau: hachRideau, remblais: remblais,
+    const solCreux = new Lot(), solMasse = new Lot(), rocheMasse = new Lot();
+    const lots = { trous: trous, solCreux: solCreux, solMasse: solMasse, rocheMasse: rocheMasse, opaque: opaque, eau: eau,
+      hachSol: hachSol,
+      hachRideau: hachRideau,
+      remblais: remblais,
       eboulis: tx ? eboulis : null, texRemblais: tx };
     for (let i = 0; i < t.z.length; i++) _zoneGalerie(t.z[i], m, lots);
     const arcs = _lotsArc(opaque, h);
@@ -1806,7 +2275,7 @@
       if (r.type !== "itinerary" && !_lignesSol()) continue;
       _compter(_e.rubans, r.type);
       if (r.type === "itinerary") _rubanIti(lumineux, r);
-      else _ruban(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col);
+      else _rubanSol(rubans, r.a, r.b, sc, LARGEUR_TRACE, 0.03, col, rubansFond);
     }
     const groupe = new THREE.Group();
     const ajouter = function (lot, mat, ordre, famille) {
@@ -1820,6 +2289,9 @@
       groupe.add(me);
     };
     ajouter(sol, e.mats.solGalerie, ORDRE_SOL, "sol");
+    if (solCreux.p.length) ajouter(solCreux, _matsPente().sol, ORDRE_SOL, "sol");
+    if (solMasse.p.length) ajouter(solMasse, _matsPente().solMasse, 0, "remblais");
+    if (rocheMasse.p.length) { _matsTextures(); ajouter(rocheMasse, _e.mats.roche, 0, "opaque"); }
     ajouter(plafond, e.mats.plafondGalerie, 0, "plafond");
     if (parois.p.length) _paroiTexturee();
     ajouter(parois, e.mats.paroi, 0, "parois");
@@ -1827,6 +2299,7 @@
     _poserArcs(arcs, ajouter);
     ajouter(opaque, e.mats.opaque, 0, "opaque");
     ajouter(rubans, e.mats.rubans, 0, "rubans");
+    ajouter(rubansFond, e.mats.rubansFond, 0, "rubans");
     if (tx && remblais.p.length) _matZone("remblais");
     ajouter(remblais, tx ? e.mats.remblais : e.mats.opaque, 0, "remblais");
     if (eboulis.p.length) _matZone("eboulis");
@@ -1892,6 +2365,11 @@
   function _zoneGalerie(z, m, lots) {
     const e = _e, sc = e.sc, h = e.hauteur, ring = _anneau(z.points, sc);
     if (ring.length < 3) return;
+    // Masse au sol : entière (les parois du tube cachent ce qui est dans la roche), pas découpée par pièce.
+    if (z.type === "masse-sol") {
+      _masseSol(lots.remblais, lots.opaque, z, lots.trous, lots.solCreux, lots.solMasse, lots.rocheMasse);
+      return;
+    }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     ring.forEach(function (q) {
       x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
@@ -1904,13 +2382,16 @@
       e.zonesDecoupees[z.type] = (e.zonesDecoupees[z.type] || 0) + 1;
       if (z.type === "eau") _dessus(lots.eau, c, 0.04, col);
       else if (z.type === "inaccessible") _dessus(lots.hachSol, c, 0.02, col);
-      else if (z.type === "remblais") {
-        _remblaisGalerie(lots.remblais, c, ring, m, h * HAUTEUR_REMBLAIS, lots.texRemblais ? BLANC : col,
-          lots.texRemblais ? REMBLAIS.m : undefined);
-      } else if (z.type === "effondrement") {
-        _remblaisGalerie(lots.eboulis || lots.opaque, c, ring, m, h * HAUTEUR_REMBLAIS, lots.eboulis ? BLANC : col,
-          lots.eboulis ? EBOULIS.m : undefined, "facesEboulis");
-      } else _dessus(lots.opaque, c, 0.02, col);
+      else if (z.type === "remblais" || z.type === "effondrement") continue;   // _volumeCreuse, plus bas
+      else _dessus(lots.opaque, c, 0.02, col);
+    }
+    // Comblé, effondrement : le tube EST le couloir du tracé (praticable) ; ses parois prises dans la zone sont
+    // tapissées du remblai ou de l'éboulis (galerie creusée dedans), le reste de la zone est dans la roche.
+    if (z.type === "remblais" || z.type === "effondrement") {
+      const rb = z.type === "remblais", tx = !!lots.texRemblais;
+      _volumeCreuse(z, ring, rb ? lots.remblais : (lots.eboulis || lots.opaque), tx ? BLANC : col,
+        tx ? (rb ? REMBLAIS.m : EBOULIS.m) : undefined, true, rb ? "facesRemblais" : "facesEboulis");
+      return;
     }
     if (z.type !== "inaccessible") return;
     m.aretesPres(x0 * sc, y0 * sc, x1 * sc, y1 * sc).forEach(function (k) {
@@ -1958,6 +2439,154 @@
       _e[compteur || "facesRemblais"]++;
     }
     _dessus(lot, c, hr, col, tm);
+  }
+
+  // ── Comblé et effondrement creusés le long des tracés ─────────────────────────────────────────────────────────
+  // ⚠️ contrat (décision produit, révision du 14/11/2026) : le volume d'un Comblé (jusqu'au ciel) ou d'un effondrement
+  // (60 %) s'arrête au COULOIR des tracés qui le traversent (pièces du modèle galerie du niveau, la même emprise que
+  // KtaGalerie.dansCouloir, la règle du pas) : dessus = zone moins les pièces (soustraction de polygones convexes,
+  // _moinsConvexe) ; faces = bords de la zone hors des pièces, et parois des pièces prises dans la zone, tournées vers
+  // le couloir et décollées de COULOIR_FACE. `galerie` : seules les parois du couloir (le reste de la zone est dans la
+  // roche). `tm` (m par motif, 🧱) : coordonnées de texture en mètres. Compte ses faces dans _e[compteur].
+  function _volumeCreuse(z, ring, lot, col, tm, galerie, compteur) {
+    const e = _e, sc = e.sc, G = window.KtaGalerie, niv = e.niveau === null ? undefined : e.niveau;
+    const hz = z.type === "remblais" ? e.hauteur - SOUS_CIEL : e.hauteur * HAUTEUR_ZONE.effondrement;
+    const m = G && typeof G.modele === "function" ? G.modele(niv) : null;
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    ring.forEach(function (q) {
+      x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]);
+    });
+    const ids = m ? m.piecesPres(x0 * sc, z0 * sc, x1 * sc, z1 * sc).filter(function (i) {
+      return m.pieces[i].genre !== "niche";
+    }) : [];
+    const pieces = ids.map(function (i) { return _sensPositif(_metres(m.pieces[i].pts, sc)); });
+    const uvH = function (a, b, y0, y1) {
+      if (!tm) return undefined;
+      const s0 = (a[0] + a[1]) / tm, s1 = s0 + Math.hypot(b[0] - a[0], b[1] - a[1]) / tm;
+      return [s0, y0 / tm, s1, y0 / tm, s1, y1 / tm, s0, y1 / tm];
+    };
+    const face = function (a, b, n) {
+      lot.quad([a[0], 0, a[1]], [b[0], 0, b[1]], [b[0], hz, b[1]], [a[0], hz, a[1]], [n[0], 0, n[1]], col, uvH(a, b, 0, hz));
+      e[compteur] = (e[compteur] || 0) + 1;
+    };
+    if (!galerie) {
+      // Dessus : triangles de la zone moins les pièces.
+      let tris = [];
+      try {
+        tris = THREE.ShapeUtils.triangulateShape(ring.map(function (q) { return new THREE.Vector2(q[0], q[1]); }), []);
+      } catch (err) { tris = []; }
+      tris.forEach(function (t3) {
+        let polys = [[ring[t3[0]], ring[t3[1]], ring[t3[2]]].map(function (q) { return [q[0], q[1]]; })];
+        pieces.forEach(function (Q) {
+          const out = [];
+          polys.forEach(function (p) { _moinsConvexe(_sensPositif(p), Q).forEach(function (r) { out.push(r); }); });
+          polys = out;
+        });
+        polys.forEach(function (p) { if (p.length >= 3) _dessus(lot, _sensPositif(p), hz, col, tm); });
+      });
+      // Faces : bords de la zone hors des pièces.
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i], q = ring[(i + 1) % ring.length], dx = q[0] - p[0], dz = q[1] - p[1], l = Math.hypot(dx, dz);
+        if (l < 1e-6) continue;
+        _horsConvexes(p, q, pieces).forEach(function (iv) {
+          face([p[0] + dx * iv[0], p[1] + dz * iv[0]], [p[0] + dx * iv[1], p[1] + dz * iv[1]], [dz / l, -dx / l]);
+        });
+      }
+    }
+    // Parois du couloir prises dans la zone, tournées vers le couloir, décollées de COULOIR_FACE.
+    ids.forEach(function (id, k) {
+      const Q = pieces[k];
+      let cx = 0, cz = 0;
+      Q.forEach(function (q) { cx += q[0] / Q.length; cz += q[1] / Q.length; });
+      m.paroisDe(id).forEach(function (w) {
+        const a = [w[0] / sc, w[1] / sc], b = [w[2] / sc, w[3] / sc], dx = b[0] - a[0], dz = b[1] - a[1];
+        const l = Math.hypot(dx, dz);
+        if (l < 1e-6) return;
+        let nx = -dz / l, nz = dx / l;
+        if ((cx - a[0]) * nx + (cz - a[1]) * nz < 0) { nx = -nx; nz = -nz; }
+        _dansAnneauIntervalles(ring, a, b).forEach(function (iv) {
+          const A = [a[0] + dx * iv[0] + nx * COULOIR_FACE, a[1] + dz * iv[0] + nz * COULOIR_FACE];
+          const B = [a[0] + dx * iv[1] + nx * COULOIR_FACE, a[1] + dz * iv[1] + nz * COULOIR_FACE];
+          face(A, B, [nx, nz]);
+        });
+      });
+    });
+    e.zonesCreusees = (e.zonesCreusees || 0) + (ids.length ? 1 : 0);
+  }
+
+  // Polygone convexe P moins le polygone convexe Q (sens positifs, m) → morceaux convexes (Sutherland-Hodgman par
+  // demi-plan : ce qui est hors de chaque bord de Q part, le reste continue au bord suivant).
+  function _moinsConvexe(P, Q) {
+    const out = [];
+    let reste = P;
+    for (let i = 0; i < Q.length && reste.length >= 3; i++) {
+      const a = Q[i], b = Q[(i + 1) % Q.length], ex = b[0] - a[0], ez = b[1] - a[1];
+      const cote = function (q) { return ex * (q[1] - a[1]) - ez * (q[0] - a[0]); };   // > 0 : dedans (sens positif)
+      const couper = function (poly, garderDedans) {
+        const r = [];
+        for (let k = 0; k < poly.length; k++) {
+          const A = poly[k], B = poly[(k + 1) % poly.length], ca = cote(A), cb = cote(B);
+          const inA = garderDedans ? ca >= 0 : ca < 0, inB = garderDedans ? cb >= 0 : cb < 0;
+          if (inA) r.push(A);
+          if (inA !== inB) { const t = ca / (ca - cb); r.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); }
+        }
+        return r;
+      };
+      const hors = couper(reste, false);
+      if (hors.length >= 3 && Math.abs(_aire(hors)) > 1e-6) out.push(hors);
+      reste = couper(reste, true);
+    }
+    if (reste.length >= 3 && Math.abs(_aire(reste)) > 1e-6 && !Q.length) out.push(reste);
+    return out;
+  }
+
+  function _aire(p) {
+    let a = 0;
+    for (let i = 0, j = p.length - 1; i < p.length; j = i++) a += p[j][0] * p[i][1] - p[i][0] * p[j][1];
+    return a / 2;
+  }
+
+  // Segment A → B (m) : morceaux [t0, t1] hors de tous les polygones convexes `polys` (sens positifs).
+  function _horsConvexes(A, B, polys) {
+    let ivs = [[0, 1]];
+    polys.forEach(function (Q) {
+      let t0 = 0, t1 = 1;
+      const dx = B[0] - A[0], dz = B[1] - A[1];
+      for (let i = 0; i < Q.length && t0 <= t1; i++) {
+        const a = Q[i], b = Q[(i + 1) % Q.length], ex = b[0] - a[0], ez = b[1] - a[1];
+        const fA = ex * (A[1] - a[1]) - ez * (A[0] - a[0]), d = ex * dz - ez * dx;
+        if (Math.abs(d) < 1e-12) { if (fA < 0) t1 = -1; continue; }
+        const t = -fA / d;
+        if (d > 0) t0 = Math.max(t0, t); else t1 = Math.min(t1, t);
+      }
+      if (t1 - t0 <= 1e-6) return;
+      const out = [];
+      ivs.forEach(function (iv) {
+        if (t1 <= iv[0] || t0 >= iv[1]) { out.push(iv); return; }
+        if (t0 > iv[0]) out.push([iv[0], t0]);
+        if (t1 < iv[1]) out.push([t1, iv[1]]);
+      });
+      ivs = out;
+    });
+    return ivs.filter(function (iv) { return iv[1] - iv[0] > 1e-6; });
+  }
+
+  // Segment A → B (m) : morceaux [t0, t1] dans le contour `ring` (coupé à chaque bord, milieu de chaque morceau testé).
+  function _dansAnneauIntervalles(ring, A, B) {
+    const dx = B[0] - A[0], dz = B[1] - A[1], ts = [0, 1];
+    for (let i = 0; i < ring.length; i++) {
+      const p = ring[i], q = ring[(i + 1) % ring.length], ex = q[0] - p[0], ez = q[1] - p[1], d = dx * ez - dz * ex;
+      if (Math.abs(d) < 1e-12) continue;
+      const rx = p[0] - A[0], rz = p[1] - A[1], t = (rx * ez - rz * ex) / d, u = (rx * dz - rz * dx) / d;
+      if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+    }
+    ts.sort(function (a, b) { return a - b; });
+    const out = [];
+    for (let i = 0; i + 1 < ts.length; i++) {
+      const tm = (ts[i] + ts[i + 1]) / 2;
+      if (ts[i + 1] - ts[i] > 1e-6 && _dansRing(ring, A[0] + dx * tm, A[1] + dz * tm)) out.push([ts[i], ts[i + 1]]);
+    }
+    return out;
   }
 
   // Abscisse (m) du point (x, z) sur le contour `ring`, depuis son premier sommet : celle du point le plus proche sur
@@ -2146,7 +2775,9 @@
     sp.userData.fond = coul.surface;
     sp.scale.set(PANNEAU.l * sp.userData.part, PANNEAU.l * sp.userData.part * sp.userData.ratio, 1);
     const x = ou ? ou[0] : p.x / _e.sc, z = ou ? ou[1] : p.y / _e.sc;
-    sp.position.set(x, Number.isFinite(o.y) ? o.y : Math.min(_e.oeil + 0.4, _e.hauteur - 0.3), z);
+    // Sol local (masse au sol : remblai ou sol abaissé, _solMasse) : le panneau garde sa hauteur au-dessus de lui.
+    const solP = _solMasse(x, z);
+    sp.position.set(x, Number.isFinite(o.y) ? o.y + solP : Math.min(solP + _e.oeil + 0.4, _e.hauteur - 0.3), z);
     sp.renderOrder = 10;
     const jonction = passage ? (p._v3dJonction || p) : null;
     // `point` : le POI d'origine (celui de la carte), dont la fiche s'ouvre au toucher (_toucher).
@@ -2204,7 +2835,7 @@
       me.renderOrder = 3;
       halo.add(me);
     });
-    halo.position.set(sp.userData.poi.x, HALO.y, sp.userData.poi.z);
+    halo.position.set(sp.userData.poi.x, HALO.y + _solMasse(sp.userData.poi.x, sp.userData.poi.z), sp.userData.poi.z);
     halo.userData.famille = "halo";
     groupe.add(halo);
     sp.userData.halo = halo;
@@ -3466,6 +4097,8 @@
       // Rubans des tracés et liserés au sol : troués par la bouche d'un passage comme le sol (gabarit ci-dessous),
       // jamais suspendus au-dessus du vide. L'itinéraire n'y est pas : il mène au passage, ses marqueurs ont un mât.
       rubans: new THREE.MeshLambertMaterial({ vertexColors: true }),
+      // Rubans au fond d'un creux (_rubanSol) : les mêmes, sans test du gabarit (le creux est un trou du sol, bit 1).
+      rubansFond: new THREE.MeshLambertMaterial({ vertexColors: true }),
       // Itinéraire et ronds d'intersection : couleurs exactes du jeton et de la légende (sans compression de tons).
       iti: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
       transp: new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.45,
@@ -3584,6 +4217,7 @@
     // Reprise du contexte : les voisins de l'ancienne scène ne sont jamais libérés sur la nouvelle (_voisinsPreparer
     // les refait au _reindexer qui suit).
     e.voisins = []; e.matsV = null; e.matsEstompes = null; e.matsPente = null; e.matsTrous = null; e.entreSig = undefined;
+    e.cachesNiveau = null;   // tuiles des voisins gardés : de l'ancien contexte
     e.panneaux = new Set();
     e.panneauxGen = 0;
     e.icones = new Map();
@@ -3934,13 +4568,17 @@
     const t0 = performance.now();
     const niveauAvant = e.niveau, renduAvant = e.rendu, hauteurAvant = e.hauteur;
     e.niveau = _niveauCourant();
+    e.sceneNiveau = e.niveau;   // scène des entrées de cache (_cacheNiveau), jamais changée par _avecVoisin
     _prendreHauteurDuNiveau();
     const d = _collecter(e.niveau);
+    // Coût de chaque étape (checkup : etat().reindex) ; ms depuis t0.
+    const mes = { collecter: performance.now() - t0 };
     e.rendu = _renduVoulu();
     e.galerie = e.mixte = null;
     if (e.rendu === "galerie") e.galerie = d.galerie = window.KtaGalerie.modele(e.niveau);
     if (e.rendu === "mixte") e.mixte = d.mixte = window.KtaGalerie.modele(e.niveau, true);
     const m = e.galerie || e.mixte;
+    mes.modele = performance.now() - t0 - mes.collecter;
     e.compte = { structures: d.structures.length, zones: d.zones.length, roads: d.roads.length,
       points: d.points.length, pieces: m ? m.pieces.length : 0, aretes: m ? m.aretes.length : 0,
       dalles: m ? m.dalles : 0, coudes: m ? m.coudes : 0, bouts: m ? m.bouts : 0,
@@ -3952,18 +4590,37 @@
     // Zones jonction du niveau : leurs structures des autres niveaux sont dessinées et bloquent avec lui.
     if (!e.galerie) d.structures = d.structures.concat(_structuresEmpruntees(e.niveau, e.pentes));
     e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
-    if (e.galerie) e.volumes = null; else _grilleVolumes(d.structures);
+    let tg = performance.now();
+    // Grille des structures du niveau : par le cache (_cacheNiveau, lue seulement : _volumeContenant).
+    if (e.galerie) e.volumes = null;
+    else {
+      e.volumes = _cacheNiveau("grille", _cleNiveau("grille") + "|" + d.structures.length, function () {
+        _grilleVolumes(d.structures);
+        return e.volumes;
+      }).v;
+    }
+    mes.grille = performance.now() - tg;
+    e.volumesNiveau = e.niveau;
+    // Masses au sol du niveau (sol, talus, seuils) : après le modèle du rendu et la grille des structures (bords
+    // fermés).
+    e.massesCache = null; e.trianglesMasses = 0; e.trianglesMasseMax = 0; e.msMasses = 0; e.piedsMasse = 0;
+    e.masses = _massesDuNiveau();
+    e.massesNiveau = e.niveau;
     e.volumesIti = _volumesIti(d.zones);
     e.passages = _passages(e.niveau);
     e.passageSig = null;
     (e.volPassages || []).forEach(_libererVolume);
     e.placesPassage = new Map();
+    let tq = performance.now();
     e.volPassages = _volumesDuNiveau(d).concat(_puitsTraversants());
+    mes.volumes = performance.now() - tq; mes.faces = e.msFaces;
+    tq = performance.now();
     e.plaquesParoi = new Set(e.volPassages.filter(function (v) { return v.forme === "plaque" && v.point; })
       .map(function (v) { return v.point; }));
     e.volumesIti = e.volumesIti.concat(_volumesItiAcces(e.volPassages));
     const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
     e.tuiles = _indexer(Object.assign({}, d, { roads: plan }), e.sc, e.tuilesActives ? TUILE : 0);
+    mes.indexer = performance.now() - tq;
     if (reprise) {
       _reprendreTuiles(anciennes, reprise,
         niveauAvant === e.niveau && renduAvant === e.rendu && hauteurAvant === e.hauteur);
@@ -3981,7 +4638,9 @@
     if (e.scene && _distanceEnVigueur() !== e.distance) { e.distance = _distanceEnVigueur(); _appliquerPortee(); }
     _majEntreActif();
     _appliquerRendu();
+    tg = performance.now();
     _gererTuiles(true);
+    mes.tuiles = performance.now() - tg;
     _majMarqueursIti();
     _majItiPentes();
     _majRonds();
@@ -3993,8 +4652,16 @@
     _gererVolumes();
     _sceneGreffe();
     _majNiveauEdition();
+    tq = performance.now();
     _voisinsPreparer(false);
+    mes.voisinsPreparer = performance.now() - tq;
+    mes.voisinsNeufs = (e.mesVoisins || {}).neuf || 0; mes.voisinsVolumes = (e.mesVoisins || {}).volumes || 0;
+    tq = performance.now();
     _gererVoisins(false);
+    mes.gererVoisins = performance.now() - tq;
+    mes.total = performance.now() - t0;
+    Object.keys(mes).forEach(function (k) { mes[k] = Math.round(mes[k] * 10) / 10; });
+    e.mesReindex = mes;
   }
 
   // ── Niveaux voisins : les autres niveaux à leur altitude (tuile ⚙️ « Niveaux » : voisins, tous, le mien) ─────
@@ -4140,6 +4807,7 @@
     const e = _e, J = window.KtaPoiJonction, G = window.KtaGalerie, N0 = e.niveau;
     if (!J || !G || N0 === null) return [];
     const montres = [N0].concat(_niveauxMontres()), d = _collecter(v.niveau);
+    d.ctx = "voisin";
     const vols = _avecVoisin(v, _pentesDuNiveau(v.niveau, d.jonctions), function () { return _volumesDuNiveau(d); });
     const out = [];
     vols.forEach(function (vol) {
@@ -4190,18 +4858,72 @@
     if (_voisinEstompe(v)) _estomperObjet(vol.obj, _voisinEstompe(v));
   }
 
+  // Ce que le checkup lit des caches : touches, ratés, entrées par cache.
+  function _etatCacheNiveaux() {
+    const e = _e, c = e.cachesNiveau || {}, out = Object.assign({}, e.cacheStats);
+    // Structures dans l'index de chaque voisin montré (une structure à cheval sur deux tuiles compte deux fois).
+    out.voisinsStructures = (e.voisins || []).map(function (v) {
+      let n = 0;
+      v.tuiles.forEach(function (t) { n += t.s.length; });
+      return [v.niveau, n];
+    });
+    Object.keys(c).forEach(function (k) { out[k] = c[k].size; });
+    // Scènes encore en cache (niveaux, triés) : la borne les garde au niveau actif ± 1.
+    const sc = new Set();
+    Object.keys(c).forEach(function (k) { c[k].forEach(function (q) { sc.add(q.scene); }); });
+    out.scenes = Array.from(sc).sort(function (a, b) { return a - b; });
+    return out;
+  }
+
+  // Clé de l'index d'un voisin (_voisinNeuf) : sa signature (données, filtres, altitude, entremêlés) et le niveau de
+  // la scène (_horsZonesActives retire ce que les zones jonction du niveau actif dessinent).
+  function _cleVoisin(v) { return _e.niveau + "|" + v.niveau + "|" + v.sig; }
+
+  // Voisin quitté (_voisinsPreparer, plus montré ou niveau de la scène changé) : ses tuiles construites restent, cachées
+  // (sol et plafond d'un seul tenant retirés, volumes libérés), reprises telles quelles s'il revient avec la même clé
+  // (_voisinNeuf) ; v.scene : la scène qui les montrait (borne : _bornerCachesNiveau).
+  function _garderVoisin(v) {
+    const e = _e;
+    if (!v.cle || e.sansCache) { _libererVoisin(v); return; }
+    _purgerCachesNiveau(false);
+    v.tuiles.forEach(function (t) { if (t.obj) t.obj.visible = false; });
+    if (v.plans) { e.scene.remove(v.plans.sol, v.plans.plafond); v.plans = null; }
+    (v.volumes || []).forEach(_libererVolume);
+    v.volumes = []; v.volSig = null;
+    if (!e.cachesNiveau) e.cachesNiveau = {};
+    const m = e.cachesNiveau.voisins || (e.cachesNiveau.voisins = new Map());
+    if (m.has(v.cle) && m.get(v.cle) !== v) _libererVoisin(m.get(v.cle));
+    m.delete(v.cle);
+    m.set(v.cle, v);
+    e.sale = true;
+  }
+
   function _voisinNeuf(n, sig) {
-    const e = _e, t0 = performance.now(), a = _altitudeVoisin(n), h = _hauteurDuNiveau(n), d = _collecter(n);
+    const e = _e, t0 = performance.now(), a = _altitudeVoisin(n), h = _hauteurDuNiveau(n);
     const entre = _entreDe(n, a.dy, h);
     const v = { niveau: n, dy: a.dy, dessus: a.dessus, hauteur: h, galerie: null, mixte: null, plans: null,
       sig: sig + "|" + a.dy + "|" + h + "|" + _sigEntre(entre), entre: entre, plansCaches: _plansCaches(entre, h) };
-    if (e.rendu === "galerie") v.galerie = d.galerie = window.KtaGalerie.modele(n);
-    if (e.rendu === "mixte") v.mixte = d.mixte = window.KtaGalerie.modele(n, true);
-    // Galeries inclinées du voisin (structures le long d'elles, zones jonction qu'il dessine), vues de son niveau.
-    v.pentes = _avecVoisin(v, null, function () { return _pentesDuNiveau(n, d.jonctions); });
-    _horsZonesActives(d, v.pentes);
-    const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
-    v.tuiles = _indexer(Object.assign({}, d, { roads: plan, points: [] }), e.sc, e.tuilesActives ? TUILE : 0);
+    v.cle = _cleVoisin(v);
+    v.scene = e.sceneNiveau;
+    _purgerCachesNiveau(false);
+    const m = e.cachesNiveau && e.cachesNiveau.voisins, g = m ? m.get(v.cle) : null;
+    if (g) {
+      // Tuiles déjà construites (cachées) : montrées par _gererVoisins, estompées par _estomperVoisins.
+      m.delete(v.cle);
+      v.galerie = g.galerie; v.mixte = g.mixte; v.pentes = g.pentes; v.tuiles = g.tuiles;
+      e.cacheStats.touches++;
+      e.cacheStats.voisinsRepris++;
+    } else {
+      const d = _collecter(n);
+      if (e.rendu === "galerie") v.galerie = d.galerie = window.KtaGalerie.modele(n);
+      if (e.rendu === "mixte") v.mixte = d.mixte = window.KtaGalerie.modele(n, true);
+      // Galeries inclinées du voisin (structures le long d'elles, zones jonction qu'il dessine), vues de son niveau.
+      v.pentes = _avecVoisin(v, null, function () { return _pentesDuNiveau(n, d.jonctions); });
+      _horsZonesActives(d, v.pentes);
+      const plan = d.roads.filter(function (r) { return r.type !== "itinerary"; });
+      v.tuiles = _indexer(Object.assign({}, d, { roads: plan, points: [] }), e.sc, e.tuilesActives ? TUILE : 0);
+      e.cacheStats.rates++;
+    }
     // Mixte et structures : sol et plafond d'un seul tenant, comme ceux du niveau actif (en galerie, ceux des pièces).
     if (!v.galerie) {
       const M = _matsVoisins(a.dessus ? "haut" : "bas");
@@ -4219,17 +4941,23 @@
   // (hauteur, 🧱 : _refaireTuiles). Appelé par _reindexer et _refaireTuiles ; les tuiles viennent ensuite (_gererVoisins).
   function _voisinsPreparer(tout) {
     const e = _e, voulus = _niveauxMontres(), sig = _sigVoisins(), gardes = [];
+    // Réfection voulue (hauteur, 🧱, cartes) : rien de gardé ne resservira.
+    _purgerCachesNiveau(tout);
     (e.voisins || []).forEach(function (v) {
       const a = voulus.indexOf(v.niveau) >= 0 ? _altitudeVoisin(v.niveau) : null;
       const hv = a ? _hauteurDuNiveau(v.niveau) : 0;
       if (!tout && a && v.sig === sig + "|" + a.dy + "|" + hv + "|" + _sigEntre(_entreDe(v.niveau, a.dy, hv))) {
         v.dessus = a.dessus;
         gardes.push(v);
-      } else _libererVoisin(v);
+      } else if (tout) _libererVoisin(v);
+      else _garderVoisin(v);   // sa clé le refuse si les données ou l'altitude ont changé (et la purge le libère)
     });
+    const mv = { neuf: 0, volumes: 0 };
+    let tv = performance.now();
     voulus.forEach(function (n) {
       if (!gardes.some(function (v) { return v.niveau === n; })) gardes.push(_voisinNeuf(n, sig));
     });
+    mv.neuf = performance.now() - tv;
     e.voisins = gardes;
     if (e.matsV) { _matsVoisins("haut"); _matsVoisins("bas"); }
     // Niveaux montrés changés (réglage, côté) : les tuiles du niveau actif portent les trous et coupes de l'union des
@@ -4241,7 +4969,10 @@
       (e.volPassages || []).forEach(function (v) { if (v.genre === "pente") _libererVolume(v); });
       _gererVolumes();
     }
+    tv = performance.now();
     gardes.forEach(_volumesVoisinAJour);
+    mv.volumes = performance.now() - tv;
+    e.mesVoisins = mv;
     // Puits ouverts d'un niveau du dessous (_puitsTraversants) : leur pied et les sols troués suivent les niveaux
     // montrés.
     const cleTrav = voulus.join(",");
@@ -4254,6 +4985,7 @@
     }
     e.travSig = cleTrav;
     _estomperVoisins();
+    _bornerCachesNiveau();
     _majSolActif();   // voisin du dessous montré ou non, 🧱 changé (_refaireTuiles)   // côté changé (voisins gardés), originaux changés (🧱)
     e.sale = true;
   }
@@ -4587,7 +5319,7 @@
   //   base (la roche qui porte), sinon son sol (la base serait dans le vide de la zone) ; rien là où le sol de la zone
   //   est déjà au-dessus de la base ;
   // - monte de son sommet (hs) jusqu'au plafond de la zone là où le sommet est dans le vide de la zone (sol de la zone
-  //   dessous, plafond dessus) ; un mur garde son retrait sous le plafond (h − hs, HAUTEUR_MUR : sous un pilier).
+  //   dessous, plafond dessus) ; un mur comme un pilier (en vue d'édition, ramené par _echelleMurs).
   // Faces latérales seules, coupées aux bords de la zone : au-delà, c'est la roche (un prolongement hors de la zone
   // sortirait du sol ou du plafond, dans la tranche d'un niveau entremêlé). Repère du contexte (e.pentes : celles du
   // voisin dans sa tuile), même lot, couleur et motif que la structure.
@@ -4825,8 +5557,9 @@
   function _matsPente() {
     const e = _e;
     if (!e.matsPente) {
-      e.matsPente = { sol: e.mats.solGalerie.clone(), plafond: e.mats.plafondGalerie.clone() };
-      ["sol", "plafond"].forEach(function (k) {
+      e.matsPente = { sol: e.mats.solGalerie.clone(), plafond: e.mats.plafondGalerie.clone(),
+        solMasse: e.mats.solGalerie.clone() };
+      ["sol", "plafond", "solMasse"].forEach(function (k) {
         e.matsPente[k].stencilWrite = false;
         e.matsPente[k].stencilFunc = THREE.AlwaysStencilFunc;
         e.matsPente[k].side = THREE.DoubleSide;
@@ -4836,6 +5569,13 @@
       const a = e.mats[q[1]], b = e.matsPente[q[0]];
       _suivreCartes(b, a);
     });
+    // Dessus d'un remblai (_masseSol) : la carte du sol des galeries, couleur assombrie ; refait seulement si la carte
+    // ou la couleur du sol a changé (needsUpdate recompile le matériau).
+    const sm = e.matsPente.solMasse, sg = e.mats.solGalerie;
+    const sombre = sg.color.clone().multiplyScalar(MASSE_SOL_SOMBRE);
+    if (sm.map !== sg.map || sm.normalMap !== sg.normalMap || !sm.color.equals(sombre)) {
+      sm.map = sg.map; sm.normalMap = sg.normalMap; sm.color.copy(sombre); sm.needsUpdate = true;
+    }
     return e.matsPente;
   }
 
@@ -5508,15 +6248,137 @@
   // plafond par le gabarit (_materiaux). Un puits ouvert au jour d'un niveau du dessous traverse le niveau de la
   // scène (_puitsTraversants).
 
+  // ── Caches par niveau (aller-retour de niveau sans rien recalculer) ─────────────────────────────────────────────
+  // ⚠️ contrat : faces des structures (_facesStructures), volumes d'un niveau (_volumesDuNiveau) et index des tuiles
+  // d'un voisin quitté (_voisinNeuf) sont gardés par clé _cleNiveau : niveau de la scène, données (empreinte de
+  // _majDonnees), filtres de la carte, rendu, 🧱, HD (_sigVoisins), hauteur et altitude de chaque niveau (réglages
+  // écart / hauteur). 🩸 Toute modification change l'empreinte, donc la clé : jamais une scène périmée (checkup :
+  // pilier ajouté puis retiré au niveau 1 pendant qu'on est au 0) ; de plus, tout est vidé dès que _sigVoisins change
+  // (_purgerCachesNiveau : aucune entrée d'un état passé ne reste en mémoire). Vivent dans _e (vidés à la fermeture).
+  // ⚠️ contrat (mémoire bornée) : chaque entrée porte la SCÈNE (niveau actif, e.sceneNiveau) qui l'a lue en dernier ;
+  // seules restent celles des scènes du niveau actif ± 1 dans l'ordre de ▲▼ (_bornerCachesNiveau, après chaque
+  // _voisinsPreparer) : données, volumes et voisins gardés de ces trois scènes, de quoi revenir au niveau quitté sans
+  // rien recalculer ; le reste est libéré. Seul le cache des voisins garde de la géométrie (tuiles d'un voisin quitté,
+  // cachées), libérée quand l'entrée sort.
+
+  // Caches vidés si l'état qu'ils supposent a changé (données, filtres, rendu, 🧱, HD) ou si `force` ; voisins gardés
+  // libérés (GPU).
+  function _purgerCachesNiveau(force) {
+    const e = _e, sig = _sigVoisins();
+    if (!force && e.cacheSig === sig) return;
+    e.cacheSig = sig;
+    const c = e.cachesNiveau;
+    if (!c) return;
+    if (c.voisins) c.voisins.forEach(_libererVoisin);
+    e.cachesNiveau = null;
+    e.cacheStats.purges++;
+  }
+
+  function _cleNiveau(ctx) {
+    const e = _e, c = window.APP_CONFIG || {}, G = window.KtaGalerie;
+    const niv = (Array.isArray(c.availableLevels) ? c.availableLevels : []).map(function (n) {
+      const dy = G && typeof G.denivele === "function" && e.niveau !== null ? G.denivele(e.niveau, n) : 0;
+      return n + ":" + _hauteurDuNiveau(n) + ":" + dy;
+    }).join(",");
+    return ctx + "|" + e.niveau + "|" + e.hauteur + "|" + niv + "|" + _sigVoisins();
+  }
+
+  // Valeur du cache « nom » à la clé « cle », calculée par « calcul » si absente → { v, neuf }.
+  function _cacheNiveau(nom, cle, calcul) {
+    const e = _e;
+    _purgerCachesNiveau(false);
+    if (e.sansCache) { e.cacheStats.rates++; return { v: calcul(), neuf: true }; }
+    if (!e.cachesNiveau) e.cachesNiveau = {};
+    const m = e.cachesNiveau[nom] || (e.cachesNiveau[nom] = new Map());
+    if (m.has(cle)) {
+      const q = m.get(cle);
+      q.scene = e.sceneNiveau;
+      e.cacheStats.touches++;
+      return { v: q.v, neuf: false };
+    }
+    const v = calcul();
+    m.set(cle, { v: v, scene: e.sceneNiveau });
+    e.cacheStats.rates++;
+    return { v: v, neuf: true };
+  }
+
+  // Niveaux dont les scènes restent en cache : le niveau actif et ceux juste au-dessus et au-dessous (_niveauxEdition)
+  // ; null sur un plan à un niveau (rien à borner).
+  function _scenesGardees() {
+    const e = _e, l = _niveauxEdition(), i = l.indexOf(e.sceneNiveau);
+    if (!Number.isInteger(e.sceneNiveau) || i < 0) return null;
+    return [l[i - 1], l[i], l[i + 1]].filter(Number.isInteger);
+  }
+
+  // Entrées des scènes plus loin que le niveau actif ± 1 retirées, voisins gardés libérés (contrat ci-dessus).
+  function _bornerCachesNiveau() {
+    const e = _e, c = e.cachesNiveau, P = _scenesGardees();
+    if (!c || !P) return;
+    Object.keys(c).forEach(function (nom) {
+      c[nom].forEach(function (q, k) {
+        if (P.indexOf(q.scene) >= 0) return;
+        if (nom === "voisins") _libererVoisin(q);
+        c[nom].delete(k);
+        e.cacheStats.bornes++;
+      });
+    });
+  }
+
+  // Volumes du niveau (_calculerVolumesDuNiveau) par le cache : modèles intacts gardés (copies faites avant toute
+  // construction), rendus en copies neuves ; les places de panneau (e.placesPassage) reposées sur les POI de `d`, et
+  // le POI de chaque volume retrouvé dans `d` (🩸 les calques rendent des objets neufs à chaque lecture : même uid,
+  // sinon _memeObjet). `d.ctx` : "voisin" depuis _volumesVoisin (sans structures empruntées).
   function _volumesDuNiveau(d) {
+    const e = _e, cle = _cleNiveau(d.ctx || "actif") + "|" + d.structures.length + "|" + d.points.length;
+    let vivants = null;
+    const r = _cacheNiveau("volumes", cle, function () {
+      vivants = _calculerVolumesDuNiveau(d);
+      const places = [];
+      e.placesPassage.forEach(function (val, p) { places.push([p._v3dJonction || p, val]); });
+      return { vols: vivants.map(function (v) { return Object.assign({}, v); }), places: places,
+        msFaces: e.msFaces, faces: e.facesStructures };
+    });
+    if (r.neuf) return vivants;
+    e.msFaces = 0; e.facesStructures = r.v.faces;
+    const parOrig = new Map(), parUid = new Map(), origs = [];
+    d.points.forEach(function (p) {
+      const o = p._v3dJonction || p;
+      parOrig.set(o, p);
+      origs.push(o);
+      if (o.uid) parUid.set(o.uid, o);
+    });
+    const retrouver = function (o) {
+      if (!o || parOrig.has(o)) return o;
+      if (o.uid) return parUid.get(o.uid) || o;
+      for (let i = 0; i < origs.length; i++) { if (_memeObjet(origs[i], o)) return origs[i]; }
+      return o;
+    };
+    r.v.places.forEach(function (q) {
+      const p = parOrig.get(retrouver(q[0]));
+      if (p) e.placesPassage.set(p, q[1]);
+    });
+    return r.v.vols.map(function (v) {
+      const c = Object.assign({}, v);
+      if (c.point) c.point = retrouver(c.point);
+      return c;
+    });
+  }
+
+  function _calculerVolumesDuNiveau(d) {
     const e = _e, J = window.KtaPoiJonction, N = e.niveau, out = [];
     e.msFaces = 0; e.facesStructures = 0;
     if (!J) return out;
     let F = null;
-    // Faces des structures dessinées, indexées une fois, seulement si une forme murale n'a pas de paroi de tube.
+    // Faces des structures dessinées, indexées une fois par niveau et par état des données (_cacheNiveau), seulement
+    // si une forme murale n'a pas de paroi de tube.
     const surStructure = function (pl, forme) {
       const t0 = performance.now();
-      if (!F) { F = _facesStructures(d.structures); e.facesStructures = F.faces.length; }
+      if (!F) {
+        F = _cacheNiveau("faces", _cleNiveau("faces") + "|" + d.structures.length, function () {
+          return _facesStructures(d.structures);
+        }).v;
+        e.facesStructures = F.faces.length;
+      }
       const r = _surStructure(F, pl.x, pl.y, forme);
       e.msFaces += performance.now() - t0;
       return r;
@@ -5909,6 +6771,14 @@
       cielVu: g.children.some(function (o) { return o.userData.famille === "ciel"; }),
       marches: v.relMarches || null };
     if (v.acces) Object.assign(v.stats, _statsAcces(v, lots, g));
+    // Masse au sol : un volume sans bouche ni trémie (formes des POI : plaque, ossuaire, outil, fontis, véhicule,
+    // porte…) est posé sur le sol local à son centre ; un passage troué (puits, galerie inclinée) reste au sol du
+    // niveau (ses bouches marquent le gabarit à y = 0). La chatière suit le sol point par point (_coupesChatiere).
+    if (!vv && v.genre !== "pente" && !v.chatiere && !n(lots.sol) && !n(lots.plafond) && !n(lots.plafondConduit) &&
+        !Object.keys(lots.trous).length && Number.isFinite(v.cx) && Number.isFinite(v.cz)) {
+      g.position.y = _solMasse(v.cx, v.cz);
+      v.stats.solLocal = +g.position.y.toFixed(3);
+    }
     e.scene.add(g);
     v.obj = g;
     e.sale = true;
@@ -6554,6 +7424,11 @@
   // plusieurs points (v.seg, _joindreChatiere) : face trouée au début et à la fin du tracé seulement, bouts coupés en
   // onglet aux coudes (v.k0, v.k1) : le boyau et le dessus se raccordent au segment voisin. ⚠️ contrat : aucune
   // emprise ni obstacle (galerieEmprise.js > ACCES) ; seule la caméra s'abaisse (_baisseChatiere).
+  // ⚠️ contrat (décision produit) : sur une masse au sol, le haut de la roche reste au plafond du niveau et le trou
+  // suit le sol local, coupe par coupe (_coupesChatiere) : plancher = le sol lui-même (jamais dessiné ici), flancs
+  // descendus au sol le plus bas de la coupe, voûte à CHATIERE.trou au-dessus du plus haut (au plus 5 cm sous le
+  // plafond). Front vertical traversé : la marche reste celle de la masse, la voûte passe au-dessus du sol haut dès la
+  // coupe d'avant (jamais moins de CHATIERE.trou de vide). Hors masse : une seule coupe à 0, la forme d'avant.
   function _chatiere(v, lots) {
     const e = _e, h = e.hauteur, Q = _repere(v), a = v.a, B = v.b + CHATIERE.deborde, T = CHATIERE.trou;
     const Wt = Math.max(0.5, Math.min(CHATIERE.large, 2 * (v.bTrou || v.b) - CHATIERE.jeu));
@@ -6564,38 +7439,101 @@
     if (!v.seg || v.seg.fin) faces.push([a, 1]);
     const tx = e.textures === true, lot = tx ? _lot(lots, "roche") : lots.opaque, m = tx ? ROCHE.m : 0;
     const col = tx ? BLANC : _couleur("structures", "pilier-1");
-    const trou = PROFIL_CHATIERE.map(function (q) { return [q[0] * Wt, Math.min(q[1] * T, h - 0.05)]; });
-    const bord = [[-B, 0], [B, 0], [B, h], [-B, h]];
+    const C = _coupesChatiere(Q, a, Wt, B, s0, s1);
+    // Profil du trou à la coupe j : plancher et flancs bas au sol le plus bas, voûte au-dessus du plus haut.
+    const trouDe = function (j) {
+      return PROFIL_CHATIERE.map(function (q) {
+        return [q[0] * Wt, q[1] === 0 ? C.bas[j] : Math.min(C.haut[j] + q[1] * T, h - 0.05)];
+      });
+    };
+    const trou = trouDe(0), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0), debut = lot.p.length;
     const V2 = function (q) { return new THREE.Vector2(q[0], q[1]); };
-    let tris = [];
-    try { tris = THREE.ShapeUtils.triangulateShape(bord.map(V2), [trou.map(V2)]); } catch (err) { tris = []; }
-    const tous = bord.concat(trou), ux = Math.cos(v.dir || 0), uz = Math.sin(v.dir || 0);
     const P = function (s, q) { const w = Q(s, q[0]); return [w[0], q[1], w[1]]; };
     const uvF = function (q) { return [q[0] / m, q[1] / m]; };
+    const bords = [];
     faces.forEach(function (f) {
+      const j = f[1] < 0 ? 0 : C.n, tj = trouDe(j), yb = C.plat ? 0 : C.bord[j];
+      const bord = [[-B, yb], [B, yb], [B, h], [-B, h]], tous = bord.concat(tj);
+      let tris = [];
+      try { tris = THREE.ShapeUtils.triangulateShape(bord.map(V2), [tj.map(V2)]); } catch (err) { tris = []; }
       const n = [ux * f[1], 0, uz * f[1]];
+      bords.push(+yb.toFixed(3));
       tris.forEach(function (tr) {
-        const A = tous[tr[0]], Bq = tous[tr[1]], C = tous[tr[2]];
-        lot.tri(P(f[0], A), P(f[0], Bq), P(f[0], C), n, col, m ? uvF(A).concat(uvF(Bq), uvF(C)) : undefined);
+        const A = tous[tr[0]], Bq = tous[tr[1]], Cq = tous[tr[2]];
+        lot.tri(P(f[0], A), P(f[0], Bq), P(f[0], Cq), n, col, m ? uvF(A).concat(uvF(Bq), uvF(Cq)) : undefined);
       });
     });
-    // Tour du trou (sauf le sol) : normales vers l'intérieur du trou.
+    // Tour du trou (sauf le sol), coupe par coupe : normales vers l'intérieur du trou ; u le long du profil de base.
+    const S = function (j, t) { return s0(t) + C.f[j] * (s1(t) - s0(t)); };
     let u = 0;
     for (let i = 1; i < trou.length; i++) {
-      const p = trou[i], q = trou[(i + 1) % trou.length], dt = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dt, dy);
-      if (l < 1e-6) continue;
-      let nt = dy / l, ny = -dt / l;
-      if (nt * -(p[0] + q[0]) / 2 + ny * (T / 2 - (p[1] + q[1]) / 2) < 0) { nt = -nt; ny = -ny; }
-      const ap = s0(p[0]), bp = s1(p[0]), aq = s0(q[0]), bq = s1(q[0]);
-      lot.quad(P(ap, p), P(bp, p), P(bq, q), P(aq, q), [-uz * nt, ny, ux * nt], col,
-        m ? [ap / m, u / m, bp / m, u / m, bq / m, (u + l) / m, aq / m, (u + l) / m] : undefined);
-      u += l;
+      const i2 = (i + 1) % trou.length, p0 = PROFIL_CHATIERE[i], q0 = PROFIL_CHATIERE[i2];
+      const lu = Math.hypot((q0[0] - p0[0]) * Wt, (q0[1] - p0[1]) * T);
+      if (lu < 1e-6) continue;
+      for (let j = 0; j < C.n; j++) {
+        const A0 = trouDe(j), A1 = trouDe(j + 1), p = A0[i], q = A0[i2], p1 = A1[i], q1 = A1[i2];
+        const dt = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dt, dy) || 1e-6;
+        let nt = dy / l, ny = -dt / l;
+        if (nt * -(p[0] + q[0]) / 2 + ny * ((C.bas[j] + C.haut[j] + T) / 2 - (p[1] + q[1]) / 2) < 0) {
+          nt = -nt; ny = -ny;
+        }
+        const ap = S(j, p[0]), bp = S(j + 1, p[0]), aq = S(j, q[0]), bq = S(j + 1, q[0]);
+        lot.quad(P(ap, p), P(bp, p1), P(bq, q1), P(aq, q), [-uz * nt, ny, ux * nt], col,
+          m ? [ap / m, u / m, bp / m, u / m, bq / m, (u + lu) / m, aq / m, (u + lu) / m] : undefined);
+      }
+      u += lu;
     }
     _dessus(lot, _sensPositif([Q(s0(-B), -B), Q(s1(-B), -B), Q(s1(B), B), Q(s0(B), B)]), h, col, m || undefined);
+    let toit = -Infinity;
+    for (let i = debut + 1; i < lot.p.length; i += 3) toit = Math.max(toit, lot.p[i]);
+    // Bouts (centre de la première et de la dernière coupe, m) : place, sol local, plancher et voûte (checkup).
+    const bout = function (j) {
+      const w = Q(S(j, 0), 0), tj = trouDe(j);
+      return { x: +w[0].toFixed(3), z: +w[1].toFixed(3), sol: +_solMasse(w[0], w[1]).toFixed(3), bas: +C.bas[j].toFixed(3),
+        voute: +Math.max.apply(null, tj.map(function (q) { return q[1]; })).toFixed(3) };
+    };
     v.trace = { long: +(2 * a).toFixed(3), trou: T, largeur: +(2 * v.b).toFixed(3), largeTrou: +Wt.toFixed(3),
-      hautTrou: +Math.max.apply(null, trou.map(function (q) { return q[1]; })).toFixed(3),
+      hautTrou: +(Math.max.apply(null, trou.map(function (q) { return q[1]; })) - C.bas[0]).toFixed(3),
       dir: +((v.dir || 0) * 180 / Math.PI).toFixed(2), faces: faces.length,
-      segment: v.seg ? [v.seg.i, v.seg.n] : null, onglet: [+k0.toFixed(4), +k1.toFixed(4)] };
+      segment: v.seg ? [v.seg.i, v.seg.n] : null, onglet: [+k0.toFixed(4), +k1.toFixed(4)],
+      coupes: C.n + 1, plat: C.plat, toit: +toit.toFixed(3), bordsFaces: bords, bouts: [bout(0), bout(C.n)],
+      videMin: +Math.min.apply(null, C.haut.map(function (y, j) { return trouDe(j)[4][1] - y; })).toFixed(3) };
+  }
+
+  // Coupes d'une chatière le long de son axe, sol local des masses au sol (_solMasse : la règle du pas) →
+  // { n (intervalles), f (fractions de s0 → s1, n + 1), bas, haut, bord (m, par coupe), plat }. Coupe j : les points
+  // s0(t) + f·(s1(t) − s0(t)) sur la largeur du trou (aux bouts, la ligne d'onglet : les mêmes points du monde que la
+  // coupe du segment voisin, raccord sans marche) ; autour de chacun, un disque qui couvre la moitié de l'écart aux
+  // coupes voisines (jamais de sol plus haut que la voûte entre deux coupes) : bas = le sol le plus bas, haut = le plus
+  // haut ; bord = sous le sol le plus bas de toute la largeur de la roche (bas des faces, caché sous le sol). Aucune
+  // masse sous la roche (plat) : une coupe, tout à 0 (la chatière d'avant, à l'identique).
+  function _coupesChatiere(Q, a, Wt, B, s0, s1) {
+    const plat = { n: 1, f: [0, 1], bas: [0, 0], haut: [0, 0], bord: [0, 0], plat: true };
+    if (!_e.masses || !_e.masses.length) return plat;
+    const n = Math.max(1, Math.ceil(2 * a / CHATIERE.pas)), r = Math.max(a / n, Wt / 8) + 0.02;
+    const lat = [-Wt / 2, -Wt / 4, 0, Wt / 4, Wt / 2], large = [-B, -B / 2, B / 2, B];
+    const out = { n: n, f: [], bas: [], haut: [], bord: [], plat: false };
+    let nul = true;
+    for (let j = 0; j <= n; j++) {
+      const fj = j / n;
+      let lo = Infinity, hi = -Infinity;
+      lat.forEach(function (t) {
+        const c = Q(s0(t) + fj * (s1(t) - s0(t)), t);
+        for (let k = -1; k < 6; k++) {
+          const an = k * Math.PI / 3, d = k < 0 ? 0 : r;
+          const y = _solMasse(c[0] + d * Math.cos(an), c[1] + d * Math.sin(an));
+          lo = Math.min(lo, y); hi = Math.max(hi, y);
+        }
+      });
+      let bd = Math.min(0, lo);
+      large.forEach(function (t) {
+        const c = Q(s0(t) + fj * (s1(t) - s0(t)), t);
+        bd = Math.min(bd, _solMasse(c[0], c[1]));
+      });
+      if (lo !== 0 || hi !== 0 || bd !== 0) nul = false;
+      out.f.push(fj); out.bas.push(lo); out.haut.push(hi); out.bord.push(bd - 0.05);
+    }
+    return nul ? plat : out;
   }
 
   // Repère d'une forme sur la paroi (v.cote : côté de la paroi, galerieEmprise.js > _surParoi) : Q(s, recul) = point
@@ -7985,9 +8923,28 @@
     const e = _e, x = e.pos.x / e.sc, z = e.pos.y / e.sc, cap = e.cap * Math.PI / 180, c = _centreScene();
     // Chatière (_baisseChatiere) : l'œil descend vers CHATIERE.oeil, jamais plus haut qu'il n'est.
     e.ramper = e.vue === "plongee" ? 0 : _baisseChatiere(x, z);
-    const baisse = e.ramper * Math.max(0, e.oeil - CHATIERE.oeil);
+    let baisse = e.ramper * Math.max(0, e.oeil - CHATIERE.oeil);
+    // Masse au sol (_oeilMasse) : sous 1,8 m de vide l'œil s'abaisse, sous 1 m on rampe ; la plus basse des deux
+    // règles.
+    const vide = e.vue === "plongee" ? Infinity : _videMasse(x, z);
+    e.vide = vide;
+    if (vide !== Infinity) {
+      const om = _oeilMasse(vide);
+      baisse = Math.max(baisse, e.oeil - om.oeil);
+      e.ramper = Math.max(e.ramper, om.ramper);
+    }
     // Geste d'un passage (_majGeste) : la caméra descend ou monte dans le volume ; galerie inclinée : sur sa pente.
-    const sol = _solPlace(), dy = (e.dy || 0) - baisse + sol;
+    const sol = _solAffiche(_solPlace());
+    // 🩸 Chute ou montée en cours (_pas) : l'abaissement de l'œil (vide de la place d'ARRIVÉE) suit la même fraction
+    // que le sol affiché, depuis celui du départ (ch.b0) ; appliqué d'un coup, l'œil plongeait (ou se redressait)
+    // avant que la caméra ne monte (ou ne tombe) : la hauteur de la caméra est monotone sur toute l'animation.
+    const ch = e.chute;
+    if (ch && Math.abs(ch.vers - ch.de) > 1e-6) {
+      const fr = Math.max(0, Math.min(1, (sol - ch.de) / (ch.vers - ch.de)));
+      baisse = ch.b0 + (baisse - ch.b0) * fr;
+    }
+    e.baisse = baisse;
+    const dy = (e.dy || 0) - baisse + sol;
     e.tete.position.set(x, e.oeil + dy, z);
     e.tete.rotation.set(e.tangage, -cap, 0);
     e.sol.position.set(c.x, 0, c.z);
@@ -8301,6 +9258,7 @@
     e.tuiles.forEach(function (t) {
       if (t.obj) t.obj.children.forEach(function (o) { if (o.userData.famille === "plafond") o.visible = !haut; });
     });
+    _echelleMurs();
     _paroisPenteVue();
     _voisinsVue();
     _majSolActif();
@@ -8528,8 +9486,71 @@
   // 🩸 Avec le seul axe, on frôlait une face à quelques centimètres en biais ou en glissant : la caméra passait
   // alors dans le pilier (plan proche à 5 cm) et l'on voyait au travers ; et les types perso, dessinés en volume,
   // n'arrêtaient rien.
+  // ⚠️ contrat (décision produit) : un pas qui fait descendre le sol de plus de MASSE.marche (front d'une masse au sol)
+  // déclenche une CHUTE : la caméra tombe du sol de départ au nouveau sol en MASSE.chute (0,3 à 0,5 s : accélération
+  // simple, petit amorti à l'arrivée, jamais d'écran noir) ; pendant la chute, aucun pas ni rotation n'est pris. Un
+  // pas qui le fait MONTER de plus de MASSE.marche (front d'une masse, partout : _masseBloque) = la chute à l'envers :
+  // hissé sur le dessus en MASSE.chute (lissé, sans amorti), compté dans e.montees.
   function _pas(m, angle) {
+    const e = _e;
+    if (_enChute()) return false;
+    const s0 = e.vue === "plongee" ? 0 : _solPlace();
+    const ok = _pasSurPlace(m, angle);
+    if (ok && e.vue !== "plongee") {
+      const s1 = _solPlace();
+      if (s0 - s1 > MASSE.marche) {
+        const h = s0 - s1, d = Math.max(MASSE.chute[0], Math.min(MASSE.chute[1], Math.sqrt(2 * h / 9.81)));
+        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, g: 2 * h / (d * d), b0: e.baisse || 0 };
+        e.chutes = (e.chutes || 0) + 1;
+        e.derniereChute = { h: +h.toFixed(3), d: +d.toFixed(3) };
+        e.sale = true;
+      } else if (s1 - s0 > MASSE.marche) {
+        const h = s1 - s0, d = Math.max(MASSE.chute[0], Math.min(MASSE.chute[1], MASSE.chute[0] + 0.1 * h));
+        e.chute = { de: s0, vers: s1, t0: performance.now(), d: d, monte: true, b0: e.baisse || 0 };
+        e.montees = (e.montees || 0) + 1;
+        e.derniereMontee = { h: +h.toFixed(3), d: +d.toFixed(3) };
+        e.sale = true;
+      }
+    }
+    return ok;
+  }
+
+  // Chute en cours ? (finie : effacée, l'amorti commence).
+  function _enChute() {
+    const e = _e, c = e.chute;
+    if (!c) return false;
+    if (performance.now() - c.t0 >= c.d * 1000) {
+      e.chute = null;
+      if (!c.monte) e.atterri = performance.now();
+      e.sale = true;
+      return false;
+    }
+    return true;
+  }
+
+  // Sol vu par la caméra (m) : le sol de la place, sauf pendant une chute (de `de` vers `vers`, accélération g) et
+  // l'amorti qui la suit (creux de MASSE.amorti m sur 0,2 s).
+  function _solAffiche(sol) {
+    const e = _e, t = performance.now();
+    if (_enChute()) {
+      const c = e.chute, dt = (t - c.t0) / 1000;
+      e.sale = true;
+      if (c.monte) return c.de + (c.vers - c.de) * _lisse(dt / c.d);
+      return Math.max(c.vers, c.de - 0.5 * c.g * dt * dt);
+    }
+    if (e.atterri) {
+      const a = (t - e.atterri) / 1000;
+      if (a < 0.2) { e.sale = true; return sol - MASSE.amorti * Math.sin(Math.PI * a / 0.2); }
+      e.atterri = 0;
+    }
+    return sol;
+  }
+
+  function _pasSurPlace(m, angle) {
     const e = _e, a = angle * Math.PI / 180;
+    // Masse au sol : la marche ralentit sur un talus de plus de 15° (_ralentiMasse) ; jamais en vue plongeante.
+    e.ralenti = e.vue === "plongee" ? 1 : _ralentiMasse(Math.sin(a), -Math.cos(a));
+    m *= e.ralenti;
     const dx = Math.sin(a) * m * e.sc, dy = -Math.cos(a) * m * e.sc;
     // ⚠️ contrat (décision produit) : en vue plongeante, rien ne bloque, comme un survol (piliers, murs, fronts, zones,
     // portes, parois) ; seule l'image du plan borne la place. Une greffe qui en ferait tricher interdit la plongée
@@ -8573,6 +9594,8 @@
         const qa = _surPente(x1 / e.sc, y1 / e.sc, 0);
         if (qa && qa.zone && Math.abs(qa.dy) >= PENTE.sortie) continue;
       }
+      // Masse au sol : moins de MASSE.ramper de vide à l'arrivée arrête le pas (en sortir reste permis).
+      if (_masseBloque(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l)) continue;
       const n = _balayage(e.pos.x, e.pos.y, x1, y1, sx / l, sy / l);
       if (n < 0 || (n > 0 && n > depart())) continue;
       _poser(x1, y1);
@@ -8631,6 +9654,7 @@
     if (volumes && (_volumeContenant(x / e.sc, y / e.sc) || _rayonsBloques(x, y) > 0)) return true;
     if (G.dansZone(x, y, n, e.rendu) ||
         G.zonesBloquent(_rayons([], x, y, RAYON_CORPS * e.sc), n, undefined, e.rendu).some(Boolean)) return true;
+    if (_videMasse(x / e.sc, y / e.sc) < MASSE.ramper) return true;   // masse au sol : trop peu de vide pour y être
     if (e.galerie) return !G.dedans(x, y, n);
     const m = e.mixte;
     if (m && m.pieces.length && !m.dedans(x, y) && !m.enChambre(x, y)) {
@@ -8781,7 +9805,15 @@
   function _niveauxEdition() {
     const e = _e, c = window.APP_CONFIG || {};
     if (c.multiLevel !== true || !Number.isInteger(e.niveau)) return [];
-    const l = _tab(window.ktaNiveauxOccupes).filter(Number.isInteger);
+    // Niveaux occupés (main.js > ktaNiveauxOccupes parcourt tout le plan) : relus quand les données changent
+    // (empreinte de _majDonnees) ou la source elle-même (fonction remplacée) ; _niveauxMontres les demande plusieurs
+    // fois par passage.
+    const cle = (e.donnees ? e.donnees.empreinte : "") + "|" + (window._ktaImageOverlays || []).length;
+    const src = window.ktaNiveauxOccupes, M = e.occupesMemo;
+    if (e.sansCache || !M || M.cle !== cle || M.src !== src) {
+      e.occupesMemo = { cle: cle, src: src, l: _tab(src).filter(Number.isInteger) };
+    }
+    const l = e.occupesMemo.l.slice();
     if (l.indexOf(e.niveau) < 0) l.push(e.niveau);
     return l.filter(function (v, i) { return l.indexOf(v) === i; }).sort(function (a, b) {
       return _auDessus(a, b) ? -1 : _auDessus(b, a) ? 1 : 0;
@@ -10700,11 +11732,11 @@
       if (e.niveau !== null && Number.isInteger(it.level) && it.level !== e.niveau) return;
       const col = new THREE.Color();
       try { col.setStyle(it.color); } catch (err) { col.set(0xffffff); }
-      const cx = it.point.x / sc, cz = it.point.y / sc;
+      const cx = it.point.x / sc, cz = it.point.y / sc, ry = ROND.y + _solMasse(cx, cz);   // sol local (masse au sol)
       for (let k = 0; k < n; k++) {
         const a0 = 2 * Math.PI * k / n, a1 = 2 * Math.PI * (k + 1) / n;
-        lot.tri([cx, ROND.y, cz], [cx + Math.cos(a0) * ROND.rayon, ROND.y, cz + Math.sin(a0) * ROND.rayon],
-          [cx + Math.cos(a1) * ROND.rayon, ROND.y, cz + Math.sin(a1) * ROND.rayon], haut, col);
+        lot.tri([cx, ry, cz], [cx + Math.cos(a0) * ROND.rayon, ry, cz + Math.sin(a0) * ROND.rayon],
+          [cx + Math.cos(a1) * ROND.rayon, ry, cz + Math.sin(a1) * ROND.rayon], haut, col);
       }
       e.listeRonds.push({ x: cx, z: cz, couleur: it.color, niveau: Number.isInteger(it.level) ? it.level : null });
     });
@@ -10721,8 +11753,8 @@
   // ⚠️ contrat : la 3D ne compte rien ; elle lit les tronçons COMPTÉS par la carte (interfaceDistanceTotale.js >
   // ktaDistanceTotaleSurlignage : cases du panneau, niveau de la vue) et pose un ruban au sol par segment, à la
   // couleur du surlignage 2D, dans un seul maillage hors tuiles. Refait à _reindexer et à `kta:distanceTotaleChange`
-  // (panneau ouvert, case cochée, ❌ Effacer) : jamais de reconstruction de la scène. Au sol comme les rubans des
-  // tracés (pas par-dessus un remblais : c'est le tracé qui est surligné, pas l'itinéraire).
+  // (panneau ouvert, case cochée, ❌ Effacer) : jamais de reconstruction de la scène. Sur le sol local comme les rubans
+  // des tracés (_rubanSol : masse au sol suivie ; pas par-dessus un remblais : c'est le tracé qui est surligné).
   function _majDistTot() {
     const e = _e, sc = e.sc;
     if (e.distTot) {
@@ -10743,7 +11775,7 @@
       for (let j = 0; j + 1 < r.points.length; j++) {
         const a = r.points[j], b = r.points[j + 1];
         if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(b.x)) continue;
-        _ruban(lot, a, b, sc, SURLIGNE.larg, SURLIGNE.y, col);
+        _rubanSol(lot, a, b, sc, SURLIGNE.larg, SURLIGNE.y, col);
         segments++;
       }
     });
@@ -11448,7 +12480,7 @@
     e.rapide = !!rapide && !!(av || lat);
     if (av || lat || rot) _passerEnLibre();
     if (av || lat) _rattacher();
-    if (rot) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
+    if (rot && !_enChute()) { e.cap = (e.cap + rot * ROTATION * dt + 360) % 360; e.sale = true; }
     if (av) _pas(vit * dt * av, e.cap);
     if (lat) _pas(vit * dt, e.cap + 90 * lat);
     // Joystick : un seul pas dans la direction du bouton, à sa vitesse ; course = pleine vitesse × FACTEUR_RAPIDE.
@@ -12063,7 +13095,9 @@
   // côté du fond (px) ; `cone` : demi-angle du cône (°) ; `traitM` : largeur d'un tracé (m), jamais moins de
   // `traitPx` px CSS ; `poiPx` : rayon d'une pastille de POI (px CSS).
   const MINI_CARTE = { rayon: 30, min: 10, max: 100, grande: 2, fenetre: 3, ms: 100, bouge: 0.3, densite: 2,
-    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8, voisinAlpha: 0.35 };
+    fondMax: 2048, cone: 35, traitM: 1, traitPx: 1.5, poiPx: 8, voisinAlpha: 0.35,
+    // Masse au sol : opacité du sable = masse[0] + masse[1] × |cran| (¼ clair → ¾ dense) ; sol abaissé : creux.
+    masse: [0.2, 0.7], creux: 0.12 };
   let _rayonMiniCarte = MINI_CARTE.rayon;   // retenu tant que la page vit (vue refermée puis rouverte)
   let _observateursTaille = 0;              // ResizeObserver de la rangée et du bandeau branchés (checkup : 0 fermée)
   const _iconesMiniCarte = new Map();       // url → Image (icônes des POI, chargées une fois)
@@ -12185,9 +13219,39 @@
         if (z < z0) z0 = z;
         if (z > z1) z1 = z;
       }
-      if (pts.length < 4) return;
-      formes.push({ cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1,
-        voisin: voisin || null });
+      if (pts.length < 4) return null;
+      const fo = { cat: cat, cle: o.type, pts: pts, ferme: ferme, x0: x0, z0: z0, x1: x1, z1: z1, voisin: voisin || null };
+      formes.push(fo);
+      return fo;
+    };
+    // ⚠️ contrat (décision produit) : une masse au sol n'est jamais dessinée comme un obstacle, sauf si son cran laisse
+    // moins de MASSE.ramper sous le plafond (on ne passe plus) ; ses rampes en chevrons (KtaMasseSol.chevrons). Comblé et
+    // effondrement : le couloir des tracés qui les traversent (pièces du modèle galerie, KtaGalerie.dansCouloir) est
+    // laissé ouvert, comme en 3D.
+    const G = window.KtaGalerie, CR = (G && G.CREUSABLES) || {}, niv = e.niveau === null ? undefined : e.niveau;
+    let modele;
+    const couloirDe = function (fo) {
+      if (modele === undefined) modele = G && typeof G.modele === "function" ? G.modele(niv) : null;
+      if (!modele || typeof modele.piecesPres !== "function") return [];
+      return modele.piecesPres(fo.x0 * sc, fo.z0 * sc, fo.x1 * sc, fo.z1 * sc).filter(function (i) {
+        return modele.pieces[i].genre !== "niche";
+      }).map(function (i) {
+        const out = [];
+        modele.pieces[i].pts.forEach(function (q) { out.push(q[0] / sc, q[1] / sc); });
+        return out;
+      });
+    };
+    const masseDe = function (fo, z) {
+      const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;
+      fo.cran = c;
+      fo.bloque = c > 0 && e.hauteur * (1 - Math.min(1, c)) < MASSE.ramper;
+      const M = window.KtaMasseSol;
+      fo.chevrons = M && typeof M.chevrons === "function" && Array.isArray(z.rampes) && z.rampes.length
+        ? M.chevrons(z, sc).map(function (l) {
+          const out = [];
+          l.forEach(function (q) { out.push(q.x / sc, q.y / sc); });
+          return out;
+        }) : [];
     };
     // Niveaux voisins (celui du dessus et celui du dessous, ordre de ▲▼ : _niveauxEdition), mêmes filtres que la
     // carte : structures et tracés seulement, dessinés estompés SOUS le niveau actif (_dessinerFondMiniCarte).
@@ -12202,7 +13266,13 @@
         });
       });
     }
-    d.zones.forEach(function (z) { if (B[z.type]) forme(z, "zones", true); });
+    d.zones.forEach(function (z) {
+      if (!B[z.type] && z.type !== "masse-sol") return;
+      const fo = forme(z, "zones", true);
+      if (!fo) return;
+      if (z.type === "masse-sol") masseDe(fo, z);
+      else if (CR[z.type]) fo.couloir = couloirDe(fo);
+    });
     d.structures.forEach(function (s) { forme(s, "structures", !_estLigne(s.type)); });
     d.roads.forEach(function (r) { if (r.type !== "itinerary" && r.type !== "jonction") forme(r, "traces", false); });
     d.points.forEach(function (p) {
@@ -12284,6 +13354,47 @@
 
   function _rayonMontre() { return _rayonMiniCarte * (_e.mc.grande ? MINI_CARTE.grande : 1); }
 
+  // Masse au sol `f` (chemin du contour déjà posé, repère en mètres) : sable du canon (`s`, aplat), opacité selon
+  // |cran|, contour tireté ; sol abaissé presque transparent ; hachures de l'obstacle (`so`, inaccessible) seulement si
+  // f.bloque ; chevrons des rampes. Note ce qui a été dessiné dans `vues`.
+  function _masseMiniCarte(ctx, f, s, so, trait, vues) {
+    const c = Number.isFinite(f.cran) ? f.cran : 0.5, sable = s.fillColor || s.color || "#888888";
+    const a = c > 0 ? Math.min(1, MINI_CARTE.masse[0] + MINI_CARTE.masse[1] * Math.min(1, c)) : MINI_CARTE.creux;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = sable;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = sable;
+    ctx.lineWidth = trait * 0.5;
+    ctx.setLineDash([trait * 1.2, trait * 0.9]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (f.bloque) {
+      ctx.save();
+      ctx.clip();
+      ctx.strokeStyle = so.fillColor || so.color || sable;
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = trait * 0.4;
+      ctx.beginPath();
+      const pas = trait * 2.5, d = (f.x1 - f.x0) + (f.z1 - f.z0);
+      for (let t = -d; t <= d; t += pas) { ctx.moveTo(f.x0 + t, f.z0); ctx.lineTo(f.x0 + t + d, f.z0 + d); }
+      ctx.stroke();
+      ctx.restore();
+    }
+    (f.chevrons || []).forEach(function (q) {
+      ctx.beginPath();
+      ctx.moveTo(q[0], q[1]);
+      for (let i = 2; i < q.length; i += 2) ctx.lineTo(q[i], q[i + 1]);
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = s.color || sable;
+      ctx.lineWidth = trait * 0.4;
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+    vues.push({ cle: "masse-sol", cran: c, alpha: +a.toFixed(3), bloque: !!f.bloque,
+      chevrons: (f.chevrons || []).length, tirets: true });
+  }
+
   // Matrice monde (m) → pixels d'un canvas de côté `cote`, centré sur (cx, cz), nord réel en haut, `k` px / m.
   function _matriceMiniCarte(cx, cz, k, cote) {
     const n = -(Number(_e.nord) || 0) * Math.PI / 180, a = k * Math.cos(n), b = k * Math.sin(n);
@@ -12314,6 +13425,7 @@
     ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
     ctx.lineJoin = "round"; ctx.lineCap = "round";
     let n = 0;
+    const zonesVues = [];   // checkup : ce que la mini-carte a fait de chaque zone (_etatMiniCarte)
     // Niveaux voisins d'abord, en contour estompé (dessous en tirets) : le niveau actif se lit par-dessus.
     const jv = _jetonsSombres();
     D.formes.forEach(function (f) {
@@ -12341,11 +13453,30 @@
         ctx.beginPath();
         ctx.moveTo(p[0], p[1]);
         for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
-        if (f.ferme) {
+        if (f.ferme && f.cle === "masse-sol") {
+          ctx.closePath();
+          _masseMiniCarte(ctx, f, s, style("zones", "inaccessible"), trait, zonesVues);
+        } else if (f.ferme) {
           ctx.closePath();
           ctx.globalAlpha = Number.isFinite(s.fillOpacity) ? s.fillOpacity : 0.8;
           ctx.fillStyle = s.fillColor || s.color || "#888888";
           ctx.fill();
+          if (f.couloir && f.couloir.length) {
+            // Couloir creusé : effacé du remplissage, dans le contour de la zone seulement.
+            ctx.save();
+            ctx.clip();
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            f.couloir.forEach(function (q) {
+              ctx.moveTo(q[0], q[1]);
+              for (let i = 2; i < q.length; i += 2) ctx.lineTo(q[i], q[i + 1]);
+              ctx.closePath();
+            });
+            ctx.fill();
+            ctx.restore();
+          }
+          if (cat === "zones") zonesVues.push({ cle: f.cle, couloir: f.couloir ? f.couloir.length : 0 });
         } else {
           ctx.globalAlpha = Number.isFinite(s.opacity) ? s.opacity : 1;
           ctx.strokeStyle = s.color || s.fillColor || "#888888";
@@ -12386,7 +13517,7 @@
       }
       n++;
     });
-    m.f = { x: cx, z: cz, k: k, cote: cote, nord: Number(e.nord) || 0, demi: cote / 2 / k, objets: n };
+    m.f = { x: cx, z: cz, k: k, cote: cote, nord: Number(e.nord) || 0, demi: cote / 2 / k, objets: n, zones: zonesVues };
     m.fondSale = false;
     m.fonds++;
     m.msFond = performance.now() - t0;
@@ -12586,7 +13717,7 @@
       msMajMax: +m.msMajMax.toFixed(2), msMajMoy: m.majs ? +(m.msMajSomme / m.majs).toFixed(3) : 0,
       msDernieres: m.dernieres.map(function (v) { return +v.toFixed(2); }),
       pois: e.mcDonnees ? e.mcDonnees.pois.map(function (q) { return q.genre; }) : [],
-      formes: fm.filter(function (f) { return !f.voisin; }).length,
+      formes: fm.filter(function (f) { return !f.voisin; }).length, zones: m.f ? m.f.zones : [],
       voisins: fm.filter(function (f) { return f.voisin; }).map(function (f) { return f.voisin; }),
       iti: e.mcIti ? { morceaux: e.mcIti.morceaux.length, marques: e.mcIti.marques.length,
         cible: !!_pointItiMiniCarte(e.mcCible) } : null,
@@ -13640,11 +14771,23 @@
         if (change.miniCarte) _appliquerMiniCarte();
         _e.sale = true;
       },
+      // Règle du pas, masses au sol comprises (_masseBloque : seule la règle du vide), sans toucher au compteur du
+      // joueur (e.frontsMasse).
       bloque: function (x0, y0, x1, y1) {
         const l = Math.hypot(x1 - x0, y1 - y0);
         if (!_e || l < 1e-9) return false;
-        const n = _balayage(x0, y0, x1, y1, (x1 - x0) / l, (y1 - y0) / l);
-        return n < 0 || (n > 0 && n > _rayonsBloques(x0, y0));
+        const ux = (x1 - x0) / l, uy = (y1 - y0) / l, n = _balayage(x0, y0, x1, y1, ux, uy);
+        if (n < 0 || (n > 0 && n > _rayonsBloques(x0, y0))) return true;
+        const fm = _e.frontsMasse, b = _masseBloque(x0, y0, x1, y1, ux, uy);
+        _e.frontsMasse = fm;
+        return b;
+      },
+      // Sol local (m) sous (x, y) px : galerie inclinée ou masse au sol (_surPente, _solMasse : la règle de la place,
+      // jamais une copie) ; 0 ailleurs. Lecture seule.
+      sol: function (x, y) {
+        if (!_e) return 0;
+        const q = _surPente(x / _e.sc, y / _e.sc, 0);
+        return q ? q.dy : _solMasse(x / _e.sc, y / _e.sc);
       },
       ligneBloquee: function (x0, y0, x1, y1) { return !!_e && !!_juger([[x0, y0, x1, y1]])[0]; },
       // 🩸 La règle du pas ignore la structure où l'on se trouve déjà (on en sort) : la place est donc aussi
@@ -13795,8 +14938,8 @@
         volPassages: [], geste: null, dy: 0, fondu: null, fonduOp: 0, bandeauNiveau: null, bandeauNiveauFin: 0,
         niveauLibre: null, actifVu: null, changementsNiveau: 0, poiMasques: 0,
         pentes: [], jonctions: [], pentesFranchies: 0, itiPentes: null, nItiPentes: 0,
-        zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, rubans: {}, liseres: {},
-        filtresChanges: false, reindexations: 0, itiRefaits: 0, msIti: 0, compteIti: 0,
+        zonesDecoupees: {}, rideaux: [], facesRemblais: 0, facesEboulis: 0, zonesCreusees: 0, rubans: {}, liseres: {},
+        filtresChanges: false, reindexations: 0, cacheStats: { touches: 0, rates: 0, purges: 0, voisinsRepris: 0, bornes: 0 }, cachesNiveau: null, itiRefaits: 0, msIti: 0, compteIti: 0,
         donnees: { empreinte: null, signal: 0, premier: 0, signaux: 0, verifs: 0, refaites: 0, degagees: 0, ms: 0,
           msEmpreinte: 0 },
         virage: false, desabonner: null, sousHaut: null, degagements: 0, sortie: null,
@@ -13809,7 +14952,7 @@
         stickLibres: 0, toucheNom: null, itiChevrons: 0, nbMarqueurs: { etapes: 0, arrivee: false }, listeRonds: [],
         rondsChange: false, distTot: null, distTotChange: false, listeDistTot: null, greffe: null, codeBas: { n: 0, t0: 0 }, codesBas: 0,
         retourFocus: o.retourFocus || document.activeElement || null,
-        attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE
+        attenteReprise: o.attenteReprise > 0 ? o.attenteReprise : ATTENTE_REPRISE, sansCache: o.cacheNiveaux === false
       };
       // 🩸 Ouverte en libre sur la place du tracker, la vue prend aussi son niveau : un « Je suis ici » sur un POI
       // du −1 visible depuis le 0 laisse le niveau actif de la carte au 0, et la scène du 0 entourerait le tracker.
@@ -13845,10 +14988,12 @@
       _lireNord();
       _brancher();
       _redimensionner();
-      _reindexer();
+      // 🩸 Empreinte AVANT le premier _reindexer : les caches du niveau de départ et ses voisins sont faits sous sa clé
+      // (_sigVoisins) ; calculée après, elle changeait la clé et le premier retour au niveau de départ gelait.
       const tE = performance.now();
       _e.donnees.empreinte = _empreinteDonnees();
       _e.donnees.msEmpreinte = performance.now() - tE;
+      _reindexer();
       // En suivi, la place est celle du tracker ; en libre, dégagée aussi d'une structure dessinée (_coince).
       if (_e.mode === "libre") _degager(true);
       _lireEdition();
@@ -13887,6 +15032,8 @@
       e.tuiles.forEach(_libererTuile);
       (e.volPassages || []).forEach(_libererVolume);
       (e.voisins || []).forEach(_libererVoisin);
+      if (e.cachesNiveau && e.cachesNiveau.voisins) e.cachesNiveau.voisins.forEach(_libererVoisin);
+      e.cachesNiveau = null;
       if (e.matsV) {
         Object.keys(e.matsV).forEach(function (c) {
           Object.keys(e.matsV[c]).forEach(function (k) { e.matsV[c][k].dispose(); });
@@ -14047,7 +15194,7 @@
 
   function avancer(m) { if (!_e) return false; _passerEnLibre(); _rattacher(); return _pas(m, _e.cap); }
 
-  function tourner(deg) { if (!_e) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
+  function tourner(deg) { if (!_e || _enChute()) return; _passerEnLibre(); _e.cap = (_e.cap + deg + 360) % 360; _e.sale = true; }
 
   // `o.profilIti` : ajoute le profil de l'itinéraire (_profilIti), coûteux : jamais lu image par image.
   function etat(o) {
@@ -14074,7 +15221,7 @@
         }
         if (f !== "opaque" && f !== "murs") return;
         if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
-        yMax[f] = Math.max(yMax[f], m.geometry.boundingBox.max.y);
+        yMax[f] = Math.max(yMax[f], m.geometry.boundingBox.max.y * m.scale.y);   // hauteur montrée (_echelleMurs)
       });
     });
     return {
@@ -14116,7 +15263,9 @@
         libelle: e.boussole ? e.boussole.getAttribute("aria-label") : "",
         inclinaisonVisible: !!e.boutonsIncl && !e.boutonsIncl.hidden },
       niveau: e.niveau, niveauLibre: Number.isInteger(e.niveauLibre) ? e.niveauLibre : null,
-      reindexations: e.reindexations, itiRefaits: e.itiRefaits, msIti: +e.msIti.toFixed(1),
+      reindexations: e.reindexations, reindex: e.mesReindex || null, cacheNiveaux: _etatCacheNiveaux(),
+      itiRefaits: e.itiRefaits,
+      msIti: +e.msIti.toFixed(1),
       donnees: { signaux: e.donnees.signaux, verifs: e.donnees.verifs, refaites: e.donnees.refaites,
         degagees: e.donnees.degagees, attente: !!e.donnees.signal, ms: +e.donnees.ms.toFixed(1),
         msEmpreinte: +e.donnees.msEmpreinte.toFixed(2) },
@@ -14126,7 +15275,8 @@
         bouton: _texteIco(e.boutonHauteur),
         valeur: e.hauteurValeur ? e.hauteurValeur.textContent : "" },
       rendu: e.rendu, poiMasques: e.poiMasques, zonesDecoupees: e.zonesDecoupees, rideaux: e.rideaux.slice(),
-      facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, rubans: Object.assign({}, e.rubans),
+      facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, zonesCreusees: e.zonesCreusees || 0,
+      volumesIti: (e.volumesIti || []).length, rubans: Object.assign({}, e.rubans),
       liseres: Object.assign({}, e.liseres), arcs: _etatArcs(),
       zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
       equipe: Object.assign({ membres: 0, membres3d: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
@@ -14178,6 +15328,7 @@
         return Object.assign({ genre: v.genre, tag: v.tag || null, forme: v.forme || null, moyen: v.moyen || null,
           sol: !!v.sol, plafond: !!v.plafond, ciel: !!v.ciel, grille: !!v.grille, echelons: !!v.echelons,
           passage: !!v.passage, monte: v.monte === undefined ? null : v.monte, construit: !!v.obj, x: v.x, y: v.y,
+          solLocal: v.obj ? +v.obj.position.y.toFixed(3) : null,
           traverse: Number.isInteger(v.traverse) ? v.traverse : null,
           bouche: v.genre === "poi" ? [[-v.a, -v.b], [v.a, -v.b], [v.a, v.b], [-v.a, v.b]].map(function (q) {
             return _repere(v)(q[0], q[1]);
@@ -14205,6 +15356,19 @@
       })(),
       geste: e.geste ? { sens: e.geste.sens, t: Math.round(e.geste.t), bascule: e.geste.fait } : null,
       cameraY: +e.camera.position.y.toFixed(3), ramper: +(e.ramper || 0).toFixed(3),
+      masses: { n: (e.masses || []).length, triangles: e.trianglesMasses || 0, triMax: e.trianglesMasseMax || 0,
+        ms: +(e.msMasses || 0).toFixed(1), ralenti: +(e.ralenti === undefined ? 1 : e.ralenti).toFixed(3),
+        sol: +_solMasse(e.pos.x / e.sc, e.pos.y / e.sc).toFixed(3),
+        vide: Number.isFinite(e.vide) ? +e.vide.toFixed(3) : null,
+        ouverts: (e.masses || []).map(function (m) { return m.ouverts.length; }),
+        fermes: (e.masses || []).map(function (m) { return m.fermes; }),
+        fonds: (e.masses || []).map(function (m) { return +m.H.toFixed(3); }),
+        rampes: (e.masses || []).map(function (m) { return (m.rampes || []).map(function (r) { return r.bord; }); }),
+        aspect: Object.assign({}, e.masseAspect || {}),
+        chute: !!e.chute, chutes: e.chutes || 0, derniereChute: e.derniereChute || null,
+        montees: e.montees || 0, derniereMontee: e.derniereMontee || null,
+        fronts: e.frontsMasse || 0,
+        bornes: (e.masses || []).map(function (m) { return !!m.borne; }), pieds: e.piedsMasse || 0 },
       plaques: e.plaques ? { n: e.plaques.size, octets: Array.from(e.plaques.values()).reduce(function (s, t) {
         return s + t.octets;
       }, 0), noms: Array.from(e.plaques.values()).map(function (t) { return t.nom; }),
@@ -14226,6 +15390,7 @@
       boites: boites,
       panneaux: Array.from(e.panneaux).map(function (sp) {
         return { visible: sp.visible && !!sp.parent && sp.parent.visible, x: sp.position.x, z: sp.position.z,
+          y: +sp.position.y.toFixed(3), haloY: sp.userData.halo ? +sp.userData.halo.position.y.toFixed(3) : null,
           nom: sp.userData.poi.nom, jonction: !!sp.userData.poi.jonction, ecran: _ecran(sp.position),
           dansVolume: !!sp.userData.poi.anneau, depthTest: sp.material.depthTest, ordre: sp.renderOrder,
           genre: sp.userData.poi.genre, danger: !!sp.userData.poi.danger, favori: !!sp.userData.poi.favori,
@@ -14343,9 +15508,9 @@
 
   // Profil de l'itinéraire construit (checkup : par-dessus les volumes) : un quadrilatère par entrée
   // [x, z, yMin, yMax, clair] (m, centre ; clair = bande du ruban, sinon liseré), chevrons [x, z, y], étapes
-  // [x, z, y], et la plus haute bande des rubans des tracés (rubansYMax).
+  // [x, z, y], la plus haute bande des rubans des tracés (rubansYMax) et leurs quadrilatères [x, z, yMin, yMax].
   function _profilIti() {
-    const e = _e, cols = _couleursIti(), rouge = Math.round(cols.ruban.r * 255), profil = [], rubansY = [];
+    const e = _e, cols = _couleursIti(), rouge = Math.round(cols.ruban.r * 255), profil = [], rubansY = [], rubansQ = [];
     const quads = function (m, f) {
       const p = m.geometry.attributes.position.array, c = m.geometry.attributes.color.array;
       for (let q = 0; q + 17 < p.length; q += 18) {
@@ -14364,7 +15529,7 @@
         if (m.userData.famille === "itineraire") {
           quads(m, function (x, z, y0, y1, clair) { profil.push([x, z, y0, y1, clair ? 1 : 0]); });
         } else if (m.userData.famille === "rubans") {
-          quads(m, function (x, z, y0, y1) { rubansY.push(y1); });
+          quads(m, function (x, z, y0, y1) { rubansY.push(y1); rubansQ.push([x, z, y0, y1]); });
         }
       });
     });
@@ -14378,7 +15543,7 @@
       });
     }
     return { profil: profil, chevronsY: chevronsY, etapesY: etapesY,
-      rubansYMax: rubansY.length ? Math.max.apply(null, rubansY) : null };
+      rubansYMax: rubansY.length ? Math.max.apply(null, rubansY) : null, rubans: rubansQ };
   }
 
   // Part de la largeur de l'écran couverte par un panneau visible (checkup : pas plus que PRES.ecran de près).

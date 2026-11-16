@@ -48,12 +48,13 @@ const KIOSK = "b".repeat(64);         // hash d'instance
   const code = extraire("isUnlocked");
   t("isUnlocked est extractible", !!code);
 
-  const jouer = (unlock, kiosque) => {
+  const jouer = (unlock, kiosque, enMemoire) => {
     const store = { u: unlock, k: kiosque };
     const sb = {
       ACCES_LIBRE: "libre-v1", HASH_HERITE: VRAI,
       LS_UNLOCK: "u", LS_UNLOCK_KIOSQUE: "k",
       RE_HASH: /^[0-9a-f]{64}$/,
+      _ouvertEnMemoire: !!enMemoire,   // stockage refusé : entrée gardée pour la session (unlockGate.js)
       localStorage: { getItem: function (k) { return store[k]; }, setItem: function (k, v) { store[k] = v; } }
     };
     vm.runInNewContext(code + "; resultat = isUnlocked();", sb, { filename: "gate.isUnlocked.js" });
@@ -69,6 +70,9 @@ const KIOSK = "b".repeat(64);         // hash d'instance
     t("🩸 ancien code face à une AUTRE mémoire d'instance : fermé", jouer(VRAI, KIOSK).ouvert === false);
     t("🔑 le mot de passe d'instance ouvre, s'il est mémorisé", jouer(KIOSK, KIOSK).ouvert === true);
     t("un hash d'instance NON mémorisé n'ouvre pas", jouer(KIOSK, null).ouvert === false);
+    const memoire = jouer(null, null, true);
+    t("stockage refusé, entrée gardée en mémoire de session : ouvert, sans rien écrire",
+      memoire.ouvert === true && memoire.u === null);
     t("🩸 NAVIGATEUR VIERGE : deux `null` ne s'égalent PAS (sinon l'app est grande ouverte)",
       jouer(null, null).ouvert === false);
     t("🩸 une chaîne vide non plus", jouer("", "").ouvert === false);

@@ -948,7 +948,7 @@
   function _renderAdvanced() {
     const d = _compter();
     const roadsByType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
-    const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement", "inaccessible"]);
+    const zonesByType = _trierParType(d.zones, ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"]);
     const structuresByType = _trierParType(d.structures || [], STRUCT_INTEGRES);
     const tagsList = _listerTagsPoints(d.points);
 
@@ -1008,6 +1008,7 @@
 
         ${row("adv_zones", window.ktaIcone("m-zone") + " " + t("export.adv.zones"), d.zones.length, true)}
         ${rowSub("adv_zones_eau",          _lp("zones", "eau", t("export.adv.zonesEau")),           zonesByType.eau.length,          true)}
+        ${rowSub("adv_zones_masse-sol",    _lp("zones", "masse-sol", t("export.adv.zonesMasseSol")),    zonesByType["masse-sol"].length, true)}
         ${rowSub("adv_zones_remblais",     _lp("zones", "remblais", t("export.adv.zonesRemblais")),      zonesByType.remblais.length,     true)}
         ${rowSub("adv_zones_effondrement", _lp("zones", "effondrement", t("export.adv.zonesEffondrement")),  zonesByType.effondrement.length, true)}
         ${rowSub("adv_zones_inaccessible", _lp("zones", "inaccessible", t("export.adv.zonesInaccessible")),  zonesByType.inaccessible.length, true)}
@@ -1096,7 +1097,7 @@
     }
 
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
-    syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
+    syncParent("adv_zones", ["adv_zones_eau", "adv_zones_masse-sol", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
     syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur", "adv_structures_mur-ligne", "adv_structures_front-1", "adv_structures_front-2", "adv_structures_arc"]);
 
     // Points ↔ tags : la liste varie selon les points
@@ -1140,7 +1141,7 @@
     // ⚠️ Les roads "itinerary" (calculées par Pathfinder) ne sont pas exportables.
     const roadsExportables = (d.roads || []).filter(function(r) { return r.type !== "itinerary"; });
     const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
-    const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement", "inaccessible"]);
+    const zoneCountByType = _trierParType(d.zones || [],    ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"]);
     const structureCountByType = _trierParType(d.structures || [], STRUCT_INTEGRES);
 
     function row(id, label, count, defaultChecked) {
@@ -1192,6 +1193,7 @@
 
     const zonesTypesHtml =
       rowTypeSub("conv_zones_eau",          t("export.conv.zonesEau"),          zoneCountByType.eau.length,          true) +
+      rowTypeSub("conv_zones_masse-sol",    t("export.conv.zonesMasseSol"),    zoneCountByType["masse-sol"].length, true) +
       rowTypeSub("conv_zones_remblais",     t("export.conv.zonesRemblais"),     zoneCountByType.remblais.length,     true) +
       rowTypeSub("conv_zones_effondrement", t("export.conv.zonesEffondrement"), zoneCountByType.effondrement.length, true) +
       rowTypeSub("conv_zones_inaccessible", t("export.conv.zonesInaccessible"), zoneCountByType.inaccessible.length, true);
@@ -1363,7 +1365,7 @@
     }
 
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
-    syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
+    syncParent("conv_zones", ["conv_zones_eau", "conv_zones_masse-sol", "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
     syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_mur-ligne", "conv_structures_front-1", "conv_structures_front-2", "conv_structures_arc"]);
   }
 
@@ -2084,7 +2086,7 @@
     const roadTypes = ["principal", "secondaire", "chemin"].filter(function(t) {
       return document.getElementById("adv_roads_" + t)?.checked;
     });
-    const zoneTypes = ["eau", "remblais", "effondrement", "inaccessible"].filter(function(t) {
+    const zoneTypes = ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"].filter(function(t) {
       return document.getElementById("adv_zones_" + t)?.checked;
     });
     const structureTypes = STRUCT_INTEGRES.filter(function(t) {
@@ -2304,6 +2306,7 @@
 
     const zoneTypesActifs = {
       eau:          document.getElementById("conv_zones_eau")?.checked          ?? true,
+      "masse-sol":  document.getElementById("conv_zones_masse-sol")?.checked    ?? true,
       remblais:     document.getElementById("conv_zones_remblais")?.checked     ?? true,
       effondrement: document.getElementById("conv_zones_effondrement")?.checked ?? true,
       inaccessible: document.getElementById("conv_zones_inaccessible")?.checked ?? true
@@ -2389,8 +2392,8 @@
       }
 
       if (filteredZones.length) {
-        const byType = _trierParType(filteredZones, ["eau", "remblais", "effondrement", "inaccessible"]);
-        ["eau", "remblais", "effondrement", "inaccessible"].forEach(function(t) {
+        const byType = _trierParType(filteredZones, ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"]);
+        ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"].forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "zones_" + t + ".json", payload: { data: [], zones: byType[t] } });
           }
@@ -2986,12 +2989,13 @@
     const allZones = sessionZones.concat(embeddedZones);
     const zonesByType = {
       eau:          allZones.filter(function(z) { return z.type === "eau";          }).length,
+      "masse-sol":  allZones.filter(function(z) { return z.type === "masse-sol";    }).length,
       remblais:     allZones.filter(function(z) { return z.type === "remblais";     }).length,
       effondrement: allZones.filter(function(z) { return z.type === "effondrement"; }).length,
       inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length,
       // Zone jonction : comptée avec les tracés jonction (même case « Jonctions », kmzExport.js).
       pente:        allZones.filter(function(z) { return z.type === "pente";        }).length,
-      autres:       _kmzNbAutres(allZones, ["eau", "remblais", "effondrement", "inaccessible", "pente"])
+      autres:       _kmzNbAutres(allZones, ["eau", "masse-sol", "remblais", "effondrement", "inaccessible", "pente"])
     };
 
     const sessionStructures = (window.getStructures ? window.getStructures() : []) || [];
@@ -3254,7 +3258,8 @@
     // 🩸 Les types hors intégrés comptent : un plan dont les structures sont toutes personnalisées aurait un
     // total à 0, donc une case grisée, et ses structures ne partiraient pas.
     const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin + (rByT.autres || 0);
-    const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible + (zByT.autres || 0);
+    const zonesTotal = zByT.eau + zByT["masse-sol"] + zByT.remblais + zByT.effondrement + zByT.inaccessible +
+      (zByT.autres || 0);
     const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"] + (sByT["mur-ligne"] || 0)
                           + (sByT["front-1"] || 0) + (sByT["front-2"] || 0) + (sByT["arc"] || 0) + (sByT.autres || 0);
 
@@ -3297,6 +3302,7 @@
 
         row("kmz_inc_zones", window.ktaIcone("m-zone") + " " + t("export.kmz.zones"), zonesTotal, true) +
         rowSub("kmz_inc_zones_eau",          _lp("zones", "eau", t("export.kmz.zonesEau")),          zByT.eau,          true) +
+        rowSub("kmz_inc_zones_masse-sol",    _lp("zones", "masse-sol", t("export.kmz.zonesMasseSol")),   zByT["masse-sol"], true) +
         rowSub("kmz_inc_zones_remblais",     _lp("zones", "remblais", t("export.kmz.zonesRemblais")),     zByT.remblais,     true) +
         rowSub("kmz_inc_zones_effondrement", _lp("zones", "effondrement", t("export.kmz.zonesEffondrement")), zByT.effondrement, true) +
         rowSub("kmz_inc_zones_inaccessible", _lp("zones", "inaccessible", t("export.kmz.zonesInaccessible")), zByT.inaccessible, true) +
@@ -3396,7 +3402,7 @@
     // Parent ↔ enfants, différé : les enfants sont dans le même HTML.
     setTimeout(function() {
       _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
-      _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
+      _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_masse-sol", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
       _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur", "kmz_inc_structures_mur-ligne", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2", "kmz_inc_structures_arc"]);
       // Points : IDs kmz_inc_points_tag_<slug>
       const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
@@ -3909,7 +3915,7 @@
     const zonesParent = document.getElementById("kmz_inc_zones");
     if (zonesParent && zonesParent.checked) {
       zoneTypesSet = new Set();
-      ["eau", "remblais", "effondrement", "inaccessible"].forEach(function(t) {
+      ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"].forEach(function(t) {
         const cb = document.getElementById("kmz_inc_zones_" + t);
         if (cb && cb.checked) zoneTypesSet.add(t);
       });
@@ -3940,7 +3946,7 @@
       });
     }
     _ajouterTypesHorsIntegres(roadTypesSet, allRoads, ["principal", "secondaire", "chemin", "jonction", "itinerary"]);
-    _ajouterTypesHorsIntegres(zoneTypesSet, allZones, ["eau", "remblais", "effondrement", "inaccessible"]);
+    _ajouterTypesHorsIntegres(zoneTypesSet, allZones, ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"]);
     _ajouterTypesHorsIntegres(structureTypesSet, allStructures, STRUCT_INTEGRES);
 
     return {

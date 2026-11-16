@@ -215,6 +215,7 @@ Para salir **ya**, sin pensar: herida, batería baja, fallo de luz. Pulsa **🚨
 
 - Una vez trazada la ruta, el **banner de guiado** te dice qué hacer en cada cruce; en la salida de emergencia no se puede cerrar, aunque el guiado esté desactivado. Si te desvías, su botón pasa a **Salida más cercana desde aquí** (ver «🪧 Guiado» en el itinerario).
 - Una salida marcada **Distancia en línea recta — camino no verificado** (tarjeta con línea discontinua) no tiene camino calculado: se coloca bajo **No confirmadas**, y si ninguna salida tiene camino verificado, un banner rojo lo dice primero. Cuidado: puede ser inaccesible (muros, planta aislada).
+- Una salida cuyo camino pasa por una zona **colmatada** o **derrumbada** se coloca después de las que la evitan, y la ventana lo indica (ningún otro camino la evita).
 
 **Desde dónde parte el cálculo**: desde tu posición actual, en cuanto el seguimiento está activo o te has situado una vez desde que abriste el mapa («📍 Estoy aquí», recolocación, portal, sesión restaurada); la ventana indica cuál. Si **nunca** te has situado, la app pregunta **¿Dónde estás?**: toca tu posición en el mapa. Ese toque también recoloca el seguimiento, para que la ruta y la visualización XL partan del mismo lugar.
 
@@ -320,7 +321,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 | **Medición** | 📐 | Medir una distancia o una superficie, **calcular la distancia total de los trazados** y el **⛏️ volumen explotado** de un sector, borrar |
 | **Edición de puntos** | ✏️ | Añadir tus propios puntos *(clic directo: interruptor ON/OFF)* |
 | **Trazados** | 🛣️ | Trazar galerías principales, secundarias, caminos, uniones |
-| **Zonas** | ⬛ | Trazar zonas de escombros, derrumbe, agua o inaccesibles |
+| **Zonas** | ⬛ | Trazar zonas colmatadas, de relleno parcial, derrumbe, agua o inaccesibles |
 | **Estructuras** | 🏛️ | Pilares, muros y frentes de explotación |
 
 **Cómo funciona:**
@@ -528,8 +529,9 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **Lo que te para**
 
 - Con la anchura de un cuerpo, chocas contra pilares, muros y frentes (personalizados incluidos) en modo Estructuras, contra las paredes en modo Galería, contra ambos en modo Mixto (en una cámara, solo las estructuras).
-- En las tres representaciones, un **relleno**, un **derrumbe** o una zona **⛔ inaccesible** también te para, en una galería como en una cámara.
+- En las tres representaciones, un **Colmatado** o un **derrumbe** también te para, salvo a lo largo de un trazado que lo cruza: ahí la galería está excavada dentro y se pasa. Una zona **⛔ inaccesible** te para siempre, incluso sobre un trazado.
 - Si sales desde dentro de una de ellas, vuelves al borde y puedes seguir.
+- Un **relleno parcial** no te para de por sí: subes encima por su pendiente. La vista se agacha si quedan menos de 1,8 m bajo el techo, te arrastras por debajo de 1 m, y el paso se detiene donde quedan menos de 0,5 m (siempre puedes dar media vuelta).
 - Es solo en 3D: el mapa, la ruta, el guiado y el tracker no los tienen en cuenta (la ruta ya evita las zonas ⛔).
 
 #### 🧭 Seguimiento o 🕹️ Libre
@@ -586,7 +588,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **🏛️ Estructuras**
 
 - Pilares, muros y frentes de explotación levantados a la altura de galería del nivel (⚙️ Ajustes › 📉 Niveles, o ⛏️ Volumen explotado en un plano de un solo nivel; si no 2 m).
-- Rellenos y derrumbes en volumen (60 % de esa altura), agua, zonas ⛔ inaccesibles.
+- Zonas colmatadas hasta el techo, derrumbes en volumen (60 % de esa altura), excavados a lo largo de los trazados que los cruzan; agua, zonas ⛔ inaccesibles, rellenos parciales a su parte rellena.
 - Trazados e itinerario en el suelo.
 - Puntos en carteles, siempre visibles (un punto levantado dentro de un pilar se muestra contra su cara), más pequeños y pálidos a lo lejos, y difuminados muy cerca de ti para no tapar la vista.
 
@@ -595,7 +597,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Los trazados se convierten en galerías, sin las estructuras: principal 2,5 m de ancho, secundario 2 m, camino 1,7 m, trazado personalizado 2 m.
 - Cruces abiertos, codos, fondos de saco cerrados, una franja en el suelo del color del trazado.
 - Paredes de sillería (con 🧱 Texturas; desactivado: del color de la leyenda de su trazado).
-- Las zonas se detienen en las paredes: el relleno y el derrumbe tapan la galería, una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
+- Las zonas se detienen en las paredes: donde el tubo cruza un colmatado o un derrumbe, sus paredes son de relleno o de escombros y se pasa; una zona ⛔ inaccesible tiende una cortina roja rayada de lado a lado.
 - Solo se muestran los puntos a menos de 10 m de un trazado (salas incluidas), contra la pared.
 
 **🧱 Texturas**
@@ -604,9 +606,10 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 - Pilares y frentes de cantera: roca bruta (la masa caliza dejada en su sitio: relieve, matices, finos estratos, grietas y marcas de herramienta, sin juntas); la 2.ª masa es la misma roca, en un tono apenas más cálido; para distinguirla bien de la 1.ª, desactiva las texturas. Una estructura personalizada lleva la roca.
 - Muros: bloque de hormigón, a su tamaño real (un bloque mide 50 cm, sea cual sea el muro). Un muro trazado en línea es de sillería, del mismo tono que las paredes de las galerías.
 - Arcos de sostenimiento: piedra de sillería del mismo tono que las paredes de las galerías, en todas partes — dovelas de piedra labrada, pilares en la piedra de las paredes y, sobre el arco, una mampostería de mampuestos más rústica.
-- **Relleno**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
+- **Colmatado**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
 - **Derrumbe** (hundimiento): un amontonamiento de grandes bloques rotos y agrietados, con poca tierra.
-- Relleno y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
+- **Relleno parcial**: se camina sobre un suelo apisonado un poco más oscuro que el de la galería (parte superior y pendientes); sus bordes rectos muestran el corte del relleno, en tierra y piedras. Un suelo rebajado toma la piedra del suelo.
+- Colmatado y derrumbe están a su tamaño real y no cambian de forma. Una zona personalizada conserva su color.
 - Desactivado: cada estructura y cada zona recupera el color de la leyenda, el tuyo incluido; las paredes de las galerías toman el color de su trazado (en un cruce, el del trazado más ancho); suelo y techo quedan negros (el 🗺️ plano en el suelo sigue visible encima).
 - La madera, la piedra y el relleno de los accesos (más abajo) también siguen este ajuste.
 
@@ -692,7 +695,7 @@ Dónde y cómo se dibuja un paso:
 - **Mi última posición** o **Recolocarme**: la 3D te lleva donde queda el tracker (posición y nivel).
 - **📍 Estoy aquí** en la ficha de un punto recoloca el tracker en el mapa, pero la 3D se queda donde estás. En seguimiento, pasa entonces a **libre** (un mensaje lo indica): el botón del seguimiento la devuelve al tracker.
 - **Ruta**: dibujada en el suelo como una **franja azul bordeada de oscuro**, con **chevrones** que indican el sentido, con un **mástil** en cada etapa y un cartel **🏁** a la llegada, nivel por nivel.
-- Donde cruza un **relleno** o un **derrumbe**, sube por su cara y pasa **por encima** (chevrones y etapas también), sin que cambie la ruta del mapa.
+- Donde cruza un **Colmatado** o un **derrumbe**, se queda en el suelo, en la galería excavada a lo largo del trazado.
 - La vista la vuelve a dibujar en cuanto cambia (trazada desde 🚨 durante la vista 3D incluida).
 - **Guiado**: una **banda** bajo la fila de botones da la misma indicación que en el mapa (« En ~20 m, gira a la derecha »). **Chevrones dorados** en el suelo muestran el camino hasta la próxima maniobra.
 - En **seguimiento**, es la indicación de tu tracker (una vista previa desde el tracker si el guiado del mapa está desactivado). En **libre**, es una **vista previa** calculada desde donde estás en 3D (el guiado real sigue al tracker); si te apartas del trayecto en libre, el itinerario se recalcula solo desde tu lugar en 3D, sin mover el tracker, y en seguimiento la banda ofrece, como en el mapa, **Recalcular desde aquí**, **Estoy aquí** o **Ignorar**. Sin anuncios de voz.
@@ -734,7 +737,7 @@ Dónde y cómo se dibuja un paso:
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
 - **📐 Medición**: la distancia (y la superficie) se muestra en una **franja abajo de la vista**, actualizada en cada punto, como en el mapa; la longitud de cada segmento y el ángulo en cada punto también se muestran en la 3D, legibles.
-- **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa (con **Todos los niveles** marcado, 📏 cuenta todo el plano, pero el suelo de la 3D solo muestra su nivel: la ventana lo indica); **❌ Borrar el resaltado** lo borra de ambas. ⛏️ usa la superficie ♦️ que trazaste en la 3D.
+- **📏 Distancia total** y **⛏️ Volumen explotado** también están en 📐: su ventana se abre sobre la vista y cuenta **el nivel de la 3D**. Los tramos contados por 📏 se resaltan en magenta en el suelo, como en el mapa (con **Todos los niveles** marcado, 📏 cuenta todo el plano, pero el suelo de la 3D solo muestra su nivel: la ventana lo indica); **❌ Borrar el resaltado** lo borra de ambas. ⛏️ dibuja su sector en la vista, en el nivel de la 3D.
 - **🗺️ Plano en el suelo**: la imagen del plano bajo la escena, donde miras, para dibujar sobre el levantamiento, en cada nivel: la imagen propia del nivel si el plano la tiene; si no, el plano base.
 - En la representación 🛣️ Galería, elegir una herramienta de estructura pasa a **Mixto** (un mensaje lo dice), para ver lo que dibujas.
 - **Volver a tocar la herramienta, Escape, salir de la vista de edición o cerrar la 3D** apagan la herramienta. Un objeto empezado se termina como en el mapa: se conserva si tiene bastantes puntos, si no se abandona.
@@ -832,6 +835,8 @@ La sección plegable **🚫 Preferencias de evitación (opcional)** de la ventan
 Si no existe ningún otro camino, el itinerario pasa igualmente y lo indica: **⚠️ Imposible evitar: …**. Tus preferencias se recuerdan por mapa; **🗑️ Restablecer todas las evitaciones** las borra.
 
 Las **zonas inaccesibles ⛔**, en cambio, **nunca se atraviesan**, salvo si desmarcas **Respetar las zonas inaccesibles y los muros (línea)** (útil en un levantamiento incompleto). Los **muros (línea)** 🟦 siguen la misma regla. Estoy perdido y el Modo Rescate las respetan siempre.
+
+Las zonas **Colmatado** y **Derrumbe** nunca bloquean: el itinerario **las evita si existe otro camino**, aunque sea mucho más largo. Sin otro camino, pasa de todos modos y el resultado lo indica (**Pasa por una zona Colmatado a lo largo de 12 m: ningún otro camino la evita**). Sin casilla que marcar: siempre es así, salida de emergencia e itinerario hacia otro plano incluidos. Una galería trazada a propósito a través de un Colmatado sigue siendo transitable; «Revisar el mapa» la señala para que la confirmes.
 
 ---
 
@@ -984,13 +989,30 @@ En el grupo **⬛ Zonas**, superficies cerradas para anotar el mapa:
 
 | Tipo | Aspecto | Efecto en el itinerario |
 |---|---|---|
-| ⬛ **Escombros** | gris oscuro | ninguno |
-| 🟥 **Derrumbe** | rojo | ninguno |
+| ⬛ **Colmatado** | gris oscuro | **evitado** si existe otro camino; si no, atravesado, y el resultado lo indica |
+| ⬛ **Relleno parcial** | arena con granos, contorno discontinuo | ninguno por ahora |
+| 🟥 **Derrumbe** | rojo | como el Colmatado |
 | 🟦 **Agua** | azul | ninguno |
 | ⛔ **Inaccesible** | rayado rojo oscuro / negro | **bloquea** el paso |
 | 🪜 **Zona de unión** (mapa multinivel) | color del trazado de unión, velo ligero | ninguno: el itinerario pasa por el trazado de unión que la cruza (ver 🏗️ Modo multinivel) |
 
-Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego los escombros, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
+Pulsa un tipo, coloca al menos 3 puntos (en punteado) y cierra la zona: **vuelve a tocar el primer punto** (un círculo lo rodea desde el 3.er punto) o pulsa **✅ Cerrar la zona en curso**. La herramienta sigue encendida: toca directamente la zona siguiente y vuelve a pulsar el tipo para apagarla. Sea cual sea el orden del trazado, el agua se muestra debajo, luego el relleno parcial, las zonas colmatadas, los derrumbes, y lo inaccesible encima de las demás zonas; las estructuras (pilares, muros, frentes de cantera) quedan siempre por encima de las zonas.
+
+### ⬛ Relleno parcial — parte rellena
+
+Un **relleno parcial** son escombros que solo llenan una parte de la altura de la galería, sobre los que se camina. **Colmatado** sigue siendo la zona rellena hasta el techo.
+
+- En la burbuja de la zona, elige la **parte rellena**: ¼, ½, ¾ u **Otra** (un valor como 0,9) y luego **Aplicar la parte rellena**. La burbuja muestra también el equivalente en metros, según la altura del nivel (ajustes del plano).
+- Sin valor, un relleno parcial cuenta como ½.
+- Una parte **negativa** (−¼, −½, −¾ o un valor como −0,4) baja el suelo: la burbuja indica entonces cuánto baja. En el mapa, sus granos son claros, hundidos, sin guijarros. Por debajo de −1, el valor se rechaza.
+- **Tipo**: en la burbuja, **Relleno** (por defecto) o **Masa sin explotar** (roca dejada en su sitio, nunca extraída). La elección se aplica al instante y se deshace con ⏪. Solo existe para una parte positiva: desaparece al marcar una parte negativa. En el mapa, una masa sin explotar conserva la misma arena, con un aparejo de bloques en lugar de granos; la leyenda la añade en cuanto el plano tiene una, y en las exportaciones de imagen es algo más densa. La Hoja de cálculo la cambia en su columna **Tipo** (solo parte positiva: vacía y bloqueada si no), aplicada con el resto de la tabla. Sigue a la zona en las exportaciones **KMZ** y **GeoJSON** (propiedad `nature`), y la importación SIG la relee.
+- **Pendientes (rampas)**: sin pendiente, el relleno está a altura completa en todas partes y sus bordes son rectos. Para indicar por dónde se sube, pulsa **Colocar una pendiente** en la burbuja, toca el **borde bajo** de la zona (desde el que se sube) y luego el punto donde la pendiente llega arriba: más allá, es plano (**Sin fin**: la pendiente llega al borde opuesto). La burbuja permite después **mover el fin** o quitarlo. Los demás bordes son frentes rectos: en 3D se choca contra ellos al subir, y se cae al pie al bajar (se vuelve a salir por una pendiente). Puedes colocar varias (se sube entonces por cualquiera); cada una se quita con su cruz en la burbuja. En el mapa, unos galones muestran el sentido de la subida; la leyenda los explica. Con una parte negativa, la pendiente baja.
+- En el mapa, cuanto más alta es la parte, más granos hay.
+- Con 1 o más, la galería está llena: la burbuja propone pasar la zona a **Colmatado**.
+- La **Hoja de cálculo** tiene una columna **comble**, con las mismas opciones.
+- El valor sigue a la zona en las exportaciones **KMZ** y **GeoJSON**. En la **importación SIG**, «ms», «masse au sol» y «remblai partiel» dan un relleno parcial; una columna de altura opcional da su parte (0,5 o 50 %). Un polígono cuyo tipo no se reconoce pasa a relleno parcial, y la pantalla de correspondencia dice cuántos.
+- En la **vista 3D**, se camina encima: su parte superior es plana a la parte rellena, y se sube a ella por una pendiente. De pie si quedan 1,8 m o más bajo el techo, agachado entre 1 y 1,8 m, arrastrándose entre 0,5 y 1 m; por debajo de 0,5 m ya no se pasa (siempre puedes dar media vuelta). La cinta del itinerario, los paneles y el minimapa siguen. Un suelo rebajado baja de la misma manera. Un borde recto (sin pendiente) se cruza en cualquier sitio: se sube, izado encima, y se baja cayendo, salvo donde quedarían menos de 0,5 m bajo el techo. En una pendiente empinada, la marcha se ralentiza (hasta la mitad de velocidad).
+- **Itinerario**: la longitud recorrida dentro de un relleno parcial cuenta según el espacio que queda bajo el techo, punto por punto (incluidas las pendientes): de pie (1,8 m o más) normalmente, agachado (1 a 1,8 m) como 1,5 veces la longitud, arrastrándose (0,5 a 1 m) como 3 veces; por debajo de 0,5 m, el paso queda cortado. El itinerario toma así otro camino cuando es más rápido. La **distancia mostrada sigue siendo la real**; el **tiempo estimado** de la ventana Itinerario y el **tiempo restante del guiado** cuentan la ralentización, y la ventana dice «Pasa por una masa en el suelo: agachado / arrastrándose durante ~X m». La salida de emergencia propone la salida más **rápida** de alcanzar, no necesariamente la más cercana. Un suelo rebajado no cambia nada. La salida de emergencia sigue la misma regla; en una **evacuación en camilla** (modo Rescate), un relleno parcial que deja menos de 1,8 m se evita en cuanto existe otro camino (nunca bloquea, salvo por debajo de 0,5 m).
 
 ### ⛔ Zona «Inaccesible» — bloquea el itinerario
 
@@ -1048,7 +1070,7 @@ Las uniones 🪜 se borran como los demás trazados.
 Un **trazado**, una **zona**, una **estructura** o una **medida 📐** ya dibujados se corrigen sin volver a dibujarlos, en el mapa, con las herramientas de dibujo apagadas (una medida 📐 también con la herramienta 📐 encendida):
 
 - **Mover un punto**: mantén pulsado (medio segundo) un punto de la forma; aparece un círculo dorado: arrástralo, la forma lo sigue en punteado, y suelta.
-- **Añadir un punto**: mantén pulsado el centro de un lado; nace un punto ahí, arrástralo enseguida.
+- **Añadir un punto**: mantén pulsado cualquier punto de un lado, incluso lejos de su centro en una zona grande; nace un punto ahí, arrástralo enseguida.
 - **Eliminar un punto**: mantén pulsado un punto sin moverlo: aparecen **＋** y **🗑️** encima (y **✂️** en un punto interior de un trazado); toca **🗑️**. Una línea conserva al menos 2 puntos, una superficie 3: por debajo, un mensaje lo indica y solo se ofrece **＋**.
 - **Insertar puntos seguidos**: la misma pulsación larga, y luego **＋**. Aparece una banda «＋ Inserción · N punto(s) · ✓ Terminar»: cada toque en el mapa añade un punto entre el último colocado y el punto siguiente de la forma, que se redibuja enseguida (en una forma cerrada, tras el último punto viene el primero; al final de una línea, esta se prolonga). Mientras tanto, ningún toque abre una ventana ni una herramienta. **✓ Terminar**, **Esc** o un toque en el punto siguiente detienen la inserción; **Ctrl+Z** (o ⏪) quita un punto cada vez, durante y después.
 - **✂️ Cortar un trazado**: la misma pulsación larga en un punto de un trazado, y luego **✂️**. El trazado se convierte en dos: el primero termina en ese punto, el segundo empieza ahí (los dos comparten el punto, el itinerario sigue pasando). Conservan el tipo, el nivel y la nota. No en un extremo (cada trozo conserva al menos 2 puntos), ni en una unión entre niveles; para cortar en el centro de un lado, añade antes un punto ahí. Un solo ⏪ vuelve a unir el trazado.
@@ -1169,15 +1191,18 @@ En el grupo **📐 Medición**, **📏 Distancia total** suma la longitud de los
 
 ### ⛏️ Volumen explotado (extracción)
 
-En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se extrajo de un sector. Traza primero el sector con **♦️ Superficie** siguiendo los frentes de explotación y pulsa ⛏️ (sin superficie, un mensaje te lo recuerda). La ventana da:
+En el grupo **📐 Medición**, **⛏️ Volumen explotado** calcula lo que se extrajo de un sector. El volumen tiene **su propio sector**, uno por plano y por nivel, guardado en este dispositivo y recuperado al volver a abrirlo: la primera vez, la ventana propone **Dibujar el sector** (la ventana se oculta, toca los vértices siguiendo los frentes de explotación como con ♦️ Superficie y luego **Validar**) o, si tienes una medición ♦️, **Usar la medición Superficie** (una copia: cambiar la medición después no cambia el volumen). **Volver a dibujar el sector** lo sustituye. Mientras la ventana está abierta, el sector se dibuja con puntos azules en el mapa (nunca en las exportaciones). La ventana da:
 
 - la **superficie del sector**;
 - los **pilares descontados**: superficie y número. Cuentan los pilares, los muros y las estructuras personalizadas cerradas, las tuyas y las de las capas de datos (incluso ocultas), recortados en el borde del sector. Los frentes de explotación y los muros en línea no cuentan;
 - la **superficie explotada** (sector menos pilares) y la **tasa de extracción** (explotada ÷ sector);
 - el **volumen explotado**: superficie explotada × **altura media de galería**, que se escribe en la ventana (al principio la del nivel, si no 2 m; recalculada al instante). En un plano de un solo nivel, se guarda para el plano; en un plano con varios niveles, solo sirve para el cálculo: la altura de cada nivel se ajusta en ⚙️ Ajustes › Niveles: profundidad y altura, y una frase lo recuerda bajo el campo;
-- los **escombros** (zonas «Escombros» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos escombros).
+- la superficie **colmatada** (zonas «Colmatado» dentro del vacío del sector) en m² y m³, y el **vacío actual** (explotado menos colmatado);
+- si el sector los tiene, el **relleno** (relleno parcial), la **masa sin explotar** y el **suelo rebajado** (superficie y volumen), cada uno en su línea. Un relleno parcial cuenta según su parte de la altura (¼, ½, ¾…), como si sus bordes fueran verticales (el talud se desprecia, la ventana lo recuerda). Un **relleno** se quita del vacío pero sigue en el volumen explotado (la roca sí se extrajo). Una **masa sin explotar** se quita del volumen explotado **y** del vacío. Un **suelo rebajado** se añade a ambos. Donde una masa se superpone a un Colmatado, solo cuenta el Colmatado; donde una masa sin explotar se superpone a un relleno, prevalece. Las superficies (sector, explotada, tasa) no cambian.
 
-En un plano de varios niveles solo cuenta el **nivel activo** (en la 🧊 Vista 3D: el de la 3D), y la ventana lo indica. El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
+Bajo la tabla, dos bloques desplegables: la **Estimación de relleno** (coste del material elegido — hormigón, lechada o relleno inerte — con las pérdidas, sondeos y duración de la intervención, coste total; un orden de magnitud, no un presupuesto) y **Por diversión** (hormigoneras, piscinas olímpicas, masa, CO₂, duración); tus precios y ajustes se quedan en este dispositivo, **Valores por defecto** los restablece.
+
+La ventana indica siempre sobre qué se calcula («todo el plano» o los niveles). En un plano de varios niveles, marca los niveles que cuentan (o **Todos**): cada uno cuenta con **su** sector y **su** altura, la ventana da el total y un **detalle por nivel** desplegable; un nivel marcado sin sector lo indica y propone **Dibujar** o **Usar el sector del nivel X**. Al principio es el nivel mostrado (en la 🧊 Vista 3D: el de la 3D). El plano debe estar **calibrado** (escala en ⚙️ Ajustes): sin escala no se da ninguna cifra. Estas cifras se quedan en pantalla: no se exportan.
 
 ---
 
@@ -1626,6 +1651,8 @@ Por este orden, conservando tus datos:
 
 Estas herramientas no borran **ningún** dato (mapas memorizados, sesiones, fotos, cuaderno, preferencias). Por precaución, **📤 Exportar mi perfil** antes.
 
+**La app vuelve a pedir las condiciones de uso cada vez que se abre**, o muestra «Datos no guardados»: tu navegador se niega a guardar los datos del sitio. En Chrome: candado a la izquierda de la dirección › **Configuración del sitio** › permite **Cookies y datos de sitios** (o Configuración › Configuración de sitios); o libera espacio en el dispositivo. Luego vuelve a abrir la app. Mientras se niegue, la app sigue siendo utilizable, pero no se guarda nada de una apertura a otra.
+
 ### 💥 Reiniciar todo
 
 **⚙️ Configuración → 🔧 Resolución de problemas → 💥 Reiniciar todo** devuelve la app al estado de un primer arranque. **Irreversible**: borra tu lista de mapas y sus archivos, tus sesiones y sus copias, las fotos, el cuaderno y los PDF de historia, tu perfil (rango, logros, avatar, fondo de pantalla), los escenarios del Modo Rescate, tus preferencias, tu PIN, y la propia app (que habrá que volver a descargar).
@@ -1875,7 +1902,7 @@ El 🚑 **socorrista libre** no tiene recorrido ni etapas: añade notas, cada un
 
 Una etapa marcada como **Víctima encontrada** da una posición: la de la etapa, nivel incluido. **📍 Precisar en el mapa** la ajusta. Un **✚ rojo** la marca en el mapa, para todos; el operador la ve en una banda en la cabecera de su vista, y el informe la imprime en primer lugar.
 
-**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del mapa y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado). Antes del cálculo, las **opciones de camilla**: zonas que evitar (agua y escombros marcados por defecto) y, como último recurso, paso por las zonas inaccesibles. Si ningún camino evita esas zonas, la ventana lo indica.
+**🚑 Evacuar** abre la Salida de emergencia desde la víctima: salidas del mapa y accesos de los equipos, ordenados por distancia real («Acceso n.º 3 (Charlie, Delta) — a abrir desde la superficie» si está cerrado). Antes del cálculo, las **opciones de camilla**: zonas que evitar (agua marcada por defecto; Colmatado y derrumbe siempre se evitan si existe otro camino) y, como último recurso, paso por las zonas inaccesibles. Si ningún camino evita esas zonas, la ventana lo indica.
 
 #### 🚒 4. Rescate exterior
 
@@ -2102,7 +2129,7 @@ Si un mapa grande sigue fallando o va lento, abre **⚙️ Ajustes** → **🚀 
   - **👁️ Vista previa en el mapa**: tus datos recalados se dibujan en discontinuo sobre el mapa antes de descargar; la vista previa desaparece al cerrar la herramienta. Luego obtienes archivos `_conv.json`.
   - Desde la pantalla de inicio (ningún mapa abierto), solo están disponibles las resoluciones y las referencias escritas a mano. Los enlaces entre mapas, la georreferenciación y la escala hay que rehacerlos en el mapa nuevo.
 - **🔗 Empalmes por revisar** (mapa abierto): enumera los lugares donde dos trazados de la red no se tocan, hasta 6 m de separación en un mismo nivel, cuando unirlos juntaría dos partes de la red hoy separadas (la más corta por par de partes). Toca una línea: la ventana se pliega, el mapa muestra el lugar (los dos puntos rodeados) y una banda abajo te lleva de uno a otro (**◀ Anterior · 3 / 12 · Siguiente ▶**). **🔗 Empalmar** pega el vértice sobre el otro trazado, que gana ahí un vértice: el cruce es exacto, el itinerario y la vista 3D lo siguen, y **Ctrl+Z** lo deshace. Un trazado de una capa de datos del mapa pasa primero a modificación (misma pregunta que **🔄 Modificar**). **Ignorar** guarda en este mapa una separación voluntaria (un muro, una galería tapiada): no vuelve, salvo si redibujas el lugar; **Volver a mostrar los ignorados (N)** los devuelve todos.
-- **Revisar el mapa** (mapa abierto): enumera los errores de datos que engañan al itinerario y a la salida de emergencia, ordenados por gravedad y luego por control: un **trazado cortado por una zona inaccesible o un muro (línea)** (con la longitud dentro de la zona; «en el borde» cuando solo entra unos centímetros, suele ser un dibujo que rehacer), un **paso entre niveles** (escalera, pozo) **sin empalme validado** en uno de sus niveles, o cuyo empalme ya no toca ninguna galería, un **trazado de unión** que une un nivel consigo mismo o cuyo extremo no toca ninguna galería. Toca una línea: el mapa va al nivel correcto, muestra el lugar (el objeto resaltado, el obstáculo rodeado) y abre la ficha; la banda inferior pasa de uno a otro (**Anterior** · 1 / 4 · **Siguiente**), **Ficha del obstáculo** abre la de la zona o el muro. **Visto, normal** recuerda un caso voluntario (una galería tapiada) en este dispositivo, para este mapa: no vuelve, aunque modifiques el objeto; **Vistos, normales (N)** los enumera, **Restablecer** devuelve uno. Al dibujar, un mensaje también te avisa cuando un trazado que colocas (o una zona inaccesible, un muro) corta una galería.
+- **Revisar el mapa** (mapa abierto): enumera los errores de datos que engañan al itinerario y a la salida de emergencia, ordenados por gravedad y luego por control: un **trazado cortado por una zona inaccesible o un muro (línea)** (con la longitud dentro de la zona; «en el borde» cuando solo entra unos centímetros, suele ser un dibujo que rehacer), un **paso entre niveles** (escalera, pozo) **sin empalme validado** en uno de sus niveles, o cuyo empalme ya no toca ninguna galería, un **trazado de unión** que une un nivel consigo mismo o cuyo extremo no toca ninguna galería. En **Por revisar**, un **trazado que atraviesa una zona colmatada o derrumbada**: no es un error (el itinerario la evita si puede, si no pasa por ella), pero confirma la galería o corrige la zona. Toca una línea: el mapa va al nivel correcto, muestra el lugar (el objeto resaltado, el obstáculo rodeado) y abre la ficha; la banda inferior pasa de uno a otro (**Anterior** · 1 / 4 · **Siguiente**), **Ficha del obstáculo** abre la de la zona o el muro. **Visto, normal** recuerda un caso voluntario (una galería tapiada) en este dispositivo, para este mapa: no vuelve, aunque modifiques el objeto; **Vistos, normales (N)** los enumera, **Restablecer** devuelve uno. Al dibujar, un mensaje también te avisa cuando un trazado que colocas (o una zona inaccesible, un muro) corta una galería.
 - **🧹 Desduplicar los datos**: elimina los vértices idénticos consecutivos de trazados, zonas, estructuras y medidas, invisibles pero que hacen más pesados los archivos. Obtienes un archivo `_dedup.json` y el recuento de lo eliminado; los puntos nunca se tocan.
 
 Si la fuente contiene varios conjuntos de datos, un selector te deja elegir.

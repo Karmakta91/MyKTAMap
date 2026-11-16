@@ -128,6 +128,7 @@
   // légende du plan > type built-in > custom > gris.
   const ZONE_STYLES_DATA_HOME = {
     "eau":          { stroke: "#0066aa", fill: "#3aa9e8" },
+    "masse-sol":    { stroke: "#6b5532", fill: "#c9b48c" },   // aplat : pas de grains sur fond OSM
     "remblais":     { stroke: "#3a3a44", fill: "#5a5a68" },
     "effondrement": { stroke: "#cc0000", fill: "#ff3333" },
     "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" }

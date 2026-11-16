@@ -18749,6 +18749,47 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
   line-height: 1.45;
   margin: 12px 0 0;
 }
+/* Secteur du volume (volumeExploite.js) : niveaux du calcul, état du secteur, actions ; barre du dessin. */
+.kta-volume-niveaux { margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.kta-volume-niveaux-tete {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: var(--kta-texte-2);
+}
+.kta-volume-niv { border: 1px solid var(--kta-bordure); border-radius: 8px; padding: 6px 8px; }
+.kta-volume-niv-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.kta-volume-niv-case { display: inline-flex; align-items: center; gap: 6px; color: var(--kta-texte); }
+.kta-volume-niv-etat { color: var(--kta-texte-3); font-size: 12px; text-align: right; }
+.kta-volume-niv-sans .kta-volume-niv-etat { color: var(--kta-accent-texte); }
+.kta-volume-niv-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; padding-top: 0; border-top: 0; }
+.kta-volume-tous { margin: 0; padding: 0; border: 0; }
+.kta-volume-niv-actions .kta-popup-btn { flex: 1 1 auto; min-height: 36px; font-size: 12px; }
+.kta-volume-detail-titre { font-size: 12px; color: var(--kta-texte-2); margin: 8px 0 2px; }
+.kta-volume-dessin-barre {
+  position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 100001;
+  width: min(440px, calc(100vw - 32px)); background: var(--kta-surface); color: var(--kta-texte);
+  border: 1px solid var(--kta-interaction); border-radius: 10px; padding: 10px 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.kta-volume-dessin-consigne { margin: 0 0 8px; font-size: 13px; line-height: 1.4; }
+.kta-volume-dessin-boutons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0; padding-top: 0; border-top: 0; }
+.kta-volume-dessin-boutons .kta-popup-btn { flex: 1 1 auto; min-height: 40px; }
+/* Estimation de comblement et « pour le fun » (volumeExploite.js > _estimationHtml) : blocs repliables,
+   champs en grille. */
+.kta-volume-bloc { margin-top: 14px; border: 1px solid var(--kta-bordure); border-radius: 8px; padding: 8px 10px; }
+.kta-volume-bloc > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--kta-accent-texte); }
+.kta-volume-bloc[open] > summary { margin-bottom: 8px; }
+.kta-volume-champs { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 8px 0; }
+.kta-volume-champ {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 12px; color: var(--kta-texte-2);
+}
+.kta-volume-champ[hidden] { display: none; }
+.kta-volume-champ input, .kta-volume-champ select {
+  width: 120px; max-width: 55%; padding: 5px 8px; background: var(--kta-surface-2);
+  border: 1px solid var(--kta-bordure); border-radius: 6px; color: var(--kta-texte); font-size: 13px;
+}
+.kta-volume-champ input { text-align: right; }
+.kta-volume-bloc .kta-popup-actions { margin-top: 8px; }
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
 .kta-note-popup-convertir,
 .kta-note-popup-jct-appliquer,
@@ -18796,6 +18837,38 @@ html.kta-theme-light .kta-note-popup-jct-niveau {
 .kta-note-popup-niveaux-zone-cases { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
 .kta-note-popup-niveaux-zone-case { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .kta-note-popup-niveaux-zone .kta-note-popup-actions { margin-top: 6px; }
+/* Part comblée d'une masse au sol (utils.js > _combleHtml) : crans ¼ ½ ¾ / Autre, mètres de remblai. */
+.kta-note-popup-comble { margin-top: 6px; font-size: 12px; color: var(--kta-texte-2); }
+.kta-note-popup-comble-titre { color: var(--kta-texte-2); }
+.kta-note-popup-comble-crans { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; }
+.kta-note-popup-comble-cran { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.kta-note-popup .kta-note-popup-comble-autre {
+  /* 🩸 .leaflet-popup-content input impose width: 100 % !important : la saisie libre reste dans la ligne des crans. */
+  width: 5em !important; flex: 0 0 auto; margin-top: 0 !important; padding: 2px 6px !important;
+}
+.kta-note-popup-comble-metres { margin-top: 4px; color: var(--kta-texte-3); }
+/* Sorte d'une masse au sol (utils.js > _natureHtml) : Remblai / Masse non exploitée, cachée pour une part négative. */
+.kta-note-popup-nature { margin-top: 8px; }
+.kta-note-popup-nature[hidden] { display: none; }
+.kta-note-popup-nature-choix { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; }
+.kta-note-popup-nature-option { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.kta-note-popup-nature-lue { margin-top: 2px; color: var(--kta-texte); }
+.kta-note-popup-rampes { margin-top: 8px; }
+.kta-note-popup-rampe { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.kta-note-popup-rampe .kta-popup-btn { min-width: 32px; min-height: 32px; padding: 4px; }
+.kta-note-popup-rampe-boutons { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.kta-note-popup-rampe { flex-wrap: wrap; }
+.kta-legende-trait.kta-legende-rampe { display: inline-flex; align-items: center; justify-content: center;
+  height: 14px; }
+.kta-legende-rampe svg { width: 16px; height: 16px; stroke-width: 3; }
+.leaflet-interactive.kta-rampe-chevron, .kta-rampe-chevron { pointer-events: none; }
+.kta-note-popup-comble .kta-note-popup-actions { margin-top: 6px; }
+.kta-note-popup-comble-appliquer {
+  background: rgba(140, 180, 255, 0.14);
+  border: 1px solid rgba(140, 180, 255, 0.30);
+  color: var(--kta-texte-2);
+}
+.kta-note-popup-comble-appliquer:hover { background: rgba(140, 180, 255, 0.24); }
 .kta-note-popup-zone-jonction-avis { margin-top: 6px; font-size: 12px; line-height: 1.4; color: var(--kta-texte-2); }
 .kta-note-popup-jct-statut { margin-top: 6px; font-size: 12px; line-height: 1.4; }
 body.kta-theme-light .kta-convert-source { color: #1a1f2e; }

@@ -2944,6 +2944,14 @@ _setGroupeModeActif("tracker", isTracking, null);
     sousActions: [
       { icone: "⬛", dynamicIcon: function() { return _iconeType("zones", "remblais", "⬛"); }, titre: window.I18n.t("ui.zone.remblais"), dynamicTitre: function() { return _titreType("zones", "remblais", window.I18n.t("ui.zone.remblais")); }, isTypeAction: true, typeKey: "remblais",
         onClick: function(btn) { _activerZone("remblais", btn, _iconeType("zones", "remblais", "⬛")); } },
+      // Masse au sol (remblai partiel) : aucun émoji ne dit le sable, l'icône m-masse-sol sert de repli à la pastille.
+      { icone: window.ktaIcone("m-masse-sol"), isTypeAction: true, typeKey: "masse-sol",
+        dynamicIcon: function() { return _iconeType("zones", "masse-sol", window.ktaIcone("m-masse-sol")); },
+        titre: window.I18n.t("ui.zone.masseSol"),
+        dynamicTitre: function() { return _titreType("zones", "masse-sol", window.I18n.t("ui.zone.masseSol")); },
+        onClick: function(btn) {
+          _activerZone("masse-sol", btn, _iconeType("zones", "masse-sol", window.ktaIcone("m-masse-sol")));
+        } },
       { icone: "🟥", dynamicIcon: function() { return _iconeType("zones", "effondrement", "🟥"); }, titre: window.I18n.t("ui.zone.effondrement"), dynamicTitre: function() { return _titreType("zones", "effondrement", window.I18n.t("ui.zone.effondrement")); }, isTypeAction: true, typeKey: "effondrement",
         onClick: function(btn) { _activerZone("effondrement", btn, _iconeType("zones", "effondrement", "🟥")); } },
       { icone: "🟦", dynamicIcon: function() { return _iconeType("zones", "eau", "🟦"); }, titre: window.I18n.t("ui.zone.eau"), dynamicTitre: function() { return _titreType("zones", "eau", window.I18n.t("ui.zone.eau")); }, isTypeAction: true, typeKey: "eau",

@@ -75,6 +75,9 @@ node scripts/check-emoji-vs16.js || exit $?
 # Icones de l'interface : controles migres en SVG sans emoji, noms connus, doc alignee (exhaustive).
 node scripts/check-icones-ui.js || exit $?
 
+# Balisage SVG de ktaIcone pose en textContent (affiche en clair).
+node scripts/check-icone-texte.js || exit $?
+
 # Aide IA : lexique des icones en tete d'AI_CONTEXT.md, genere depuis js/ktaIcones.js (chaque bouton cite).
 node scripts/check-lexique-icones.js || exit $?
 
@@ -280,8 +283,16 @@ node scripts/check-mur-ligne.js || exit $?
 # garde a l'aller-retour (session, KMZ, GeoJSON).
 node scripts/check-zones-niveaux.js || exit $?
 
+# Masse au sol (remblai partiel) : style du canon par part comblee, fiche, Tableur, `comble` garde a l'aller-retour
+# KMZ / GeoJSON / SIG, defaut SIG d'un polygone non reconnu = masse au sol (jamais un Comble pose en silence).
+node scripts/check-masse-sol.js || exit $?
+
 # Verifier le plan : C1 (troncons coupes) = graphe de l'itineraire, C1 a C3 sur donnees fictives, "vu, normal".
 node scripts/check-verifier-plan.js || exit $?
+
+# Zones a cout (Comble, effondrement) : evitees si un autre chemin existe, jamais bloquantes, traversees et dites
+# sinon ; distance non gonflee ; inaccessible reste dure ; C12 de Verifier le plan en "a revoir".
+node scripts/check-zones-cout.js || exit $?
 
 # Niveaux en hauteur : sol, hauteur et ecart par niveau lus par un seul acces (getNiveauVertical), plan sans la
 # donnee inchange, pref locale qui gagne, ecart jamais stocke.

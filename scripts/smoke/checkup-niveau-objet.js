@@ -7,7 +7,8 @@
 // Parcours réel : liste « Niveau » de la fiche d'un tracé / zone / structure (popup Leaflet), liste du
 // formulaire d'édition d'un POI ; niveau cible masqué par le filtre (objet retiré de la carte, toast, vue
 // inchangée) ou visible ; niveau actuel hors availableLevels proposé ; pas de liste pendant un dessin ;
-// annulation (HistoryManager.undo, ce que fait ⏪) puis rétablissement ; persistance après rechargement.
+// annulation (HistoryManager.undo, ce que fait ⏪) puis rétablissement ; persistance après rechargement ; un
+// changement de niveau ne construit aucune fiche d'avance (construite à l'ouverture).
 // 🩸 check-api-surface.js teste changerNiveau dans un `vm` ; seul ce parcours voit le re-rendu filtré, la popup
 // fermée avant le setteur et le marqueur d'un POI.
 // Usage : node scripts/smoke/checkup-niveau-objet.js · doc : docs/architecture/multilevel-pathfinding.md
@@ -97,8 +98,7 @@ function etat(page) {
     function trouver(liste, uid) { return (liste || []).find(function (o) { return o && o.uid === uid; }) || null; }
     const surCarte = {};
     window.map.eachLayer(function (l) {
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c !== "string") return;
       const m = /data-kta-uid="([^"]+)"/.exec(c);
       if (m) surCarte[m[1]] = true;
@@ -136,8 +136,7 @@ async function ouvrirFiche(page, uid) {
     let cible = null;
     window.map.eachLayer(function (l) {
       if (cible) return;
-      const p = l.getPopup && l.getPopup();
-      const c = p && p.getContent && p.getContent();
+      const c = window.ktaHtmlFiche(l);
       if (typeof c === "string" && c.indexOf('data-kta-uid="' + uid + '"') >= 0) cible = l;
     });
     if (!cible) return false;
@@ -223,6 +222,21 @@ async function choisirDansFiche(page, valeur) {
     await choisirDansFiche(page, -1);
     const e2 = await etat(page);
     verifier(e2.niveaux.zn === -1 && e2.surCarte.zn, "zone déplacée au niveau -1, toujours affichée", e2);
+
+    // ── Fiches construites à l'ouverture seulement (utils.js > attacherNotePopup) ──
+    // Un changement de niveau re-rend toutes les familles : aucune fiche (ni sa liste des niveaux) ne doit être
+    // construite tant qu'on ne l'ouvre pas.
+    const construites = await page.evaluate(function () {
+      const f = window.ktaOptionsNiveauHtml;
+      let n = 0;
+      window.ktaOptionsNiveauHtml = function () { n++; return f.apply(this, arguments); };
+      try {
+        window.ktaSetActiveLevel(1, { source: "checkup" });
+        window.ktaSetActiveLevel(0, { source: "checkup" });
+      } finally { window.ktaOptionsNiveauHtml = f; }
+      return n;
+    });
+    verifier(construites === 0, "changement de niveau aller-retour : aucune fiche construite d'avance", construites);
 
     // ── Structure pilier-2 → +2 (valeur écrite telle quelle, pas de « − 1 ») ──
     await page.evaluate(function () { window.APP_CONFIG.visibleLevels = [0]; window.appliquerFiltreNiveau(); });

@@ -85,7 +85,22 @@
       .join("");
   }
 
+  // 🩸 Stockage refusé par le navigateur (utils.js > ktaStockageIndispo) : l'entrée est gardée EN MÉMOIRE pour la
+  // page (sinon l'écran Bienvenue et les conditions revenaient en boucle) ; redemandée au prochain lancement.
+  let _ouvertEnMemoire = false;
+  // Après une écriture de LS_UNLOCK : relue telle quelle, sinon mémoire de session et message (une fois par page).
+  function _verifierMemoire(attendu) {
+    let ok = false;
+    try { ok = localStorage.getItem(LS_UNLOCK) === attendu; } catch(e) { ok = false; }
+    if (ok) return true;
+    _ouvertEnMemoire = true;
+    console.warn("[UnlockGate] entrée non enregistrée par le navigateur : gardée pour cette session");
+    if (typeof window.ktaSignalerStockageIndispo === "function") window.ktaSignalerStockageIndispo();
+    return false;
+  }
+
   function isUnlocked() {
+    if (_ouvertEnMemoire) return true;
     try {
       const v = localStorage.getItem(LS_UNLOCK);
       if (v === ACCES_LIBRE) return true;
@@ -329,6 +344,7 @@
         localStorage.removeItem(LS_ATTEMPTS);
         localStorage.removeItem(LS_LOCK);
       } catch(e) {}
+      _verifierMemoire(hashed);
       _codeAccepte = true;
       return { etat: "ok" };
     } else {
@@ -402,6 +418,7 @@
       localStorage.removeItem(LS_UNLOCK_KIOSQUE);
       localStorage.removeItem(LS_ATTEMPTS);
     } catch(e) {}
+    _verifierMemoire(ACCES_LIBRE);
     _marquerVisiteProposee();
   }
 
@@ -587,6 +604,7 @@
       localStorage.setItem(LS_UNLOCK, ACCES_LIBRE);
       localStorage.removeItem(LS_ATTEMPTS);
     } catch(e) {}
+    _verifierMemoire(ACCES_LIBRE);
   }
 
   window.UnlockGate = {

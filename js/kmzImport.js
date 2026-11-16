@@ -308,7 +308,7 @@
       // kmzExport > _emitExtendedDataLevel. Absent (KMZ tiers) → null → niveau 0 côté appelant.
       const _mkmData = (function() {
         const out = { level: null, fromLevel: null, toLevel: null, niveaux: null, copie: false, dateConstat: null,
-          jonction: false };
+          jonction: false, comble: null, rampes: null, nature: null };
         const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
         for (let j = 0; j < dataEls.length; j++) {
           const el = dataEls[j];
@@ -323,6 +323,31 @@
             continue;
           }
           if (name === "mkm:copie") { out.copie = (valEl.textContent || "").trim() === "1"; continue; }
+          // Masse au sol : part comblée (décimale signée : négative = sol abaissé), gardée si c'est un nombre non nul
+          // d'au moins −1 (≥ 1 gardé : la fiche propose Comblé).
+          // Masse non exploitée : seule valeur reconnue (toute autre = remblai, rien n'est écrit).
+          if (name === "mkm:nature") {
+            if ((valEl.textContent || "").trim() === "non-exploitee") out.nature = "non-exploitee";
+            continue;
+          }
+          if (name === "mkm:comble") {
+            const c = Number((valEl.textContent || "").trim().replace(",", ".").replace("−", "-"));
+            if (Number.isFinite(c) && c !== 0 && c >= -1) out.comble = c;
+            continue;
+          }
+          // Masse au sol : rampes « 0,2 » ou « 0:lng;lat,2 » (indices de bords, revalidés sur le contour par
+          // masseSol.js > rampesValides ; fin en WGS84, reprojetée sur le plan avec le contour).
+          if (name === "mkm:rampes") {
+            const l = (valEl.textContent || "").split(",").map(function(s) {
+              const m = s.trim().match(/^(\d+)(?::(-?[\d.]+);(-?[\d.]+))?$/);
+              if (!m) return null;
+              const r = { bord: Number(m[1]) };
+              if (m[2] !== undefined) r.finLL = { lng: Number(m[2]), lat: Number(m[3]) };
+              return r;
+            });
+            if (l.length && l.every(Boolean)) out.rampes = l;
+            continue;
+          }
           // Ancien marqueur de zone jonction (KMZ d'avant le type `pente`) : converti à l'import.
           if (name === "mkm:jonction") { out.jonction = (valEl.textContent || "").trim() === "1"; continue; }
           if (name === "mkm:dateConstat") {
@@ -448,7 +473,7 @@
             if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
             out.structures.push(_st);
           } else {
-            const zoneMatch     = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible|pente)$/);
+            const zoneMatch     = _styleUrl.match(/^#zone_(eau|masse-sol|remblais|effondrement|inaccessible|pente)$/);
             const zoneCustMatch = _styleUrl.match(/^#zone_(cust-[A-Za-z0-9_-]+)$/);
             const zoneType = (zoneMatch && zoneMatch[1])
                              ? zoneMatch[1]
@@ -462,6 +487,21 @@
             };
             if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
             if (_mkmData.niveaux) _zn.niveaux = _mkmData.niveaux;
+            if (zoneType === "masse-sol" && _mkmData.comble !== null) _zn.comble = _mkmData.comble;
+            if (zoneType === "masse-sol" && _mkmData.nature && !(_mkmData.comble < 0)) _zn.nature = _mkmData.nature;
+            if (zoneType === "masse-sol" && _mkmData.rampes) {
+              _zn.rampes = _mkmData.rampes.map(function(r) {
+                if (!r.finLL || !Number.isFinite(r.finLL.lat) || !Number.isFinite(r.finLL.lng)) return { bord: r.bord };
+                const px = gpsToPixel(transform, r.finLL.lat, r.finLL.lng);
+                return { bord: r.bord, fin: { x: Math.round(px.x * 100) / 100, y: Math.round(px.y * 100) / 100 } };
+              });
+              if (window.KtaMasseSol) {
+                const ok = window.KtaMasseSol.rampesValides(_zn), lu = _zn.rampes;
+                if (ok.length) {
+                  _zn.rampes = ok.map(function(b) { return lu.filter(function(r) { return r.bord === b; })[0]; });
+                } else delete _zn.rampes;
+              }
+            }
             if (_mkmData.niveaux && _mkmData.jonction && _mkmData.niveaux.length >= 2) _zn.type = "pente";
             out.zones.push(_zn);
           }

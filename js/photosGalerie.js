@@ -378,31 +378,43 @@
 
     if (sans.length) {
       const nb = sans.reduce(function (s, g) { return s + g.photos.length; }, 0);
-      const sec = _section(window.ktaIcone("triangle-alert") + " " + _t("photosgal.sans.titre"), nb, "kta-phg-sec-sans");
+      const sec = _section("triangle-alert", _t("photosgal.sans.titre"), nb, "kta-phg-sec-sans");
       _ajouterTexte(sec, _t("photosgal.sans.explication"));
       sans.forEach(function (g) { sec.appendChild(_carte(a, g)); });
       sections.appendChild(sec);
     }
     if (verif.length) {
       const nb = verif.reduce(function (s, g) { return s + g.photos.length; }, 0);
-      const sec = _section(window.ktaIcone("search") + " " + _t("photosgal.verifier.titre"), nb, "kta-phg-sec-verif");
+      const sec = _section("search", _t("photosgal.verifier.titre"), nb, "kta-phg-sec-verif");
       _ajouterTexte(sec, _t(_plan(a.planId) ? "photosgal.verifier.explication" : "photosgal.verifier.planAbsent"));
       verif.forEach(function (g) { sec.appendChild(_carte(a, g)); });
       sections.appendChild(sec);
     }
     if (avec.length) {
       const nb = avec.reduce(function (s, g) { return s + g.photos.length; }, 0);
-      const sec = _section(window.ktaIcone("map-pin") + " " + _t("photosgal.avec.titre"), nb, "kta-phg-sec-avec");
+      const sec = _section("map-pin", _t("photosgal.avec.titre"), nb, "kta-phg-sec-avec");
       avec.forEach(function (g) { sec.appendChild(_carte(a, g)); });
       sections.appendChild(sec);
     }
   }
-  function _section(titre, n, cls) {
+  // 🩸 Icône (SVG de ktaIcone) et libellé passés À PART : concaténés puis posés en textContent, le balisage
+  // SVG s'affichait en clair. Icône en HTML, libellé en texte (jamais de texte en innerHTML). check-icone-texte.js.
+  function _poserIconeTexte(el, icone, texte) {
+    if (icone) {
+      const i = document.createElement("span");
+      i.className = "kta-phg-ico";
+      i.innerHTML = window.ktaIcone(icone);
+      el.appendChild(i);
+      el.appendChild(document.createTextNode(" "));
+    }
+    el.appendChild(document.createTextNode(texte));
+  }
+  function _section(icone, titre, n, cls) {
     const sec = document.createElement("div");
     sec.className = "kta-phg-section " + cls;
     const h = document.createElement("div");
     h.className = "kta-phg-section-titre";
-    h.textContent = titre + " ";
+    _poserIconeTexte(h, icone, titre + " ");
     const b = document.createElement("span");
     b.className = "kta-phg-badge";
     b.textContent = String(n);
@@ -416,11 +428,11 @@
     p.textContent = txt;
     parent.appendChild(p);
   }
-  function _bouton(libelle, fn, cls) {
+  function _bouton(icone, libelle, fn, cls) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "kta-popup-btn kta-phg-action" + (cls ? " " + cls : "");
-    b.textContent = libelle;
+    _poserIconeTexte(b, icone, libelle);
     b.addEventListener("click", fn);
     return b;
   }
@@ -457,19 +469,25 @@
     actions.className = "kta-phg-actions";
     const ids = g.photos.map(function (p) { return p.id; });
     if (g.etat === "sans") {
-      actions.appendChild(_bouton(window.ktaIcone("link") + " " + _t("photosgal.action.rattacher"), function () { _choisirPoint(a, g); }));
-      if (g.fiche) actions.appendChild(_bouton(window.ktaIcone("rotate-ccw") + " " + _t("photosgal.action.recreer"), function () { _recreer(a.planId, g); }));
+      actions.appendChild(_bouton("link", _t("photosgal.action.rattacher"), function () { _choisirPoint(a, g); }));
+      if (g.fiche) {
+        actions.appendChild(_bouton("rotate-ccw", _t("photosgal.action.recreer"),
+          function () { _recreer(a.planId, g); }));
+      }
     }
     if (g.etat === "verifier" && _plan(a.planId) && !_planOuvert(a.planId)) {
-      actions.appendChild(_bouton(window.ktaIcone("map") + " " + _t("photosgal.ouvrirPlan"), function () { _allerAuPoint(a.planId, null); }));
+      actions.appendChild(_bouton("map", _t("photosgal.ouvrirPlan"), function () { _allerAuPoint(a.planId, null); }));
     }
     if (g.etat === "point") {
-      actions.appendChild(_bouton(window.ktaIcone("map-pin") + " " + _t("photosgal.action.voir"), function () { _allerAuPoint(a.planId, g.point); }));
+      actions.appendChild(_bouton("map-pin", _t("photosgal.action.voir"),
+        function () { _allerAuPoint(a.planId, g.point); }));
     }
-    actions.appendChild(_bouton(window.ktaIcone("save") + " " + _t("photosgal.action.enregistrer"), function () { _enregistrer(a.planId, nom, g.photos); }));
+    actions.appendChild(_bouton("save", _t("photosgal.action.enregistrer"),
+      function () { _enregistrer(a.planId, nom, g.photos); }));
     // Supprimer : photos sans point (ou d'un plan absent de l'appareil, invérifiable).
     if (g.etat === "sans" || (g.etat === "verifier" && !_plan(a.planId))) {
-      actions.appendChild(_bouton(window.ktaIcone("trash-2") + " " + _t("photosgal.action.supprimer"), function () { _supprimer(a.planId, nom, ids, g.taille); }, "kta-phg-danger"));
+      actions.appendChild(_bouton("trash-2", _t("photosgal.action.supprimer"),
+        function () { _supprimer(a.planId, nom, ids, g.taille); }, "kta-phg-danger"));
     }
     c.appendChild(actions);
     return c;
