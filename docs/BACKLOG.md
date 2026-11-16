@@ -97,6 +97,10 @@
   Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
   `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
   sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+- **Référencement de doc.myktamap.fr** — un sitemap ne liste que son propre domaine : la doc doit publier son
+  `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
+  `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
+  · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
 - **Fiches trop chargées au PC** — le téléphone est fait (fiches en plein écran, case dans Configuration > Affichage,
   sur Karma_dev le 16/11, à valider par KARMA au téléphone). Reste le PC : la fiche montre trop d'informations.
   `qui: Claude · action: topo (capture PC, ce qu'on garde, ce qu'on replie) après validation du plein écran
