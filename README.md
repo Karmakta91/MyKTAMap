@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.27.0` (14/11/2026)
+## 📦 Version courante — `v2.28.0` (16/11/2026)
 
-> 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Le calage modifié dans les Réglages est repris partout (fond OSM, Vue OSM, Secours) et écrit par « Mettre à jour le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
+> ⛰️ **v2.28.0 — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide** : nouveau type de zone **Masse au sol** (remblai partiel, ou **masse non exploitée** au motif de blocs), à sa part de la hauteur (¼, ½, ¾, négative pour un sol abaissé) et avec des **pentes** posées à la main ; l'itinéraire compte le vide restant (courbé, à plat ventre, coupé sous 0,5 m). En 3D, on marche dessus : on monte par un bord droit ou une pente, on chute d'un front ; chatière, tracés et mini-carte suivent le sol. Le **Comblé** (ancien Remblais) monte jusqu'au plafond sauf le long d'un tracé, et l'itinéraire l'évite sans jamais s'y bloquer. **⛏️ Volume exploité** sur son propre secteur, par plan et par niveau (plusieurs niveaux additionnés), avec l'**estimation de comblement** (matériau, forages, durée) et « Pour le fun ». Plus rapide : changement de niveau en 2D et en 3D, ouverture des fiches, sauvegarde ; plus de boucle des conditions quand le navigateur refuse le stockage. Détail : journal ci-dessous.
 
 ---
 
@@ -836,7 +836,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Pas encore publié (branche `Karma_dev`)
+#### v2.28.0 (16/11/2026) — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide (branche `Karma_dev`)
 
 > Écart avec la prod v2.27.0.
 
@@ -881,9 +881,6 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **Secteur propre au volume, plusieurs niveaux** (`js/volumeExploite.js`, `session-data.md` § 49.3 bis, `checkup-secteur-volume.js`) : ⛏️ Volume exploité n'utilise plus la mesure ♦️ Surface. Il a son secteur, un par plan et par niveau, gardé sur l'appareil et retrouvé à la réouverture : **Dessiner le secteur** (même geste que ♦️, la fenêtre se cache puis revient ; en 3D, dans la vue), **Redessiner**, ou **Reprendre la mesure Surface** (copie). Tracé en pointillés sur la carte pendant que la fenêtre est ouverte, jamais exporté. La fenêtre dit toujours sur quel(s) niveau(x) elle calcule ; sur un plan à étages, on coche plusieurs niveaux (ou Tous) : chacun avec son secteur et sa hauteur, total et détail par niveau, estimation de comblement sur le total.
 - **Changer de niveau ne resauvegarde plus toute la session** (`js/interfaceConfig.js > appliquerFiltreNiveau`, `session-data.md` § Session sale, `checkup-session-sale.js`) : le redessin d'un changement de niveau (et de niveaux visibles ou de filtres) passait pour une modification, et le clic aussi : la session entière était relue, convertie en texte et hachée, ≈ 0,4 s sur un relevé réel lourd. Ces redessins sont maintenant de l'affichage seul ; le niveau, qui vit hors session (vue du plan), est mémorisé aussitôt et tient même si l'onglet est tué. Relevé de 2,5 Mo à CPU ×4 : 1 à 2 sérialisations complètes (68 à 138 ms) → aucune (≈ 1 ms).
 - **Fiches des tracés, zones et structures construites à l'ouverture** (`js/utils.js > attacherNotePopup`, `session-data.md` § 56.1, `checkup-niveau-objet.js`) : chaque rendu (changement de niveau, filtres) construisait d'avance la fiche de CHAQUE objet, liste des niveaux comprise, alors qu'on n'en ouvre qu'une. Elle est maintenant construite à l'ouverture, avec le même contenu et les mêmes boutons ; la fiche en vue 3D est inchangée. Changement de niveau sur un relevé lourd (4 000 structures, 2 500 tracés, 1 510 zones, CPU ×4) : 1 679 → 879 ms, dont rendu des structures 707 → 340 ms.
-
-#### Pas encore publié (après v2.27.0, branche `Karma_dev`)
-
 - **Mes photos : icônes affichées en clair** (`js/photosGalerie.js > _section`, `_bouton`, `check-icone-texte.js`) : dans la section « Sans point », le titre et les boutons (Rattacher, Enregistrer, Supprimer…) montraient le balisage SVG de l'icône en texte. Icône et libellé sont posés à part (icône en HTML, libellé en texte) ; un garde-fou refuse le motif dans tout `js/`.
 
 #### v2.27.0 (14/11/2026) — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes (branche `Karma_dev`)
@@ -10208,6 +10205,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🗺️ **v2.27.0 — Fond OpenStreetMap sous le plan, plan au sol net en 3D, noms de types plus justes** : en mode plan, le bouton carte ouvre un petit panneau qui pose **OpenStreetMap sous le plan** (interrupteur, transparence du plan retenue pour chaque plan, **Ma position** ponctuelle, **Enregistrer hors ligne**), calé sur le géoréférencement, qui tourne avec le plan orienté ; la fenêtre Vue OSM reste celle de l'accueil et du Mode Secours. En 3D, le plan au sol reste net en « Tout le plan ». Le calage modifié dans les Réglages est repris partout (fond OSM, Vue OSM, Secours) et écrit par « Mettre à jour le plan ». Libellés : **Plaque/indication**, **Épure/graffiti**, « Arc de soutènement », « Zone jonction » et les piliers et fronts de 2e masse sans leur précision. Détail : journal ci-dessous.
 
 > 🧊 **v2.26.0 — Vue 3D plus vraie (textures, pierre de taille, voiture), niveaux voisins en transparence, mini-carte en paysage** : en 3D, sol damé et ciel de carrière texturés, ombre de contact au pied des piliers et des parois, nuance de roche propre à chaque structure, stries d'outil en passes parallèles, arcs en pierre de taille (claveaux, tympan en moellons), mur tracé en ligne en pierre de taille, véhicule en silhouette de voiture, réglage **Textures HD** ; **Niveaux en transparence** (fantôme du dessus en vue d'édition, voisins à travers plafond et sol à hauteur d'yeux) ; mini-carte plus grande en paysage, collée au bandeau de guidage ; icônes au trait dans le menu au sommet ; correctifs. Détail : journal ci-dessous.
 
