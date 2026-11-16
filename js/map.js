@@ -39,7 +39,7 @@ function _ktaPickCaptureClick(domEvt) {
 
 // Options communes des popups : autoPanPadding [horizontal, vertical] (px écran) généreux pour ne pas clipper
 // au bord sur mobile ; avec le buffer de maxBounds (initMapFromConfig), Leaflet a la marge de recentrer.
-// ⚠️ contrat : réservées aux FICHES (points, tracés, zones, structures) — `ktaFiche` les ouvre en plein écran au
+// ⚠️ contrat : réservées aux FICHES (points, tracés, zones, structures) — `ktaFiche` les ouvre dans une fenêtre au
 // téléphone (fichePleinEcran.js) ; une autre popup ne les prend pas.
 window.KTA_POPUP_OPTS = {
   autoPan:         true,

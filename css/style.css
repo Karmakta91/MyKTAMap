@@ -925,8 +925,10 @@ button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
   color: inherit !important;
 }
 
-/* ── Modale plein écran « Tracker » : tuiles tactiles par section, grille 2 colonnes ── */
-.kta-tracker-modal-overlay {
+/* ── Modale « Tracker » : tuiles tactiles par section, grille 2 colonnes ; voile et boîte repris par la fiche en
+   fenêtre (.kta-fiche-modale, js/fichePleinEcran.js) ── */
+.kta-tracker-modal-overlay,
+.kta-fiche-modale {
   position: fixed;
   inset: 0;
   z-index: 99999;
@@ -1824,40 +1826,33 @@ body.kta-lost-click-mode .leaflet-container {
   padding-right: 24px;
 }
 
-/* ── Fiche en plein écran (téléphone, js/fichePleinEcran.js) ──
-   La popup Leaflet elle-même, posée dans .kta-fiche-pe-corps : position, transform et largeurs que Leaflet écrit en
-   style inline sont écrasés. ⚠️ z-index 99998 : juste sous les modales, qui s'ouvrent par-dessus la fiche. */
-.kta-fiche-pe {
-  position: fixed;
-  inset: 0;
+/* ── Fiche en fenêtre (téléphone, js/fichePleinEcran.js) ──
+   Boîte, en-tête, croix et corps = classes de la modale Tracker ; voile et flou = règle de .kta-tracker-modal-overlay
+   (partagée plus haut). La popup Leaflet elle-même est posée dans .kta-fiche-modale-corps : position, transform et
+   largeurs que Leaflet écrit en style inline sont écrasés. ⚠️ z-index 99998 : juste sous les modales, qui s'ouvrent
+   par-dessus la fiche. */
+.kta-fiche-modale {
   z-index: 99998;
-  display: flex;
-  flex-direction: column;
-  background: var(--kta-fond);
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
-    env(safe-area-inset-left, 0px);
 }
-.kta-fiche-pe-barre {
+.kta-fiche-modale-titre {
+  min-width: 0;
+}
+.kta-fiche-modale-nom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-fiche-modale-ico {
+  width: 24px;
+  height: 24px;
   flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 12px;
-  background: var(--kta-surface);
-  border-bottom: 1px solid var(--kta-bordure);
+  object-fit: contain;
 }
-.kta-fiche-pe-fermer {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-}
-.kta-fiche-pe-corps {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+.kta-fiche-modale-corps {
   overscroll-behavior: contain;
 }
-.kta-fiche-pe .leaflet-popup {
+.kta-fiche-modale .leaflet-popup {
   position: static !important;
   transform: none !important;
   left: auto !important;
@@ -1866,25 +1861,29 @@ body.kta-lost-click-mode .leaflet-container {
   text-align: left;
   opacity: 1 !important;
 }
-.kta-fiche-pe .leaflet-popup-content-wrapper {
-  border-radius: 0 !important;
+html body .kta-fiche-modale .leaflet-popup-content-wrapper {
+  background: transparent !important;
   border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
-  min-height: 100%;
 }
-.kta-fiche-pe .leaflet-popup-content {
+.kta-fiche-modale .leaflet-popup-content {
   width: auto !important;
   height: auto !important;
   max-height: none !important;
-  margin: 14px 16px 24px !important;
+  margin: 8px 2px 4px !important;
   font-size: 15px !important;
 }
-.kta-fiche-pe .leaflet-popup-tip-container,
-.kta-fiche-pe .leaflet-popup-close-button {
+.kta-fiche-modale .leaflet-popup-tip-container,
+.kta-fiche-modale .leaflet-popup-close-button,
+.kta-fiche-modale .kta-popup-point > b:first-child,
+.kta-fiche-modale .kta-popup-point > b:first-child + br {
   display: none !important;
 }
-.kta-fiche-pe .kta-popup-point > b:first-child {
-  padding-right: 0;
+/* Pastille du type (ou icône) avant le titre d'une forme : même écart que l'icône d'un point. */
+.kta-fiche-modale-nom > span:first-child,
+.kta-fiche-modale-nom > svg:first-child {
+  margin-right: 9px;
 }
 
 .leaflet-popup-content input,
@@ -13030,7 +13029,8 @@ body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-gr
 }
 
 /* Modal Tracker en thème clair */
-body.kta-theme-light .kta-tracker-modal-overlay {
+body.kta-theme-light .kta-tracker-modal-overlay,
+body.kta-theme-light .kta-fiche-modale {
   background: rgba(20, 28, 44, 0.55);
 }
 body.kta-theme-light .kta-tracker-modal-box {

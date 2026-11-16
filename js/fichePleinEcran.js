@@ -6,21 +6,26 @@
  */
 
 // =========================
-// FICHE-PLEIN-ÉCRAN — au téléphone, la fiche d'un point, tracé, zone ou structure s'ouvre en plein écran et défile
+// FICHE EN FENÊTRE — au téléphone, la fiche d'un point, tracé, zone ou structure s'ouvre dans une fenêtre centrée
 // =========================
+// Fenêtre des modales Tracker / Tracés (classes .kta-tracker-modal-box / -header / -title / -close / -body, voile et
+// flou de .kta-tracker-modal-overlay partagés en CSS avec .kta-fiche-modale) : l'app floutée derrière, la fiche défile
+// DANS la boîte. En-tête : le titre de la fiche (nom et icône d'un point ; type et pastille d'une forme, qui n'a pas de
+// nom), relu à chaque changement du contenu.
 // Réglage d'appareil (Configuration de l'accueil › Affichage) : tant qu'il n'a pas été touché, il suit l'appareil
 // (`estTelephone` : tactile ET moins de 900 px de large, lu à chaque ouverture) ; un choix est gardé dans
 // localStorage[LS_CLE] ("1" / "0"), jamais dans la session ni un export.
-// ⚠️ contrat : la MÊME popup Leaflet que sur la carte, pas une copie. `L.Popup.prototype.getPane` rend l'hôte plein
-//   écran pour une popup de fiche (option `ktaFiche` de `window.KTA_POPUP_OPTS`) ouverte sur la carte du plan :
+// ⚠️ contrat : la MÊME popup Leaflet que sur la carte, pas une copie. `L.Popup.prototype.getPane` rend le corps de la
+//   fenêtre pour une popup de fiche (option `ktaFiche` de `window.KTA_POPUP_OPTS`) ouverte sur la carte du plan :
 //   Leaflet y pose son conteneur, construit le contenu, émet popupopen / popupclose ; les écouteurs des fiches
 //   (`utils.js > attacherNotePopup`, `_ktaPopupAction` en capture sur document, photos) agissent tels quels.
 // 🩸 `_adjustPan` coupé pour ces popups : la carte ne bouge pas derrière. Position et largeur posées par Leaflet
-//   (transform, left, bottom, width) écrasées en CSS (`.kta-fiche-pe`).
+//   (transform, left, bottom, width) écrasées en CSS (`.kta-fiche-modale`).
 // ⚠️ z-index : juste sous les modales (99998) — une fenêtre ouverte depuis la fiche (Modifier, photos, Convertir,
 //   confirmation) passe dessus, quel que soit l'ordre du DOM.
-// Fermer : bouton, Échap, ou tout `closePopup` (une action qui mène à la carte ferme sa fiche, comme la bulle).
-// Expose window.KtaFichePleinEcran · Doc : docs/architecture/ui.md § Fiche plein écran
+// Fermer : ✕, Échap, toucher le voile (comme la modale Tracker), ou tout `closePopup` (une action qui mène à la carte
+//   ferme sa fiche, comme la bulle).
+// Expose window.KtaFichePleinEcran · Doc : docs/architecture/ui.md § Fiche en fenêtre
 // =========================
 
 (function () {
@@ -30,7 +35,7 @@
   const LARGEUR_TELEPHONE = 900;   // px : en dessous, un appareil tactile est un téléphone (tablette en paysage : non)
 
   let _memoire = null;             // choix gardé en mémoire si le stockage est refusé
-  let _ouverte = null;             // { popup, hote, onKey }
+  let _ouverte = null;             // { popup, fond, titre, onKey, obs }
 
   function _t(cle) {
     return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(cle) : cle;
@@ -57,7 +62,7 @@
     const v = actif ? "1" : "0";
     _memoire = v;
     try { localStorage.setItem(LS_CLE, v); } catch (e) { /* gardé en mémoire pour la session */ }
-    console.log("[FichePleinEcran] Fiches en plein écran :", actif ? "oui" : "non");
+    console.log("[FichePleinEcran] Fiches en fenêtre :", actif ? "oui" : "non");
   }
 
   function actif() {
@@ -73,28 +78,55 @@
     return actif();
   }
 
+  // Titre de l'en-tête : le 1er <b> de la fiche (HTML produit et échappé par la fiche elle-même : nom d'un point, type
+  // et pastille d'une forme), précédé de l'icône du point sur la carte. Masqué dans le corps par le CSS.
+  function _majTitre(o) {
+    const el = o.popup.getElement && o.popup.getElement();
+    const b = el && el.querySelector(".kta-popup-point > b:first-child");
+    const src = o.popup._source;
+    let ico = "";
+    const icone = src && src.options && src.options.icon && src.options.icon.options;
+    const url = icone && (icone.iconUrl || (src.options.icon._kta_iconUrl));
+    if (url && src instanceof window.L.Marker) {
+      ico = '<img class="kta-fiche-modale-ico" alt="" src="' + String(url).replace(/"/g, "&quot;") + '">';
+    }
+    const html = b ? b.innerHTML : _t("fichePe.titre");
+    if (o.titre.dataset.html === ico + html) return;
+    o.titre.dataset.html = ico + html;
+    o.titre.innerHTML = ico + '<span class="kta-fiche-modale-nom">' + html + "</span>";
+    o.fond.setAttribute("aria-label", b ? b.textContent.trim() || _t("fichePe.titre") : _t("fichePe.titre"));
+  }
+
   function _creerHote(popup) {
     const fond = document.createElement("div");
-    fond.className = "kta-fiche-pe";
+    fond.className = "kta-fiche-modale";
     fond.setAttribute("role", "dialog");
     fond.setAttribute("aria-modal", "true");
     fond.setAttribute("aria-label", _t("fichePe.titre"));
-    const barre = document.createElement("div");
-    barre.className = "kta-fiche-pe-barre";
-    const fermer = document.createElement("button");
-    fermer.type = "button";
-    fermer.className = "kta-btn kta-fiche-pe-fermer";
-    fermer.innerHTML = (typeof window.ktaIcone === "function" ? window.ktaIcone("x") + " " : "") +
-      '<span class="kta-fiche-pe-fermer-txt"></span>';
-    fermer.querySelector(".kta-fiche-pe-fermer-txt").textContent = _t("fichePe.fermer");
-    fermer.addEventListener("click", function () { _fermerPopup(popup); });
-    barre.appendChild(fermer);
+    // Toucher le voile hors de la boîte ferme, comme la modale Tracker (interface.js > _ouvrirTrackerModal).
+    fond.addEventListener("click", function (ev) { if (ev.target === fond) _fermerPopup(popup); });
+    const boite = document.createElement("div");
+    boite.className = "kta-tracker-modal-box kta-fiche-modale-boite";
+    const tete = document.createElement("div");
+    tete.className = "kta-tracker-modal-header";
+    const titre = document.createElement("div");
+    titre.className = "kta-tracker-modal-title kta-fiche-modale-titre";
+    const croix = document.createElement("button");
+    croix.type = "button";
+    croix.className = "kta-tracker-modal-close kta-fiche-modale-fermer";
+    croix.title = _t("ui.btn.close");
+    croix.setAttribute("aria-label", _t("ui.btn.close"));
+    croix.textContent = "✕";
+    croix.addEventListener("click", function (ev) { ev.stopPropagation(); _fermerPopup(popup); });
+    tete.appendChild(titre);
+    tete.appendChild(croix);
     const corps = document.createElement("div");
-    corps.className = "kta-fiche-pe-corps";
-    fond.appendChild(barre);
-    fond.appendChild(corps);
+    corps.className = "kta-tracker-modal-body kta-fiche-modale-corps";
+    boite.appendChild(tete);
+    boite.appendChild(corps);
+    fond.appendChild(boite);
     document.body.appendChild(fond);
-    return { fond: fond, corps: corps, fermer: fermer };
+    return { fond: fond, corps: corps, titre: titre };
   }
 
   function _fermerPopup(popup) {
@@ -109,6 +141,7 @@
     if (!o || (popup && o.popup !== popup)) return;
     _ouverte = null;
     document.removeEventListener("keydown", o.onKey, true);
+    if (o.obs) o.obs.disconnect();
     if (o.fond.parentNode) o.fond.parentNode.removeChild(o.fond);
     o.popup._ktaHotePe = null;
   }
@@ -142,14 +175,21 @@
           _fermerPopup(popup);
         };
         document.addEventListener("keydown", onKey, true);
-        _ouverte = { popup: popup, fond: h.fond, onKey: onKey };
+        _ouverte = { popup: popup, fond: h.fond, titre: h.titre, onKey: onKey, obs: null };
         this._ktaHotePe = h.corps;
       } else {
         this._ktaHotePe = null;
       }
       onAdd.call(this, map);
-      if (this._ktaHotePe && _ouverte && _ouverte.popup === this) {
-        try { _ouverte.fond.querySelector(".kta-fiche-pe-fermer").focus({ preventScroll: true }); }
+      const o = _ouverte;
+      if (this._ktaHotePe && o && o.popup === this) {
+        _majTitre(o);
+        // Contenu réécrit (setContent après une annulation, un changement de type) : titre relu.
+        if (typeof MutationObserver === "function" && this._contentNode) {
+          o.obs = new MutationObserver(function () { if (_ouverte === o) _majTitre(o); });
+          o.obs.observe(this._contentNode, { childList: true });
+        }
+        try { o.fond.querySelector(".kta-fiche-modale-fermer").focus({ preventScroll: true }); }
         catch (e) { /* focus refusé : la fiche reste utilisable */ }
       }
     };

@@ -21,7 +21,7 @@
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
-        // Fiches en plein écran : une case jamais touchée suit l'appareil (largeur relue à l'ouverture).
+        // Fiches en fenêtre : une case jamais touchée suit l'appareil (largeur relue à l'ouverture).
         const fichePeCb = document.getElementById("loaderFichePeCb");
         if (fichePeCb && window.KtaFichePleinEcran) fichePeCb.checked = window.KtaFichePleinEcran.actif();
         // Rubriques repliables comme les Réglages du plan (même balisage, mémoire à part), liées une fois
@@ -1183,7 +1183,7 @@
         cb.addEventListener("change", function () { mb.setRotationBloquee(!!cb.checked); });
       })();
 
-      // Fiches en plein écran : source de vérité KtaFichePleinEcran. Case non touchée = valeur de l'appareil, relue
+      // Fiches en fenêtre : source de vérité KtaFichePleinEcran. Case non touchée = valeur de l'appareil, relue
       // à chaque ouverture de la Configuration (_ouvrirLoaderConfig) ; un changement est gardé sur l'appareil.
       (function _initFichePeHome() {
         const cb = document.getElementById("loaderFichePeCb");
