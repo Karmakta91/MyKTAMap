@@ -88,7 +88,7 @@
     const icone = src && src.options && src.options.icon && src.options.icon.options;
     const url = icone && (icone.iconUrl || (src.options.icon._kta_iconUrl));
     if (url && src instanceof window.L.Marker) {
-      ico = '<img class="kta-fiche-modale-ico" alt="" src="' + String(url).replace(/"/g, "&quot;") + '">';
+      ico = '<img class="kta-fiche-modale-ico" alt="" src="' + String(url).replaceAll("\"", "&quot;") + '">';
     }
     const html = b ? b.innerHTML : _t("fichePe.titre");
     if (o.titre.dataset.html === ico + html) return;
