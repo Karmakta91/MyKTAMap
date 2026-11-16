@@ -1479,9 +1479,10 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   verticaux en terre et cailloux (`REMBLAIS.m`, la coupe du remblai : `_maillageMasse` > `pans`) ; 🧱 coupé, la couleur
   de la légende assombrie selon la pente (`MASSE.ombre` / `ombreMin` : plateau à la couleur, pente à 30° et pans à 0,4).
   **Masse non exploitée** (`nature: "non-exploitee"`, part comblée > 0, getter `window.ktaMasseNonExploitee` ;
-  `_masseNonExploitee`, décision produit : la roche laissée en place, pas un remblai) : seul l'aspect change — 🧱, dessus
-  et rampes au sol normal du niveau (`_matsPente().sol`, comme le fond d'un creux), fronts en roche des piliers
-  (`ROCHE.m`, matériau `roche`) ; 🧱 coupé, fronts à la couleur du pilier (ombrés comme ceux du remblai). Pente, montée,
+  `_masseNonExploitee`, décision produit : la roche laissée en place, pas un remblai) : seul l'aspect change, 🧱 allumé
+  seulement — dessus et rampes au sol normal du niveau (`_matsPente().sol`, comme le fond d'un creux), fronts en roche
+  des piliers (`ROCHE.m`, matériau `roche`) ; 🧱 coupé, la couleur de la légende comme le remblai (règle : textures
+  coupées, tout objet 3D hors POI prend la couleur de la légende). Pente, montée,
   chute, vide, itinéraire et mini-carte sont ceux du remblai ; la nature est une donnée (empreinte de `_majDonnees` :
   scène refaite, clés des caches par niveau changées). `etat().masses.aspect` (lot du dessus et des fronts par zone) ;
   checkup `sectionMasseNonExploitee` (`KTA_V3D_SEUL=nonexploitee`).

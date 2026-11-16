@@ -4484,7 +4484,7 @@ async function sectionMonteeCamera(page) {
 // ── Masse non exploitée (KTA_V3D_SEUL=nonexploitee ; vue3d.js > _masseNonExploitee, _masseSol) : deux masses ½ côte
 // à côte, remblai et non exploitée (nature "non-exploitee"), traversées par le tracé. 🧱 allumé : remblai = dessus en
 // sol damé (solMasse) et fronts en terre (remblais), non exploitée = dessus au sol normal et fronts en roche ; 🧱 coupé :
-// non exploitée = fronts à la couleur du pilier. Même sol et même montée (hissé) pour les deux ; la nature changée
+// la couleur de la légende pour les deux (aspect du remblai : tout objet 3D hors POI). Même sol et même montée (hissé) pour les deux ; la nature changée
 // pendant la vue refait la scène (empreinte des données). Trois rendus. ──
 async function sectionMasseNonExploitee(page) {
   const R = await page.evaluate(async function () {
@@ -4577,9 +4577,9 @@ async function sectionMasseNonExploitee(page) {
     verifier(T.aspect.r && T.aspect.r.dessus === "solMasse" && T.aspect.r.fronts === "remblais" &&
       T.aspect.n && T.aspect.n.dessus === "sol" && T.aspect.n.fronts === "roche",
       k + "🧱 : remblai = sol damé + terre (inchangé), non exploitée = sol normal + roche", T.aspect);
-    verifier(A.aspect.r && A.aspect.r.fronts === "uni" && A.aspect.n && A.aspect.n.fronts === "pilier" &&
-      A.aspect.n.dessus === "uni",
-      k + "🧱 coupé : fronts de la non exploitée à la couleur du pilier, remblai inchangé", A.aspect);
+    verifier(A.aspect.r && A.aspect.n && JSON.stringify(A.aspect.n) === JSON.stringify(A.aspect.r) &&
+      A.aspect.n.dessus === "uni" && A.aspect.n.fronts === "uni",
+      k + "🧱 coupé : la non exploitée à la couleur de la légende, comme le remblai (aucune autre différence)", A.aspect);
     verifier(pr(T.solR, 1.2) && pr(T.solN, 1.2) && pr(A.solR, 1.2) && pr(A.solN, 1.2),
       k + "même sol pour les deux (1,2 m)", { t: [T.solR, T.solN], a: [A.solR, A.solN] });
     if (T.monteR) {

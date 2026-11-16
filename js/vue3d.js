@@ -1225,14 +1225,12 @@
   // sol damé du niveau un peu plus foncé (`lotDessus`, matériau _matsPente().solMasse : la même carte, grain HD suivi,
   // assombri de MASSE_SOL_SOMBRE) ; ses FRONTS verticaux gardent terre et cailloux (la coupe du remblai, `lotTex`).
   // 🧱 coupé : la couleur de la légende, ombrée selon la pente (le sol du niveau est noir en aplat).
-  // Masse NON EXPLOITÉE (contrat de la donnée : getter window.ktaMasseNonExploitee, part comblée > 0) : la roche laissée
-  // en place, pas un remblai. ⚠️ contrat (décision produit) : seul l'aspect change (dessus et rampes au sol normal du
-  // niveau, fronts en roche des piliers ; 🧱 coupé, fronts à la couleur du pilier) ; pente, montée, chute, vide et
-  // itinéraire sont ceux du remblai.
+  // Masse NON EXPLOITÉE (styleResolver.js > ktaMasseNonExploitee, la règle unique) : la roche laissée en place, pas un
+  // remblai. ⚠️ contrat (décision produit) : seul l'aspect change, et seulement 🧱 allumé (dessus et rampes au sol
+  // normal du niveau, fronts en roche des piliers) ; 🧱 coupé, la couleur de la légende comme tout objet 3D hors POI,
+  // donc l'aspect du remblai. Pente, montée, chute, vide et itinéraire sont ceux du remblai.
   function _masseNonExploitee(z) {
-    if (typeof window.ktaMasseNonExploitee === "function") return !!window.ktaMasseNonExploitee(z);
-    const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : 0.5;   // repli : même règle
-    return !!z && c > 0 && z.nature === "non-exploitee";
+    return typeof window.ktaMasseNonExploitee === "function" && !!window.ktaMasseNonExploitee(z);
   }
 
   function _masseSol(lotTex, lotUni, z, trous, lotCreux, lotDessus, lotRoche) {
@@ -1249,10 +1247,6 @@
     else if (roche && tex && lotCreux && lotRoche) {
       // Non exploitée, 🧱 : dessus au sol normal du niveau (lot du sol des pentes), fronts en roche des piliers.
       n = _maillageMasse(lotCreux, m, BLANC, true, SOL.m, { lot: lotRoche, col: BLANC, tex: true, motif: ROCHE.m });
-    } else if (roche && !tex) {
-      // 🧱 coupé : dessus à la couleur de la légende (ombré), fronts à la couleur du pilier.
-      n = _maillageMasse(lotUni, m, _couleur("zones", "masse-sol", "fillColor"), false, undefined,
-        { lot: lotUni, col: _couleur("structures", "pilier-1"), tex: false });
     } else if (tex && lotDessus) {
       n = _maillageMasse(lotDessus, m, BLANC, true, SOL.m, { lot: lotTex, col: BLANC, tex: true, motif: REMBLAIS.m });
     } else n = _maillageMasse(tex ? lotTex : lotUni, m, tex ? BLANC : _couleur("zones", "masse-sol", "fillColor"), tex);
@@ -1262,7 +1256,7 @@
     if (z.uid && !e.dyContexte) {
       e.masseAspect = e.masseAspect || {};
       e.masseAspect[z.uid] = m.H < 0 ? { dessus: "sol", fronts: "sol" }
-        : roche ? (tex ? { dessus: "sol", fronts: "roche" } : { dessus: "uni", fronts: "pilier" })
+        : roche && tex ? { dessus: "sol", fronts: "roche" }
           : (tex ? (lotDessus ? { dessus: "solMasse", fronts: "remblais" } : { dessus: "remblais", fronts: "remblais" })
             : { dessus: "uni", fronts: "uni" });
     }
