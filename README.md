@@ -181,6 +181,9 @@ denylist.json           ← Empreintes SHA-256 de ZIP de plans fuités, refusés
 confadmin.html          ← ConfAdmin : outil de génération de data/index.json (kiosque, connexion serveur), script js/confadmin.js
 killsw.html             ← Page de secours : désinscrit le Service Worker et vide les caches (seule exception de la CSP stricte)
 ping.html               ← Corps « OK » : sonde de connectivité de l'app (même origine)
+robots.txt              ← Consignes aux robots d'indexation : tout est ouvert, adresse du plan du site (pas précaché)
+sitemap.xml             ← Plan du site pour les moteurs de recherche : l'accueil (pas précaché)
+og-myktamap.png         ← Image d'aperçu des liens partagés (og:image, 1200 × 630 : la ville et le puits de l'écran Bienvenue, fictifs ; pas précachée)
 
 js/                     ← Modules de l'app (vanilla, sans bundler) — voir « Modules JS » ci-dessous
 css/                    ← Feuilles de style : style.css (socle + jetons de la charte) + feuilles chargées à la demande

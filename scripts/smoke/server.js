@@ -29,7 +29,9 @@ const MIME = {
   ".svg":  "image/svg+xml",
   ".gif":  "image/gif",
   ".ico":  "image/x-icon",
-  ".woff2": "font/woff2"
+  ".woff2": "font/woff2",
+  ".txt":  "text/plain; charset=utf-8",
+  ".xml":  "application/xml; charset=utf-8"
 };
 
 // 🔒 CSP stricte = la politique en vigueur de docker/nginx-docker.conf (1re ligne add_header CSP ; le bloc
