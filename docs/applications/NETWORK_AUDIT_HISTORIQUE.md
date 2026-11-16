@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.28.1 (fiches en fenêtre, référencement du site)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Trois fichiers servis s'ajoutent à la racine du site : `robots.txt`, `sitemap.xml` et `og-myktamap.png` (l'image d'aperçu d'un lien partagé). Ce sont les moteurs de recherche et les aperçus de lien qui les lisent ; l'application ne les demande jamais et ne les garde pas hors ligne. Les données structurées de la page (`application/ld+json`) sont du texte dans la page, jamais exécuté, sans requête. La fiche en fenêtre au téléphone et le rendu 3D par défaut d'un plan sont dessinés et lus sur l'appareil.
+
 ### v2.28.0 (masse au sol, volume sur son secteur)
 
 **Aucune requête nouvelle, aucun domaine nouveau, aucun fichier nouveau.** La masse au sol (et son motif de blocs), la marche dessus en 3D, le Comblé revu et le calcul de volume sont dessinés et calculés sur l'appareil. Le secteur du volume et les prix de l'estimation de comblement restent dans le stockage local de l'appareil : ils ne sont ni envoyés ni exportés. Quand le navigateur refuse le stockage, l'application le dit une fois au lieu de redemander les conditions d'utilisation : rien ne part sur le réseau.
