@@ -1500,8 +1500,9 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Rendus mixte / structures / galerie** (décision produit, QCM du 02/11/2026 : interrupteur à trois états) : bouton
   🏛️🛣️ Mixte / 🏛️ Structures / 🛣️ Galerie, mode en cours écrit en clair, un toucher passe au suivant
   (`basculerRendu([vers])`), retenu par plan (`config.js > getPlanRenduVue3D / setPlanRenduVue3D`, pref `vue3dRendu`) ;
-  sans choix, **mixte** quel que soit le niveau (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`). Basculer refait
-  la scène.
+  rendu affiché lu par `config.js > getRenduVue3D` (`vue3d.js > _renduVoulu`, relu à chaque `_reindexer`) : choix
+  retenu, puis rendu par défaut du plan-config (`plan.vue3dRendu`, Générateur), puis **mixte** quel que soit le niveau.
+  Basculer refait la scène. Garde-fou : `scripts/smoke/checkup-rendu-3d-defaut.js`.
 - **Rendu mixte** (`KtaGalerie.modele(niveau, true)`, gardé à part du modèle galerie) : structures dressées partout
   (comme en structures, sol et plafond d'un seul tenant, tracés en rubans au sol), et les tracés en tubes **seulement
   là où aucune structure n'est autour**. ⚠️ contrat (décision produit) : **chaque côté du tube est jugé à part**

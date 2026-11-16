@@ -557,7 +557,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 - ✏️ Point panels stay readable even zoomed out; from very far, they keep only their icon (as on the map), a single one where icons overlap (danger and favourites first), and the name comes back as you get closer. Tapping an icon opens the card, at normal size.
 - **⛏️ Height**: the button shows the current height and opens **−** / **+**, from 1.5 to 20 m (0.1 m steps up to 5 m, then 0.5 m). On a map with several levels, each level has its own height: the button opens the **Levels: depth and height** window (the same as in ⚙️ Settings), above the view; when it closes, the scene takes the new values.
 - ⛏️ It is the height **of the level shown**, the one in ⚙️ Settings › 📉 Levels, which ⛏️ Mined volume also offers. On a single-level map, changing it here or in ⛏️ Mined volume changes the others; on a map with several levels, it can only be changed in ⚙️ Settings. The scene is rebuilt in place, without moving you; when you move to another level (🪜, tracking), the view takes that level's height.
-- **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: Mixed.
+- **Rendering**: the button shows the current rendering and moves to the next one (Mixed, Structures, Tunnels, see below). Kept for this map; default: the one chosen by the map's author in the Generator, otherwise Mixed.
 - **🧱 Textures** (on by default): stone, rock, concrete block, earth and rubble at their real size (see below). Kept on this device.
 - **🧱 HD textures** (**HD** button, next to Textures): finer textures and a detail grain when you look up close. On by default on a computer, off on a phone, where it is heavier (longer opening, more memory); no effect when Textures is off. Kept on this device.
 - **Floor lines** (on by default): the routes drawn on the floor, the gallery edging and the intersection rings. When off, the floor stays bare in all three renderings; your route stays drawn, and the map, its filters and the mini-map do not change. Kept on this device.
@@ -1960,6 +1960,7 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 - **Main image** (required): its dimensions are read automatically, with a red warning beyond 10,000 px per side or 30 MB.
 - **Tracker start position**: centred on the map automatically; **🎯 Recenter the start position** puts it back in the centre.
 - **Image layers** (legends, annotations) and **data layers**: up to 10 of each. The **Additions** layer is always included.
+- **🧊 Default 3D rendering**: Mixed (suggested), Structures or Tunnels — the rendering the 🧊 3D view opens with for this map; anyone can then pick their own with the Rendering button, kept for them.
 - **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
 - **Icons & tags**: **↺ Load defaults** pre-fills the standard icons, **+ Add a tag** creates a type of your own. The `default` and `track` tags are mandatory.
 - **🏷️ Map legend**: renames, hidden entries and added entries apply to everyone who opens the map; each person can then change it for themselves.

@@ -8812,8 +8812,9 @@
 
   // ── Rendu mixte / structures / galerie (interrupteur à trois états, retenu par plan) ─────────────────────
   // ⚠️ contrat (décision produit) : MIXTE par défaut, sans regarder ce que le niveau contient (un niveau sans
-  // structure y est tout en tubes, un niveau sans tracé tout en structures) ; choix retenu du plan
-  // (config.js > getPlanRenduVue3D). Sans KtaGalerie : structures seules.
+  // structure y est tout en tubes, un niveau sans tracé tout en structures). Lu par config.js > getRenduVue3D :
+  // choix retenu du plan, puis rendu par défaut du plan-config (Générateur), puis mixte. Sans KtaGalerie :
+  // structures seules.
   const RENDUS = ["mixte", "structures", "galerie"];
   // Icônes de la barre de la carte (ktaIcones.js) : m-pilier = les structures, m-galerie = les tracés ; le mixte
   // montre les deux.
@@ -8825,8 +8826,8 @@
 
   function _renduVoulu() {
     if (!window.KtaGalerie) return "structures";
-    const pref = typeof window.getPlanRenduVue3D === "function" ? window.getPlanRenduVue3D() : null;
-    return RENDUS.indexOf(pref) >= 0 ? pref : "mixte";
+    const r = typeof window.getRenduVue3D === "function" ? window.getRenduVue3D() : null;
+    return RENDUS.indexOf(r) >= 0 ? r : "mixte";
   }
 
   function _renduSuivant(r) { return RENDUS[(RENDUS.indexOf(r) + 1) % RENDUS.length]; }

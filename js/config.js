@@ -1318,14 +1318,28 @@ window.getPlanVerifVus = getPlanVerifVus;
 window.setPlanVerifVus = setPlanVerifVus;
 
 // ── Rendu de la vue 3D (js/vue3d.js) : "mixte", "structures" ou "galerie", retenu par plan ──────────────────
-// Par plan, pref `vue3dRendu` ; absente → null (la vue prend le mixte). Autre valeur refusée.
+// Par plan, pref `vue3dRendu` (le choix de l'utilisateur) ; absente → null. Autre valeur refusée.
+// ⚠️ contrat : le rendu à afficher se lit par getRenduVue3D, jamais en relisant pref ou plan-config :
+//   choix retenu (getPlanRenduVue3D) → plan-config `plan.vue3dRendu` (Générateur) → "mixte" (décision produit).
+// Une valeur inconnue du plan-config est ignorée (un ancien plan ou un ZIP abîmé s'ouvre en mixte).
+const RENDUS_VUE3D = ["mixte", "structures", "galerie"];
+function _renduVue3DValide(v) { return RENDUS_VUE3D.indexOf(v) >= 0 ? v : null; }
+// 🩸 Même limite que getPlanProfondeurs : PLAN_CONFIG ne répond que pour le plan ouvert.
+function getPlanRenduVue3DDuPlan(planId) {
+  if (planId && window._currentLoadedPlanId && planId !== window._currentLoadedPlanId) return null;
+  const p = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+  return _renduVue3DValide(p && p.vue3dRendu);
+}
+function getRenduVue3D(planId) {
+  return getPlanRenduVue3D(planId) || getPlanRenduVue3DDuPlan(planId) || "mixte";
+}
 function getPlanRenduVue3D(planId) {
   const pid = planId || window._currentLoadedPlanId || "default";
   const v = _readPlanPrefs(pid).vue3dRendu;
-  return v === "mixte" || v === "structures" || v === "galerie" ? v : null;
+  return _renduVue3DValide(v);
 }
 function setPlanRenduVue3D(planId, value) {
-  if (value !== "mixte" && value !== "structures" && value !== "galerie") return false;
+  if (!_renduVue3DValide(value)) return false;
   const pid = planId || window._currentLoadedPlanId || "default";
   const prefs = _readPlanPrefs(pid);
   prefs.vue3dRendu = value;
@@ -1334,6 +1348,8 @@ function setPlanRenduVue3D(planId, value) {
 }
 window.getPlanRenduVue3D = getPlanRenduVue3D;
 window.setPlanRenduVue3D = setPlanRenduVue3D;
+window.getPlanRenduVue3DDuPlan = getPlanRenduVue3DDuPlan;
+window.getRenduVue3D = getRenduVue3D;
 
 // ── 📏 Distance totale : case « Tous les niveaux » (js/interfaceDistanceTotale.js), retenue par plan ──────────
 // Par plan, pref `distTotTousNiveaux` ; absente → false (le niveau affiché seul compte).

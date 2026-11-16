@@ -193,7 +193,7 @@
     let h = "";
     try { h = typeof window.getNiveauVertical === "function" ? window.getNiveauVertical(lvl).hauteurM : ""; }
     catch (e) { h = ""; }
-    const rendu = typeof window.getPlanRenduVue3D === "function" ? window.getPlanRenduVue3D() : "";
+    const rendu = typeof window.getRenduVue3D === "function" ? window.getRenduVue3D() : "";
     const c = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z) : z.comble;
     return [c, lvl, h, rendu, window.APP_CONFIG && window.APP_CONFIG.scale].join("|");
   }

@@ -733,6 +733,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-distance-totale.js` | 📏 Distance totale : niveau affiché compté, case « Tous les niveaux » retenue par plan, changement de niveau, 3D, plan à un niveau |
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue pour le niveau mesuré |
 | `smoke/checkup-niveaux-verticaux.js` | Sol, hauteur et écart par niveau : Générateur (ZIP rouvert puis relu), `getNiveauVertical`, ⚙️ Réglages (écart négatif, pref, ↺), téléphone |
+| `smoke/checkup-rendu-3d-defaut.js` | Rendu 3D par défaut d'un plan : Générateur (champ, ZIP généré relu), vue 3D ouverte sur le rendu du plan-config, choix retenu prioritaire après rechargement, repli Mixte (absent, inconnu) |
 | `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice, réglages ⚙️ Portée et Lampe (intensité, faisceau, Plein jour), cavage comblé jusqu'aux structures, zoom de la vue plongeante, scène refaite quand les données changent vue ouverte (session, annulation, calque rapatrié puis restitué, légende, rafale, geste), dessin en vue plongeante avec les outils de la carte (§ 28 : pilier, murs, zone, tracé, mesure, niveau de la 3D, gestes, extinction, greffe, lecture seule, plan au sol), zone reliée à plusieurs niveaux (§ 29 : vue et obstacle sur chacun des siens, scène refaite au décochage), vue d'édition (§ 30 : caméra libre au doigt, ⌖, survol, niveau sans passage, bandeau, segments et angles de la mesure, panneaux lisibles, plan au sol au point visé, parois et sol unis 🧱 coupé, vue retenue par plan, tuile ⚙️ sur la colonne 🛠️) ; mesures sur un plan dense synthétique (portée de 20 à 100 m, plongée dézoomée, scène refaite, `KTA_V3D_PERF=dessin`) |
 
 ---
@@ -835,6 +836,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.28.0, branche `Karma_dev`)
+
+- **🧊 Rendu 3D par défaut d'un plan, choisi dans le Générateur** (`js/createConf.js > pl_rendu3d`, `js/config.js > getRenduVue3D`) : champ **Rendu 3D par défaut** (Mixte proposé, Structures, Galerie), écrit `plan.vue3dRendu` dans le plan-config seulement s'il n'est pas Mixte, repris en modification d'un plan. La vue 3D lit le rendu par `getRenduVue3D` : choix retenu de l'utilisateur pour ce plan, puis celui du plan-config, puis Mixte (plan sans le champ ou valeur inconnue). Sans KtaGalerie, structures seules. Guides fr / en / es, `data-formats.md`. 🛡️ `checkup-rendu-3d-defaut.js`.
 
 #### v2.28.0 (16/11/2026) — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide (branche `Karma_dev`)
 
