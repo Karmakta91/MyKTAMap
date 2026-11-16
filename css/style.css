@@ -1824,6 +1824,69 @@ body.kta-lost-click-mode .leaflet-container {
   padding-right: 24px;
 }
 
+/* ── Fiche en plein écran (téléphone, js/fichePleinEcran.js) ──
+   La popup Leaflet elle-même, posée dans .kta-fiche-pe-corps : position, transform et largeurs que Leaflet écrit en
+   style inline sont écrasés. ⚠️ z-index 99998 : juste sous les modales, qui s'ouvrent par-dessus la fiche. */
+.kta-fiche-pe {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  display: flex;
+  flex-direction: column;
+  background: var(--kta-fond);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+}
+.kta-fiche-pe-barre {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  background: var(--kta-surface);
+  border-bottom: 1px solid var(--kta-bordure);
+}
+.kta-fiche-pe-fermer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.kta-fiche-pe-corps {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.kta-fiche-pe .leaflet-popup {
+  position: static !important;
+  transform: none !important;
+  left: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  text-align: left;
+  opacity: 1 !important;
+}
+.kta-fiche-pe .leaflet-popup-content-wrapper {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  min-height: 100%;
+}
+.kta-fiche-pe .leaflet-popup-content {
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 14px 16px 24px !important;
+  font-size: 15px !important;
+}
+.kta-fiche-pe .leaflet-popup-tip-container,
+.kta-fiche-pe .leaflet-popup-close-button {
+  display: none !important;
+}
+.kta-fiche-pe .kta-popup-point > b:first-child {
+  padding-right: 0;
+}
+
 .leaflet-popup-content input,
 .leaflet-popup-content textarea,
 .leaflet-popup-content select {

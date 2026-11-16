@@ -215,7 +215,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (153 modules)
+## 🟢 L'application : modules JS (154 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -276,6 +276,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `imageLayerCalibrationPicker.js` | Modale de calage 2 ancres (deux mini-cartes source / plan) |
 | `mapBearing.js` | Rotation d'une carte Leaflet, une instance par carte : plan orienté pendant le suivi et rotation manuelle à deux doigts avec bouton nord sur la carte 2D, rotation manuelle seule pour les cartes OSM (`creerRotationManuelle`) ; pane intercalaire `.kta-rotate-pane` |
 | `map.js` | Carte Leaflet du plan (CRS.Simple), catalogue `TAGS_BUILTIN`, `_iconMap`, calques, filtre de niveau |
+| `fichePleinEcran.js` | Fiches des points, tracés, zones et structures en plein écran au téléphone : la popup Leaflet posée dans une fenêtre qui défile (réglage d'appareil) |
 | `tracking.js` | Tracker podométrique sans GPS : position, cap, recalage, map-matching, timeline du parcours |
 
 ### ✏️ Annotations et outils de mesure
@@ -684,6 +685,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-mur-dessous.js` | Un mur sous les piliers et fronts de son niveau (session × calque, mur en ligne × front, autre niveau) : ordre du canvas et pixel au croisement, sur la carte et dans les exports image |
 | `smoke/checkup-inaccessible-sous-structures.js` | Zones (inaccessible comprise) sous les structures sur le canvas commun après chargement, édition, ⏪ et filtre ; hachures en CanvasPattern ; fiche au clic |
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
+| `smoke/checkup-fiche-plein-ecran.js` | Fiches en plein écran au téléphone, Chromium et WebKit : case de la Configuration (défaut selon l'appareil, choix gardé après rechargement), fiche longue d'un point ouverte au toucher qui défile, carte immobile, « Y aller », Fermer, Échap, fiches d'un tracé, d'une zone et d'une structure, « Convertir » par-dessus, « Repositionner » puis toucher la carte ; bulle habituelle au PC ; captures avec `FPE_SHOTS=<dossier>` |
 | `smoke/checkup-fond-osm.js` | Fond OSM sous le plan : bouton grisé sans géoréf, interrupteur, transparence de l'image du plan, calage au pixel au zoom max, plan orienté, extinction, hors ligne, OSM refusé et incognito sans requête, « Ma position » |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
@@ -840,6 +842,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 #### Pas encore publié (après v2.28.0, branche `Karma_dev`)
 
 - **🧊 Rendu 3D par défaut d'un plan, choisi dans le Générateur** (`js/createConf.js > pl_rendu3d`, `js/config.js > getRenduVue3D`) : champ **Rendu 3D par défaut** (Mixte proposé, Structures, Galerie), écrit `plan.vue3dRendu` dans le plan-config seulement s'il n'est pas Mixte, repris en modification d'un plan. La vue 3D lit le rendu par `getRenduVue3D` : choix retenu de l'utilisateur pour ce plan, puis celui du plan-config, puis Mixte (plan sans le champ ou valeur inconnue). Sans KtaGalerie, structures seules. Guides fr / en / es, `data-formats.md`. 🛡️ `checkup-rendu-3d-defaut.js`.
+- **📱 Fiches en plein écran au téléphone** (`js/fichePleinEcran.js`, `map.js > KTA_POPUP_OPTS.ktaFiche`, `homeConfig.js`, `ui.md` § Fiche plein écran, `checkup-fiche-plein-ecran.js`) : au téléphone (tactile et moins de 900 px de large), la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une fenêtre plein écran qui défile, au lieu de la bulle trop grande ; c'est la même popup Leaflet (posée hors de la carte), ses boutons agissent, **Fermer** ou Échap la referme, la carte ne bouge pas derrière. Case « Fenêtre plein écran pour les fiches » dans ⚙️ Configuration de l'accueil › Affichage : elle suit l'appareil tant qu'on n'y touche pas, puis garde le choix sur l'appareil. Guides et aide intégrée fr / en / es.
 
 #### v2.28.0 (16/11/2026) — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide (branche `Karma_dev`)
 

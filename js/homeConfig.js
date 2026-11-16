@@ -21,6 +21,9 @@
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
+        // Fiches en plein écran : une case jamais touchée suit l'appareil (largeur relue à l'ouverture).
+        const fichePeCb = document.getElementById("loaderFichePeCb");
+        if (fichePeCb && window.KtaFichePleinEcran) fichePeCb.checked = window.KtaFichePleinEcran.actif();
         // Rubriques repliables comme les Réglages du plan (même balisage, mémoire à part), liées une fois
         // (la fenêtre n'est jamais reconstruite).
         _peindreAddons();
@@ -1178,6 +1181,21 @@
         }
         cb.checked = mb.rotationBloquee();
         cb.addEventListener("change", function () { mb.setRotationBloquee(!!cb.checked); });
+      })();
+
+      // Fiches en plein écran : source de vérité KtaFichePleinEcran. Case non touchée = valeur de l'appareil, relue
+      // à chaque ouverture de la Configuration (_ouvrirLoaderConfig) ; un changement est gardé sur l'appareil.
+      (function _initFichePeHome() {
+        const cb = document.getElementById("loaderFichePeCb");
+        if (!cb) return;
+        const fp = window.KtaFichePleinEcran;
+        if (!fp) {
+          const row = cb.closest("label");
+          if (row) row.style.display = "none";
+          return;
+        }
+        cb.checked = fp.actif();
+        cb.addEventListener("change", function () { fp.poser(!!cb.checked); });
       })();
 
       // Niveau des notifications (Toutes / Essentielles / Silence) : source de vérité OOMGuard (le goulot). Pas de

@@ -352,6 +352,7 @@ const ASSETS_TO_CACHE = [
   // UI Picker calage image layers (modale split-screen 2 minimaps)
   "./js/imageLayerCalibrationPicker.js",
   "./js/map.js",
+  "./js/fichePleinEcran.js",
   "./js/mapBearing.js",
   "./js/tracking.js",
   "./js/poiJonction.js",
