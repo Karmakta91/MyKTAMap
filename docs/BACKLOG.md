@@ -97,6 +97,10 @@
   Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
   `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
   sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+- **Fenêtre du POI : trop grosse au téléphone, trop chargée au PC** — retour de KARMA (16/11). Au téléphone, la
+  fiche d'un point couvre trop la carte ; au PC, elle montre trop d'informations. Le téléphone passe en premier.
+  `qui: Claude · action: topo (captures téléphone et PC, ce qu'on garde, ce qu'on replie) après le merge v2.28.0
+  · fini: fiche du POI validée par KARMA au téléphone, puis au PC · depuis: 16/11/2026 · taille: S`
 
 ## Plus tard
 
