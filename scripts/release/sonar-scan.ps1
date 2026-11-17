@@ -35,6 +35,14 @@ $racine = (git rev-parse --show-toplevel 2>$null)
 if (-not $racine) { Ko "Pas dans un dépôt Git."; exit 1 }
 $racine = $racine -replace '/', '\'
 
+# 🩸 Copie de travail (git worktree) : son `.git` est un FICHIER qui renvoie vers le dépôt principal par un chemin
+# Windows, que le scanner (dans Docker, seul `$racine` monté) ne peut pas suivre : RepositoryNotFoundException.
+# L'analyse s'y fait alors sans SCM (`sonar.scm.disabled`) ; arbre principal : rien ne change.
+$gitDir    = (git rev-parse --path-format=absolute --git-dir 2>$null)
+$gitCommun = (git rev-parse --path-format=absolute --git-common-dir 2>$null)
+$copieTravail = (Test-Path -LiteralPath (Join-Path $racine ".git") -PathType Leaf) -or
+  ($gitDir -and $gitCommun -and ($gitDir -ne $gitCommun))
+
 $jeton = $env:SONAR_TOKEN
 if (-not $jeton) { $jeton = [Environment]::GetEnvironmentVariable("SONAR_TOKEN", "User") }
 if (-not $jeton) { Ko "SONAR_TOKEN absent (variable d'environnement utilisateur)."; exit 1 }
@@ -67,6 +75,10 @@ $arguments = @(
   "-Dsonar.exclusions=data/**,lib/**,docs/**,lang/**,**/node_modules/**,scripts/smoke/**",
   "-Dsonar.sourceEncoding=UTF-8"
 )
+if ($copieTravail) {
+  $arguments += "-Dsonar.scm.disabled=true"
+  Info "copie de travail (git worktree) : analyse SANS SCM, le nouveau code est daté par l'analyse précédente"
+}
 $p = Start-Process docker -ArgumentList $arguments -NoNewWindow -Wait -PassThru `
   -RedirectStandardOutput "$tmp.out" -RedirectStandardError "$tmp.err"
 $sortie = @(Get-Content "$tmp.out", "$tmp.err" -ErrorAction SilentlyContinue)
