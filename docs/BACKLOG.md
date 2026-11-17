@@ -31,11 +31,6 @@
 
 ## Maintenant
 
-- **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
-  quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
-  plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
-  `qui: Claude · action: scénario pro de retour à l'accueil, après le lot tests-fiables du pro
-  · fini: scénario vert · depuis: 26/10/2026 · taille: S`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
