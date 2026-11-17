@@ -237,9 +237,12 @@ async function registerAsset(logicalPath, file, opts) {
   // opts.lazy (tuiles, 1000+ possibles) : pas de blob URL ici, créée à la demande (tiling.js > _resoudreUrlTuileLazy).
   if (lower.endsWith(".json")) {
     const text = await file.text();
-    const parsed = JSON.parse(text);
+    // JSON validé ici (un fichier illisible échoue à l'import, pas plus tard) mais l'objet n'est PAS gardé : les
+    // calques sont relus par leur URL (utils.js) ; le garder doublait leurs structures en mémoire.
+    // 🩸 `json` reste null : aucun lecteur, ne pas le remplir « pour servir ».
+    JSON.parse(text);
     const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-    window.RUNTIME_ASSETS[normalized] = { file, url, json: parsed, type: "json" };
+    window.RUNTIME_ASSETS[normalized] = { file, url, json: null, type: "json" };
   } else if (opts && opts.lazy === true) {
     window.RUNTIME_ASSETS[normalized] = { file, url: null, json: null, type: "binary", lazy: true };
   } else {

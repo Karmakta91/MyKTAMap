@@ -56,8 +56,8 @@
   let _fsEscapeHandler = null; // pour le nettoyage
   let _lastFitGeoref = null;  // géoréf du plan courant, pour recadrer au resize
   let _miniFitDone   = false; // cadré avec une taille de conteneur réelle (> 0)
-  // Cache RAM planId → { config, dataLayers, tilesOverview? } : pas de ré-extraction du ZIP pendant la
-  // session HOME (rien en localStorage).
+  // Cache RAM planId → { config, dataLayers, tilesOverview?, zip?, zipSource? } : pas de ré-extraction du ZIP pendant
+  // la session HOME (rien en localStorage). Le JSZip des tuiles détaillées se lit par _zipDe, jamais data.zip en direct.
   const _planDataCache = {};
   let _tilesLayer     = null;   // tuiles du plan projetées
   // Rotation manuelle (mapBearing.js > creerRotationManuelle) : une instance pour la page, rattachée à chaque
@@ -888,6 +888,43 @@
     return null;
   }
 
+  // ZIP du plan OUVERT (window._lazyZipRef), marqué de son planId à `mktm:plan-pret`. 🩸 Marque posée SUR le JSZip, pas
+  // retenue ici : entre deux plans, _lazyZipRef porte déjà le ZIP suivant (pas encore marqué, donc jamais pris pour
+  // l'ancien), et l'ancien part avec resetRuntimeAssets au lieu de rester tenu par l'aperçu.
+  function _zipOuvertDe(planId) {
+    const z = window._lazyZipRef;
+    return z && planId && z._ktaPlanId === planId ? z : null;
+  }
+
+  // JSZip des tuiles détaillées d'un plan ZIP → Promise<JSZip|null>. JSZip lit TOUT le fichier en mémoire (loadAsync
+  // d'un Blob) : le plan ouvert prête le sien, sinon copie de l'aperçu, relue à la demande si elle a été lâchée.
+  function _zipDe(planId) {
+    const ouvert = _zipOuvertDe(planId);
+    if (ouvert) return Promise.resolve(ouvert);
+    const data = _planDataCache[planId];
+    if (!data || !data.zipSource || typeof window.JSZip === "undefined") return Promise.resolve(null);
+    if (data.zip) return Promise.resolve(data.zip);
+    if (!data._zipLecture) {
+      data._zipLecture = _getPlanZipFile(planId)
+        .then(function (f) { return f ? window.JSZip.loadAsync(f) : null; })
+        .then(function (z) { if (!_zipOuvertDe(planId)) data.zip = z; return z; }, function (e) {   // ouvert entre-temps : pas gardé
+          console.warn("[OsmHomePreview] relecture du ZIP échouée :", e);
+          return null;
+        })
+        .finally(function () { data._zipLecture = null; });
+    }
+    return data._zipLecture;
+  }
+
+  // Plan ouvert : son ZIP est marqué et la copie de l'aperçu lâchée (même fichier, deux tampons de sa taille sinon).
+  window.addEventListener("mktm:plan-pret", function (e) {
+    const planId = e && e.detail && e.detail.planId;
+    const z = window._lazyZipRef;
+    if (!z || !planId) return;
+    z._ktaPlanId = planId;
+    if (_planDataCache[planId]) _planDataCache[planId].zip = null;
+  });
+
   // Plan SERVEUR pour l'aperçu : même sortie `{ config, dataLayers, tilesOverview, iconUrls }` que la branche
   // ZIP, mais en HTTP (un plan serveur n'a ni handle ni blob). Chemins via `resolveServerPaths`, comme au
   // chargement réel, sinon aperçu et mode plan divergent sur les mêmes fichiers.
@@ -977,7 +1014,19 @@
     return { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls };
   }
 
-  async function _loadPlanDataForPreview(planId) {
+  // 🩸 Une seule lecture en cours par plan : deux appels rapprochés (sélection, widget, multi-plans) lisaient le ZIP
+  // deux fois, et le résultat perdu, tenu par son appelant, gardait un second tampon de la taille du fichier.
+  const _lecturesEnCours = {};
+  function _loadPlanDataForPreview(planId) {
+    if (_planDataCache[planId]) return Promise.resolve(_planDataCache[planId]);
+    if (!_lecturesEnCours[planId]) {
+      _lecturesEnCours[planId] = _lirePlanDataForPreview(planId)
+        .finally(function () { delete _lecturesEnCours[planId]; });
+    }
+    return _lecturesEnCours[planId];
+  }
+
+  async function _lirePlanDataForPreview(planId) {
     if (_planDataCache[planId]) return _planDataCache[planId];
 
     // Plan SERVEUR : lecture HTTP (ce module n'a pas d'autre chemin pour lui).
@@ -993,14 +1042,15 @@
       console.warn("[OsmHomePreview] JSZip indisponible, abandon data extraction");
       return null;
     }
-    const file = await _getPlanZipFile(planId);
-    if (!file) {
+    const ouvert = _zipOuvertDe(planId);   // plan ouvert : son ZIP déjà lu, pas une seconde lecture du fichier
+    const file = ouvert ? null : await _getPlanZipFile(planId);
+    if (!ouvert && !file) {
       console.log("[OsmHomePreview] ZIP non récupérable pour planId=" + planId + " (FS handle absent + IDB blob purgé)");
       return null;
     }
     try {
       const tDebut = Date.now();
-      const zip = await window.JSZip.loadAsync(file);
+      const zip = ouvert || await window.JSZip.loadAsync(file);
       // 1. plan-config.json
       const cfgEntry = zip.file("plan-config.json");
       if (!cfgEntry) { console.warn("[OsmHomePreview] plan-config.json absent"); return null; }
@@ -1055,9 +1105,10 @@
       } catch(e) {
         console.warn("[OsmHomePreview] icons extraction échec :", e);
       }
-      // handle JSZip GARDÉ en cache pour les tuiles hi-res : loadAsync est paresseux (répertoire central seul,
-      // le File reste une référence), coût RAM négligeable, pas de re-parse à chaque niveau.
-      const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls, zip: zip };
+      // JSZip gardé pour les tuiles hi-res (pas de re-parse à chaque niveau). 🩸 Il tient le fichier ENTIER en mémoire
+      // (loadAsync d'un Blob n'est pas paresseux) : celui du plan ouvert n'est pas recopié ici (_zipDe le prête).
+      const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls,
+                       zip: (ouvert || _zipOuvertDe(planId)) ? null : zip, zipSource: true };   // ouvert pendant la lecture
       _planDataCache[planId] = result;
       console.log("[OsmHomePreview] Plan data extrait (" + (Date.now() - tDebut) + " ms) — " +
         dataLayers.length + " dataLayer(s) parsés" +
@@ -2007,7 +2058,7 @@
   async function _majHiResPlan(planId, georef) {
     const data = _planDataCache[planId];
     const tv   = data && data.tilesOverview;
-    if (!tv || !data.zip || !data.config || !data.config.tiling || !georef) { _retirerHiRes(planId); return; }
+    if (!tv || !data.zipSource || !data.config || !data.config.tiling || !georef) { _retirerHiRes(planId); return; }
     if (!(_showTiles && _visDe(planId).tiles)) { _retirerHiRes(planId); return; }
     const proj = _buildProjection(georef);
     if (!proj) { _retirerHiRes(planId); return; }
@@ -2042,6 +2093,10 @@
       if (t.length <= HIRES_BUDGET_TUILES) { choix = { z: z, scale: scale, tuiles: t }; break; }
     }
     if (!choix) { _retirerHiRes(planId); return; }
+    const carteAvant = _mapInstance;
+    const zip = await _zipDe(planId);
+    if (!zip) { _retirerHiRes(planId); return; }
+    if (_mapInstance !== carteAvant) return;          // carte recréée pendant la relecture : le prochain passage refait
 
     // delta : même niveau → tuiles communes réutilisées
     const h        = _hiRes[planId];
@@ -2065,7 +2120,7 @@
       if (_mapInstance !== carte) break;
       const cle = t.col + "_" + t.k;
       if (ancien[cle]) { nouvelles[cle] = ancien[cle]; delete ancien[cle]; continue; }
-      const entry = data.zip.file("data/tiles/z" + choix.z + "/x" + t.col + "_y" + (-t.k) + "." + ext);
+      const entry = zip.file("data/tiles/z" + choix.z + "/x" + t.col + "_y" + (-t.k) + "." + ext);
       if (!entry) continue;
       let url = null;
       try { url = URL.createObjectURL(await entry.async("blob")); } catch(e) { continue; }

@@ -712,6 +712,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-estimation-comblement.js` | Estimation de comblement de ⛏️ : valeurs calculées à la main (matériau, forages, durée, total, toupies, CO₂), blocs repliés par défaut et état retenu, prix saisi retrouvé à la réouverture, prix propre à chaque matériau, « Valeurs par défaut », rendu sans stockage ; captures avec `EC_SHOTS=<dossier>` |
 | `smoke/checkup-secteur-volume.js` | Secteur propre au ⛏️ Volume exploité : dessin au geste de ♦️ (fenêtre cachée, barre Valider / Annuler, mesure rendue intacte), retrouvé après rechargement, repris d'un autre niveau, deux niveaux à hauteurs différentes additionnés avec détail, niveaux cochés retenus, « Tous », Échap et secteur trop court sans effet ; capture avec `SV_SHOTS=<dossier>` |
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
+| `smoke/checkup-zip-partage.js` | Plan ZIP tuilé rouvert depuis l'accueil : archive gardée une seule fois (aperçu et plan), tuiles détaillées de l'aperçu intactes |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
 | `smoke/checkup-raccords.js` | Règle stricte des jonctions (galeries parallèles : pas de traversée du mur) et « 🔗 Raccords à vérifier » : Raccorder, Ctrl+Z, Ignorer retenu au rechargement |
@@ -846,6 +847,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 #### Pas encore publié (après v2.28.1, branche `Karma_dev`)
 
 - **🧪 Stabilisation des tests et du démarrage** (`js/homeProfile.js`, `scripts/smoke/checkup-vue-3d.js`) : le bandeau du profil à l'accueil attend que le dictionnaire de langue soit chargé avant d'écrire ses textes (sous Safari lent, il affichait un instant la clé brute au lieu du libellé). Le contrôle de la descente animée de la vue 3D mesure le temps du geste et non l'horloge (rouge par intermittence sur un poste chargé), et l'essai du calque rapatrié attend aussi son point. 5 passages WebKit verts de suite.
+- **🧠 Plan ZIP : plus rien en double en mémoire** (`js/osmHomePreview.js`, `js/config.js`, `js/galerieEmprise.js`, `plans-loader.md` §59.7, `checkup-zip-partage.js`) : un plan ZIP tuilé rouvert depuis l'accueil gardait son archive deux fois, celle du plan et celle de l'aperçu de la carte d'accueil (lue elle-même deux fois). L'aperçu emprunte désormais le ZIP du plan ouvert et relit le sien à la demande ; le JSON des calques n'est plus gardé à côté de leur fichier ; la vue 3D ne refait plus un second index des structures par niveau. Mesuré sur un relevé lourd : 2 archives en mémoire → 1.
 
 #### v2.28.1 (16/11/2026) — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site (branche `Karma_dev`)
 

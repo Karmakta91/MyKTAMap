@@ -398,11 +398,11 @@ async function _osmServeur() {
   t("🌐 le chargeur serveur est extractible", d >= 0 && f > d);
   t("🩸 il est BRANCHÉ sur le type de plan, AVANT la voie ZIP",
     (function () {
-      // 🩸 Borner au CORPS de `_loadPlanDataForPreview` : dans tout le fichier, on tombe sur la
-      // DÉFINITION de `_getPlanZipFile`, plus haut (faux rouge).
-      const i = OHPC.indexOf("async function _loadPlanDataForPreview(planId)");
+      // 🩸 Borner au CORPS de `_lirePlanDataForPreview` (la lecture, derrière `_loadPlanDataForPreview` qui partage
+      // la promesse en cours) : dans tout le fichier, on tombe sur la DÉFINITION de `_getPlanZipFile`, plus haut.
+      const i = OHPC.indexOf("async function _lirePlanDataForPreview(planId)");
       if (i < 0) return false;
-      const j = OHPC.indexOf("const file = await _getPlanZipFile(planId);", i);
+      const j = OHPC.indexOf("await _getPlanZipFile(planId);", i);
       if (j < 0) return false;
       const corps = OHPC.slice(i, j);
       return corps.indexOf("_plan.type === \"server\"") >= 0 &&

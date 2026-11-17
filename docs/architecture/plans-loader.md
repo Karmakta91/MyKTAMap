@@ -514,6 +514,26 @@ AVANT le sweep, puis ré-injecter APRÈS. Moins propre car couplage temporel.
   ZIP brute : ~10-20 MB typiquement (taille du fichier ZIP), négligeable devant les
   60-80 MB économisés sur les tuiles décompressées.
 
+#### 59.7 Rien en double : une copie du ZIP, du JSON, de l'index des structures
+
+🩸 `JSZip.loadAsync` d'un Blob **lit tout le fichier en mémoire** (il n'est pas paresseux) : chaque JSZip vivant
+tient un tampon de la taille de l'archive. Trois règles évitent qu'un plan ouvert soit gardé deux fois :
+
+- **ZIP** — l'aperçu de l'accueil (`osmHomePreview.js`) lit le ZIP d'un plan gardé pour ses tuiles détaillées. Il
+  passe toujours par `_zipDe(planId)` : à `mktm:plan-pret`, le ZIP du plan ouvert (`_lazyZipRef`) reçoit la marque
+  `_ktaPlanId` et l'aperçu lâche sa copie ; le ZIP marqué lui est prêté tant que le plan est ouvert ; une copie
+  lâchée est relue à la demande (retour à l'accueil : le plan libéré emporte son ZIP). La marque est posée **sur**
+  le JSZip, jamais retenue par l'aperçu : entre deux plans, `_lazyZipRef` porte déjà le ZIP suivant, pas encore
+  marqué. Une seule lecture en cours par plan (`_loadPlanDataForPreview` partage la promesse) : deux appels
+  rapprochés lisaient le ZIP deux fois.
+- **JSON des calques** — `config.js > registerAsset` valide le JSON mais garde `json: null` : les calques sont
+  relus par leur URL (`utils.js`), aucun lecteur du champ.
+- **Index des structures de la 3D** — `galerieEmprise.js` : le modèle du rendu mixte prend l'index du niveau dans
+  `_cacheStructures` (`_structuresDe`), celui que lit `comblementPorte`, au lieu d'en refaire un.
+
+Mesuré sur un relevé lourd (ZIP tuilé gardé, page rechargée, plan rouvert) : 2 JSZip vivants → 1, le stockage
+hors tas passe de deux fois la taille de l'archive à une fois. Garde-fou : `scripts/smoke/checkup-zip-partage.js`.
+
 #### 59.6 À NE PAS faire
 
 - ❌ **Décompresser toutes les tuiles dans une boucle de Promise.all au boot** — c'est

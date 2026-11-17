@@ -1418,7 +1418,9 @@
     };
     // 5. Pièces : rectangle par arête (par morceau de tube en mixte), joint (triangles en éventail autour du nœud)
     // par nœud de degré ≥ 2 (hors chambre). Bout ouvert d'un tube : son bord est noté dans `ouverts` (pas de paroi).
-    const S = mixte ? _indexStructures(niveau, sc) : null;
+    // 🩸 Index pris dans _cacheStructures, pas refait : le modèle le garde (enChambre) et comblementPorte en tenait
+    // un second, identique, pour le même niveau (deux index des structures en mémoire sur un relevé lourd).
+    const S = mixte ? _structuresDe(niveau, sc) : null;
     const nc = S ? _chambres(noeuds, aretes, incid, S, sc) : null;
     const pieces = [], retours = [];
     let cotesOuverts = 0;
