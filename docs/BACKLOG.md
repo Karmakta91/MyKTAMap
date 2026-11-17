@@ -140,15 +140,9 @@
 
 ## Entrant
 
-- **`checkup-point-precis` rouge sur Karma_dev** — 200 verts, 29 rouges, identique sur `ab8f0303` (vu au lot mémoire du
-  17/11) ; préexistant, cause non cherchée.
-  `qui: Claude · action: trouver si c'est le test ou l'appli, corriger · depuis: 17/11/2026 · taille: S`
 - **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
   15/11), déjà présent avant la masse au sol.
   `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
-- **`checkup-exports-structures` rouge depuis le nouveau relevé fictif** — il attend 10 structures de calque et en voit
-  217 depuis `a1340f74` (14/11) ; hérité, sans lien avec un lot.
-  `qui: Claude · action: adapter le test au relevé enrichi sans l'affaiblir · depuis: 14/11/2026 · taille: XS`
 - **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
   annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
   `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`

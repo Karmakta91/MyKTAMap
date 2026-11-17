@@ -200,6 +200,9 @@ async function ouvrirFiche(page, ptr, uid) {
 }
 
 // Guides 2D du point précis : squares et segments en px d'écran.
+// 🩸 Le relevé fictif porte lui-même des POI de calque à point précis : leurs guides (posés par le marqueur, hors
+// écran ou non) sont écartés ici, sinon chaque compte du test dépend du relevé. Seuls ceux des POI du test (uid
+// `pt_pp_…`) et les points provisoires d'une saisie sont comptés ; `interactif` regarde tous les guides.
 function guides(page) {
   return page.evaluate(function () {
     // Bouts d'un trait en px d'écran : premier et dernier point du chemin, par sa matrice d'écran (rotation du pane
@@ -210,15 +213,27 @@ function guides(page) {
       const A = new DOMPoint(a.x, a.y).matrixTransform(m), B = new DOMPoint(b.x, b.y).matrixTransform(m);
       return [[A.x, A.y], [B.x, B.y]];
     };
+    const etrangers = new Set();
+    let nEtrangers = 0;
+    window.map.eachLayer(function (l) {
+      const p = l._ktaPrecisPoint, g = l._ktaPrecisGuide;
+      if (!p || !g || /^pt_pp_/.test(String(p.uid || ""))) return;
+      nEtrangers++;
+      g.eachLayer(function (x) { if (x._path) etrangers.add(x._path); if (x._icon) etrangers.add(x._icon); });
+    });
+    const miens = function (sel) {
+      return Array.from(document.querySelectorAll(sel)).filter(function (el) { return !etrangers.has(el); });
+    };
     return {
       etat: window.KtaPoiPrecis.etat(),
-      carres: Array.from(document.querySelectorAll(".kta-precis-carre")).map(function (el) {
+      etrangers: nEtrangers,
+      carres: miens(".kta-precis-carre").map(function (el) {
         const r = el.getBoundingClientRect(); return [(r.left + r.right) / 2, (r.top + r.bottom) / 2];
       }),
-      traits: Array.from(document.querySelectorAll("path.kta-precis-trait")).map(rc),
-      segments: Array.from(document.querySelectorAll("path.kta-precis-segment")).map(rc),
+      traits: miens("path.kta-precis-trait").map(rc),
+      segments: miens("path.kta-precis-segment").map(rc),
       // Sommets de chaque polyligne (commandes M / L du chemin SVG de Leaflet).
-      sommets: Array.from(document.querySelectorAll("path.kta-precis-segment")).map(function (el) {
+      sommets: miens("path.kta-precis-segment").map(function (el) {
         return (String(el.getAttribute("d") || "").match(/[ML]/g) || []).length;
       }),
       interactif: Array.from(document.querySelectorAll(".kta-precis-trait, .kta-precis-segment, .kta-precis-carre"))
@@ -330,6 +345,7 @@ async function jouer(nav, moteur, mode) {
 
     // ── 3. Affichage : pointillé + carré, zoom moyen ──
     let g = await guides(page);
+    inf("POI du relevé à point précis, écartés des comptes : " + g.etrangers);
     const eIc = await ecran(page, p1), ePr = await ecran(page, p1.precis);
     verifier(g.carres.length === 1 && proche(g.carres[0], ePr, tol), "carré au point précis", { g: g.carres, ePr: ePr });
     verifier(g.traits.length === 1 && boiteRelie(g.traits[0], eIc, ePr, tol),
