@@ -88,11 +88,11 @@
   `qui: Claude · action: vérifier les 3 doublons et retirer ceux qui sont sûrs, après le merge v2.28.0
   · fini: tas mesuré avant/après sur un relevé lourd, ouverture et tuiles vertes · depuis: 15/11/2026 · taille: S`
 
-- **Changement de niveau 2D : ne plus recréer les couches** — mesure sur un plan réel (15/11, CPU ×4) : 2,3 s par
-  changement, dont ~2,1 s dans `renderStructures` (addLayer 0,75 s, removeLayer 0,3 s, ordre des murs, styles).
-  Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
-  `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
-  sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+- **Niveaux visibles 2D : décocher un niveau, « Tout afficher »** — ✅ mesuré 17/11 (CPU ×4, 4 000 structures, 2 500
+  tracés, 1 510 zones, 5 niveaux) : décocher 1 niveau sur 5 = 2,2 s, « Tout afficher » = 2,1 s (couches de session
+  recréées). Pistes : ne traiter que l'écart, puis garder les couches des niveaux masqués (~1 Mo pour 10 000).
+  `qui: KARMA · action: dire s'il faut reprendre (piste 1, ou 1 + 2) · fini: les deux gestes mesurés sous 1 s à CPU ×4,
+  checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
 - **Référencement de doc.myktamap.fr** — un sitemap ne liste que son propre domaine : la doc doit publier son
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
