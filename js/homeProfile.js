@@ -20,9 +20,17 @@
       // modale « Détails du profil » + choix du bandeau (clé « ext:<cle> »). Vide sans extension.
       let _statsExt = [];
       function _echapStat(s) { return window.ktaEsc(s); }
+      // 🩸 Ce module tourne au « load », parfois AVANT la fin de I18n.init() (WebKit) : un t() rendu trop tôt écrit la clé
+      // brute (« Clé manquante »). Barrière documentée par langManager.js : init() mémoïsée, résolue tout de suite une
+      // fois le dico chargé. Attendue avant tout rendu de texte du bandeau.
+      function _i18nPret() {
+        if (!window.I18n || typeof window.I18n.init !== "function") return Promise.resolve();
+        return window.I18n.init().catch(function () { /* dico illisible : le repli des clés reste celui de t() */ });
+      }
       async function _relireStatsExt() {
         if (!window.KtaExtensions || typeof window.KtaExtensions.profilStatsExtension !== "function") return;
         try { _statsExt = await window.KtaExtensions.profilStatsExtension(); } catch(e) { _statsExt = []; }
+        await _i18nPret();
         _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
         _hydrateProfileBarStats();
       }
@@ -32,6 +40,7 @@
         const bar = document.getElementById("kta-loader-profile-bar");
         if (!bar || !window.UserProfile) return;
         try { await window.UserProfile.init(); } catch(e) {}
+        await _i18nPret();
         // Slots de stats construits selon les préférences AVANT l'hydratation (sinon conteneur vide).
         _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
         await _refreshLoaderProfileBar();
@@ -794,6 +803,7 @@
 
       // Hydrate les slots PRÉSENTS dans le DOM (data-stat-key) : une stat ajoutée au pool ne touche pas cette fonction.
       async function _hydrateProfileBarStats() {
+        await _i18nPret();
         const slots = document.querySelectorAll("#kta-loader-profile-stats [data-stat-key]");
         for (const slot of slots) {
           const key   = slot.dataset.statKey;

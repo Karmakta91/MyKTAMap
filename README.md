@@ -843,6 +843,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
+#### Pas encore publié (après v2.28.1, branche `Karma_dev`)
+
+- **🧪 Stabilisation des tests et du démarrage** (`js/homeProfile.js`, `scripts/smoke/checkup-vue-3d.js`) : le bandeau du profil à l'accueil attend que le dictionnaire de langue soit chargé avant d'écrire ses textes (sous Safari lent, il affichait un instant la clé brute au lieu du libellé). Le contrôle de la descente animée de la vue 3D mesure le temps du geste et non l'horloge (rouge par intermittence sur un poste chargé), et l'essai du calque rapatrié attend aussi son point. 5 passages WebKit verts de suite.
+
 #### v2.28.1 (16/11/2026) — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site (branche `Karma_dev`)
 
 > Écart avec la prod v2.28.0.
