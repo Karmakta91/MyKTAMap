@@ -140,6 +140,9 @@
 
 ## Entrant
 
+- **`checkup-point-precis` rouge sur Karma_dev** — 200 verts, 29 rouges, identique sur `ab8f0303` (vu au lot mémoire du
+  17/11) ; préexistant, cause non cherchée.
+  `qui: Claude · action: trouver si c'est le test ou l'appli, corriger · depuis: 17/11/2026 · taille: S`
 - **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
   15/11), déjà présent avant la masse au sol.
   `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
