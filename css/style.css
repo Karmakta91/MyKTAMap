@@ -20266,6 +20266,7 @@ button.kta-cfg-ligne-action {
 .kta-detect-apercu.kta-detect-retire { stroke: var(--kta-texte-3); fill: var(--kta-texte-3); fill-opacity: 0.08;
   stroke-dasharray: 4 3; }
 .kta-detect-coin { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.6; }
+.kta-detect-apercu.kta-detect-trait { fill: none; stroke: var(--kta-interaction); stroke-width: 5; stroke-linecap: round; }
 .kta-verif-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-verif-info { flex: 1 1 160px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
 .kta-verif-objet { stroke: var(--kta-accent); fill: none; }

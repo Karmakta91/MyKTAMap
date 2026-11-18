@@ -4,11 +4,13 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// ktaDetection.js — détection des masses pleines (piliers) sur l'image d'un plan : calcul PUR, sans DOM ni carte.
+// ktaDetection.js — détection des piliers (masses) et des fronts (traits) sur l'image d'un plan : calcul PUR.
 // Chargé par index.html (mode plan, Générateur), par js/ktaDetectionWorker.js (importScripts) et par Node (tests).
 // Méthode : chaque pixel → classe de couleur (écart ΔE en Lab aux exemples de la pipette), ouverture morphologique
 // (carré de côté `ouverture` : retire moucheté, traits creux, appendices), composantes d'aire ≥ `aireMin`, contour
 // extérieur suivi sur les BORDS des pixels (aire exacte), Douglas-Peucker à `simplification`.
+// Traits (classe nature "trait") : couleur du trait MOINS les masses pleines, fermeture, squelette (Zhang-Suen),
+// chemins sans ergots ni bruit, découpés au cœur du bloc puis raccordés bout à bout entre blocs.
 // Expose : KtaDetection = { detecter, detecterBloc, depuisMetres, REGLAGES, executeurWorker, rgbVersLab, deltaE }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
@@ -196,23 +198,29 @@
     const W = o.w, H = o.h, N = W * H, d = o.data, e = o.echelle || 1;
     const R = Math.max(1, Math.floor((o.reglages.ouverture * e) / 2));
     const aireMin = o.reglages.aireMin * e * e, eps = Math.max(0.5, o.reglages.simplification * e);
-    const classer = _tableClasses(o.classes);
+    // 🩸 Un trait de front a souvent la couleur d'un pilier : les traits ne concourent pas avec les masses pour un
+    //   pixel ; chacun est lu à part (couleur du trait MOINS les masses pleines, plus bas).
+    const clMasses = o.classes.filter(function (c) { return c.nature !== "trait"; });
+    const clTraits = o.classes.filter(function (c) { return c.nature === "trait"; });
+    const classer = _tableClasses(clMasses);
     const cls = new Uint8Array(N);
     for (let i = 0, k = 0; i < N; i++, k += 4) {
-      if (d[k + 3] < 128) continue;   // transparent : hors image
+      if (d[k + 3] < 128) { cls[i] = 255; continue; }   // transparent : hors image
       cls[i] = classer(d[k], d[k + 1], d[k + 2]);
     }
     const coeur = o.coeur || { x: 0, y: 0, w: W, h: H }, bords = o.bords || { g: true, h: true, d: true, b: true };
     const masses = [], tropGrands = [];
     let ignorees = 0;
     const m = new Uint8Array(N), tmp = new Uint8Array(N), vu = new Uint8Array(N), pile = new Int32Array(N);
+    const pleins = clTraits.length ? new Uint8Array(N) : null;   // masses après ouverture, retirées des traits
     const trouMax = Math.max(0, Math.round((o.reglages.trouMax === undefined ? REGLAGES.trouMax : o.reglages.trouMax) *
       e * e));
-    for (let c = 1; c <= o.classes.length; c++) {
+    for (let c = 1; c <= clMasses.length; c++) {
       for (let i = 0; i < N; i++) m[i] = cls[i] === c ? 1 : 0;
       if (trouMax > 0) _comblerTrous(m, W, H, trouMax);
       _passe(m, tmp, W, H, R, true);
       _passe(tmp, m, W, H, R, false);
+      if (pleins) for (let i = 0; i < N; i++) if (m[i]) pleins[i] = 1;
       vu.fill(0);
       for (let p = 0; p < N; p++) {
         if (!m[p] || vu[p]) continue;
@@ -234,11 +242,11 @@
         const boite = { x: o.x0 + x0 / e, y: o.y0 + y0 / e, w: (x1 - x0 + 1) / e, h: (y1 - y0 + 1) / e };
         const coupee = (x0 === 0 && !bords.g) || (y0 === 0 && !bords.h) || (x1 === W - 1 && !bords.d) ||
           (y1 === H - 1 && !bords.b);
-        if (coupee) { tropGrands.push({ classe: o.classes[c - 1].id, boite: boite }); continue; }
+        if (coupee) { tropGrands.push({ classe: clMasses[c - 1].id, boite: boite }); continue; }
         const s = _simplifierFerme(_contour(m, W, H, p % W, (p - p % W) / W), eps);
         if (s.length < 3) { ignorees++; continue; }
         masses.push({
-          classe: o.classes[c - 1].id,
+          classe: clMasses[c - 1].id,
           aire: _aire(s) / (e * e),
           boite: boite,
           points: s.map(function (q) {
@@ -247,7 +255,176 @@
         });
       }
     }
-    return { masses: masses, tropGrands: tropGrands, ignorees: ignorees };
+    const traits = [];
+    clTraits.forEach(function (cl) {
+      const dedans = _tableClasses([cl]);
+      for (let i = 0, k = 0; i < N; i++, k += 4) m[i] = d[k + 3] >= 128 && dedans(d[k], d[k + 1], d[k + 2]) ? 1 : 0;
+      _traitsBloc(m, tmp, pleins, W, H, o, e).forEach(function (pts) {
+        traits.push({ classe: cl.id, points: pts });
+      });
+    });
+    return { masses: masses, tropGrands: tropGrands, ignorees: ignorees, traits: traits };
+  }
+
+  // ── Traits (fronts) ──
+  // Zhang-Suen sur la liste des pixels actifs (bord du bloc vidé : le squelette ne touche jamais le cadre).
+  function _squelette(S, W, H) {
+    let act = [];
+    for (let i = 0; i < W * H; i++) {
+      if (!S[i]) continue;
+      const x = i % W, y = (i - x) / W;
+      if (x > 0 && y > 0 && x < W - 1 && y < H - 1) act.push(i); else S[i] = 0;
+    }
+    let change = true;
+    while (change) {
+      change = false;
+      for (let pas = 0; pas < 2; pas++) {
+        const del = [];
+        for (let a = 0; a < act.length; a++) {
+          const i = act[a];
+          if (!S[i]) continue;
+          const p2 = S[i - W], p3 = S[i - W + 1], p4 = S[i + 1], p5 = S[i + W + 1], p6 = S[i + W], p7 = S[i + W - 1],
+            p8 = S[i - 1], p9 = S[i - W - 1];
+          const b = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          if (b < 2 || b > 6) continue;
+          const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+          let t = 0;
+          for (let k = 0; k < 8; k++) if (!seq[k] && seq[k + 1]) t++;
+          if (t !== 1) continue;
+          if (pas === 0 ? (p2 * p4 * p6 || p4 * p6 * p8) : (p2 * p4 * p8 || p2 * p6 * p8)) continue;
+          del.push(i);
+        }
+        if (del.length) { change = true; for (let k = 0; k < del.length; k++) S[del[k]] = 0; }
+      }
+      act = act.filter(function (i) { return S[i]; });
+    }
+  }
+  // Squelette → chemins entre nœuds (bouts, carrefours) et boucles. Adjacence « m » : une diagonale ne compte que si
+  // les deux 4-voisins qui la bordent sont vides (pas de faux carrefour sur les marches d'escalier du squelette).
+  function _chemins(S, W, H) {
+    const N = W * H;
+    const vois = function (i) {
+      const r = [], n = S[i - W], es = S[i + 1], so = S[i + W], ou = S[i - 1];
+      if (n) r.push(i - W); if (es) r.push(i + 1); if (so) r.push(i + W); if (ou) r.push(i - 1);
+      if (S[i - W + 1] && !n && !es) r.push(i - W + 1);
+      if (S[i + W + 1] && !so && !es) r.push(i + W + 1);
+      if (S[i + W - 1] && !so && !ou) r.push(i + W - 1);
+      if (S[i - W - 1] && !n && !ou) r.push(i - W - 1);
+      return r;
+    };
+    const vu = new Uint8Array(N), aretes = new Set(), out = [];
+    const cle = function (a, b) { return a < b ? a + "," + b : b + "," + a; };
+    const marcher = function (s, n) {
+      const ch = [s, n];
+      aretes.add(cle(s, n));
+      let prec = s, cur = n;
+      while (!vu[cur] && vois(cur).length === 2) {
+        vu[cur] = 1;
+        const v = vois(cur), suiv = v[0] === prec ? v[1] : v[0];
+        aretes.add(cle(cur, suiv));
+        ch.push(suiv);
+        prec = cur; cur = suiv;
+        if (cur === s) break;
+      }
+      return ch;
+    };
+    for (let i = 0; i < N; i++) {
+      if (!S[i]) continue;
+      const v = vois(i);
+      if (v.length === 2) continue;
+      for (let k = 0; k < v.length; k++) {
+        if (aretes.has(cle(i, v[k]))) continue;
+        const ch = marcher(i, v[k]);
+        out.push({ ch: ch, bouts: [vois(ch[0]).length, vois(ch[ch.length - 1]).length] });
+      }
+    }
+    for (let i = 0; i < N; i++) {
+      if (!S[i] || vu[i] || vois(i).length !== 2) continue;
+      vu[i] = 1;
+      out.push({ ch: marcher(i, vois(i)[0]), bouts: [2, 2] });
+    }
+    return out;
+  }
+  // Morceaux d'une polyligne [x, y] à l'intérieur d'un rectangle, segment par segment (Liang-Barsky).
+  // 🩸 Un segment simplifié peut traverser le rectangle de part en part, ses deux bouts dehors (trait qui court sur
+  //   tout un bloc) : il faut le couper, pas l'écarter.
+  function _decouper(pts, r) {
+    const coupe = function (a, b) {   // → [t0, t1] de la partie du segment dans r, ou null
+      let t0 = 0, t1 = 1;
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const p = [-dx, dx, -dy, dy], q = [a[0] - r.x, r.x + r.w - a[0], a[1] - r.y, r.y + r.h - a[1]];
+      for (let k = 0; k < 4; k++) {
+        if (p[k] === 0) { if (q[k] < 0) return null; continue; }
+        const u = q[k] / p[k];
+        if (p[k] < 0) { if (u > t1) return null; if (u > t0) t0 = u; }
+        else { if (u < t0) return null; if (u < t1) t1 = u; }
+      }
+      return [t0, t1];
+    };
+    const at = function (a, b, t) { return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]; };
+    const out = [];
+    let cur = null;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], c = coupe(a, b);
+      if (!c || c[1] - c[0] <= 0) { if (cur) { out.push(cur); cur = null; } continue; }
+      const p0 = at(a, b, c[0]), p1 = at(a, b, c[1]);
+      if (!cur || c[0] > 0) { if (cur) out.push(cur); cur = [p0]; }
+      cur.push(p1);
+      if (c[1] < 1) { out.push(cur); cur = null; }
+    }
+    if (cur) out.push(cur);
+    return out.filter(function (p) { return p.length >= 2; });
+  }
+  // Traits d'un masque : moins les masses (dilatées), fermeture de 3 px (trous d'anticrénelage), squelette, chemins
+  // sans ergots ni bruit, simplifiés, rendus en pixels du plan et découpés au cœur du bloc.
+  function _traitsBloc(T, tmp, pleins, W, H, o, e) {
+    const rg = o.reglages;
+    if (pleins) {
+      _passe(pleins, tmp, W, H, Math.max(1, Math.round((rg.ecartMasse === undefined ? 2 : rg.ecartMasse) * e)), false);
+      for (let i = 0; i < W * H; i++) if (tmp[i]) T[i] = 0;
+    }
+    _passe(T, tmp, W, H, 1, false);
+    _passe(tmp, T, W, H, 1, true);
+    _squelette(T, W, H);
+    const spur = (rg.ergot === undefined ? 15 : rg.ergot) * e;
+    const lmin = (rg.longueurMin === undefined ? 20 : rg.longueurMin) * e;
+    const eps = Math.max(0.5, rg.simplification * e), coeur = o.coeur || { x: 0, y: 0, w: W, h: H };
+    const out = [];
+    _chemins(T, W, H).forEach(function (t) {
+      const L = t.ch.length, bout = t.bouts[0] === 1 || t.bouts[1] === 1, noeud = t.bouts[0] > 2 || t.bouts[1] > 2;
+      if (L < lmin && !(noeud && !bout)) return;   // bruit isolé
+      if (bout && noeud && L < spur) return;          // ergot du squelette
+      if (L < 4) return;
+      const pts = _dp(t.ch.map(function (i) { const x = i % W; return [x + 0.5, (i - x) / W + 0.5]; }), eps);
+      _decouper(pts, coeur).forEach(function (mor) {
+        out.push(mor.map(function (q) {
+          return { x: Math.round((o.x0 + q[0] / e) * 10) / 10, y: Math.round((o.y0 + q[1] / e) * 10) / 10 };
+        }));
+      });
+    });
+    return out;
+  }
+  // Morceaux de traits rendus par des blocs voisins : raccordés bout à bout (même classe, bouts à moins de `tol`).
+  function _raccorder(traits, tol) {
+    const t = traits.map(function (x) { return { classe: x.classe, points: x.points.slice() }; });
+    const proche = function (a, b) { return Math.hypot(a.x - b.x, a.y - b.y) <= tol; };
+    let fusion = true;
+    while (fusion) {
+      fusion = false;
+      for (let i = 0; i < t.length && !fusion; i++) {
+        for (let j = i + 1; j < t.length && !fusion; j++) {
+          if (t[i].classe !== t[j].classe) continue;
+          const A = t[i].points, B = t[j].points, a0 = A[0], a1 = A[A.length - 1], b0 = B[0], b1 = B[B.length - 1];
+          let n = null;
+          if (proche(a1, b0)) n = A.concat(B.slice(1));
+          else if (proche(a1, b1)) n = A.concat(B.slice(0, -1).reverse());
+          else if (proche(a0, b1)) n = B.concat(A.slice(1));
+          else if (proche(a0, b0)) n = B.slice().reverse().concat(A.slice(1));
+          if (n) { t[i].points = n; t.splice(j, 1); fusion = true; }
+        }
+      }
+    }
+    return t;
   }
 
   // Réglages donnés en mètres (plan calibré, APP_CONFIG.scale en px/m) → pixels du plan.
@@ -275,7 +452,7 @@
     for (let y = reg.y; y < reg.y + reg.h; y += pas) {
       for (let x = reg.x; x < reg.x + reg.w; x += pas) blocs.push([x, y]);
     }
-    const res = { masses: [], tropGrands: [], ignorees: 0, blocs: blocs.length };
+    const res = { masses: [], tropGrands: [], ignorees: 0, traits: [], blocs: blocs.length };
     for (let i = 0; i < blocs.length; i++) {
       if (opts.signal && opts.signal.aborted) throw Object.assign(new Error("annulé"), { name: "AbortError" });
       const cx = blocs[i][0], cy = blocs[i][1];
@@ -293,8 +470,11 @@
       res.masses.push.apply(res.masses, r.masses);
       res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
       res.ignorees += r.ignorees;
+      if (r.traits) res.traits.push.apply(res.traits, r.traits);
       if (opts.onProgres) opts.onProgres(i + 1, blocs.length);
     }
+    // traits coupés au bord des blocs : raccordés (le cœur d'un bloc touche celui du voisin)
+    res.traits = _raccorder(res.traits, Math.max(1.5, 2 / e));
     return res;
   }
 

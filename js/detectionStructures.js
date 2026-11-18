@@ -4,7 +4,8 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// detectionStructures.js — « Détecter » les piliers sur l'image du plan (mode plan) : exemples à la pipette, cadre
+// detectionStructures.js — « Détecter » piliers et fronts sur l'image du plan (mode plan) : exemples à la pipette,
+// cadre
 // (deux coins) ou tout le plan, calcul par js/ktaDetection.js (worker), aperçu superposé, « Valider ».
 // Ouvert depuis l'outil Structures et depuis l'📊 Éditeur de données : un seul parcours (décision produit).
 // ⚠️ contrat (décision produit) : rien n'est écrit avant « Valider » ; puis UNE étape ⏪ pour tout annuler. Niveau de
@@ -27,7 +28,11 @@ window.KtaDetectionUI = (function () {
   const MAX_EXEMPLES = 6;
   const TOLERANCE = 14;                 // écart ΔE accepté autour d'un exemple
   const SURFACE_PLEINE = 4096 * 4096;   // au-delà, « Tout le plan » se calcule à mi-résolution
-  const CLASSES = ["a", "b"];
+  // Masse A, masse B (piliers), front (trait) ; types proposés dans l'aperçu et type par défaut.
+  const CLASSES = ["a", "b", "f"];
+  const TYPES = { a: ["pilier-1", "pilier-2"], b: ["pilier-1", "pilier-2"], f: ["front-1", "front-2"] };
+  const DEFAUT = { a: "pilier-1", b: "pilier-2", f: "front-1" };
+  const ECART_TRAIT = 3;                // px : un front détecté à moins de cet écart d'un front existant est déjà là
 
   const _t = function (k, v) { return window.I18n.t(k, v); };
   const _esc = function (s) { return window.ktaEsc(s); };
@@ -41,21 +46,23 @@ window.KtaDetectionUI = (function () {
   function _lireCouleurs() {
     try {
       const o = JSON.parse(localStorage.getItem(PREFIXE + _planId()) || "null");
-      const out = { a: [], b: [] };
+      const out = { a: [], b: [], f: [] };
       CLASSES.forEach(function (c) {
         if (o && Array.isArray(o[c])) {
           out[c] = o[c].filter(function (q) { return Array.isArray(q) && q.length === 3; }).slice(-MAX_EXEMPLES);
         }
       });
       return out;
-    } catch (err) { return { a: [], b: [] }; }
+    } catch (err) { return { a: [], b: [], f: [] }; }
   }
   function _ecrireCouleurs(c) {
     try {
-      if (!c.a.length && !c.b.length) localStorage.removeItem(PREFIXE + _planId());
-      else localStorage.setItem(PREFIXE + _planId(), JSON.stringify({ a: c.a, b: c.b }));
+      if (!_aDesExemples(c)) localStorage.removeItem(PREFIXE + _planId());
+      else localStorage.setItem(PREFIXE + _planId(), JSON.stringify({ a: c.a, b: c.b, f: c.f }));
     } catch (err) { console.warn("[Detection] couleurs non retenues :", err && err.name); }
   }
+
+  function _aDesExemples(c) { return CLASSES.some(function (k) { return c[k].length > 0; }); }
 
   // ── Lecture de l'image ──
   function _niveau() {
@@ -112,6 +119,40 @@ window.KtaDetectionUI = (function () {
     (window._ktaDataStructurePolygons || []).forEach(prendre);
     return out;
   }
+  // Fronts existants du même niveau (polylignes, session et calques) ; un front détecté est « déjà là » si ses
+  // sommets et milieux de segments sont TOUS à moins d'ECART_TRAIT d'un même front existant.
+  function _distSeg(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L)) : 0;
+    return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+  }
+  function _existantsTraits(niveau) {
+    const multi = window.APP_CONFIG && window.APP_CONFIG.multiLevel === true;
+    const ligne = function (t) {
+      return typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t);
+    };
+    return (typeof window.getStructures === "function" ? window.getStructures() : [])
+      .concat(window._ktaDataStructurePolygons || [])
+      .filter(function (s) {
+        return s && ligne(s.type) && Array.isArray(s.points) && s.points.length >= 2 &&
+          !(multi && niveau !== null && (Number.isInteger(s.level) ? s.level : 0) !== niveau);
+      });
+  }
+  function _traitDejaPresent(m, existants) {
+    const pts = [];
+    m.points.forEach(function (p, i) {
+      pts.push(p);
+      if (i) pts.push({ x: (p.x + m.points[i - 1].x) / 2, y: (p.y + m.points[i - 1].y) / 2 });
+    });
+    return existants.some(function (s) {
+      return pts.every(function (p) {
+        for (let i = 1; i < s.points.length; i++) {
+          if (_distSeg(p, s.points[i - 1], s.points[i]) <= ECART_TRAIT) return true;
+        }
+        return false;
+      });
+    });
+  }
   function _dejaPresente(m, existantes) {
     const c = _centre(m.points);
     return existantes.some(function (s) { return _dedans(c, s.points) || _dedans(s.c, m.points); });
@@ -142,11 +183,12 @@ window.KtaDetectionUI = (function () {
   function _dessinerApercu() {
     _viderCouche();
     const a = _e.apercu, c = _couche();
-    a.masses.forEach(function (m, i) {
-      const pol = L.polygon(m.points.map(function (p) { return window.convertCoord(p.x, p.y); }), {
-        pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false,
-        className: "kta-detect-apercu kta-detect-classe-" + m.classe + (a.retires.has(i) ? " kta-detect-retire" : "")
-      });
+    a.objets.forEach(function (m, i) {
+      const ll = m.points.map(function (p) { return window.convertCoord(p.x, p.y); });
+      const opts = { pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false,
+        className: "kta-detect-apercu kta-detect-classe-" + m.classe + (m.trait ? " kta-detect-trait" : "") +
+          (a.retires.has(i) ? " kta-detect-retire" : "") };
+      const pol = m.trait ? L.polyline(ll, Object.assign({ weight: 6 }, opts)) : L.polygon(ll, opts);
       pol.on("click", function () {
         if (a.retires.has(i)) a.retires.delete(i); else a.retires.add(i);
         _dessinerApercu();
@@ -188,15 +230,15 @@ window.KtaDetectionUI = (function () {
       html = '<span class="kta-racc-info">' + _esc(_t("detect.calcul", { i: _e.progres[0], n: _e.progres[1] })) +
         "</span>" + '<div class="kta-racc-actions">' + _btn("annuler", "detect.annuler") + "</div>";
     } else if (_e.etape === "apercu") {
-      const a = _e.apercu, gardes = a.masses.length - a.retires.size;
+      const a = _e.apercu, gardes = a.objets.length - a.retires.size;
       const sel = function (c) {
         return '<label class="kta-detect-type">' + _esc(_t("detect.classe.court." + c)) +
-          ' <select data-detect-type="' + c + '">' + ["pilier-1", "pilier-2"].map(function (ty) {
+          ' <select data-detect-type="' + c + '">' + TYPES[c].map(function (ty) {
             return '<option value="' + ty + '"' + (a.types[c] === ty ? " selected" : "") + ">" +
               _esc(_t("struct.label." + ty)) + "</option>";
           }).join("") + "</select></label>";
       };
-      html = '<span class="kta-racc-info">' + _esc(_t("detect.apercu.bilan", { n: a.masses.length, d: a.deja,
+      html = '<span class="kta-racc-info">' + _esc(_t("detect.apercu.bilan", { n: a.objets.length, d: a.deja,
         g: a.tropGrands })) + " " + _esc(_t("detect.apercu.aide")) + "</span>" +
         '<div class="kta-racc-actions">' +
         CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(sel).join("") +
@@ -208,7 +250,7 @@ window.KtaDetectionUI = (function () {
       s.style.backgroundColor = "rgb(" + s.getAttribute("data-rgb") + ")";   // couleur lue sur le plan, hors charte
     });
     const valider = b.querySelector('[data-detect="valider"]');
-    if (valider && _e.apercu) valider.disabled = _e.apercu.masses.length - _e.apercu.retires.size === 0;
+    if (valider && _e.apercu) valider.disabled = _e.apercu.objets.length - _e.apercu.retires.size === 0;
   }
 
   function _onBandeau(ev) {
@@ -220,9 +262,9 @@ window.KtaDetectionUI = (function () {
       const c = act.slice(8);
       _e.pipette = _e.pipette === c ? null : c;
     } else if (act === "effacer") {
-      _e.couleurs = { a: [], b: [] }; _ecrireCouleurs(_e.couleurs); _e.pipette = null;
+      _e.couleurs = { a: [], b: [], f: [] }; _ecrireCouleurs(_e.couleurs); _e.pipette = null;
     } else if (act === "zone") {
-      if (!_e.couleurs.a.length && !_e.couleurs.b.length) { _toast(_t("detect.toast.sansExemple"), "warn"); return; }
+      if (!_aDesExemples(_e.couleurs)) { _toast(_t("detect.toast.sansExemple"), "warn"); return; }
       _e.pipette = null; _e.etape = "zone"; _e.coins = []; _e.apercu = null; _viderCouche();
     } else if (act === "exemples") {
       _e.etape = "exemples"; _e.coins = []; _viderCouche();
@@ -277,7 +319,7 @@ window.KtaDetectionUI = (function () {
       return;
     }
     const classes = CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(function (c) {
-      return { id: c, couleurs: _e.couleurs[c], tolerance: TOLERANCE };
+      return { id: c, nature: c === "f" ? "trait" : "masse", couleurs: _e.couleurs[c], tolerance: TOLERANCE };
     });
     const fin = !!(window.matchMedia && window.matchMedia("(pointer: fine)").matches);
     _e.etape = "calcul"; _e.progres = [0, 1]; _e.ctrl = new AbortController(); _viderCouche(); _majBandeau();
@@ -292,17 +334,22 @@ window.KtaDetectionUI = (function () {
         onProgres: function (i, n) { if (_e === e) { e.progres = [i, n]; _majBandeau(); } }
       });
       if (_e !== e) return;
-      const types = { a: "pilier-1", b: "pilier-2" };
-      const existantes = {};
-      const nouvelles = [];
+      const types = Object.assign({}, DEFAUT);
+      const surfaces = {}, lignes = {};
+      const objets = [];
       let deja = 0;
       res.masses.forEach(function (m) {
-        const niv = window.ktaNiveauNouvelleStructure(types[m.classe]);
-        const cle = String(niv);
-        if (!existantes[cle]) existantes[cle] = _existantes(niv);
-        if (_dejaPresente(m, existantes[cle])) deja++; else nouvelles.push(m);
+        const niv = window.ktaNiveauNouvelleStructure(types[m.classe]), cle = String(niv);
+        if (!surfaces[cle]) surfaces[cle] = _existantes(niv);
+        if (_dejaPresente(m, surfaces[cle])) deja++; else objets.push({ classe: m.classe, points: m.points });
       });
-      e.apercu = { masses: nouvelles, retires: new Set(), types: types, deja: deja, tropGrands: res.tropGrands.length };
+      (res.traits || []).forEach(function (m) {
+        const niv = window.ktaNiveauNouvelleStructure(types[m.classe]), cle = String(niv);
+        if (!lignes[cle]) lignes[cle] = _existantsTraits(niv);
+        if (_traitDejaPresent(m, lignes[cle])) deja++;
+        else objets.push({ classe: m.classe, points: m.points, trait: true });
+      });
+      e.apercu = { objets: objets, retires: new Set(), types: types, deja: deja, tropGrands: res.tropGrands.length };
       e.etape = "apercu";
       _dessinerApercu();
     } catch (err) {
@@ -325,7 +372,7 @@ window.KtaDetectionUI = (function () {
     if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
     const avant = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
     const arr = window.getStructures().slice(), poses = [];
-    a.masses.forEach(function (m, i) {
+    a.objets.forEach(function (m, i) {
       if (a.retires.has(i)) return;
       const s = { type: a.types[m.classe], points: m.points.map(function (p) { return { x: p.x, y: p.y }; }) };
       const niv = window.ktaNiveauNouvelleStructure(s.type);
@@ -371,7 +418,7 @@ window.KtaDetectionUI = (function () {
     if (window.MapBearing && typeof window.MapBearing.suspend === "function") window.MapBearing.suspend("detection");
     _e = { etape: "exemples", couleurs: _lireCouleurs(), pipette: null, coins: [], couche: null, apercu: null,
            ctrl: null, progres: [0, 1] };
-    if (!_e.couleurs.a.length && !_e.couleurs.b.length) _e.pipette = "a";
+    if (!_aDesExemples(_e.couleurs)) _e.pipette = "a";
     const b = document.createElement("div");
     b.id = "kta-detect-bandeau";
     b.className = "kta-racc-bandeau kta-detect-bandeau";
@@ -408,9 +455,11 @@ window.KtaDetectionUI = (function () {
   // Harnais : état lisible sans DOM.
   function etat() {
     if (!_e) return null;
-    return { etape: _e.etape, exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length }, pipette: _e.pipette,
-             coins: _e.coins.length, apercu: _e.apercu ? { n: _e.apercu.masses.length, retires: _e.apercu.retires.size,
-             deja: _e.apercu.deja, tropGrands: _e.apercu.tropGrands } : null };
+    const a = _e.apercu;
+    return { etape: _e.etape, exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length, f: _e.couleurs.f.length },
+             pipette: _e.pipette, coins: _e.coins.length,
+             apercu: a ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
+                           retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands } : null };
   }
 
   return { ouvrir: ouvrir, fermer: fermer, etat: etat, PREFIXE: PREFIXE };

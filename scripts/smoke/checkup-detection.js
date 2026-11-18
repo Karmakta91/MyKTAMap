@@ -3,15 +3,15 @@
 // =====================================================================
 // checkup-detection.js — « Détecter les piliers » dans l'app réelle (js/detectionStructures.js)
 // =====================================================================
-// Relevé fictif seulement. Le checkup FABRIQUE une scène de piliers connus (12 orange dont un à pastille, 4 gris,
-// plus un point trop petit et un contour creux qui ne doivent pas sortir) et la prête au plan en tuiles V2 (Blob dans
-// RUNTIME_ASSETS, comme un ZIP), puis, sous chaque moteur de KTA_MOTEURS :
-//   1. entrée outil Structures : pipette (Masse A puis Masse B) en touchant la carte, cadre par deux coins ;
-//   2. aperçu : 16 piliers, RIEN d'écrit avant « Valider » ; un toucher en retire un ;
-//   3. « Valider » : 15 structures (11 pilier-1, 4 pilier-2), uid + updatedAt, contour au pixel près ; UNE étape ⏪
-//      les retire toutes ;
+// Relevé fictif seulement. Le checkup FABRIQUE une scène connue (12 piliers orange dont un à pastille, 4 gris, 2 fronts
+// orange de la couleur des piliers, plus un point trop petit et un contour creux gris qui ne doivent pas sortir) et la
+// prête au plan en tuiles V2 (Blob dans RUNTIME_ASSETS, comme un ZIP), puis, sous chaque moteur de KTA_MOTEURS :
+//   1. entrée outil Structures : pipette (Masse A, Masse B, Front) en touchant la carte, cadre par deux coins ;
+//   2. aperçu : 16 piliers et 2 fronts, RIEN d'écrit avant « Valider » ; un toucher en retire un ;
+//   3. « Valider » : 17 structures (11 pilier-1, 4 pilier-2, 2 front-1), uid + updatedAt, contour au pixel près,
+//      fronts aux bons bouts ; UNE étape ⏪ les retire toutes ;
 //   4. entrée 📊 Éditeur de données : couleurs retenues pour le plan, même parcours ; multi-niveau : pilier-2 au
-//      niveau −1, signalé masqué ; relancer sur la même zone → 0 nouveau, 16 déjà présents ;
+//      niveau −1, signalé masqué ; relancer sur la même zone → 0 nouveau, 18 déjà présents ;
 //   5. couleurs jamais exportées avec le profil ; Échap ferme et rend la rotation ; lecture seule : refusé.
 // Usage : node scripts/smoke/checkup-detection.js   (SMOKE_PORT pour une copie de travail, KTA_MOTEURS)
 // Doc : docs/architecture/plans-loader.md (Détecter les structures)
@@ -45,6 +45,7 @@ function verifier(cond, msg, detail) {
 const SCENE = {
   orange: [], gris: [],
   pastille: { c: 0, r: 0 }, petit: [20, 300, 6, 6], creux: [120, 300, 80, 80, 3],
+  fronts: [[[20, 400], [600, 400]], [[455, 160], [455, 380]]], epaisseur: 4,
   cadre: [5, 5, 620, 430]
 };
 for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) SCENE.orange.push([20 + c * 110, 20 + r * 90, 50, 40]);
@@ -84,6 +85,11 @@ async function preterScene(page) {
       S.gris.forEach(function (q) { k.fillRect(O.x + q[0], O.y + q[1], q[2], q[3]); });
       k.fillStyle = "#ff9933";
       k.fillRect(O.x + S.petit[0], O.y + S.petit[1], S.petit[2], S.petit[3]);
+      k.strokeStyle = "#ff9933"; k.lineWidth = S.epaisseur; k.lineCap = "butt";
+      S.fronts.forEach(function (f) {
+        k.beginPath(); k.moveTo(O.x + f[0][0], O.y + f[0][1]); k.lineTo(O.x + f[1][0], O.y + f[1][1]); k.stroke();
+      });
+      k.fillStyle = "#969696";   // contour creux GRIS : masse B, jamais un trait
       const c = S.creux;
       k.fillRect(O.x + c[0], O.y + c[1], c[2], c[4]); k.fillRect(O.x + c[0], O.y + c[1] + c[3] - c[4], c[2], c[4]);
       k.fillRect(O.x + c[0], O.y + c[1], c[4], c[3]); k.fillRect(O.x + c[0] + c[2] - c[4], O.y + c[1], c[4], c[3]);
@@ -140,7 +146,7 @@ async function detecterCadre(page, O) {
 }
 function nosStructures(page) {
   return page.evaluate(function () {
-    return window.getStructures().filter(function (s) { return s.type === "pilier-1" || s.type === "pilier-2"; })
+    return window.getStructures().filter(function (s) { return /^(pilier|front)-[12]$/.test(s.type); })
       .map(function (s) { return { uid: s.uid, maj: s.updatedAt, type: s.type, level: s.level, points: s.points }; });
   });
 }
@@ -194,14 +200,17 @@ async function suite(nav) {
   await toucher(page, O.x + q0[0] + 10, O.y + q0[1] + 10);
   await bouton(page, "pipette-b");
   await toucher(page, O.x + g0[0] + 10, O.y + g0[1] + 10);
+  await bouton(page, "pipette-f");
+  await toucher(page, O.x + 300, O.y + 400);
   e = await etat(page);
-  verifier(e.exemples.a === 1 && e.exemples.b === 1, "pipette : un exemple orange (A), un gris (B)", e.exemples);
+  verifier(e.exemples.a === 1 && e.exemples.b === 1 && e.exemples.f === 1,
+    "pipette : un exemple orange (A), un gris (B), un trait de front", e.exemples);
 
   // ── 2. Aperçu ──
   await detecterCadre(page, O);
   e = await etat(page);
-  verifier(e.apercu && e.apercu.n === 16 && e.apercu.deja === 0,
-    "aperçu : 16 piliers (12 orange dont un à pastille, 4 gris), ni point trop petit ni contour creux", e.apercu);
+  verifier(e.apercu && e.apercu.n === 18 && e.apercu.traits === 2 && e.apercu.deja === 0,
+    "aperçu : 16 piliers et 2 fronts de la couleur des piliers, ni point trop petit ni contour creux", e.apercu);
   verifier((await nosStructures(page)).length === avant, "rien n'est écrit avant « Valider »");
   const cible = await page.evaluate(function () {
     const p = document.querySelector(".leaflet-ktaDetection-pane path.kta-detect-classe-a");
@@ -218,11 +227,18 @@ async function suite(nav) {
   await page.waitForTimeout(600);
   let s = await nosStructures(page);
   const poses = s.slice(avant);
-  verifier(poses.length === 15 && !(await etat(page)), "« Valider » : 15 structures posées, parcours fermé",
+  verifier(poses.length === 17 && !(await etat(page)), "« Valider » : 17 structures posées, parcours fermé",
     poses.length);
-  verifier(poses.filter(function (x) { return x.type === "pilier-1"; }).length === 11 &&
-    poses.filter(function (x) { return x.type === "pilier-2"; }).length === 4,
-    "types : 11 pilier-1 (A), 4 pilier-2 (B)");
+  const nb = function (ty) { return poses.filter(function (x) { return x.type === ty; }).length; };
+  verifier(nb("pilier-1") === 11 && nb("pilier-2") === 4 && nb("front-1") === 2,
+    "types : 11 pilier-1 (A), 4 pilier-2 (B), 2 front-1",
+    { p1: nb("pilier-1"), p2: nb("pilier-2"), f1: nb("front-1") });
+  const fh = poses.find(function (x) {
+    return x.type === "front-1" && x.points.every(function (p) { return Math.abs(p.y - O.y - 400) < 3; });
+  });
+  const xs = fh ? fh.points.map(function (p) { return p.x - O.x; }) : [];
+  verifier(!!fh && Math.abs(Math.min.apply(null, xs) - 20) <= 4 && Math.abs(Math.max.apply(null, xs) - 600) <= 4,
+    "front horizontal : un trait d'un tenant, bouts à 4 px près", fh && fh.points);
   verifier(poses.every(function (x) { return /^st_/.test(x.uid || "") && Number.isFinite(x.maj); }),
     "chaque structure a son uid et son updatedAt");
   const gx = O.x + g0[0], gy = O.y + g0[1];
@@ -235,7 +251,7 @@ async function suite(nav) {
   const annule = await page.evaluate(function () { return window.HistoryManager.undo(); });
   await page.waitForTimeout(400);
   s = await nosStructures(page);
-  verifier(s.length === avant, "UNE étape ⏪ retire les 15 structures", { annule: annule, n: s.length });
+  verifier(s.length === avant, "UNE étape ⏪ retire les 17 structures", { annule: annule, n: s.length });
 
   // ── 4. Entrée Éditeur de données, multi-niveau, doublons ──
   console.log("— entrée 📊 Éditeur de données —");
@@ -248,14 +264,14 @@ async function suite(nav) {
   await page.click("#kta-tbl-src-detect");
   await page.waitForTimeout(300);
   e = await etat(page);
-  verifier(!!e && e.exemples.a === 1 && e.exemples.b === 1 && !e.pipette,
+  verifier(!!e && e.exemples.a === 1 && e.exemples.b === 1 && e.exemples.f === 1 && !e.pipette,
     "la carte de l'Éditeur de données ouvre le même parcours, couleurs retenues pour le plan", e);
   await detecterCadre(page, O);
   await bouton(page, "valider");
   await page.waitForTimeout(600);
   s = (await nosStructures(page)).slice(avant);
-  verifier(s.length === 16 && s.every(function (x) { return x.level === (x.type === "pilier-2" ? -1 : 0); }),
-    "multi-niveau : pilier-1 au niveau actif (0), pilier-2 au niveau −1 (règle du tracé à la main)",
+  verifier(s.length === 18 && s.every(function (x) { return x.level === (x.type === "pilier-2" ? -1 : 0); }),
+    "multi-niveau : pilier-1 et front-1 au niveau actif (0), pilier-2 au niveau −1 (règle du tracé à la main)",
     s.map(function (x) { return x.type + "@" + x.level; }).slice(0, 6));
   const toasts = await page.evaluate(function () {
     return Array.prototype.slice.call(document.querySelectorAll(".oom-toast, [class*='toast']")).map(function (t) {
@@ -269,8 +285,8 @@ async function suite(nav) {
   await page.evaluate(function () { window.KtaDetectionUI.ouvrir(); });
   await detecterCadre(page, O);
   e = await etat(page);
-  verifier(e.apercu && e.apercu.n === 0 && e.apercu.deja === 16,
-    "relancer sur la même zone : 0 nouveau, 16 déjà présents",
+  verifier(e.apercu && e.apercu.n === 0 && e.apercu.deja === 18,
+    "relancer sur la même zone : 0 nouveau, 18 déjà présents (piliers et fronts)",
     e.apercu);
 
   // ── 5. Échap, rotation rendue, lecture seule ──
@@ -323,6 +339,7 @@ async function suite(nav) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — détecter les piliers : pipette, cadre, aperçu, Valider, ⏪, doublons, deux entrées.");
+  console.log("🎉 CHECKUP VERT — détecter piliers et fronts : pipette, cadre, aperçu, Valider, ⏪, doublons, " +
+    "deux entrées.");
   process.exit(0);
 })();

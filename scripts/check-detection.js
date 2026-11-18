@@ -9,8 +9,11 @@
  * de compression, moucheté et contours creux retirés par l'ouverture, aire minimale, pastille posée sur une
  * masse sans effet, piliers collés fusionnés (limite connue), masse à cheval sur deux blocs rendue UNE fois, masse
  * plus grande que la marge signalée et jamais coupée, masse coupée par le cadre demandé rendue entière, lecture
- * à résolution réduite, réglages en mètres, annulation, worker (message → résultat).
- * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs → le contrôle rougit.
+ * à résolution réduite, réglages en mètres, annulation, worker (message → résultat). Fronts : trait droit et en L,
+ * trait de la couleur d'un pilier (le pilier reste une masse, le trait ne le traverse pas), ergot, bruit, trait sur
+ * plusieurs blocs raccordé.
+ * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs, sans comblement des trous,
+ * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
  *
  * Usage : node scripts/check-detection.js   (exit 1 si un contrôle échoue)
  */
@@ -199,6 +202,54 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   r = await lancer(grand, { region: { x: 120, y: 120, w: 100, h: 100 } });
   t("cadre qui ne contient pas le coin haut-gauche de la masse : rien (son bloc voisin la rendrait)",
     r.masses.length === 0, r.masses.map(boiteDe));
+
+  // ── Traits (fronts) : couleur du trait moins les masses, squelette, ergots, raccord entre blocs ──
+  const AT = [{ id: "a", couleurs: [ORANGE], tolerance: 14 },
+    { id: "f", nature: "trait", couleurs: [ORANGE], tolerance: 14 }];
+  const lancerT = (img, extra) => lancer(img, Object.assign({ classes: AT }, extra || {}));
+  const bornes = tr => {
+    const xs = tr.points.map(p => p.x), ys = tr.points.map(p => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  };
+  r = await lancerT(image(400, 200).rect(20, 98, 300, 4, ORANGE));
+  t("trait droit de 4 px : un front, de x≈20 à x≈320, 2 ou 3 sommets, aucune masse",
+    r.traits.length === 1 && r.masses.length === 0 && r.traits[0].points.length <= 3 &&
+    Math.abs(bornes(r.traits[0])[0] - 20) <= 4 && Math.abs(bornes(r.traits[0])[2] - 320) <= 4,
+    r.traits.map(x => x.points));
+  r = await lancerT(image(400, 300).rect(40, 40, 4, 200, ORANGE).rect(40, 236, 250, 4, ORANGE));
+  t("trait en L : un front, 3 sommets", r.traits.length === 1 && r.traits[0].points.length === 3,
+    r.traits.map(x => x.points));
+  // pilier de la même couleur posé sur le trait : le trait ne le traverse pas, le pilier reste une masse
+  r = await lancerT(image(400, 200).rect(20, 98, 360, 4, ORANGE).rect(160, 70, 60, 60, ORANGE));
+  // un segment du trait qui traverse le pilier (Douglas-Peucker ne garde aucun sommet sur une partie droite)
+  const traverse = tr => tr.points.some((p, i) => i > 0 && Math.min(p.x, tr.points[i - 1].x) < 180 &&
+    Math.max(p.x, tr.points[i - 1].x) > 200 && p.y > 75 && p.y < 125);
+  const entre = r.traits.some(traverse);
+  t("trait de la couleur d'un pilier : le pilier reste une masse, le trait ne passe pas dedans",
+    r.masses.length === 1 && r.traits.length >= 1 && !entre, { masses: r.masses.length, traits: r.traits.length });
+  r = await lancerT(image(400, 200).rect(20, 98, 360, 4, ORANGE).rect(160, 70, 60, 60, ORANGE),
+    { classes: [AT[1]] });
+  t("contre-épreuve : sans classe de masse, le squelette du pilier rentre dans le trait",
+    r.traits.some(traverse));
+  // ergot de 8 px au milieu d'un trait : retiré ; le trait reste d'un seul tenant (raccord)
+  r = await lancerT(image(400, 200).rect(20, 98, 300, 4, ORANGE).rect(150, 90, 4, 10, ORANGE));
+  t("ergot court : retiré, un seul front", r.traits.length === 1 &&
+    !r.traits[0].points.some(p => p.y < 94), r.traits.map(x => x.points));
+  r = await lancerT(image(300, 200).rect(40, 50, 12, 3, ORANGE).rect(40, 120, 200, 3, ORANGE));
+  t("bruit : un bout de trait plus court que la longueur minimale est ignoré", r.traits.length === 1,
+    r.traits.map(bornes));
+  // trait sur plusieurs blocs : un seul front après raccord ; contre-épreuve sans raccord
+  const long = image(600, 300).rect(10, 148, 580, 4, ORANGE);
+  r = await lancerT(long, petitsBlocs);
+  t("trait à cheval sur 5 blocs : un seul front après raccord", r.traits.length === 1 &&
+    Math.abs(bornes(r.traits[0])[0] - 10) <= 4 && Math.abs(bornes(r.traits[0])[2] - 590) <= 4,
+    r.traits.map(bornes));
+  const morceaux = [];
+  await lancerT(long, Object.assign({ executer: b => {
+    const x = D.detecterBloc(b); morceaux.push.apply(morceaux, x.traits); return Promise.resolve(x);
+  } }, petitsBlocs));
+  t("contre-épreuve : sans raccord, le trait sort en plusieurs morceaux (" + morceaux.length + ")",
+    morceaux.length > 1);
 
   // ── Résolution réduite ──
   r = await lancer(grand, { echelle: 0.5 });

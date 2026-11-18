@@ -789,7 +789,7 @@ scale: (transform && transform.metresParPixel > 0)
 
 ## 🔎 Détecter les structures — moteur de calcul
 
-Détection des piliers (masses pleines) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
+Détection des piliers (masses pleines) et des fronts (traits) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
 calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
 l'interface : outil Structures et carte de l'📊 Éditeur de données, un même parcours (`js/detectionStructures.js`).
 
@@ -808,14 +808,20 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   `tropGrands`, jamais coupée. La marge est lue au-delà du cadre demandé : une masse coupée par le cadre reste entière.
 - **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
   la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
+- **Fronts** (classe `nature: "trait"`) : 🩸 un trait a souvent la couleur d'un pilier, il ne concourt donc pas
+  avec les masses pour un pixel : couleur du trait MOINS les masses (après ouverture, dilatées de `ecartMasse` 2 px),
+  fermeture de 3 px, squelette Zhang-Suen, chemins entre bouts et carrefours (ergots < `ergot` 15 px et bruit <
+  `longueurMin` 20 px retirés), Douglas-Peucker. 🩸 Chaque bloc découpe ses traits à son cœur (Liang-Barsky : un
+  segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
+  les morceaux bout à bout (même classe, bouts à moins de 2 px).
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
-  `trouMax`) pris pour une masse.
+  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé.
 - **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
   2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms
   en blocs de 1 024 (+30 % de temps). Sans worker : la page fige plusieurs secondes par bloc.
 - **Parcours** (`window.KtaDetectionUI`) : bandeau en bas d'écran (style des raccords). Exemples à la pipette
-  (Masse A, Masse B : médiane d'un carré de 5 × 5 px sous le doigt, 6 exemples au plus par masse, écart ΔE 14) →
+  (Masse A, Masse B, Front : médiane d'un carré de 5 × 5 px sous le doigt, 6 exemples au plus par classe, ΔE 14) →
   cadre par deux coins ou « Tout le plan » (au-delà de 4 096² px : mi-résolution, confirmé) → aperçu dans le pane
   `ktaDetection` (renderer SVG propre : la carte est en canvas, où l'aperçu ne serait ni touchable ni stylé) →
   « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
@@ -823,10 +829,11 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
   Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
-  pilier-2 par défaut) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
+  pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout.
-- **Doublons** : une détection qui recouvre une structure du même niveau (session ou calque) est écartée et comptée
-  « déjà présente » : relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
+- **Doublons** : une masse qui recouvre une structure du même niveau (session ou calque), un front dont tous les
+  sommets et milieux sont à moins de 3 px d'un front existant du même niveau : écartés et comptés « déjà présents ».
+  Relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
 - **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>`, jamais dans la session ni dans
   l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
