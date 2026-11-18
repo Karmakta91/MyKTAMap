@@ -3571,7 +3571,10 @@ async function _genererZip() {
                           ? document.getElementById(lid + "_level").value : "";
       const ilLevel = (ilLevelStr === "" || isNaN(parseInt(ilLevelStr, 10)))
                        ? 0 : parseInt(ilLevelStr, 10);
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
+      // 🩸 trim AVANT le préfixe : le gabarit de la ligne entoure le nom d'espaces et de retours, et « 📄 nom »
+      // restait tel quel, cherché ainsi dans le ZIP (calque image d'un plan rouvert « introuvable »).
+      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").trim()
+                        .replace(/^[✅📄]\s/u, "").trim();
       const ilFile  = _getFile(lid + "_file", nomTxt);
 
       if (!ilId) { _plannerErreur(window.I18n.t("gen.gen.idManquantImg")); throw new Error("abort"); }
