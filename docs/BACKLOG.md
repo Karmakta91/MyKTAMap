@@ -31,11 +31,6 @@
 
 ## Maintenant
 
-- **Détecter piliers et fronts : essai de KARMA sur un vrai plan** — lot livré sur Karma_dev le 18/11/2026
-  (`js/ktaDetection.js`, `js/detectionStructures.js`, guide § Structures). Réglages par défaut tirés de l'essai du
-  17/11 (côté 13 px, aire 250 px², ΔE 14), jamais essayés sur un vrai relevé.
-  `qui: KARMA · action: essayer sur un plan réel au téléphone · fini: réglages par défaut validés ou corrigés
-  · depuis: 18/11/2026 · taille: S`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
@@ -45,7 +40,7 @@
 
 - **Détection dans le Générateur** — décision 1a du 18/11 : même moteur, `KtaDetection.detecter` avec un `lireBloc`
   fourni par le Générateur depuis son image source ; piliers et fronts détectés en calque du plan généré.
-  `qui: Claude · action: topo puis lot, après l'essai de KARMA en mode plan · fini: détection au Générateur, checkup
+  `qui: Claude · action: topo puis lot (piliers validés par KARMA le 18/11) · fini: détection au Générateur, checkup
   · depuis: 18/11/2026 · taille: M`
 - **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
   pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
