@@ -1230,8 +1230,12 @@
 
   // 🩸 Même loi de largeur des fronts qu'en mode plan et que la modale OSM, en pixels par mètre
   // (structures.js) : le widget empile plusieurs plans et s'ouvre très dézoomé, une largeur fixe fusionne
-  // tout. Résolution Web Mercator (latitude + zoom) ; `options.weight` muté en place puis une repeinture
-  // NON CLIPPÉE. Pas de setStyle (plusieurs relevés de milliers d'objets).
+  // tout. Résolution Web Mercator (latitude + zoom). Contours des piliers et murs affinés comme en mode plan
+  // (structures.js > ktaBordSurfacePourLargeur) ; les zones gardent leur trait.
+  // 🩸 Les tracés d'un plan sont dans le renderer SVG de SON pane (_panePour) : un `options.weight` muté en
+  // place n'y change rien (le SVG ne relit le style qu'à setStyle), d'où setStyle, seulement si la valeur change.
+  // 🩸 Les sous-groupes (_structSubLayer, _roadsSubLayer, g.struct, g.roads), pas _dataLayer / g.data : ceux-là
+  // ne contiennent que des groupes, qui n'ont pas de trait.
   function _majLargeurFrontsHome() {
     if (!_mapInstance || typeof window.ktaPxParMetreOsm !== "function") return;
     const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
@@ -1242,23 +1246,24 @@
     const appliquer = function (grp, largeur) {
       if (!grp || typeof grp.eachLayer !== "function") return;
       grp.eachLayer(function (lay) {
-        // les surfaces gardent leur trait : un pilier se lit à son remplissage
-        if (!lay || !lay.options || lay.options.fill === true) return;
-        lay.options.weight = largeur;
+        if (!lay || !lay.options || typeof lay.setStyle !== "function") return;
+        let cible = largeur;
+        if (lay.options.fill === true) {
+          if (lay._ktaWOrig === undefined) lay._ktaWOrig = lay.options.weight;
+          cible = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
+        }
+        if (lay.options.weight !== cible) lay.setStyle({ weight: cible });
       });
     };
     // le principal ET chaque plan empilé (sinon les autres restent en aplat)
-    appliquer(_dataLayer, w);
+    appliquer(_structSubLayer, w);
+    appliquer(_roadsSubLayer, wTrace);
     Object.keys(_extraLayers || {}).forEach(function (id) {
       const g = _extraLayers[id];
       if (!g) return;
       appliquer(g.struct, w);
       appliquer(g.roads, wTrace);
     });
-    try {
-      const r = _mapInstance._renderer;
-      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
-    } catch (e) {}
   }
 
   // Réglage 📐 (map.js > ktaEchelleMarqueurs, même loi qu'en mode plan) relu à chaque zoom. Une échelle PAR
@@ -2708,12 +2713,13 @@
     const principal = plans.find(function(p) { return p.id === _selectedPlanId; });
     const dataP = _selectedPlanId ? _planDataCache[_selectedPlanId] : null;
     if (principal && dataP) _renderDataLayersOnMiniMap(dataP, principal.georef);
-    _majLargeurFrontsHome();
     _chaqueExtra(function(g, id) {
       const p = plans.find(function(x) { return x.id === id; });
       const data = _planDataCache[id];
       if (p && data) _renderDataLayersOnMiniMap(data, p.georef, g, id);
     });
+    // après TOUS les rendus : un plan empilé re-rendu repart des largeurs de son style
+    _majLargeurFrontsHome();
     _appliquerVisibilites();
   }
 

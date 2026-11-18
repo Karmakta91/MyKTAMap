@@ -1083,7 +1083,7 @@ cohérence du code avec ses propres suppositions.*
 
 ---
 
-## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan (v1.83.0)
+## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan
 
 KARMA : « en mode OSM c'était pas mal, mais on peut faire aussi bien qu'en mode
 plan, ça reste encore limite ».
@@ -1129,14 +1129,26 @@ là où la carrière tient dans l'écran — précisément là où l'aplat se fo
 
 ### Mise en œuvre
 
-Même technique qu'en mode plan : on **mute `options.weight` en place** (le
-renderer canvas le relit à chaque frame), puis une repeinture **non clippée**
-(`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`). Aucun `setStyle`,
-intenable à ce volume.
+Fronts à la loi, tracés à 0,6 × la loi (plancher 1 px), **contours des piliers et
+murs** affinés comme en mode plan : `structures.js > ktaBordSurfacePourLargeur`
+(le quart d'un front, jamais plus que le trait d'origine, plancher 0,5 px). Un
+contour fixe de 1 ou 2 px, sur des centaines de piliers vus de haut, fait un aplat
+noir. Les zones gardent leur trait.
 
-Reposée à chaque **re-rendu** en plus du `zoomend` : recréer les layers remet le
-`weight` du gabarit. Le widget HOME traite le plan principal **et chaque plan
-empilé** — n'en faire qu'un laisserait les autres en aplat.
+- **Modale** (`osmView.js > _majLargeurFrontsOsm`) : renderer canvas. On **mute
+  `options.weight` en place** (relu à chaque frame), puis une repeinture **non
+  clippée** (`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`).
+- **Widget de l'accueil** (`osmHomePreview.js > _majLargeurFrontsHome`) : chaque
+  plan est dessiné par le renderer **SVG** de son pane (`_panePour`). 🩸 Le SVG ne
+  relit le style qu'à `setStyle` : un `weight` muté en place n'y change rien (la
+  loi est restée inerte ainsi, fronts figés à 4 px, plan illisible de haut). D'où
+  `setStyle`, seulement quand la valeur change. 🩸 Elle vise les sous-groupes
+  (`_structSubLayer`, `_roadsSubLayer`, `g.struct`, `g.roads`), pas
+  `_dataLayer` / `g.data`, qui ne contiennent que des groupes.
+
+Reposée au `zoomend` et après **chaque re-rendu** (recréer les layers remet le
+`weight` du gabarit) — dans le widget, après le rendu de TOUS les plans de la
+pile, principal **et empilés**. Garde-fou : `scripts/smoke/checkup-largeur-osm-home.js`.
 
 🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
 comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant

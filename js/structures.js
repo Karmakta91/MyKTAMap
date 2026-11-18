@@ -170,6 +170,13 @@ window.ktaPolylineStructure = function (latlngs, style, opts) {
   }
   return L.polyline(latlngs, o);
 };
+// Contour d'une surface (pilier, mur) pour une largeur de front donnée : le quart d'un front, jamais plus que son
+// épaisseur d'origine, plancher 0,5 px. Un contour fixe recouvre tout le pilier au dézoom (des centaines de piliers
+// font un aplat noir) ; trop fin, il disparaîtrait. Même règle en mode plan et sur les deux cartes OSM.
+window.ktaBordSurfacePourLargeur = function (wOrig, wFront) {
+  const w0 = Number.isFinite(wOrig) ? wOrig : 3;
+  return Math.max(0.5, Math.min(w0, wFront / 4));
+};
 window.ktaLargeurTracePourRatio = function (ratio) {
   return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FRONT_FACTEUR_TRACE * 10) / 10);
 };
@@ -192,12 +199,7 @@ function majLargeurFronts() {
   const wFront = _largeurFrontPourZoom(z);
   const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
   const wRaye = window.ktaLargeurRayePourRatio(Math.pow(2, z));
-  // Contour d'une surface (pilier, mur) : le quart d'un front, jamais plus que son épaisseur d'origine, plancher
-  // 0,5 px. Un contour fixe de 3 px recouvre tout le pilier au dézoom ; trop fin, il disparaîtrait.
-  const bord = function (wOrig) {
-    const w0 = Number.isFinite(wOrig) ? wOrig : 3;
-    return Math.max(0.5, Math.min(w0, wFront / 4));
-  };
+  const bord = function (wOrig) { return window.ktaBordSurfacePourLargeur(wOrig, wFront); };
 
   // ⚠️ Les registres rangent aussi les polylignes sous la clé `polygon` (lue par _filtreNiveauSurPolygonData).
   const appliquer = function (arr, largeur) {

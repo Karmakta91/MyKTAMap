@@ -291,8 +291,13 @@
       ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w;
     try {
       _structLayer.eachLayer(function (lay) {
-        // les surfaces gardent leur trait : un pilier se lit à son remplissage
-        if (!lay || !lay.options || lay.options.fill === true) return;
+        if (!lay || !lay.options) return;
+        // contour d'un pilier ou d'un mur affiné comme en mode plan (structures.js > ktaBordSurfacePourLargeur)
+        if (lay.options.fill === true) {
+          if (lay._ktaWOrig === undefined) lay._ktaWOrig = lay.options.weight;
+          lay.options.weight = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
+          return;
+        }
         lay.options.weight = w;
       });
       if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
