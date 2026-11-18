@@ -314,6 +314,8 @@
   "detect.classe.court.a": "Masse A",
   "detect.classe.court.b": "Masse B",
   "detect.classe.court.f": "Front",
+  "detect.curseur.taille": "Taille minimale",
+  "detect.curseur.tolerance": "Tolérance de couleur",
   "detect.exemples.aide": "Touchez Masse A, Masse B ou Front, puis un pilier ou un trait de cette couleur sur la carte (plusieurs exemples possibles).",
   "detect.exemples.effacer": "Effacer les exemples",
   "detect.exemples.suivant": "Choisir la zone",

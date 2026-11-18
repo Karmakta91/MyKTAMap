@@ -314,6 +314,8 @@
   "detect.classe.court.a": "Mass A",
   "detect.classe.court.b": "Mass B",
   "detect.classe.court.f": "Front",
+  "detect.curseur.taille": "Minimum size",
+  "detect.curseur.tolerance": "Colour tolerance",
   "detect.exemples.aide": "Tap Mass A, Mass B or Front, then a pillar or a line of that colour on the map (several samples allowed).",
   "detect.exemples.effacer": "Clear samples",
   "detect.exemples.suivant": "Choose the area",

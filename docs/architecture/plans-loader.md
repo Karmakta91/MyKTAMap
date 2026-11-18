@@ -800,7 +800,20 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
   (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
   des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
-  250 px², 1,5 px, trou 700 px²) ; `depuisMetres(r, pxParM)` les donne pour un plan calibré.
+  250 px², 1,5 px, trou 700 px²), utilisés seulement sans exemple mesuré ; `depuisMetres(r, pxParM)`.
+- ⚠️ **Réglages déduits des exemples** (décision produit, après un essai sur deux vrais plans : 3 piliers sur une
+  soixantaine). `mesurerExemple(bloc, x, y)` mesure la composante touchée à la pipette : couleur médiane, aire,
+  épaisseur (2 × la distance au bord maximale, chanfrein 3-4), étalement (90e centile des ΔE sur l'INTÉRIEUR, à 2 px
+  du bord : les pixels de bord, mêlés au contour noir par le flou, soudaient des piliers voisins), écart au fond
+  (médiane du bord de la fenêtre lue) ; `coupe` si elle dépasse la fenêtre. `reglagesDepuisExemples` : tolérance =
+  étalement + 6, plancher 22, plafond 60 % de l'écart au fond (un bleu clair est à ΔE 26 du blanc) ; l'écart ENTRE
+  exemples n'y entre pas (chaque pixel est comparé à l'exemple le plus proche) ; taille = plus petite épaisseur des
+  exemples de masse non coupés. `reglagesPourTaille(t, pxParM?)` : ouverture t/2, aire t²/2, trou 0,6 t² ; plan
+  calibré : aire jamais sous 10 × 10 cm, ouverture jamais au-delà de 60 cm (bornes, pas la règle).
+- **Recalcul sans relecture** : `detecter({ executeur, garder: true })` fait garder les blocs lus par le worker
+  (`executeurWorker`, sinon `executeurLocal` dans la page), au plus 200 Mo d'image ; `recalculer(executeur,
+  { classes, reglages })` refait le calcul sur eux (curseurs de l'aperçu). Au-delà du budget, `recalculable` est
+  faux et l'appelant relit.
 - 🩸 **Pastille au centre d'un pilier étroit** : sans le comblement des petits trous, l'ouverture efface les bandes
   de part et d'autre et coupe le pilier en deux. Un contour creux plus grand que `trouMax` reste vide.
 - 🩸 **Blocs avec marge** (`bloc` 2048, `marge` 256 px) : une masse est rendue par le bloc qui contient le coin
@@ -815,16 +828,23 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
   les morceaux bout à bout (même classe, bouts à moins de 2 px).
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
-  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé.
+  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; 🩸 une
+  bande de galerie de la couleur des piliers, plus épaisse que l'ouverture, se soude aux piliers qu'elle touche
+  (scène fabriquée : 37 piliers sur 54 ; curseur « Taille minimale » au-dessus de l'épaisseur des bandes : 53 sur 54,
+  mais les piliers plus petits sont perdus). Critère de forme proposé, pas codé.
 - **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
   2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms
-  en blocs de 1 024 (+30 % de temps). Sans worker : la page fige plusieurs secondes par bloc.
+  en blocs de 1 024 (+30 % de temps). Sans worker : la page fige plusieurs secondes par bloc. Recalcul au curseur
+  (blocs gardés, 19/11/2026) : ≈ 0,5 s pour 2 048², ≈ 1,7 s pour 4 096², ≈ 1,5 s pour tout le plan à mi-résolution.
 - **Parcours** (`window.KtaDetectionUI`) : bandeau en bas d'écran (style des raccords). Exemples à la pipette
-  (Masse A, Masse B, Front : médiane d'un carré de 5 × 5 px sous le doigt, 6 exemples au plus par classe, ΔE 14) →
-  cadre par deux coins ou « Tout le plan » (au-delà de 4 096² px : mi-résolution, confirmé) → aperçu dans le pane
-  `ktaDetection` (renderer SVG propre : la carte est en canvas, où l'aperçu ne serait ni touchable ni stylé) →
-  « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+  (Masse A, Masse B, Front : chaque toucher MESURE la composante, fenêtre de 192 px autour du doigt, 640 si elle la
+  dépasse ; 6 exemples au plus par classe) → cadre par deux coins ou « Tout le plan » (au-delà de 4 096² px :
+  mi-résolution, confirmé) → aperçu dans le pane `ktaDetection` (renderer SVG propre : la carte est en canvas, où
+  l'aperçu ne serait ni touchable ni stylé) avec deux curseurs, **Tolérance de couleur** et **Taille minimale**,
+  partis des réglages déduits : un curseur relâché recalcule sur les blocs gardés (200 ms sans mouvement), sans
+  relire l'image ; les valeurs sont gardées avec les couleurs du plan (même clé) jusqu'au prochain exemple → « Ajouter
+  N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
 - **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
   carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
   Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.

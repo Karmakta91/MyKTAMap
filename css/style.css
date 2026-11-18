@@ -20261,6 +20261,9 @@ button.kta-cfg-ligne-action {
 }
 .kta-detect-type { display: inline-flex; align-items: center; gap: 4px; color: var(--kta-texte-2); font-size: 12px; }
 .kta-detect-type select { font-size: 12px; }
+.kta-detect-curseur { display: inline-flex; align-items: center; gap: 6px; color: var(--kta-texte-2); font-size: 12px; }
+.kta-detect-curseur input { width: 110px; }
+.kta-detect-valeur { min-width: 22px; color: var(--kta-texte); font-variant-numeric: tabular-nums; }
 .kta-detect-apercu { stroke: var(--kta-interaction); stroke-width: 2; fill: var(--kta-interaction); fill-opacity: 0.25; }
 .kta-detect-apercu.kta-detect-classe-b { stroke: var(--kta-accent); fill: var(--kta-accent); }
 .kta-detect-apercu.kta-detect-retire { stroke: var(--kta-texte-3); fill: var(--kta-texte-3); fill-opacity: 0.08;

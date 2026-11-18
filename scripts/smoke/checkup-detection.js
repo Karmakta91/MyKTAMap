@@ -212,6 +212,42 @@ async function suite(nav) {
   verifier(e.apercu && e.apercu.n === 18 && e.apercu.traits === 2 && e.apercu.deja === 0,
     "aperçu : 16 piliers et 2 fronts de la couleur des piliers, ni point trop petit ni contour creux", e.apercu);
   verifier((await nosStructures(page)).length === avant, "rien n'est écrit avant « Valider »");
+  // Réglages déduits des exemples touchés : taille minimale = plus petit pilier touché (gris de 40 px, orange 50 × 40).
+  verifier(e.curseurs && e.curseurs.taille >= 30 && e.curseurs.taille <= 42 && e.curseurs.tolerance >= 22,
+    "réglages déduits des touchers : taille minimale " + (e.curseurs && e.curseurs.taille) + " px, tolérance " +
+    (e.curseurs && e.curseurs.tolerance), e.curseurs);
+  // Curseur « Taille minimale » poussé à 80 px : recalcul sur les blocs déjà lus, sans relire l'image.
+  const curseur = async function (nom, v, recalculs) {
+    await page.evaluate(function (a) {
+      const i = document.querySelector('#kta-detect-bandeau [data-detect-curseur="' + a.nom + '"]');
+      window.__recalculsVises = a.recalculs;
+      i.value = String(a.v);
+      i.dispatchEvent(new Event("input", { bubbles: true }));
+    }, { nom: nom, v: v, recalculs: recalculs });
+    await attendre(page, function () {
+      const s = window.KtaDetectionUI.etat();
+      return s && s.recalculs >= window.__recalculsVises;
+    }, 15000);
+    return etat(page);
+  };
+  const tailleDeduite = e.curseurs.taille, lus = e.lectures;
+  let e2 = await curseur("taille", 80, 1);
+  verifier(e2.recalculable && e2.lectures === lus && e2.apercu.n < e.apercu.n && e2.apercu.traits === 2,
+    "curseur Taille minimale à 80 px : piliers écartés (" + e.apercu.n + " → " + e2.apercu.n + "), fronts gardés, " +
+    "sans relire l'image", { lectures: [lus, e2.lectures], n: e2.apercu.n, recalculable: e2.recalculable });
+  const libAjouter = await page.evaluate(function () {
+    return document.querySelector('#kta-detect-bandeau [data-detect="valider"]').textContent;
+  });
+  verifier(libAjouter.indexOf(String(e2.apercu.n)) >= 0, "« Ajouter » suit le nouveau compte (" + libAjouter + ")");
+  e2 = await curseur("taille", tailleDeduite, 2);
+  verifier(e2.apercu.n === 18 && e2.lectures === lus, "curseur remis à " + tailleDeduite + " px : 18 de nouveau, " +
+    "toujours sans relecture", { n: e2.apercu.n, lectures: e2.lectures });
+  const garde = await page.evaluate(function () {
+    const cle = "myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId;
+    try { return JSON.parse(localStorage.getItem(cle)).curseurs; }
+    catch (err) { return null; }
+  });
+  verifier(garde && garde.taille === tailleDeduite, "valeurs des curseurs gardées avec les couleurs du plan", garde);
   const cible = await page.evaluate(function () {
     const p = document.querySelector(".leaflet-ktaDetection-pane path.kta-detect-classe-a");
     if (!p) return null;

@@ -11,7 +11,10 @@
  * plus grande que la marge signalée et jamais coupée, masse coupée par le cadre demandé rendue entière, lecture
  * à résolution réduite, réglages en mètres, annulation, worker (message → résultat). Fronts : trait droit et en L,
  * trait de la couleur d'un pilier (le pilier reste une masse, le trait ne le traverse pas), ergot, bruit, trait sur
- * plusieurs blocs raccordé.
+ * plusieurs blocs raccordé. Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
+ * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
+ * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie (limite mesurée) ; recalcul sur
+ * les blocs gardés sans relecture.
  * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs, sans comblement des trous,
  * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
  *
@@ -94,6 +97,72 @@ function lecteur(img) {
     }
     return Promise.resolve({ data: out, w: bw, h: bh });
   };
+}
+// Image entière en bloc (mesure d'un exemple).
+function lecteurSync(img) { return { data: img.data, w: img.W, h: img.H }; }
+
+// Scène brune (imite un plan peu détaillé, non calibré) : beaucoup de piliers de 6 à 12 px, des moyens, quelques
+// gros, contour noir, dégradé de couleur, filigrane clair semi-transparent, bruit ± 20, flou 3 × 3.
+function sceneBrune() {
+  const W = 700, H = 460, img = image(W, H), vrais = [];
+  let g = 11;
+  const al = () => { g = (g * 16807) % 2147483647; return g / 2147483647; };
+  for (let y = 20; y < H - 60; y += 46) for (let x = 20; x < W - 60; x += 46) {
+    const r = al(), w = r < 0.5 ? 6 + al() * 6 : r < 0.9 ? 14 + al() * 16 : 40 + al() * 10;
+    vrais.push({ x, y, w: Math.round(w), h: Math.round(w * (0.8 + al() * 0.8)) });
+  }
+  const f = new Float32Array(W * H * 3).fill(255);
+  const poser = (i, j, c) => {
+    if (i < 0 || j < 0 || i >= W || j >= H) return;
+    const k = (j * W + i) * 3;
+    f[k] = c[0]; f[k + 1] = c[1]; f[k + 2] = c[2];
+  };
+  vrais.forEach((p) => {
+    for (let j = p.y - 2; j < p.y + p.h + 2; j++) for (let i = p.x - 2; i < p.x + p.w + 2; i++) {
+      const dedans = i >= p.x && i < p.x + p.w && j >= p.y && j < p.y + p.h, t = (i / W) * 40 - 20;
+      poser(i, j, dedans ? [150 + t, 90 + t * 0.6, 40 + t * 0.3] : [30, 30, 30]);
+    }
+  });
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    if (!(((i + j) % 160 < 14) || ((i - j + 2000) % 220 < 14))) continue;
+    const k = (j * W + i) * 3;
+    for (let c = 0; c < 3; c++) f[k + c] = f[k + c] * 0.7 + 225 * 0.3;
+  }
+  let h = 7;
+  for (let i = 0; i < f.length; i++) { h = (h * 1103515245 + 12345) & 0x7fffffff; f[i] += (h % 41) - 20; }
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) for (let c = 0; c < 3; c++) {
+    let s = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = i + dx, y = j + dy;
+      if (x >= 0 && y >= 0 && x < W && y < H) { s += f[(y * W + x) * 3 + c]; n++; }
+    }
+    img.data[(j * W + i) * 4 + c] = s / n;
+  }
+  return { img, vrais, couleur: [150, 90, 40], petit: vrais.find((p) => Math.min(p.w, p.h) <= 8),
+    gauche: vrais.find((p) => p.x < 200 && p.w > 20), droite: vrais.filter((p) => p.x > 500 && p.w > 20).pop() };
+}
+// Scène bleue : piliers bleu clair bordés de bleu, bandes de galerie du même bleu clair (6 à 10 px).
+function sceneBleue() {
+  const W = 700, H = 460, img = image(W, H), vrais = [], BLEU = [170, 215, 245], BORD = [60, 110, 200];
+  let g = 5;
+  const al = () => { g = (g * 16807) % 2147483647; return g / 2147483647; };
+  for (let y = 30; y < H - 60; y += 70) for (let x = 30; x < W - 60; x += 70) {
+    const w = Math.round(10 + al() * 30), h = Math.round(10 + al() * 30);
+    vrais.push({ x, y, w, h });
+    for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) {
+      img.px(i, j, (i < x || j < y || i === x + w || j === y + h) ? BORD : BLEU);
+    }
+  }
+  for (let b = 0; b < 6; b++) {
+    const ep = 6 + (b % 5), y0 = 50 + b * 70, pente = (b % 3 - 1) * 0.15;
+    for (let x = 0; x < W; x++) {
+      const yc = Math.round(y0 + 35 + pente * (x - W / 2));
+      for (let t = 0; t < ep; t++) img.px(x, yc + t, BLEU);
+    }
+  }
+  img.bruit(10);
+  return { img, vrais, petit: vrais.find((p) => Math.min(p.w, p.h) < 14),
+    gros: vrais.find((p) => p.w > 30 && p.h > 30) };
 }
 function lancer(img, extra) {
   return D.detecter(Object.assign({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: img.W, h: img.H },
@@ -251,6 +320,88 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   t("contre-épreuve : sans raccord, le trait sort en plusieurs morceaux (" + morceaux.length + ")",
     morceaux.length > 1);
 
+  // ── Exemple touché à la pipette : composante, épaisseur, étalement ──
+  const ex1 = D.mesurerExemple(lecteurSync(image(200, 200).rect(50, 40, 10, 30, ORANGE)), 55, 55);
+  t("exemple mesuré : pilier de 10 × 30 px → aire 300, épaisseur 9 à 10, non coupé",
+    ex1 && ex1.aire === 300 && ex1.epaisseur >= 9 && ex1.epaisseur <= 10 && !ex1.coupe, ex1);
+  const ex2 = D.mesurerExemple(lecteurSync(image(200, 200).rect(50, 40, 40, 40, ORANGE).bruit(12)), 70, 60);
+  t("exemple bruité : couleur médiane proche de l'orange, étalement mesuré (> 0)",
+    ex2 && D.deltaE(D.rgbVersLab(...ex2.rgb), D.rgbVersLab(...ORANGE)) < 6 && ex2.etalement > 0, ex2);
+  const ex3 = D.mesurerExemple(lecteurSync(image(100, 100).rect(0, 0, 100, 100, GRIS)), 50, 50);
+  t("exemple qui remplit la fenêtre : signalé coupé (sa taille ne compte pas)", ex3 && ex3.coupe, ex3);
+  const rd = D.reglagesDepuisExemples({ a: [{ rgb: ORANGE, epaisseur: 7, etalement: 20.9 },
+    { rgb: [200, 120, 60], epaisseur: 30, etalement: 4 }], b: [{ rgb: GRIS, epaisseur: 5, etalement: 2, coupe: true }],
+    f: [{ rgb: ORANGE, epaisseur: 3, etalement: 1 }] }, { a: "masse", b: "masse", f: "trait" });
+  t("réglages déduits : tolérance = étalement + marge (27), plancher 22, " +
+    "taille = plus petit exemple de masse non coupé",
+    rd.tolerances.a === 27 && rd.tolerances.b === 22 && rd.tolerances.f === 22 && rd.taille === 7, rd);
+  const rt = D.reglagesPourTaille(7), rtm = D.reglagesPourTaille(7, 100);
+  t("taille 7 px → ouverture 4, aire 25, trou 29 ; plan à 100 px/m : aire ≥ 10 × 10 cm",
+    rt.ouverture === 4 && rt.aireMin === 25 && rt.trouMax === 29 && rtm.aireMin === 100, [rt, rtm]);
+
+  // ── Scène brune (essai sur un vrai plan : 3 piliers sur une soixantaine) ──
+  const brune = sceneBrune();
+  const trouvesBrun = (res) => brune.vrais.filter((p) => res.masses.some((m) => {
+    const cx = m.boite.x + m.boite.w / 2, cy = m.boite.y + m.boite.h / 2;
+    return cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h;
+  })).length;
+  const lireBrun = lecteur(brune.img);
+  const exBrun = [brune.gauche, brune.droite, brune.petit].map((p) =>
+    D.mesurerExemple(lecteurSync(brune.img), p.x + p.w / 2, p.y + p.h / 2));
+  const dBrun = D.reglagesDepuisExemples({ a: exBrun }, { a: "masse" });
+  const rBrun = await D.detecter({ lireBloc: lireBrun, region: { x: 0, y: 0, w: brune.img.W, h: brune.img.H },
+    limites: { w: brune.img.W, h: brune.img.H }, reglages: D.reglagesPourTaille(dBrun.taille),
+    classes: [{ id: "a", couleurs: exBrun.map((x) => x.rgb), tolerance: dBrun.tolerances.a }] });
+  const nBrun = trouvesBrun(rBrun);
+  t("scène brune (bruit ± 20, dégradé, filigrane, flou), 3 touchers : " + nBrun + "/" + brune.vrais.length +
+    " piliers trouvés (≥ 90 %)", nBrun >= 0.9 * brune.vrais.length,
+    { tolerance: dBrun.tolerances.a, taille: dBrun.taille });
+  const rAncien = await D.detecter({ lireBloc: lireBrun, region: { x: 0, y: 0, w: brune.img.W, h: brune.img.H },
+    limites: { w: brune.img.W, h: brune.img.H }, reglages: { ouverture: 13, aireMin: 250 },
+    classes: [{ id: "a", couleurs: [brune.couleur], tolerance: 14 }] });
+  const nAncien = trouvesBrun(rAncien);
+  t("contre-épreuve : réglages d'avant (13 px, 250 px², ΔE 14) → la majorité ratée (" + nAncien + "/" +
+    brune.vrais.length + ")", nAncien < 0.5 * brune.vrais.length);
+
+  // ── Scène bleue : bandes de galerie de la couleur des piliers (6 à 10 px) ──
+  const bleue = sceneBleue();
+  const trouvesBleu = (res) => bleue.vrais.filter((p) => res.masses.some((m) => {
+    const cx = m.boite.x + m.boite.w / 2, cy = m.boite.y + m.boite.h / 2;
+    return cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h;
+  })).length;
+  const exBleu = [bleue.petit, bleue.gros].map((p) =>
+    D.mesurerExemple(lecteurSync(bleue.img), p.x + p.w / 2, p.y + p.h / 2));
+  const dBleu = D.reglagesDepuisExemples({ a: exBleu }, { a: "masse" });
+  const bleuAvec = async (taille) => trouvesBleu(await D.detecter({ lireBloc: lecteur(bleue.img),
+    region: { x: 0, y: 0, w: bleue.img.W, h: bleue.img.H }, limites: { w: bleue.img.W, h: bleue.img.H },
+    reglages: D.reglagesPourTaille(taille), classes: [{ id: "a", couleurs: exBleu.map((x) => x.rgb),
+      tolerance: dBleu.tolerances.a }] }));
+  const nBleuDeduit = await bleuAvec(dBleu.taille), nBleu16 = await bleuAvec(16);
+  console.log("ℹ️ scène bleue : taille déduite " + dBleu.taille + " px → " + nBleuDeduit + "/" + bleue.vrais.length +
+    " (bandes soudées aux piliers : limite connue, critère de forme proposé) ; curseur à 16 px → " + nBleu16 + "/" +
+    bleue.vrais.length);
+  t("scène bleue : la taille minimale au-dessus de l'épaisseur des bandes (16 px) retrouve ≥ 85 % des piliers",
+    nBleu16 >= 0.85 * bleue.vrais.length, nBleu16);
+
+  // ── Recalcul sur les blocs gardés : pas de relecture de l'image ──
+  let lectures = 0;
+  const lireCompte = (x, y, w, h, e) => { lectures++; return lecteur(grand)(x, y, w, h, e); };
+  const exLoc = D.executeurLocal();
+  const r0 = await D.detecter({ lireBloc: lireCompte, region: { x: 0, y: 0, w: grand.W, h: grand.H },
+    limites: { w: grand.W, h: grand.H }, classes: CLASSES, reglages: { aireMin: 100, ouverture: 7, bloc: 256 },
+    executeur: exLoc, garder: true });
+  const lus = lectures;
+  const r1 = await D.recalculer(exLoc, { classes: CLASSES, reglages: D.reglagesPourTaille(45) });
+  t("recalcul (taille 45 px) sur les blocs gardés : aucune relecture, compte changé (" + r0.masses.length + " → " +
+    r1.masses.length + ")", r0.recalculable && lectures === lus && r1.masses.length < r0.masses.length,
+    { lectures: lectures, lus: lus, recalculable: r0.recalculable });
+  const r2 = await D.recalculer(exLoc, { classes: CLASSES, reglages: { aireMin: 100, ouverture: 7 } });
+  t("recalcul aux réglages d'origine : même résultat que la détection", r2.masses.length === r0.masses.length);
+  exLoc.fermer();
+  const sansGarde = await D.detecter({ lireBloc: lecteur(grand), region: { x: 0, y: 0, w: grand.W, h: grand.H },
+    limites: { w: grand.W, h: grand.H }, classes: CLASSES, executeur: D.executeurLocal() });
+  t("sans « garder » : résultat non recalculable (l'appelant relit)", sansGarde.recalculable === false);
+
   // ── Résolution réduite ──
   r = await lancer(grand, { echelle: 0.5 });
   const red = r.masses.find(m => proche(boiteDe(m), [110, 110, 150, 150], 2.01));
@@ -293,6 +444,13 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   self.onmessage({ data: { id: 8, bloc: null } });
   t("worker : une erreur revient en { id, erreur }, sans casser le worker", envoyes[1] && envoyes[1].id === 8 &&
     typeof envoyes[1].erreur === "string");
+  const bg = await lecteur(image(100, 100).rect(10, 10, 40, 40, ORANGE))(0, 0, 100, 100, 1);
+  self.onmessage({ data: { id: 9, garder: true, bloc: { data: bg.data, w: bg.w, h: bg.h, x0: 0, y0: 0, echelle: 1,
+    classes: CLASSES, reglages: D.REGLAGES } } });
+  self.onmessage({ data: { id: 10, recalculer: { classes: CLASSES, reglages: D.reglagesPourTaille(60) } } });
+  t("worker : bloc gardé (garde), recalcul sans le renvoyer (taille 60 px → plus de masse)",
+    envoyes[2] && envoyes[2].resultat.garde === true && Array.isArray(envoyes[3] && envoyes[3].resultat) &&
+    envoyes[3].resultat.length === 1 && envoyes[3].resultat[0].masses.length === 0, [envoyes[2], envoyes[3]]);
 
   // ── Pas de DOM dans le moteur ──
   const moteur = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8")

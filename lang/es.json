@@ -314,6 +314,8 @@
   "detect.classe.court.a": "Masa A",
   "detect.classe.court.b": "Masa B",
   "detect.classe.court.f": "Frente",
+  "detect.curseur.taille": "Tamaño mínimo",
+  "detect.curseur.tolerance": "Tolerancia de color",
   "detect.exemples.aide": "Toca Masa A, Masa B o Frente y luego un pilar o un trazo de ese color en el mapa (se admiten varias muestras).",
   "detect.exemples.effacer": "Borrar las muestras",
   "detect.exemples.suivant": "Elegir la zona",

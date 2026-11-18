@@ -11,7 +11,10 @@
 // extérieur suivi sur les BORDS des pixels (aire exacte), Douglas-Peucker à `simplification`.
 // Traits (classe nature "trait") : couleur du trait MOINS les masses pleines, fermeture, squelette (Zhang-Suen),
 // chemins sans ergots ni bruit, découpés au cœur du bloc puis raccordés bout à bout entre blocs.
-// Expose : KtaDetection = { detecter, detecterBloc, depuisMetres, REGLAGES, executeurWorker, rgbVersLab, deltaE }.
+// Réglages déduits des exemples touchés (mesurerExemple, reglagesDepuisExemples, reglagesPourTaille) ; recalcul sur
+// les blocs gardés par l'exécuteur, sans relire l'image (recalculer).
+// Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
+//   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -444,10 +447,13 @@
     const rg = Object.assign({}, REGLAGES, opts.reglages || {}), e = opts.echelle || 1;
     const reg = opts.region, lim = opts.limites || { w: reg.x + reg.w, h: reg.y + reg.h };
     const pas = rg.bloc / e, marge = rg.marge;
-    const executer = opts.executer || function (b) {
-      // repli sans worker : un bloc par tâche, la page respire entre deux
+    // `executeur` (objet : executeurWorker / executeurLocal) garde les blocs lus si `garder` ; `executer` (fonction)
+    // calcule seulement ; à défaut, calcul dans la page, un bloc par tâche.
+    const ex = opts.executeur || null;
+    const executer = ex ? function (b) { return ex.executer(b, !!opts.garder); } : opts.executer || function (b) {
       return new Promise(function (ok) { setTimeout(function () { ok(detecterBloc(b)); }, 0); });
     };
+    let gardes = 0;
     const blocs = [];
     for (let y = reg.y; y < reg.y + reg.h; y += pas) {
       for (let x = reg.x; x < reg.x + reg.w; x += pas) blocs.push([x, y]);
@@ -471,15 +477,55 @@
       res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
       res.ignorees += r.ignorees;
       if (r.traits) res.traits.push.apply(res.traits, r.traits);
+      if (r.garde) gardes++;
       if (opts.onProgres) opts.onProgres(i + 1, blocs.length);
     }
     // traits coupés au bord des blocs : raccordés (le cœur d'un bloc touche celui du voisin)
     res.traits = _raccorder(res.traits, Math.max(1.5, 2 / e));
+    // tous les blocs gardés : recalculer() peut refaire le calcul sans relire l'image
+    res.recalculable = !!ex && !!opts.garder && gardes === blocs.length;
     return res;
   }
 
-  // Exécuteur par worker (js/ktaDetectionWorker.js) : un bloc à la fois, tampon d'image TRANSFÉRÉ (pas copié).
-  // → { executer(bloc) → Promise, fermer() } ; null sans Worker (le calcul se fait alors dans la page).
+  // ── Blocs gardés : recalcul sans relire l'image (curseurs de l'aperçu) ──
+  // Un magasin de blocs lus (dans le worker, sinon dans la page), plafonné : au-delà, le bloc n'est pas gardé et le
+  // recalcul n'est plus possible (l'appelant relit). recalculer(classes, reglages) → résultats bloc par bloc.
+  const BUDGET_BLOCS = 200 * 1024 * 1024;   // octets d'image gardés au plus
+  function _magasin() {
+    const blocs = [];
+    let octets = 0;
+    return {
+      garder: function (b) {
+        const n = b.data ? b.data.byteLength : 0;
+        if (octets + n > BUDGET_BLOCS) return false;
+        blocs.push(b); octets += n;
+        return true;
+      },
+      recalculer: function (classes, reglages) {
+        return blocs.map(function (b) {
+          return detecterBloc(Object.assign({}, b, { classes: classes, reglages: reglages }));
+        });
+      },
+      vider: function () { blocs.length = 0; octets = 0; }
+    };
+  }
+  // Fusion des résultats de blocs (même règle que detecter).
+  function _fusion(resultats, e) {
+    const res = { masses: [], tropGrands: [], ignorees: 0, traits: [], blocs: resultats.length };
+    resultats.forEach(function (r) {
+      res.masses.push.apply(res.masses, r.masses);
+      res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
+      res.ignorees += r.ignorees;
+      if (r.traits) res.traits.push.apply(res.traits, r.traits);
+    });
+    res.traits = _raccorder(res.traits, Math.max(1.5, 2 / (e || 1)));
+    return res;
+  }
+
+  // Exécuteur par worker (js/ktaDetectionWorker.js) : un bloc à la fois, tampon d'image TRANSFÉRÉ (pas copié) et,
+  // avec `garder`, conservé par le worker pour recalculer.
+  // → { executer(bloc, garder) → Promise<résultat (+ garde)>, recalculer(classes, reglages) → Promise<[résultats]>,
+  //     fermer() } ; null sans Worker (executeurLocal le remplace).
   function executeurWorker(url) {
     if (typeof Worker === "undefined") return null;
     let w;
@@ -496,21 +542,201 @@
       attente.forEach(function (a) { a.ko(new Error((ev && ev.message) || "worker")); });
       attente.clear();
     };
+    const envoyer = function (msg, transfert) {
+      return new Promise(function (ok, ko) {
+        const id = suivant++;
+        attente.set(id, { ok: ok, ko: ko });
+        msg.id = id;
+        w.postMessage(msg, transfert || []);
+      });
+    };
     return {
-      executer: function (b) {
-        return new Promise(function (ok, ko) {
-          const id = suivant++;
-          attente.set(id, { ok: ok, ko: ko });
-          const tampon = b.data && b.data.buffer ? b.data.buffer : null;
-          w.postMessage({ id: id, bloc: b }, tampon ? [tampon] : []);
-        });
+      executer: function (b, garder) {
+        const tampon = b.data && b.data.buffer ? b.data.buffer : null;
+        return envoyer({ bloc: b, garder: !!garder }, tampon ? [tampon] : []);
+      },
+      recalculer: function (classes, reglages) {
+        return envoyer({ recalculer: { classes: classes, reglages: reglages } });
       },
       fermer: function () { try { w.terminate(); } catch (err) { /* déjà arrêté */ } attente.clear(); }
     };
   }
+  // Même interface, dans la page (sans Worker, et dans Node pour les tests) : un bloc par tâche.
+  function executeurLocal() {
+    const mag = _magasin();
+    return {
+      executer: function (b, garder) {
+        return new Promise(function (ok) {
+          setTimeout(function () {
+            const r = detecterBloc(b);
+            r.garde = !!garder && mag.garder(b);
+            ok(r);
+          }, 0);
+        });
+      },
+      recalculer: function (classes, reglages) { return Promise.resolve(mag.recalculer(classes, reglages)); },
+      fermer: function () { mag.vider(); }
+    };
+  }
+  // Recalcul de la dernière détection (blocs gardés par l'exécuteur) avec d'autres classes ou réglages.
+  async function recalculer(executeur, opts) {
+    const rg = Object.assign({}, REGLAGES, opts.reglages || {});
+    return _fusion(await executeur.recalculer(opts.classes, rg), opts.echelle || 1);
+  }
+
+  // ── Un exemple touché à la pipette : sa composante, sa taille, l'étalement de sa couleur ──
+  // mesurerExemple({ data, w, h }, px, py, { seuil }) → { rgb, aire, epaisseur, etalement, ecartFond, coupe } ou null.
+  // La composante = pixels 4-connexes à moins du seuil (ΔE) de la couleur sous le doigt (médiane 5 × 5) ; épaisseur =
+  // 2 × la plus grande distance au bord (chanfrein 3-4) ; étalement = 90e centile des ΔE à la couleur médiane.
+  // `ecartFond` : ΔE entre cette couleur et le fond (médiane du bord de la fenêtre).
+  // 🩸 Seuil = la moitié de l'écart au fond, plafonné à `seuil` (28) : un bleu clair est à ΔE 26 du blanc, un seuil
+  //   fixe faisait déborder la composante sur tout le fond.
+  // `coupe` : la composante touche le bord de la fenêtre lue (plus grande qu'elle) ou la remplit à moitié (fond).
+  function mesurerExemple(b, px, py, o) {
+    const W = b.w, H = b.h, d = b.data, plafond = (o && o.seuil) || 28;
+    px = Math.floor(px); py = Math.floor(py);
+    if (px < 0 || py < 0 || px >= W || py >= H) return null;
+    const cache = new Map();
+    const lab = function (i) {
+      const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
+      let v = cache.get(c);
+      if (!v) { v = rgbVersLab(d[k], d[k + 1], d[k + 2]); cache.set(c, v); }
+      return v;
+    };
+    const med = function (vals) { vals.sort(function (a, b2) { return a - b2; }); return vals[vals.length >> 1]; };
+    const r0 = [], g0 = [], b0 = [];
+    for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
+      for (let i = Math.max(0, px - 2); i <= Math.min(W - 1, px + 2); i++) {
+        const k = (j * W + i) * 4;
+        if (d[k + 3] < 128) continue;
+        r0.push(d[k]); g0.push(d[k + 1]); b0.push(d[k + 2]);
+      }
+    }
+    if (!r0.length) return null;
+    const lab0 = rgbVersLab(med(r0), med(g0), med(b0));
+    // fond : médiane des pixels du bord de la fenêtre
+    const rf = [], gf = [], bf = [];
+    const bord = function (i) {
+      const k = i * 4;
+      if (d[k + 3] >= 128) { rf.push(d[k]); gf.push(d[k + 1]); bf.push(d[k + 2]); }
+    };
+    for (let x = 0; x < W; x++) { bord(x); bord((H - 1) * W + x); }
+    for (let y = 1; y < H - 1; y++) { bord(y * W); bord(y * W + W - 1); }
+    const ecartFond = rf.length ? deltaE(lab0, rgbVersLab(med(rf), med(gf), med(bf))) : 100;
+    const seuil = Math.max(6, Math.min(plafond, ecartFond / 2));
+    const N = W * H, vu = new Uint8Array(N), liste = [], max = Math.floor(N / 2);
+    let coupe = false;
+    const pile = [py * W + px];
+    vu[pile[0]] = 1;
+    while (pile.length) {
+      const q = pile.pop();
+      if (d[q * 4 + 3] < 128 || deltaE(lab(q), lab0) > seuil) continue;
+      liste.push(q);
+      if (liste.length > max) { coupe = true; break; }
+      const qx = q % W, qy = (q - qx) / W;
+      if (qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) coupe = true;
+      if (qx > 0 && !vu[q - 1]) { vu[q - 1] = 1; pile.push(q - 1); }
+      if (qx < W - 1 && !vu[q + 1]) { vu[q + 1] = 1; pile.push(q + 1); }
+      if (qy > 0 && !vu[q - W]) { vu[q - W] = 1; pile.push(q - W); }
+      if (qy < H - 1 && !vu[q + W]) { vu[q + W] = 1; pile.push(q + W); }
+    }
+    if (!liste.length) return null;
+    // couleur médiane de la composante, étalement
+    const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+    liste.forEach(function (q) { const k = q * 4; hist[0][d[k]]++; hist[1][d[k + 1]]++; hist[2][d[k + 2]]++; });
+    const medHist = function (h) {
+      let s = 0;
+      for (let v = 0; v < 256; v++) { s += h[v]; if (s * 2 >= liste.length) return v; }
+      return 255;
+    };
+    const rgb = [medHist(hist[0]), medHist(hist[1]), medHist(hist[2])];
+    const labM = rgbVersLab(rgb[0], rgb[1], rgb[2]);
+    // épaisseur : transformée de distance (chanfrein 3-4) dans la boîte de la composante
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    liste.forEach(function (q) {
+      const x = q % W, y = (q - x) / W;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    });
+    const bw = x1 - x0 + 3, bh = y1 - y0 + 3, dist = new Int32Array(bw * bh);
+    liste.forEach(function (q) { const x = q % W, y = (q - x) / W; dist[(y - y0 + 1) * bw + (x - x0 + 1)] = 1e6; });
+    for (let y = 1; y < bh - 1; y++) for (let x = 1; x < bw - 1; x++) {
+      const i = y * bw + x;
+      if (!dist[i]) continue;
+      dist[i] = Math.min(dist[i], dist[i - 1] + 3, dist[i - bw] + 3, dist[i - bw - 1] + 4, dist[i - bw + 1] + 4);
+    }
+    let dmax = 0;
+    for (let y = bh - 2; y >= 1; y--) for (let x = bw - 2; x >= 1; x--) {
+      const i = y * bw + x;
+      if (!dist[i]) continue;
+      dist[i] = Math.min(dist[i], dist[i + 1] + 3, dist[i + bw] + 3, dist[i + bw + 1] + 4, dist[i + bw - 1] + 4);
+      if (dist[i] > dmax) dmax = dist[i];
+    }
+    // 🩸 Étalement sur l'INTÉRIEUR (à 2 px au moins du bord, chanfrein ≥ 6) : les pixels du bord, mêlés au contour
+    //   noir par le flou, gonflaient la tolérance jusqu'à souder des piliers voisins (mesuré : ΔE 29 → 98 piliers sur
+    //   126, ΔE 24 → 123). Petit exemple sans intérieur : toute la composante.
+    const dedans = liste.filter(function (q) {
+      const x = q % W, y = (q - x) / W;
+      return dist[(y - y0 + 1) * bw + (x - x0 + 1)] >= 6;
+    });
+    const base = dedans.length >= 10 ? dedans : liste;
+    const ecarts = base.map(function (q) { return deltaE(lab(q), labM); }).sort(function (a, b2) { return a - b2; });
+    const etalement = ecarts[Math.min(ecarts.length - 1, Math.floor(ecarts.length * 0.9))];
+    return { rgb: rgb, aire: liste.length, epaisseur: Math.max(1, Math.round((2 * dmax) / 3) - 1),
+             etalement: Math.round(etalement * 10) / 10, ecartFond: Math.round(ecartFond * 10) / 10, coupe: coupe };
+  }
+
+  // Réglages déduits des exemples. exemples = { <classe>: [{ rgb, epaisseur?, etalement? }] }, natures = { <classe>:
+  // "masse" | "trait" }. → { tolerances: { <classe>: ΔE }, taille: px | null }.
+  // ⚠️ contrat (décision produit) : tolérance = étalement mesuré dans les exemples + marge, jamais sous TOL_PLANCHER
+  //   (14 était trop strict : brun inégal, filigrane, JPEG flou) ; taille = plus petite épaisseur des exemples de
+  //   masse.
+  // 🩸 L'écart ENTRE exemples n'entre pas dans la tolérance : un pixel est comparé à l'exemple le plus proche, donc
+  //   plusieurs exemples couvrent déjà leur écart. L'ajouter soudait des piliers voisins à travers le flou (mesuré :
+  //   ΔE 39 → 179 piliers sur 216, ΔE 27 → 214).
+  const TOL_PLANCHER = 22, TOL_MARGE = 6, TOL_MAX = 60, TOL_PART_FOND = 0.6, TOL_MIN = 6;
+  function reglagesDepuisExemples(exemples, natures) {
+    const tolerances = {};
+    let taille = null;
+    Object.keys(exemples).forEach(function (c) {
+      const ex = (exemples[c] || []).filter(function (x) { return x && Array.isArray(x.rgb); });
+      if (!ex.length) return;
+      let etal = 0;
+      ex.forEach(function (x) { etal = Math.max(etal, Number(x.etalement) || 0); });
+      // 🩸 jamais au-delà de 60 % de l'écart au fond : un pilier bleu clair sur blanc (ΔE 26) ferait du fond un pilier
+      let plafondFond = TOL_MAX;
+      ex.forEach(function (x) {
+        if (x.ecartFond > 0) plafondFond = Math.min(plafondFond, x.ecartFond * TOL_PART_FOND);
+      });
+      const voulue = Math.max(TOL_PLANCHER, etal + TOL_MARGE);
+      tolerances[c] = Math.round(Math.max(TOL_MIN, Math.min(plafondFond, TOL_MAX, voulue)));
+      if (natures && natures[c] === "trait") return;
+      ex.forEach(function (x) {
+        if (x.epaisseur > 0 && !x.coupe && (taille === null || x.epaisseur < taille)) taille = x.epaisseur;
+      });
+    });
+    return { tolerances: tolerances, taille: taille };
+  }
+  // Réglages pour une « taille minimale » (largeur du plus petit pilier, px du plan) : ouverture = la moitié, aire
+  // minimale = la moitié du carré, trou comblé à 60 % du carré. Plan calibré (pxParM) : bornes en mètres (aire jamais
+  // sous 10 × 10 cm, ouverture jamais au-delà de 60 cm), pas la règle.
+  function reglagesPourTaille(taille, pxParM) {
+    const t = Math.max(2, Number(taille) || 2);
+    const out = { ouverture: Math.min(25, Math.max(1, Math.round(t * 0.5))),
+                  aireMin: Math.min(5000, Math.max(9, Math.round(t * t * 0.5))),
+                  trouMax: Math.min(2000, Math.max(20, Math.round(t * t * 0.6))) };
+    const k = Number(pxParM);
+    if (k > 0) {
+      out.aireMin = Math.max(out.aireMin, Math.round(0.01 * k * k));
+      out.ouverture = Math.max(1, Math.min(out.ouverture, Math.round(0.6 * k)));
+    }
+    return out;
+  }
 
   const api = { detecter: detecter, detecterBloc: detecterBloc, depuisMetres: depuisMetres, REGLAGES: REGLAGES,
-                executeurWorker: executeurWorker, rgbVersLab: rgbVersLab, deltaE: deltaE };
+                executeurWorker: executeurWorker, executeurLocal: executeurLocal, recalculer: recalculer,
+                mesurerExemple: mesurerExemple, reglagesDepuisExemples: reglagesDepuisExemples,
+                reglagesPourTaille: reglagesPourTaille, rgbVersLab: rgbVersLab, deltaE: deltaE,
+                _magasin: _magasin };
   racine.KtaDetection = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : globalThis);
