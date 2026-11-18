@@ -218,7 +218,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (154 modules)
+## 🟢 L'application : modules JS (156 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -326,6 +326,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `recalageScan.js` | Recaler des données sur un autre scan (calcul pur `KtaRecalageScan` + modale) |
 | `raccordsTraces.js` | Raccords à vérifier : écarts entre morceaux séparés du réseau, revue sur la carte, Raccorder / Ignorer |
 | `verifierPlan.js` | Vérifier le plan : contrôles C1 à C3 sur les tests du pathfinder, liste par gravité, revue sur la carte, « Vu, normal », avertissement à la saisie |
+| `ktaDetection.js` | Détection des piliers sur l'image du plan : calcul pur (couleurs, ouverture, contours, blocs avec marge), worker ou page |
 | `searchPoints.js` | Recherche dans le plan ouvert (Ctrl+K) : points, tracés, zones, structures, saisie lat/lng |
 | `sessionExporter.js` | Export de session : complet, avancé, conversion, fusion de calques, externe (KMZ / GPX / GeoJSON), anonymisé |
 | `sessionReport.js` | Rapport de sortie (texte, JSON, PDF) |
@@ -461,6 +462,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
+| `ktaDetectionWorker.js` | Worker de la détection des structures : calcule un bloc d'image (importe `ktaDetection.js`) — lancé par `ktaDetection.js` |
 | `vue3d.js` | Vue 3D autour de la position du tracker — chargé par `js/interface.js` au toucher du bouton cube de la barre de droite ; three.js importé à la première ouverture ; précaché par `sw.js` |
 
 ---
@@ -593,6 +595,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-masse-sol.js` | Zone « Masse au sol » : grains qui ne suivent plus la part comblée, `comble` perdu par une copie ou à l'aller-retour KMZ / GeoJSON / SIG, fiche ou Tableur qui acceptent ≥ 1, défaut SIG d'un polygone non reconnu repassé en Comblé | pre-commit |
 | `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
 | `check-verifier-plan.js` | « Vérifier le plan » qui ne dit plus la même chose que l'itinéraire (segments coupés), contrôles C1 à C3 ou « vu, normal » cassés, test de zone dure écrit hors de la table unique, C12 cassé | pre-commit |
+| `check-detection.js` | Moteur de détection des structures qui ne retrouve plus les formes (aire exacte, couleurs, bruit), laisse passer moucheté ou contours creux, coupe ou double une masse entre deux blocs ; worker | pre-commit |
 | `check-zones-cout.js` | Zone Comblé ou effondrée devenue bloquante, plus évitée quand un autre chemin existe, traversée sans le dire, distance gonflée par son coût, ou `inaccessible` plus dure | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |

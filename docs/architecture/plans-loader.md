@@ -786,3 +786,32 @@ scale: (transform && transform.metresParPixel > 0)
 ⚠️ **Un plan généré AVANT la v1.82.0 garde son échelle fausse** : elle est écrite dans son ZIP. Il faut le **régénérer** depuis le fichier source — l'app ne peut pas la corriger après coup, elle ne sait pas quelle emprise a servi.
 
 🩸 **Le repli à 50 est conservé** et c'est volontaire : sans transform utilisable, une valeur arbitraire assumée vaut mieux qu'un `NaN` qui se propagerait silencieusement dans toutes les distances.
+
+## 🔎 Détecter les structures — moteur de calcul
+
+Détection des piliers (masses pleines) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
+calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
+l'interface (outil Structures et 📊 Éditeur de données) n'est pas encore là : seul le moteur l'est.
+
+- **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
+  par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
+  `{ masses: [{ classe, points, aire, boite }], tropGrands, ignorees, blocs }`, coordonnées en **pixels du plan**.
+- **Méthode, par bloc** : classe de couleur de chaque pixel (écart ΔE en Lab à l'exemple le plus proche, table sur
+  6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
+  (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
+  des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
+  250 px², 1,5 px, trou 700 px²) ; `depuisMetres(r, pxParM)` les donne pour un plan calibré.
+- 🩸 **Pastille au centre d'un pilier étroit** : sans le comblement des petits trous, l'ouverture efface les bandes
+  de part et d'autre et coupe le pilier en deux. Un contour creux plus grand que `trouMax` reste vide.
+- 🩸 **Blocs avec marge** (`bloc` 2048, `marge` 256 px) : une masse est rendue par le bloc qui contient le coin
+  haut-gauche de sa boîte ; celle qui touche le bord de la marge (pas le bord du plan) est signalée dans
+  `tropGrands`, jamais coupée. La marge est lue au-delà du cadre demandé : une masse coupée par le cadre reste entière.
+- **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
+  la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
+- **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
+  `trouMax`) pris pour une masse.
+- **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
+  rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
+  2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms
+  en blocs de 1 024 (+30 % de temps). Sans worker : la page fige plusieurs secondes par bloc.
+- Garde-fou : `scripts/check-detection.js` (pre-commit, images fabriquées, contre-épreuves).
