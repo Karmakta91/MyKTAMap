@@ -261,6 +261,18 @@
   // 🩸 Pas de `STRUCT_STYLES_HOME[s.type] || …["mur"]` seul : un `cust-…` n'y est pas et toutes les
   // structures personnalisées tomberaient sur « mur » (une couleur pour tous les niveaux, un POLYGONE même
   // pour un front). La forme vient de `entry.geometry`, le champ lu par structures.js > _isPolylineType.
+  // Couleur des rayures d'un type (arc : canon styleResolver.js > `rayures`), null pour un trait uni.
+  function _couleurRayuresHome(type) {
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const cs = window.ktaResolveStyle("structures", type, { flat: true });
+    return (cs && cs.rayures && cs.rayures.color) || null;
+  }
+  // Tirets proportionnels à l'épaisseur, au moins 3 px pleins / 3 px vides (structures.js > ktaPeindreRayures).
+  function _tiretsRayures(w) {
+    const n = Number(w) || 2;
+    return Math.max(3, n * 0.8).toFixed(1) + "," + Math.max(3, n * 1.4).toFixed(1);
+  }
+
   function _styleStructHome(s, planId) {
     const base = STRUCT_STYLES_HOME[s.type];
     if (base) return Object.assign({}, base);
@@ -1243,6 +1255,8 @@
       : null;
     if (!w) return;
     const wTrace = Math.max(1, Math.round(w * 0.6 * 10) / 10);
+    // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
+    const wRaye = Math.max(2, Math.round(w * 0.6 * 10) / 10);
     const appliquer = function (grp, largeur) {
       if (!grp || typeof grp.eachLayer !== "function") return;
       grp.eachLayer(function (lay) {
@@ -1251,8 +1265,11 @@
         if (lay.options.fill === true) {
           if (lay._ktaWOrig === undefined) lay._ktaWOrig = lay.options.weight;
           cible = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
+        } else if (lay.options.ktaRaye) {
+          cible = wRaye;
         }
-        if (lay.options.weight !== cible) lay.setStyle({ weight: cible });
+        if (lay.options.weight === cible) return;
+        lay.setStyle(lay.options.ktaRayeDessus ? { weight: cible, dashArray: _tiretsRayures(cible) } : { weight: cible });
       });
     };
     // le principal ET chaque plan empilé (sinon les autres restent en aplat)
@@ -1456,9 +1473,20 @@
       const lls = _projectPoints(s.points, proj);
       if (lls.length < minPts) continue;
       if (polyline) {
+        const raye = _couleurRayuresHome(s.type);
         L.polyline(lls, Object.assign({
-          color: style.color, weight: style.weight, opacity: style.opacity, interactive: false
+          color: style.color, weight: style.weight, opacity: style.opacity, interactive: false, ktaRaye: !!raye,
+          className: raye ? "kta-osm-arc" : undefined
         }, optsRendu)).addTo(structL);
+        // Arc : rayé de rouge comme en mode plan, sinon on le confond avec le mur en ligne. Les panes de ce widget
+        // sont en SVG (pas de rayures peintes par structures.js) : une seconde polyligne en tirets par-dessus.
+        if (raye) {
+          L.polyline(lls, Object.assign({
+            color: raye, weight: style.weight, opacity: style.opacity, interactive: false,
+            dashArray: _tiretsRayures(style.weight), lineCap: "butt", ktaRaye: true, ktaRayeDessus: true,
+            className: "kta-osm-arc kta-osm-arc-rayures"
+          }, optsRendu)).addTo(structL);
+        }
       } else {
         L.polygon(lls, Object.assign({
           color: style.color, fillColor: style.fillColor,

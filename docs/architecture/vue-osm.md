@@ -1135,6 +1135,13 @@ murs** affinés comme en mode plan : `structures.js > ktaBordSurfacePourLargeur`
 contour fixe de 1 ou 2 px, sur des centaines de piliers vus de haut, fait un aplat
 noir. Les zones gardent leur trait.
 
+**Arc de soutènement** : bleu rayé de rouge comme en mode plan (sinon on le confond
+avec le mur en ligne), à la loi des arcs (0,6 × front, plancher 2 px, comme
+`structures.js > ktaLargeurRayePourRatio`). Modale : `ktaPolylineStructure` peint les
+rayures sur le canvas. Widget : panes SVG, donc une seconde polyligne rouge en tirets
+par-dessus (classes `kta-osm-arc` / `kta-osm-arc-rayures`, tirets recalculés avec
+l'épaisseur). `checkup-largeur-osm-home.js` le vérifie sur les deux cartes.
+
 - **Modale** (`osmView.js > _majLargeurFrontsOsm`) : renderer canvas. On **mute
   `options.weight` en place** (relu à chaque frame), puis une repeinture **non
   clippée** (`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`).

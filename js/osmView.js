@@ -116,7 +116,8 @@
     "mur-ligne": { color: "#1e3a8a", weight: 6, opacity: 1, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 6, opacity: 1, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 6, opacity: 1, isPolyline: true },
-    // Arc : trait bleu seul, plus fin que le mur en ligne (pas de rayures sur fond OSM).
+    // Arc : trait bleu plus fin que le mur en ligne, rayé de rouge (rayures du canon, peintes par
+    // structures.js > ktaPolylineStructure) : sans elles on le confond avec le mur en ligne.
     "arc":      { color: "#1e3a8a", weight: 3, opacity: 1, isPolyline: true }
   };
 
@@ -298,7 +299,8 @@
           lay.options.weight = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
           return;
         }
-        lay.options.weight = w;
+        // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
+        lay.options.weight = lay.options.ktaRayures ? Math.max(2, Math.round(w * 0.6 * 10) / 10) : w;
       });
       if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
         _roadLayer.eachLayer(function (lay) {
@@ -1134,18 +1136,16 @@
         if (cs) {
           if (cs.color) style.color = cs.color;
           if (cs.fillColor && !style.isPolyline) style.fillColor = cs.fillColor;
+          if (cs.rayures) style.rayures = cs.rayures;
         }
       }
       try {
         if (polyline) {
-          L.polyline(latlngs, {
-            color:   style.color,
-            weight:  style.weight,
-            opacity: style.opacity || 1,
-            interactive: false,
-            // 🩸 même classe qu'en mode plan : sans elle la largeur des fronts n'est pas recalculée au zoom et des
-            // milliers de fronts deviennent un aplat de loin
-          }).addTo(_structLayer);
+          const opts = { color: style.color, weight: style.weight, opacity: style.opacity || 1, interactive: false };
+          // Arc : rayé de rouge comme en mode plan (la carte est en canvas), sinon on le confond avec le mur en ligne.
+          (typeof window.ktaPolylineStructure === "function"
+            ? window.ktaPolylineStructure(latlngs, style, opts)
+            : L.polyline(latlngs, opts)).addTo(_structLayer);
         } else {
           L.polygon(latlngs, {
             color:       style.color,
