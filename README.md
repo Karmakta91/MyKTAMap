@@ -218,7 +218,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (156 modules)
+## 🟢 L'application : modules JS (157 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -327,6 +327,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `raccordsTraces.js` | Raccords à vérifier : écarts entre morceaux séparés du réseau, revue sur la carte, Raccorder / Ignorer |
 | `verifierPlan.js` | Vérifier le plan : contrôles C1 à C3 sur les tests du pathfinder, liste par gravité, revue sur la carte, « Vu, normal », avertissement à la saisie |
 | `ktaDetection.js` | Détection des piliers sur l'image du plan : calcul pur (couleurs, ouverture, contours, blocs avec marge), worker ou page |
+| `detectionStructures.js` | « Détecter les piliers » : pipette par plan, cadre ou tout le plan, aperçu superposé, « Valider » en une étape ⏪ (outil Structures et Éditeur de données) |
 | `searchPoints.js` | Recherche dans le plan ouvert (Ctrl+K) : points, tracés, zones, structures, saisie lat/lng |
 | `sessionExporter.js` | Export de session : complet, avancé, conversion, fusion de calques, externe (KMZ / GPX / GeoJSON), anonymisé |
 | `sessionReport.js` | Rapport de sortie (texte, JSON, PDF) |
@@ -716,6 +717,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-secteur-volume.js` | Secteur propre au ⛏️ Volume exploité : dessin au geste de ♦️ (fenêtre cachée, barre Valider / Annuler, mesure rendue intacte), retrouvé après rechargement, repris d'un autre niveau, deux niveaux à hauteurs différentes additionnés avec détail, niveaux cochés retenus, « Tous », Échap et secteur trop court sans effet ; capture avec `SV_SHOTS=<dossier>` |
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-zip-partage.js` | Plan ZIP tuilé rouvert depuis l'accueil : archive gardée une seule fois (aperçu et plan), tuiles détaillées de l'aperçu intactes |
+| `smoke/checkup-detection.js` | Détecter les piliers : pipette, cadre, aperçu, Valider en une étape ⏪, doublons, multi-niveau, deux entrées, sur une scène fabriquée |
 | `smoke/checkup-largeur-osm-home.js` | Fronts, tracés et contours des piliers et murs à la loi de largeur sur la carte OSM de l'accueil (plan principal et plan empilé, très dézoomé, de près, après re-rendu) et dans la Vue OSM, sur un relevé fictif dense fabriqué |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
@@ -853,6 +855,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 - **🧪 Stabilisation des tests et du démarrage** (`js/homeProfile.js`, `scripts/smoke/checkup-vue-3d.js`) : le bandeau du profil à l'accueil attend que le dictionnaire de langue soit chargé avant d'écrire ses textes (sous Safari lent, il affichait un instant la clé brute au lieu du libellé). Le contrôle de la descente animée de la vue 3D mesure le temps du geste et non l'horloge (rouge par intermittence sur un poste chargé), et l'essai du calque rapatrié attend aussi son point. 5 passages WebKit verts de suite.
 - **🧠 Plan ZIP : plus rien en double en mémoire** (`js/osmHomePreview.js`, `js/config.js`, `js/galerieEmprise.js`, `plans-loader.md` §59.7, `checkup-zip-partage.js`) : un plan ZIP tuilé rouvert depuis l'accueil gardait son archive deux fois, celle du plan et celle de l'aperçu de la carte d'accueil (lue elle-même deux fois). L'aperçu emprunte désormais le ZIP du plan ouvert et relit le sien à la demande ; le JSON des calques n'est plus gardé à côté de leur fichier ; la vue 3D ne refait plus un second index des structures par niveau. Mesuré sur un relevé lourd : 2 archives en mémoire → 1.
 - **🗺️ Carte OSM de l'accueil lisible de haut** (`js/osmHomePreview.js`, `js/osmView.js`, `js/structures.js`, `vue-osm.md` §10, `checkup-largeur-osm-home.js`) : très dézoomé, les fronts gardaient 4 px et recouvraient tout le plan d'un aplat. La loi de largeur du mode plan s'y applique enfin (fronts, tracés, plan principal et plans empilés), et le contour noir des piliers et des murs s'affine au dézoom comme en mode plan, sur la carte de l'accueil comme dans la Vue OSM.
+- **🔎 Détecter les piliers sur l'image du plan** (`js/ktaDetection.js`, `js/detectionStructures.js`, `tiling.js > ktaDessinerRegionPlan`, `plans-loader.md` § Détecter les structures, `checkup-detection.js`) : dans l'outil Structures et dans l'📊 Éditeur de données, toucher un pilier de chaque couleur (pipette), tracer un cadre ou choisir tout le plan, puis retirer d'un toucher ce qui n'est pas un pilier avant « Ajouter ». Un seul « Annuler » retire tout ; les piliers déjà dessinés ne sont pas doublés. Les fronts viendront ensuite.
 - **🧹 Dette technique, un lot** (`js/osmView.js`, `js/planRegistry.js`, `js/mapBearing.js`, `js/refonteInterface.js`, `css/style.css`, `scripts/check-entete-licence.js`) : la Vue OSM fermée juste après un zoom ne laisse plus partir un redessin sur une carte démontée ; le registre des plans garde une seule connexion IndexedDB (« tout effacer » n'est plus bloqué par des connexions oubliées) ; le retour au nord ne vide et ne redessine plus les canvas quand rien n'a changé (écran large) ; le chargement ne force plus une mise en page pour la hauteur de la barre du bas (~140 ms de moins en iPhone émulé, processeur ×4) ; l'en-tête de licence est exigé aussi sur les feuilles de style.
 
 #### v2.28.1 (16/11/2026) — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site (branche `Karma_dev`)

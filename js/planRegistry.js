@@ -177,6 +177,8 @@
     // Secteurs du ⛏️ Volume exploité (volumeExploite.js), propres à l'appareil comme la vue.
     if (window.KtaVolumeExploite) window.KtaVolumeExploite.secteurs.retirer(id);
     if (window.FondOsmPlan) window.FondOsmPlan.retirer(id);   // transparence du fond OSM sous le plan
+    // Couleurs de la détection (detectionStructures.js), propres à l'appareil.
+    try { localStorage.removeItem("myktamap_detect_couleurs_v1_" + id); } catch(e) {}
     try { localStorage.removeItem("myktamap_plan_prefs_" + id); } catch(e) {}   // réglages par plan (config.js)
     try {
       if (localStorage.getItem("myktamap_kmz_calib_" + id) != null) {

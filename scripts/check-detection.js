@@ -40,7 +40,10 @@ function image(W, H) {
       if (x < 0 || y < 0 || x >= W || y >= H) return;
       const k = (y * W + x) * 4; data[k] = c[0]; data[k + 1] = c[1]; data[k + 2] = c[2];
     },
-    rect(x, y, w, h, c) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) img.px(i, j, c); return img; },
+    rect(x, y, w, h, c) {
+      for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) img.px(i, j, c);
+      return img;
+    },
     // polygone rempli (règle pair-impair, centre de pixel)
     poly(pts, c) {
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -81,7 +84,8 @@ function lecteur(img) {
     const bw = Math.max(1, Math.round(w * e)), bh = Math.max(1, Math.round(h * e));
     const out = new Uint8ClampedArray(bw * bh * 4);
     for (let j = 0; j < bh; j++) for (let i = 0; i < bw; i++) {
-      const sx = Math.min(img.W - 1, Math.floor(x + (i + 0.5) / e)), sy = Math.min(img.H - 1, Math.floor(y + (j + 0.5) / e));
+      const sx = Math.min(img.W - 1, Math.floor(x + (i + 0.5) / e));
+      const sy = Math.min(img.H - 1, Math.floor(y + (j + 0.5) / e));
       const s = (sy * img.W + sx) * 4, d = (j * bw + i) * 4;
       out[d] = img.data[s]; out[d + 1] = img.data[s + 1]; out[d + 2] = img.data[s + 2]; out[d + 3] = img.data[s + 3];
     }
@@ -203,7 +207,8 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
 
   // ── Réglages en mètres ──
   const rm = D.depuisMetres({ ouvertureM: 0.5, aireMinM2: 0.25, simplificationM: 0.05 }, 20);
-  t("réglages en mètres à 20 px/m : 10 px, 100 px², 1 px", rm.ouverture === 10 && rm.aireMin === 100 && rm.simplification === 1,
+  t("réglages en mètres à 20 px/m : 10 px, 100 px², 1 px",
+    rm.ouverture === 10 && rm.aireMin === 100 && rm.simplification === 1,
     rm);
 
   // ── Annulation ──

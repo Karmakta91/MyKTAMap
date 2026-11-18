@@ -10,7 +10,8 @@
 //   ktaCullerTuilesV2(Throttle), _libererTuilesV2, _applyLevelFilterToBasePlan, ktaPlanDeBaseVisible,
 //   ktaRacineTuilesServeur,
 //   ktaCandidatsRacineTuiles, ktaResoudreRacineTuiles, ktaTuilesV2Urls, ktaDessinerRegionTuiles,
-//   ktaTuilesSurAppareil, ktaRemplissageTuile, ktaRognerTuile.
+//   ktaTuilesSurAppareil, ktaRemplissageTuile, ktaRognerTuile, ktaDessinerRegionPlan (image d'un niveau, toutes
+//   sources).
 // ⚠️ Un plan V2 tuile toujours, quelle que soit sa taille (choix).
 // 🩸 En V1, au-delà de 4096² px le rendu direct est instable sur GPU mobile : on tuile même en Qualité.
 // 🩸 Rendu, pré-cache hors-ligne (planOffline.js) et export partagent la MÊME dérivation des URLs de tuiles.
@@ -507,6 +508,72 @@ async function ktaDessinerRegionTuiles(ctx, pc, region, echelle, opts) {
   }
   if (manquantes) console.warn("[Tiling V2] Région : " + manquantes + "/" + travaux.length + " tuile(s) introuvable(s) (z" + z + ")");
   return { ok: manquantes < travaux.length, tuiles: travaux.length, manquantes: manquantes, z: z };
+}
+
+// ── Région de l'image du plan, quelle que soit la source ──
+// ktaDessinerRegionPlan(ctx, region {x,y,w,h} en px plan, echelle (px de ctx par px plan), opts { niveau, plafond })
+// → Promise<{ ok, source }>. Ordre : calques image du niveau (niveau ≠ 0, Générateur : imageLayers[].level, calés
+// comme sur la carte), tuiles V2 (servies, ZIP ou plan ☁️ déchiffré : ktaDessinerRegionTuiles), images du fond déjà
+// chargées (plan direct ou tuiles V1). Rien n'est téléchargé de plus que ce que la carte a déjà.
+// ⚠️ contrat : même aiguillage que vue3d.js > _dessinerPlanSol, qui garde le sien tant que la 3D est gelée.
+// 🩸 Tuiles V1 : seules celles que la carte a chargées ; une zone jamais affichée reste blanche.
+function _imageDeCalque(ov) {
+  const pret = function(i) { return i && i.complete && i.naturalWidth > 0; };
+  const vu = ov._rawImage || ov._image;
+  if (pret(vu)) return Promise.resolve(vu);
+  if (!ov._url) return Promise.resolve(null);
+  return new Promise(function(res) {
+    const img = new Image();
+    img.onload = function() { res(img); };
+    img.onerror = function() { res(null); };
+    img.src = ov._url;
+  });
+}
+async function ktaDessinerRegionPlan(ctx, region, echelle, opts) {
+  const o = opts || {}, H = window.APP_CONFIG && window.APP_CONFIG.imageHeight;
+  if (!ctx || !region || !(echelle > 0) || !H) return { ok: false };
+  const P = function(ll) { return { x: (ll.lng - region.x) * echelle, y: (H - ll.lat - region.y) * echelle }; };
+  const niveau = Number.isInteger(o.niveau) ? o.niveau : 0;
+  const calques = niveau === 0 ? [] : (window._ktaImageOverlays || []).filter(function(c) {
+    return c && c.overlay && c.level === niveau;
+  });
+  if (calques.length) {
+    const imgs = await Promise.all(calques.map(function(c) { return _imageDeCalque(c.overlay); }));
+    let n = 0;
+    imgs.forEach(function(img, i) {
+      if (!img) return;
+      const ov = calques[i].overlay, w = img.naturalWidth, h = img.naturalHeight;
+      if (ov._topLeft && ov._topRight && ov._bottomLeft) {
+        const tl = P(ov._topLeft), tr = P(ov._topRight), bl = P(ov._bottomLeft);
+        ctx.setTransform((tr.x - tl.x) / w, (tr.y - tl.y) / w, (bl.x - tl.x) / h, (bl.y - tl.y) / h, tl.x, tl.y);
+        ctx.drawImage(img, 0, 0);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+      } else {
+        const b = ov.getBounds(), a = P(b.getNorthWest()), z = P(b.getSouthEast());
+        ctx.drawImage(img, a.x, a.y, z.x - a.x, z.y - a.y);
+      }
+      n++;
+    });
+    return { ok: n > 0, source: "calques" };
+  }
+  const pc = window.PLAN_CONFIG;
+  if (pc && pc.plan && pc.plan.tiledV2 && pc.tiling) {
+    const r = await ktaDessinerRegionTuiles(ctx, pc, region, echelle,
+      { aligner: true, plafond: o.plafond || Infinity });
+    return { ok: !!(r && r.ok), source: "tuiles" };
+  }
+  let n = 0;
+  const prendre = function(ov) {
+    const img = ov && ov._image;
+    if (!img || !img.complete || !img.naturalWidth || typeof ov.getBounds !== "function") return;
+    const b = ov.getBounds(), a = P(b.getNorthWest()), z = P(b.getSouthEast());
+    if (z.x < 0 || z.y < 0 || a.x > region.w * echelle || a.y > region.h * echelle) return;   // hors de la région
+    ctx.drawImage(img, a.x, a.y, z.x - a.x, z.y - a.y);
+    n++;
+  };
+  (window._ktaBaseLayers || []).forEach(prendre);
+  (window._baseTiles || []).forEach(function(t) { prendre(t && t.overlay); });
+  return { ok: n > 0, source: "fond" };
 }
 
 function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv) {
@@ -1043,6 +1110,7 @@ window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;   // alias
 window.ktaRacineTuilesServeur   = ktaRacineTuilesServeur;
 window.ktaTuilesV2Urls          = ktaTuilesV2Urls;
 window.ktaDessinerRegionTuiles  = ktaDessinerRegionTuiles;
+window.ktaDessinerRegionPlan    = ktaDessinerRegionPlan;
 window.ktaTuilesSurAppareil     = ktaTuilesSurAppareil;
 window.ktaRemplissageTuile      = ktaRemplissageTuile;
 window.ktaRognerTuile           = ktaRognerTuile;

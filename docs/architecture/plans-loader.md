@@ -791,7 +791,7 @@ scale: (transform && transform.metresParPixel > 0)
 
 Détection des piliers (masses pleines) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
 calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
-l'interface (outil Structures et 📊 Éditeur de données) n'est pas encore là : seul le moteur l'est.
+l'interface : outil Structures et carte de l'📊 Éditeur de données, un même parcours (`js/detectionStructures.js`).
 
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
@@ -814,4 +814,21 @@ l'interface (outil Structures et 📊 Éditeur de données) n'est pas encore là
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
   2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms
   en blocs de 1 024 (+30 % de temps). Sans worker : la page fige plusieurs secondes par bloc.
-- Garde-fou : `scripts/check-detection.js` (pre-commit, images fabriquées, contre-épreuves).
+- **Parcours** (`window.KtaDetectionUI`) : bandeau en bas d'écran (style des raccords). Exemples à la pipette
+  (Masse A, Masse B : médiane d'un carré de 5 × 5 px sous le doigt, 6 exemples au plus par masse, écart ΔE 14) →
+  cadre par deux coins ou « Tout le plan » (au-delà de 4 096² px : mi-résolution, confirmé) → aperçu dans le pane
+  `ktaDetection` (renderer SVG propre : la carte est en canvas, où l'aperçu ne serait ni touchable ni stylé) →
+  « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+- **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
+  carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
+  Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.
+- ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
+  pilier-2 par défaut) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
+  pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout.
+- **Doublons** : une détection qui recouvre une structure du même niveau (session ou calque) est écartée et comptée
+  « déjà présente » : relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
+- **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>`, jamais dans la session ni dans
+  l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
+- Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
+  parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
+- Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours).

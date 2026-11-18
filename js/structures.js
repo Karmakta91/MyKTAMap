@@ -9,7 +9,8 @@
 // zones.js, stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
-//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, ktaPolylineStructure, ktaPeindreRayures, ktaArcsAuDessus,
+//   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, ktaNiveauNouvelleStructure, ktaPolylineStructure,
+//   ktaPeindreRayures, ktaArcsAuDessus,
 //   ktaLargeurRayePourRatio, majLargeurFronts, brancherLargeurFronts,
 //   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
 //   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
@@ -28,6 +29,16 @@ const STRUCTURE_TYPES_POLYLINE = ["mur-ligne", "front-1", "front-2", "arc"];
 // Types intégrés, dans l'ordre des listes (légende, exports, filtres).
 const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"];
 window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
+
+// Niveau d'une structure NOUVELLE (tracé à la main, détection sur l'image) ; null hors multi-niveau (aucun champ
+// level). ⚠️ contrat (décision produit) : pilier-2 et front-2 sont la 2e masse, un banc FIXE du terrain sous la 1re
+// (niveau 0) : toujours au niveau −1, quel que soit le niveau actif (« niveau actif − 1 » rangeait au −2 un pilier
+// dessiné depuis le −1). Le reste : niveau actif. La fiche (liste Niveau) change ensuite la valeur telle quelle.
+window.ktaNiveauNouvelleStructure = function (type) {
+  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return null;
+  if (type === "pilier-2" || type === "front-2") return -1;
+  return window.APP_CONFIG.activeLevel || 0;
+};
 function _isPolylineType(type) {
   if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;
   // Type custom : géométrie déclarée dans LegendCustomization.
@@ -446,18 +457,8 @@ function initStructures() {
         type: window.modeStructure,
         points: []
       };
-      // Multi-niveau seulement (sinon aucun champ level). pilier-2 et front-2 sont la 2e masse, un banc FIXE du
-      // terrain sous la 1re (niveau 0) : toujours au niveau −1, quel que soit le niveau actif (décision produit ;
-      // « niveau actif − 1 » rangeait au −2 un pilier dessiné depuis le −1). Le reste : niveau actif. La fiche
-      // (liste Niveau) change ensuite la valeur telle quelle.
-      if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
-        const _activeLvl = window.APP_CONFIG.activeLevel || 0;
-        if (currentStructure.type === "pilier-2" || currentStructure.type === "front-2") {
-          currentStructure.level = -1;
-        } else {
-          currentStructure.level = _activeLvl;
-        }
-      }
+      const _niv = window.ktaNiveauNouvelleStructure(currentStructure.type);
+      if (_niv !== null) currentStructure.level = _niv;
       if (window.KtaUid) window.KtaUid.ensure(currentStructure, "st");
       structuresData.push(currentStructure);
     }

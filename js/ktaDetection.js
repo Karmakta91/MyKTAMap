@@ -286,7 +286,8 @@
       const lu = await opts.lireBloc(lx, ly, rx - lx, ry - ly, e);
       const r = await executer({
         data: lu.data, w: lu.w, h: lu.h, x0: lx, y0: ly, echelle: e, classes: opts.classes, reglages: rg,
-        coeur: { x: Math.round((cx - lx) * e), y: Math.round((cy - ly) * e), w: Math.round(cw * e), h: Math.round(ch * e) },
+        coeur: { x: Math.round((cx - lx) * e), y: Math.round((cy - ly) * e),
+                 w: Math.round(cw * e), h: Math.round(ch * e) },
         bords: { g: lx <= 0, h: ly <= 0, d: rx >= lim.w, b: ry >= lim.h }
       });
       res.masses.push.apply(res.masses, r.masses);

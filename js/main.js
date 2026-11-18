@@ -888,6 +888,10 @@ window._etendreAvailableLevelsSiBesoin = function() {
 // abandonnées, extension prévenue avec "accueil").
 function _libererRessourcesPlanPrecedent(vers) {
   const versAccueil = vers === "accueil";
+  // Détection en cours (aperçu, calcul) : fermée avec le plan, rien n'est écrit (js/detectionStructures.js).
+  if (window.KtaDetectionUI) {
+    try { window.KtaDetectionUI.fermer(); } catch(e) {}
+  }
   // Vue laissée (centre, zoom, niveau) mémorisée pour la réouverture : AVANT l'arrêt du suivi et le démontage de la
   // carte (js/vuePlan.js).
   if (window.KtaVuePlan) {
