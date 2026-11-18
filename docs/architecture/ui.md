@@ -1897,6 +1897,16 @@ Tuile de l'accueil de l'Éditeur, avant les Raccords, **plan affiché seulement*
 
 Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native, aucune surface réseau, rien d'écrit dans les données.
 
+
+#### 91.7 Détecter piliers et fronts (`js/detectionStructures.js`)
+
+Tuile de l'accueil de l'Éditeur juste après Vérifier le plan, **plan affiché seulement**, et bouton du groupe 🏛️
+Structures (icône `search`, avant ✅ Fermer) : les deux ouvrent `window.KtaDetectionUI.ouvrir()`, un seul parcours
+(décision produit). Bandeau `#kta-detect-bandeau` (`.kta-racc-bandeau`) en trois étapes (exemples à la pipette,
+zone, aperçu) ; aperçu dans le pane `ktaDetection` (renderer SVG propre, classes `.kta-detect-*` en jetons de la
+charte ; la pastille d'exemple prend la couleur lue sur le plan). Échap ferme, sauf fenêtre affichée au-dessus.
+Calcul, lecture de l'image, doublons et couleurs par plan : `plans-loader.md` § Détecter les structures. Parcours :
+`scripts/smoke/checkup-detection.js` (Chromium et WebKit). i18n `detect.*` (fr/en/es). Aucune popup native.
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)
