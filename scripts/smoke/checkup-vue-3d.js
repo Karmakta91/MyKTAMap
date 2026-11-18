@@ -15484,7 +15484,8 @@ async function sectionMiniCarte(nav) {
         { uid: "zn_mc_t", type: "masse-sol", level: 0, comble: 0.75, points: carre(0, 8, 2) },
         { uid: "zn_mc_b", type: "masse-sol", level: 0, comble: 0.9, points: carre(6, 8, 2) },
         { uid: "zn_mc_n", type: "masse-sol", level: 0, comble: -0.5, points: carre(12, 8, 2) },
-        { uid: "zn_mc_c", type: "remblais", level: 0, points: [P(-20, -3), P(-14, -3), P(-14, 3), P(-20, 3)] }
+        { uid: "zn_mc_c", type: "remblais", level: 0, points: [P(-20, -3), P(-14, -3), P(-14, 3), P(-20, 3)] },
+        { uid: "zn_mc_e", type: "eau", level: 0, points: carre(-4, -6, 2) }
       ]);
       await window.__fxOuvrir(-8, 0, 90, 0, "structures");
       await window.__fxImages(20);
@@ -15523,6 +15524,8 @@ async function sectionMiniCarte(nav) {
       "jamais un obstacle", qn);
     verifier(q2 && q2.chevrons > 0 && q1 && q1.chevrons === 0, nom + "rampe de la ½ en chevrons (" +
       (q2 && q2.chevrons) + "), aucune sur une masse sans rampe", { q1: q1, q2: q2 });
+    verifier((zm.zones || []).some(function (q) { return q.cle === "eau"; }),
+      nom + "zone d'eau dessinée (un repère, pas un obstacle)", zm.zones);
     verifier(cb && cb.couloir > 0, nom + "Comblé traversé par le tracé : couloir creusé laissé ouvert (" +
       (cb && cb.couloir) + " pièce(s) du modèle galerie)", cb);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
