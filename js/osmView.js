@@ -292,21 +292,22 @@
     const ep = window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran : function (v) { return v; };
     const wTrace = ep((typeof window.ktaLargeurTracePourRatio === "function")
       ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w);
+    // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
+    const wLigne = ep(w), wRaye = ep(Math.max(2, Math.round(w * 0.6 * 10) / 10));
     try {
       _structLayer.eachLayer(function (lay) {
-        if (!lay || !lay.options) return;
+        if (!lay?.options) return;
         // contour d'un pilier ou d'un mur affiné comme en mode plan (structures.js > ktaBordSurfacePourLargeur)
         if (lay.options.fill === true) {
           if (lay._ktaWOrig === undefined) lay._ktaWOrig = lay.options.weight;
           lay.options.weight = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
           return;
         }
-        // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
-        lay.options.weight = ep(lay.options.ktaRayures ? Math.max(2, Math.round(w * 0.6 * 10) / 10) : w);
+        lay.options.weight = lay.options.ktaRayures ? wRaye : wLigne;
       });
-      if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
+      if (typeof _roadLayer?.eachLayer === "function") {
         _roadLayer.eachLayer(function (lay) {
-          if (!lay || !lay.options || lay.options.fill === true) return;
+          if (!lay?.options || lay.options.fill === true) return;
           lay.options.weight = wTrace;
         });
       }

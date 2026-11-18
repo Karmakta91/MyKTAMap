@@ -216,7 +216,7 @@ window.KtaEpaisseurTraits = {
     let v = null;
     try { v = localStorage.getItem(LS_EPAISSEUR_TRAITS); } catch (e) { v = null; }
     if (v === null || v === undefined) v = _epaisseurTraitsMemoire;
-    return (v === null || v === undefined) ? 1 : _bornerEpaisseurTraits(parseFloat(v));
+    return (v === null || v === undefined) ? 1 : _bornerEpaisseurTraits(Number.parseFloat(v));
   },
   poser: function (f) {
     const b = _bornerEpaisseurTraits(f);

@@ -636,21 +636,20 @@ function _largeurFantome(w) { return Math.max((w || 3) + 14, 18); }
 window.ktaMajLargeurTracesSession = function (wTrace) {
   if (!(Number.isFinite(wTrace) && wTrace > 0)) return 0;
   let n = 0;
-  for (let i = 0; i < _roadRenderState.length; i++) {
-    const e = _roadRenderState[i];
-    if (!e || !e.trace || !e.trace.options) continue;
+  for (const e of _roadRenderState) {
+    if (!e?.trace?.options) continue;
     e.trace.options.weight = wTrace;
-    if (e.fantome && e.fantome.options) {
-      e.fantome.options.weight = _largeurFantome(wTrace);
-      // 🩸 Le test de clic du canvas lit `_pxBounds`, élargi du demi-trait au dernier `_project` : à recaler.
-      if (e.fantome._map && typeof e.fantome._updateBounds === "function") {
-        try { e.fantome._updateBounds(); } catch (err) {}
-      }
-    }
+    if (e.fantome?.options) _poserLargeurFantome(e.fantome, _largeurFantome(wTrace));
     n++;
   }
   return n;
 };
+// 🩸 Le test de clic du canvas lit `_pxBounds`, élargi du demi-trait au dernier `_project` : recalé avec le trait.
+function _poserLargeurFantome(fantome, w) {
+  fantome.options.weight = w;
+  if (!fantome._map || typeof fantome._updateBounds !== "function") return;
+  try { fantome._updateBounds(); } catch (err) { /* couche retirée entre-temps : recalée à son prochain _project */ }
+}
 
 // Cible des roads de session : window.layerEditor (calque « Mes annotations »). ⚠️ Exception : "itinerary" va sur
 // window.map, avec son propre cycle de vie (modale Itinéraire), et ne doit PAS suivre ce calque.
