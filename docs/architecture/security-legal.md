@@ -51,7 +51,7 @@
 - **Détection DevTools conditionnée à `APP_CONFIG.debugMode === true`** : si debug ON, polling 2s heuristique outer/inner > 280px → toast `.kta-devtools-warn` (badge "DEBUG" pour signaler la nature outil-dev). Si debug OFF, aucune polling, zéro overhead. Toggle live du mode debug fonctionne (pas besoin de reload). Skip si une modale charte est ouverte (anti faux positif sur transitions viewport).
 - Toujours dans `ASSETS_TO_CACHE` du SW.
 
-**En-tête de licence** sur **tous** les scripts servis (`js/*.js` + `sw.js`) : bloc `/*! MyKTAMap (c) 2026 Flavien VIDAL … CC BY-NC-SA 4.0 … */` (le `/*!` survit à une minification). Si quelqu'un copie un fichier isolé, le copyright le suit. 🛡️ `scripts/check-entete-licence.js` (pré-commit, bloquant, auto-testé) exige « Flavien VIDAL » et « CC BY-NC-SA » dans les 15 premières lignes ; l'en-tête à copier est dans son commentaire de tête. `scripts/` (outillage, jamais servi) n'est pas concerné.
+**En-tête de licence** sur **tous** les scripts et feuilles de style servis (`js/*.js`, `sw.js`, `css/*.css`, add-ons `.js` et `.css`) : bloc `/*! MyKTAMap (c) 2026 Flavien VIDAL … CC BY-NC-SA 4.0 … */` (le `/*!` survit à une minification). Si quelqu'un copie un fichier isolé, le copyright le suit. 🛡️ `scripts/check-entete-licence.js` (pré-commit, bloquant, auto-testé) exige « Flavien VIDAL » et « CC BY-NC-SA » dans les 15 premières lignes ; l'en-tête à copier est dans son commentaire de tête. `scripts/` (outillage, jamais servi) n'est pas concerné.
 
 **Mentions visibles utilisateur** :
 - Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`

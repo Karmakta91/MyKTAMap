@@ -541,7 +541,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-icone-texte.js` | Balisage SVG de `ktaIcone` posé en `textContent` (direct, ou via une fonction du fichier qui pose son argument en texte) : il s'afficherait en clair | pre-commit |
 | `check-icones-ui.js` | Icône de contrôle revenue à l'emoji (barre de la carte, Tracker, export, accueil, Configuration de l'accueil, fenêtres d'outils de la carte, vue 3D, Mode Secours, barres du haut et du bas, fiches, confirmations, Vue OSM, Générateur, Tableur, inspecteurs, tutoriel, Profil et son export, sélection multiple, portes d'entrée, pied de page de l'accueil, ConfAdmin), nom inconnu de `ktaIcones.js`, emoji de la doc ou du tutoriel ni substitué ni listé « autre sens », texte hors doc qui cite l'emoji d'un bouton migré (cliquet) | pre-commit |
 | `check-lexique-icones.js` | Lexique des icônes en tête d'`AI_CONTEXT.md` absent, périmé ou modifié à la main, emoji de bouton cité sans nom ni dessin (`--ecrire` le régénère depuis `js/ktaIcones.js`) | pre-commit |
-| `check-entete-licence.js` | Script servi (`js/*.js`, `sw.js`) sans en-tête de licence | pre-commit |
+| `check-entete-licence.js` | Script ou feuille de style servis (`js/*.js`, `sw.js`, `css/*.css`, add-ons) sans en-tête de licence | pre-commit |
 | `check-esc.js` | Copie locale d'un échappeur HTML au lieu de `window.ktaEsc` | pre-commit |
 | `check-etat-visible.js` | État actif invisible depuis la carte (pastille de filtres, toast de restauration, étapes d'itinéraire) | pre-commit |
 | `check-export-anonyme.js` | Texte identifiant qui survit à l'export anonymisé (session piégée à marqueurs) | pre-commit |
