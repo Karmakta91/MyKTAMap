@@ -111,6 +111,11 @@ let _plannerPlanLegend = null;
 // garde tel quel (aucun objet ne bouge) ; tout autre calage part au modèle "local".
 let _plannerGeorefCharge = null;
 
+// Repère du plan ouvert en « Modifier » { w, h, rognage: {x, y} | null } (null : nouveau plan). ⚠️ Contrat : un plan
+// régénéré garde ce repère (même rognage, ou aucun), sinon ses calques, sa géoréf et ses calibrations, saisis dans
+// l'ancien repère, se décalent. Lu par _genererTuilesV2 (option `repere`), cf. _rognagePourRepere.
+let _plannerRepere = null;
+
 // Légende propre à l'écran « Convertir depuis SIG ». Séparée de `_plannerPlanLegend` : mélanger les deux
 // ferait fuiter les entrées d'un écran dans le plan de l'autre.
 let _sigPlanLegend = null;
@@ -764,6 +769,7 @@ function afficherPlanner() {
   _plannerSourceZip  = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
   _plannerGeorefCharge = null;
+  _plannerRepere = null;
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
   _appliquerPlannerMode(_lirePlannerMode());
@@ -1677,6 +1683,7 @@ async function _chargerZipModifier(file) {
     if (!planConfigFile) throw new Error(window.I18n.t("gen.zipModif.noPlanConfig"));
     const config = JSON.parse(await planConfigFile.text());
     _plannerSourceZip = { sha256: shaZip, taille: file.size, nom: (config.plan && config.plan.name) || "" };
+    _plannerRepere = _repereDuPlan(config.plan);
     if (_plannerMaj) _plannerMaj.georefReglages = _georefReglagesPourMaj(_plannerMaj.planId, config);
     _preRemplirFormulaire(config);
     _plannerZipStatus(window.I18n.t("gen.zipModif.charge", { name: file.name }), false);
@@ -3237,7 +3244,55 @@ function _detectContentBBox(img) {
 // coûte du temps à la génération du ZIP.
 const TUILE_ZIP_OPTS = { compression: "STORE" };
 
-async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
+// Repère d'un plan-config rouvert : dimensions et rognage écrits (`plan.rognage`), null si illisible.
+function _repereDuPlan(plan) {
+  const w = plan && Number(plan.imageWidth), h = plan && Number(plan.imageHeight);
+  if (!(w > 0 && h > 0)) return null;
+  const r = plan.rognage;
+  const rognage = (r && Number.isFinite(Number(r.x)) && Number.isFinite(Number(r.y)))
+    ? { x: Math.round(Number(r.x)), y: Math.round(Number(r.y)) } : null;
+  return { w: w, h: h, rognage: rognage };
+}
+
+// Rognage qui garde le repère d'un plan rouvert : { x, y, w, h } ou null (image entière). Ordre : le rognage
+// écrit s'il tient dans l'image ; image de mêmes dimensions que le plan → aucun ; plan rogné avant que le rognage
+// soit écrit → la détection des marges, retenue seulement si elle redonne les mêmes dimensions (même image).
+// 🩸 Un plan V1 n'était jamais rogné : régénéré en V2 avec le rognage automatique, tout se décalait.
+function _rognagePourRepere(repere, img, detecter) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const r = repere.rognage;
+  if (r && r.x >= 0 && r.y >= 0 && r.x + repere.w <= W && r.y + repere.h <= H) {
+    return (r.x || r.y || repere.w !== W || repere.h !== H) ? { x: r.x, y: r.y, w: repere.w, h: repere.h } : null;
+  }
+  if (repere.w === W && repere.h === H) return null;
+  const b = detecter(img);
+  if (b && b.w === repere.w && b.h === repere.h) return b;
+  console.warn("[Planner] Repère du plan introuvable dans l'image (" + repere.w + "×" + repere.h + " dans " +
+               W + "×" + H + ") : image entière, sans rognage");
+  return null;
+}
+
+// Décale de (-dx, -dy) toute paire de coordonnées pixel d'un calque (`x`/`y`, `x2`/`y2` de l'ancienne forme
+// du point précis) : points, sommets des tracés et des zones, point précis, raccords. Rend le texte, ou null si le
+// calque n'est pas du JSON (laissé tel quel).
+function _decalerCalque(contenu, dx, dy) {
+  let d;
+  try {
+    d = JSON.parse((typeof contenu === "string") ? contenu : new TextDecoder("utf-8").decode(contenu));
+  } catch (e) { return null; }
+  const vus = new Set();
+  (function parcourir(o) {
+    if (!o || typeof o !== "object" || vus.has(o)) return;
+    vus.add(o);
+    if (typeof o.x === "number" && typeof o.y === "number") { o.x -= dx; o.y -= dy; }
+    if (typeof o.x2 === "number" && typeof o.y2 === "number") { o.x2 -= dx; o.y2 -= dy; }
+    (Array.isArray(o) ? o : Object.values(o)).forEach(parcourir);
+  })(d);
+  return JSON.stringify(d, null, 2);
+}
+
+// `opts.repere` (plan rouvert, cf. _plannerRepere) : rognage imposé par ce repère au lieu du rognage automatique.
+async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource, opts) {
   // Octets de la tuile pleine, encodés au plus une fois.
   let _tuileUnieBuf = null;
   const imgUrl = URL.createObjectURL(imageFile);
@@ -3275,8 +3330,13 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   // que calques, géoréf et calibrations restent en coordonnées d'origine → tout se décale (deux fois en Y
   // via imageHeight - y). Les marges transparentes sont invisibles et ne pèsent rien en WebP/PNG.
   // Pas non plus sur une source UNIE : un aplat n'a pas de marge, l'analyse serait toujours jetée.
-  const bbox = (hasAlpha || uniformSource) ? null : _detectContentBBox(img);
-  if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
+  const repere = opts && opts.repere;
+  const bbox = repere ? _rognagePourRepere(repere, img, _detectContentBBox)
+             : (hasAlpha || uniformSource) ? null : _detectContentBBox(img);
+  if (repere) {
+    console.log("[Planner] Repère du plan gardé : " +
+                (bbox ? "rognage (" + bbox.x + "," + bbox.y + ")" : "image entière"));
+  } else if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
   const cropX = bbox ? bbox.x : 0;
   const cropY = bbox ? bbox.y : 0;
   const srcW  = bbox ? bbox.w : img.naturalWidth;
@@ -3582,6 +3642,8 @@ async function _genererZip() {
     const dataLayers = [];
     // Points des calques écrits : l'index des photos désigne chaque point par son uid.
     const _pointsGeneres = [];
+    // Calques venus d'un fichier { fichier, contenu } : décalés après le tuilage si le rognage s'applique.
+    const _calquesFournis = [];
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const dlId    = document.getElementById(lid + "_id").value.trim();
@@ -3601,6 +3663,7 @@ async function _genererZip() {
         const _marque = _marquerUidCalque(await _lireFichier(dlFile));
         dataFolder.file(fileName, _marque);
         _collecterPointsCalque(_marque, _pointsGeneres);
+        _calquesFournis.push({ fichier: fileName, contenu: _marque });
       } else {
         dataFolder.file(fileName, JSON.stringify({ type: dlId, version: 1, data: [] }, null, 2));
       }
@@ -3799,7 +3862,7 @@ async function _genererZip() {
           const bar = document.getElementById("kta-tiling-progress-bar");
           if (txt) txt.textContent = window.I18n.t("gen.v2prog.niveau", { z: currentZ, done: done, total: total, pct: pct });
           if (bar) bar.style.width = pct + "%";
-        });
+        }, false, _plannerMode === "modifier" && _plannerRepere ? { repere: _plannerRepere } : null);
       } catch(err) {
         v2Error = err;
       } finally {
@@ -3820,6 +3883,24 @@ async function _genererZip() {
 
       tilingManifest = v2Result.manifest;
       v2Dims = v2Result.dims;
+      // Nouveau plan rogné avec des calques fournis : saisis sur l'image d'origine, ils seraient décalés du
+      // rognage. Seul l'utilisateur sait dans quel repère ils ont été saisis : on lui demande.
+      const _rog = v2Dims.cropOffset;
+      if (_rog && _plannerMode === "nouveau" && _calquesFournis.length && typeof window.ktaConfirm === "function") {
+        const decaler = await window.ktaConfirm(window.I18n.t("gen.rognage.question", { x: _rog.x, y: _rog.y }), {
+          titre:       window.I18n.t("gen.rognage.titre"),
+          okLabel:     window.I18n.t("gen.rognage.decaler"),
+          cancelLabel: window.I18n.t("gen.rognage.laisser")
+        });
+        if (decaler) {
+          for (const c of _calquesFournis) {
+            const neuf = _decalerCalque(c.contenu, _rog.x, _rog.y);
+            if (neuf != null) dataFolder.file(c.fichier, neuf);
+          }
+          console.log("[Planner] Calques décalés du rognage (" + _rog.x + "," + _rog.y + ") : " +
+                      _calquesFournis.length);
+        }
+      }
       console.log("[Planner] Tiling V2 généré : " + v2Result.tilesCount + " tuiles" +
                   (v2Dims.cropOffset ? " | auto-crop offset (" + v2Dims.cropOffset.x + "," + v2Dims.cropOffset.y + ")" : ""));
     }
@@ -3851,6 +3932,8 @@ async function _genererZip() {
       planObj.niveauxHauteur = { "0": _niv.hauteurs["0"] };
     }
     if (tilingManifest) planObj.tiledV2    = true;
+    // Décalage du rognage dans l'image source : relu par le mode Modifier pour garder le repère (_repereDuPlan).
+    if (v2Dims && v2Dims.cropOffset) planObj.rognage = { x: v2Dims.cropOffset.x, y: v2Dims.cropOffset.y };
 
     // Nord écrit seulement si ≠ 0, normalisé dans [0, 360[ (NaN → ignoré).
     const _northRaw = parseFloat(document.getElementById("pl_northOffset")?.value || "0");

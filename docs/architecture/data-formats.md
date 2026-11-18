@@ -20,6 +20,9 @@
     "fondConseille": "blanc",          // optionnel (07/10/2026) — "noir" | "blanc" | "gris" : fond sous les parties transparentes en mode carte ; la pref par plan `fondPlan` (⚙️ Réglages › Affichage) l'emporte ; absent = selon le thème
     "imageWidth": 1044,
     "imageHeight": 610,
+    "rognage": { "x": 89, "y": 91 },   // optionnel — tuilage V2 : marges retirées de l'image source (baseImage) ; les
+                                       // pixels du plan sont comptés depuis ce coin. Relu par le Générateur en mode
+                                       // Modifier pour garder le repère (plans-loader.md §58.5). Absent = image entière
     "baseImage": "TestMAP.png",
     // "collisionImage" : ni écrit par le Générateur, ni lu par l'app ; présent dans un ancien plan-config, il
     // est ignoré : le plan s'ouvre, l'image n'est ni chargée, ni demandée au serveur, ni mise hors ligne.

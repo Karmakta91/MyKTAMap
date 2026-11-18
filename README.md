@@ -88,7 +88,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Session JSON Full / Avancé + conversion session → calque de données | `sessionExporter.js`, `sessionPersist.js` |
 | **Export anonymisé** (ids remappés, photos ré-encodées sans EXIF, fail-closed) | `sessionExporter.js` |
-| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge) | `createConf.js` |
+| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge ; marges blanches retirées en V2 : un plan modifié garde son repère, un nouveau plan aux calques fournis demande s’il faut les décaler) | `createConf.js` |
 | Import unifié ZIP / KMZ / GPX (drop zone home + générateur) | `homeLoader.js`, `kmzImport.js`, `gpxImport.js` |
 | 🌍 **KMZ géolocalisé** export / import round-trip (Google Earth, OsmAnd, Avenza, Locus) | `kmzExport.js`, `kmzImport.js` |
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
@@ -681,6 +681,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-calque-niveau.js` | Jonction d'un calque de données affichée sur chaque niveau qu'elle relie |
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
+| `smoke/checkup-rognage.js` | Rognage automatique du Générateur : calques décalés ou laissés en nouveau plan, repère gardé en mise à jour et en régénération V1 → V2 |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-georef-reglages.js` | Calage modifié dans les Réglages : gagne sur le calage embarqué (mémoire, registre, fond OSM sans rallumer, Secours, plan rouvert, « Mettre à jour le plan »), calage périmé écarté |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |

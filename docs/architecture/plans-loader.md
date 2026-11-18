@@ -383,6 +383,22 @@ Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `a
 
 ⚠️ **Pas exposé via API publique** : `_plannerPlanLegend` reste un état module-local. Si on a besoin d'y accéder depuis un autre module (ex: pour debug ou pour un futur "Export/Import légende plan-level seul"), il faudra exposer un getter `window.PlannerLegend = { get, set, reset, isEmpty }` au top du module.
 
+🩸 **Rognage automatique et repère du plan** : en tuilage V2, `_genererTuilesV2` retire les marges blanches
+(`_detectContentBBox`, jamais sur une source transparente ou unie) ; `imageWidth`/`imageHeight` deviennent ceux de la
+zone gardée et l'origine se déplace de `plan.rognage { x, y }` (écrit dans plan-config, absent sans rognage). Tout
+ce qui est en pixels (calques, géoréf, calibrations) doit être dans ce repère. Règles :
+- **Mode Modifier** (« Mettre à jour le plan » compris) : le repère du plan rouvert est GARDÉ (`_plannerRepere`,
+  `_rognagePourRepere`) — même rognage s'il l'était (`plan.rognage`, ou à défaut une détection des marges qui
+  redonne les mêmes dimensions), aucun sinon. 🩸 Un plan V1 (jamais rogné) régénéré en V2 était rogné : tous ses
+  calques se décalaient.
+- **Nouveau plan** rogné avec des calques de données fournis : `ktaConfirm` « L'image est rognée de X × Y px. Vos
+  calques ont-ils été saisis sur l'image d'origine ? » → [Les décaler] réécrit les calques du ZIP décalés du rognage
+  (`_decalerCalque` : toute paire `x`/`y` et `x2`/`y2`, donc points, sommets, point précis, raccords) ;
+  [Les laisser] les garde tels quels. Seul l'utilisateur sait dans quel repère il les a saisis.
+- Hors périmètre : la géoréf et les calibrations de calques image saisies dans le Générateur d'un NOUVEAU plan ne
+  sont pas décalées (même question possible, non traitée).
+Checkup : `scripts/smoke/checkup-rognage.js` (pixel lu dans les tuiles du ZIP, Chromium et WebKit).
+
 #### 58.5 bis Niveaux en hauteur (sol, hauteur, écart)
 
 Sous la case multi-niveau, la table de `profondeurNiveaux.js` (la même que ⚙️ Réglages) : `_plannerRendreNiveaux`
