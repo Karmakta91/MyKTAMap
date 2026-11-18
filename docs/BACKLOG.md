@@ -149,10 +149,6 @@
 - **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
   `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
   `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
-- **Scan Sonar impossible depuis une copie séparée** — le scanner (Docker) ne lit pas le `.git` d'un worktree
-  (chemin Windows absolu) : `RepositoryNotFoundException`. Les lots ne peuvent pas prouver la porte avant intégration.
-  `qui: Claude · action: monter le dépôt principal dans le conteneur, ou scan sans SCM sur un projet Sonar à part
-  · depuis: 13/11/2026 · taille: XS`
 - **En-tête de licence : étendre le garde-fou** — `check-entete-licence.js` ne lit que `js/` et `sw.js` ; `addons/`
   et `css/` portent l'en-tête aujourd'hui sans que rien ne l'impose.
   `qui: Claude · action: ajouter addons/**/*.js et css/*.css au périmètre · depuis: 13/11/2026 · taille: XS`
@@ -196,11 +192,6 @@
   `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
   fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
 
-- **Générateur : rendu 3D par défaut du plan** — demande KARMA 04/11 : choisir à la génération le rendu de la vue 3D
-  par défaut (Mixte / Structures / Galerie), au lieu de Mixte pour tous ; le choix de l'utilisateur, retenu par plan
-  (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.
-  `qui: Claude · action: champ du Générateur (createConf.js) + lecture par vue3d.js > _renduVoulu · fini: plan généré en
-  Galerie qui s'ouvre en Galerie, checkup · depuis: 04/11/2026 · taille: S`
 - **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
   principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
   (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.

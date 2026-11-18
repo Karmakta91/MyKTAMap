@@ -6,6 +6,13 @@
 
 ## Fonctionnalités
 
+- **Générateur : détecter les piliers et les fronts sur l'image du plan** — essai réel du 17/11 (hors dépôt, sur un
+  plan pro) : ~1 270 piliers et ~80 fronts posés en minutes. Méthode : pipette des couleurs (masses pleines = piliers,
+  trait = fronts), ouverture morphologique (enlève moucheté et traits creux), contours + Douglas-Peucker ; fronts par
+  amincissement (Zhang-Suen). Aperçu superposé, faux positifs retirés d'un toucher, puis structures normales du
+  plan. Limites : charte de couleurs propre à chaque planche, piliers collés fusionnés, petits manqués, scan N&B
+  faible. Outil d'essai générique (sans donnée) gardé hors dépôt. Taille M-L, QCM avant. Déclencheur : « top »
+  (KARMA, 18/11) — à planifier après la livraison pro 0.14.0 et le tri de l'Entrant.
 - **Adresse de contact de l'installation** — `contact@myktamap.fr` est en dur (`index.html` ×2, dicos ×3, guide ×3).
   Idée : un champ ConfAdmin → `index.json > config`, repli sur l'adresse actuelle ; trancher quelles mentions
   suivent (crédit, licence, `NETWORK_AUDIT` restent). Déclencheur : une installation tierce qui le demande.
