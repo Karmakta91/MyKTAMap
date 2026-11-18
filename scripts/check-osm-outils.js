@@ -72,7 +72,7 @@ const SRC_CRD = fs.readFileSync("js/osmCoords.js", "utf8");
     t("API : OsmCoords." + m + "()", typeof ctx.OsmCoords[m] === "function"));
   t("API : le format de sortie est expose au harnais", typeof ctx.OsmCoords._format === "function");
   t("format : 6 decimales, separateur virgule-espace",
-    ctx.OsmCoords._format(44.7008, -0.37904) === "44.700800, -0.379040");
+    ctx.OsmCoords._format(45.1234, -1.23456) === "45.123400, -1.234560");
 }
 
 // ───────── 2. cycle de vie : armer, basculer, demonter ─────────
