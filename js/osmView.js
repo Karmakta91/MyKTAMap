@@ -309,11 +309,19 @@
         });
       }
     } catch (e) { return; }
-    // ⚠️ `_redrawBounds` d'abord, sinon `_draw` clippe sur une demande en attente et ne repeint qu'un
-    // rectangle (gotchas.md).
+    // Même repeinture que structures.js > majLargeurFronts.
     try {
       const r = _osmMap._renderer;
-      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
+      // 🩸 Renderer pas encore (ou plus) sur la carte : pas de canvas à repeindre.
+      if (r && r._map && r._ctx && typeof r._redraw === "function") {
+        // 🩸 Redessin en attente ANNULÉ d'abord : `_redraw` remet `_redrawRequest` à null sans annuler l'image
+        // programmée, qui partirait ensuite sur un renderer démonté (modale fermée juste après un zoom).
+        if (r._redrawRequest) { L.Util.cancelAnimFrame(r._redrawRequest); r._redrawRequest = null; }
+        // ⚠️ `_redrawBounds` à null, sinon `_draw` clippe sur une demande en attente et ne repeint qu'un
+        // rectangle (gotchas.md).
+        r._redrawBounds = null;
+        r._redraw();
+      }
     } catch (e) {}
   }
 

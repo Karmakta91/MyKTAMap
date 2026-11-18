@@ -10,7 +10,8 @@
 //      plan, structures.js > ktaBordSurfacePourLargeur), sur le plan principal ET le plan empilé ;
 //   2. de près : fronts à la loi (lisibles), contours jamais plus épais que leur trait d'origine ;
 //   3. après un re-rendu (filtre basculé) : la loi s'applique encore aux deux plans ;
-//   4. Vue OSM (modale) : même loi pour les contours.
+//   4. Vue OSM (modale) : même loi pour les contours ;
+//   5. Vue OSM fermée dans la même image qu'un zoom, redessin en attente : aucune erreur de page.
 // CAPTURES=<dossier> : captures très dézoomé / de près (à regarder, jamais à commiter).
 // Usage : node scripts/smoke/checkup-largeur-osm-home.js   (SMOKE_PORT pour une copie de travail)
 "use strict";
@@ -219,8 +220,24 @@ function lireLargeursHome(idB) {
       });
     }
 
-    await page.evaluate(function () { const b = document.getElementById("kta-osm-close"); if (b) b.click(); });
+    // 🩸 Modale fermée dans la même image qu'un zoom, un redessin déjà en attente : la repeinture de la loi ne doit
+    // pas laisser partir l'image programmée sur un renderer démonté (TypeError sur le contexte supprimé).
+    const avantFermeture = erreurs.length;
+    const fermeture = await page.evaluate(function () {
+      const m = window.__ktaOsmCarte;
+      let lay = null;
+      m.eachLayer(function (l) { if (!lay && l instanceof L.Polyline && l.options && l.options.fill === true) lay = l; });
+      if (!lay) return "aucune couche";
+      lay.setStyle({ fillOpacity: lay.options.fillOpacity });   // pose un redessin en attente
+      const enAttente = !!(m._renderer && m._renderer._redrawRequest);
+      m.fire("zoomend");
+      const b = document.getElementById("kta-osm-close");
+      if (b) b.click();
+      return enAttente ? "ok" : "pas de redessin en attente";
+    });
     await page.waitForTimeout(500);
+    verif("Vue OSM fermée juste après un zoom : aucune erreur de page", fermeture === "ok" &&
+          erreurs.length === avantFermeture, fermeture + " · " + erreurs.slice(avantFermeture).join(" | "));
 
     // Accueil, plan chargé derrière, puis le même relevé sous un second id empilé
     await page.evaluate(function () { window.afficherLoader(); });
