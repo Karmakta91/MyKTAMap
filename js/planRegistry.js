@@ -710,11 +710,22 @@
   }
 
   // ── IndexedDB : handles et blobs ZIP ──────────────────────────────
+  // UNE connexion partagée par la page (promesse gardée), rouverte au besoin. ⚠️ contrat : un appelant ne la ferme
+  // jamais (pas de db.close()).
+  // 🩸 Une connexion par opération restait ouverte quand l'appelant oubliait de la fermer (handles) : elles
+  //   bloquaient une suppression de la base (« tout effacer », onblocked) ou une montée de version.
+  // 🩸 `onversionchange` : une autre page (ou l'effacement) demande la base → on ferme ET on l'oublie, sinon la
+  //   demande reste bloquée. `onclose` : fermée par le navigateur (stockage purgé, disque) → oubliée, la prochaine
+  //   opération en rouvre une. Une connexion en cours de fermeture fait échouer `transaction()` : _transaction
+  //   l'oublie et réessaie une fois sur une connexion neuve.
+  let _idbPromesse = null;
   function _openIDB() {
-    return new Promise(function(resolve, reject) {
+    if (_idbPromesse) return _idbPromesse;
+    const p = new Promise(function(resolve) {
       if (!("indexedDB" in window)) { resolve(null); return; }
       // Version 2 = store "blobs".
-      const req = indexedDB.open(IDB_NAME, 2);
+      let req;
+      try { req = indexedDB.open(IDB_NAME, 2); } catch (e) { resolve(null); return; }
       req.onupgradeneeded = function() {
         const db = req.result;
         if (!db.objectStoreNames.contains(IDB_STORE)) {
@@ -724,17 +735,42 @@
           db.createObjectStore(IDB_BLOBS);
         }
       };
-      req.onsuccess = function() { resolve(req.result); };
+      req.onsuccess = function() {
+        const db = req.result;
+        const oublier = function() { if (_idbPromesse === p) _idbPromesse = null; };
+        db.onversionchange = function() { oublier(); try { db.close(); } catch (e) {} };
+        db.onclose = oublier;
+        resolve(db);
+      };
       req.onerror = function() { resolve(null); };
+      // Bloquée par une connexion d'une autre page : le navigateur la relance quand elle se ferme.
     });
+    _idbPromesse = p;
+    // Échec d'ouverture : pas gardé, la prochaine opération réessaie.
+    p.then(function(db) { if (!db && _idbPromesse === p) _idbPromesse = null; });
+    return p;
+  }
+  // Transaction sur la connexion partagée → { db, tx } ou null (IndexedDB indisponible).
+  async function _transaction(stores, mode) {
+    for (let essai = 0; essai < 2; essai++) {
+      const db = await _openIDB();
+      if (!db) return null;
+      try { return { db: db, tx: db.transaction(stores, mode) }; }
+      catch (e) {
+        // InvalidStateError : connexion fermée entre-temps → oubliée, une seule nouvelle tentative
+        if (!e || e.name !== "InvalidStateError" || essai) throw e;
+        _idbPromesse = null;
+      }
+    }
+    return null;
   }
 
   async function saveHandle(id, handle) {
     if (!handle) return false;
-    const db = await _openIDB();
-    if (!db) return false;
+    const t0 = await _transaction(IDB_STORE, "readwrite");
+    if (!t0) return false;
     return new Promise(function(resolve) {
-      const tx = db.transaction(IDB_STORE, "readwrite");
+      const tx = t0.tx;
       tx.objectStore(IDB_STORE).put(handle, id);
       tx.oncomplete = function() { resolve(true); };
       tx.onerror = function() { resolve(false); };
@@ -742,21 +778,20 @@
   }
 
   async function getHandle(id) {
-    const db = await _openIDB();
-    if (!db) return null;
+    const t0 = await _transaction(IDB_STORE, "readonly");
+    if (!t0) return null;
     return new Promise(function(resolve) {
-      const tx = db.transaction(IDB_STORE, "readonly");
-      const req = tx.objectStore(IDB_STORE).get(id);
+      const req = t0.tx.objectStore(IDB_STORE).get(id);
       req.onsuccess = function() { resolve(req.result || null); };
       req.onerror   = function() { resolve(null); };
     });
   }
 
   async function removeHandle(id) {
-    const db = await _openIDB();
-    if (!db) return false;
+    const t0 = await _transaction(IDB_STORE, "readwrite");
+    if (!t0) return false;
     return new Promise(function(resolve) {
-      const tx = db.transaction(IDB_STORE, "readwrite");
+      const tx = t0.tx;
       tx.objectStore(IDB_STORE).delete(id);
       tx.oncomplete = function() { resolve(true); };
       tx.onerror = function() { resolve(false); };
@@ -817,16 +852,18 @@
   }
   // Une transaction d'écriture sur `blobs` : fn(store) y pose ses requêtes. → { ok: true } | { ok: false, error }
   async function _ecrire(fn) {
-    const db = await _openIDB();
-    if (!db) return { ok: false, error: t("planreg.err.idbUnavailable") };
+    let t0;
+    try { t0 = await _transaction(IDB_BLOBS, "readwrite"); }
+    catch (e) { return { ok: false, error: (e && (e.name || e.message)) || t("planreg.err.unexpected") }; }
+    if (!t0) return { ok: false, error: t("planreg.err.idbUnavailable") };
     return new Promise(function(resolve) {
+      const tx = t0.tx;
       try {
-        const tx = db.transaction(IDB_BLOBS, "readwrite");
         fn(tx.objectStore(IDB_BLOBS));
-        tx.oncomplete = function() { db.close(); resolve({ ok: true }); };
-        tx.onabort = function() { db.close(); resolve({ ok: false, error: _erreurTx(tx) }); };
+        tx.oncomplete = function() { resolve({ ok: true }); };
+        tx.onabort = function() { resolve({ ok: false, error: _erreurTx(tx) }); };
       } catch(e) {
-        db.close();
+        try { tx.abort(); } catch (e2) {}
         resolve({ ok: false, error: (e && (e.name || e.message)) || t("planreg.err.unexpected") });
       }
     });
@@ -916,14 +953,15 @@
       if (clos) return { ok: false, code: "stockage", error: t("planreg.err.unexpected") };
       clos = true;
       const fiche = { format: FICHE_MORCEAUX, gen: gen, morceaux: n, size: taille, type: o.type || "application/zip" };
-      const db = await _openIDB();
-      if (!db) { await abandonner(); return { ok: false, code: "stockage", error: t("planreg.err.idbUnavailable") }; }
+      let t0 = null;
+      try { t0 = await _transaction(IDB_BLOBS, "readonly"); } catch (e) { t0 = null; }
+      if (!t0) { await abandonner(); return { ok: false, code: "stockage", error: t("planreg.err.idbUnavailable") }; }
       const relu = await new Promise(function(resolve) {
         let out = null;
-        const tx = db.transaction(IDB_BLOBS, "readonly");
+        const tx = t0.tx;
         _composer(tx.objectStore(IDB_BLOBS), id, fiche, function(b) { out = b; });
-        tx.oncomplete = function() { db.close(); resolve(out); };
-        tx.onabort = function() { db.close(); resolve(null); };
+        tx.oncomplete = function() { resolve(out); };
+        tx.onabort = function() { resolve(null); };
       });
       let ok = !!relu;
       if (ok && typeof o.verifier === "function") {
@@ -944,11 +982,12 @@
   }
 
   async function getBlob(id) {
-    const db = await _openIDB();
-    if (!db) return null;
+    let t0 = null;
+    try { t0 = await _transaction(IDB_BLOBS, "readonly"); } catch (e) { return null; }
+    if (!t0) return null;
     return new Promise(function(resolve) {
       let out = null;
-      const tx = db.transaction(IDB_BLOBS, "readonly");
+      const tx = t0.tx;
       const st = tx.objectStore(IDB_BLOBS);
       const req = st.get(id);
       req.onsuccess = function() {
@@ -956,8 +995,8 @@
         if (_estFiche(v)) _composer(st, id, v, function(b) { out = b; });
         else out = v || null;
       };
-      tx.oncomplete = function() { db.close(); resolve(out); };
-      tx.onabort = function() { db.close(); resolve(null); };
+      tx.oncomplete = function() { resolve(out); };
+      tx.onabort = function() { resolve(null); };
     });
   }
 

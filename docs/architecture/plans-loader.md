@@ -10,6 +10,8 @@
 - **`planRegistry.js`** gère la liste des plans connus.
 - **localStorage** : `myktamap_plans` (registre + lastPlanId)
 - **IndexedDB** : `myktamap_handles` (v2, 2 stores : `handles` pour FS Access API, `blobs` pour ZIPs mémorisés).
+  Une seule connexion par page (`planRegistry.js > _openIDB`, jamais fermée par un appelant), oubliée à `onclose` et
+  fermée d'elle-même à `onversionchange` : « tout effacer » ou une montée de version n'est jamais bloqué par elle.
   Dans `blobs`, la clé `id` porte soit le ZIP d'un seul tenant (`saveBlob` : ZIP local, Générateur, import), soit la
   fiche d'une **copie en morceaux** (`rangerEnMorceaux`, prise d'une extension qui range un plan tranche par tranche) dont
   les morceaux vivent sous les clés `[id, gen, i]` ; `getBlob` recompose, `removeBlob` efface tout. Les lecteurs bruts du
