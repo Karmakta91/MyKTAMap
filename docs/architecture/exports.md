@@ -571,6 +571,8 @@ n'a pas de résolution native à laquelle se référer.
 seulement. ⚠️ Écart ouvert : à l'écran, `majLargeurFronts` soumet aussi les
 tracés de **session** à la loi (`road.js > ktaMajLargeurTracesSession`, hors
 itinéraire), l'export les garde à `weight × scale` (entrée de `docs/BACKLOG.md`).
+Le réglage d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits`, `ui.md`) ne s'applique qu'à l'écran : les
+lois appelées ici n'ont pas de facteur, un export ne change pas avec lui.
 
 **Contour des surfaces (piliers, murs, structures perso fermées), à l'écran** :
 `majLargeurFronts` le pose au quart de la largeur d'un front, plafonné à

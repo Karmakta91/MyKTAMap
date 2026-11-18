@@ -656,6 +656,18 @@
               <span class="kta-perf-ultra-hint" data-i18n="config.fichePe.hint">Les fiches des points, tracés, zones et structures s'ouvrent dans une fenêtre au milieu de l'écran, l'app floutée derrière, au lieu d'une bulle sur la carte. Au départ : cochée sur un téléphone, décochée sur un ordinateur ou une tablette en paysage.</span>
             </span>
           </label>
+          <!-- Épaisseur des traits : réglage d'appareil, source de vérité KtaEpaisseurTraits (structures.js), jamais
+               exporté ; homeConfig.js > _initEpaisseurTraitsHome. -->
+          <div class="kta-perf-ultra-row kta-epaisseur-row">
+            <span class="kta-perf-ultra-text">
+              <label class="kta-perf-ultra-label" for="loaderEpaisseurTraits"><span data-kta-ico="pencil-line"></span> <span data-i18n="config.epaisseurTraits.label">Épaisseur des traits</span></label>
+              <span class="kta-perf-ultra-hint" data-i18n="config.epaisseurTraits.hint">Tracés, fronts, murs en ligne et arcs, sur le plan et les cartes OSM. Les contours des piliers et les exports ne changent pas.</span>
+            </span>
+            <span class="kta-epaisseur-curseur">
+              <input type="range" id="loaderEpaisseurTraits" min="0.75" max="2" step="0.25" value="1">
+              <span class="kta-epaisseur-valeur" id="loaderEpaisseurTraitsVal" aria-hidden="true"></span>
+            </span>
+          </div>
           <label class="kta-perf-ultra-row" style="margin-top:10px;">
             <input type="checkbox" id="loaderSnapDraw">
             <span class="kta-perf-ultra-text">

@@ -1254,9 +1254,12 @@
       ? window.ktaLargeurFrontPourPxParMetre(window.ktaPxParMetreOsm(_mapInstance))
       : null;
     if (!w) return;
-    const wTrace = Math.max(1, Math.round(w * 0.6 * 10) / 10);
+    // Traits au réglage d'épaisseur de l'appareil (structures.js > KtaEpaisseurTraits) ; contours sur `w` brut.
+    const ep = window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran : function (v) { return v; };
+    const wLigne = ep(w);
+    const wTrace = ep(Math.max(1, Math.round(w * 0.6 * 10) / 10));
     // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
-    const wRaye = Math.max(2, Math.round(w * 0.6 * 10) / 10);
+    const wRaye = ep(Math.max(2, Math.round(w * 0.6 * 10) / 10));
     const appliquer = function (grp, largeur) {
       if (!grp || typeof grp.eachLayer !== "function") return;
       grp.eachLayer(function (lay) {
@@ -1273,12 +1276,12 @@
       });
     };
     // le principal ET chaque plan empilé (sinon les autres restent en aplat)
-    appliquer(_structSubLayer, w);
+    appliquer(_structSubLayer, wLigne);
     appliquer(_roadsSubLayer, wTrace);
     Object.keys(_extraLayers || {}).forEach(function (id) {
       const g = _extraLayers[id];
       if (!g) return;
-      appliquer(g.struct, w);
+      appliquer(g.struct, wLigne);
       appliquer(g.roads, wTrace);
     });
   }
@@ -1303,6 +1306,8 @@
   window.addEventListener("kta:tailleIconesChange", function () {
     if (_mapInstance) _reRenderDataTous();
   });
+  // Réglage d'épaisseur changé à l'accueil : traits de la carte repeints tout de suite.
+  window.addEventListener("kta:epaisseurTraitsChange", function () { _majLargeurFrontsHome(); });
 
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // Sans `cible` : groupes du MODULE (plan principal, clear inclus). Avec `cible` ({data, poi, roads, zones,

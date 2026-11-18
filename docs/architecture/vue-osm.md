@@ -1157,6 +1157,10 @@ Reposée au `zoomend` et après **chaque re-rendu** (recréer les layers remet l
 `weight` du gabarit) — dans le widget, après le rendu de TOUS les plans de la
 pile, principal **et empilés**. Garde-fou : `scripts/smoke/checkup-largeur-osm-home.js`.
 
+Les deux cartes multiplient fronts, tracés, murs en ligne et arcs par le réglage
+d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits.ecran`, `ui.md`), contours
+des piliers exclus, et se repeignent à `kta:epaisseurTraitsChange`.
+
 🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
 comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant
 dérivé sur les **bornes** (plafond à 12 px au lieu de 14) passait au travers. Il

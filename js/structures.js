@@ -13,6 +13,7 @@
 //   ktaPeindreRayures, ktaArcsAuDessus,
 //   ktaLargeurRayePourRatio, majLargeurFronts, brancherLargeurFronts,
 //   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
+//   KtaEpaisseurTraits (réglage d'appareil : facteur d'écran des traits, jamais appliqué aux exports),
 //   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
 // 🩸 Le Pathfinder ne fait aucune arête d'une structure (graphe sur les `roads` seulement) : un relevé tout en
@@ -192,6 +193,50 @@ window.ktaLargeurTracePourRatio = function (ratio) {
   return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FRONT_FACTEUR_TRACE * 10) / 10);
 };
 
+// ── Épaisseur des traits : réglage d'APPAREIL (Configuration de l'accueil › Affichage) ──────────────
+// Facteur ×0,75 à ×2 appliqué par-dessus la loi, À L'ÉCRAN seulement (carte du plan, Vue OSM, carte OSM de
+// l'accueil) : tracés, fronts, murs en ligne, arcs. Les contours des piliers et murs gardent la loi seule.
+// ⚠️ contrat : les lois ci-dessus (ktaLargeur*PourRatio / PourPxParMetre) restent SANS facteur, les exports PNG/PDF
+//   les appellent et ne doivent pas changer ; un consommateur d'écran passe sa largeur par `ecran(w)`.
+// Gardé dans localStorage[LS_EPAISSEUR_TRAITS] (copie en mémoire si le stockage est refusé), jamais dans la session
+// ni un export. Un changement émet `kta:epaisseurTraitsChange` : les cartes ouvertes se repeignent.
+const LS_EPAISSEUR_TRAITS = "myktamap_epaisseur_traits_v1";
+const EPAISSEUR_TRAITS_MIN = 0.75;
+const EPAISSEUR_TRAITS_MAX = 2;
+let _epaisseurTraitsMemoire = null;
+function _bornerEpaisseurTraits(f) {
+  const n = Number(f);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.max(EPAISSEUR_TRAITS_MIN, Math.min(EPAISSEUR_TRAITS_MAX, Math.round(n * 100) / 100));
+}
+window.KtaEpaisseurTraits = {
+  MIN: EPAISSEUR_TRAITS_MIN,
+  MAX: EPAISSEUR_TRAITS_MAX,
+  facteur: function () {
+    let v = null;
+    try { v = localStorage.getItem(LS_EPAISSEUR_TRAITS); } catch (e) { v = null; }
+    if (v === null || v === undefined) v = _epaisseurTraitsMemoire;
+    return (v === null || v === undefined) ? 1 : _bornerEpaisseurTraits(parseFloat(v));
+  },
+  poser: function (f) {
+    const b = _bornerEpaisseurTraits(f);
+    _epaisseurTraitsMemoire = String(b);
+    try { localStorage.setItem(LS_EPAISSEUR_TRAITS, String(b)); } catch (e) { /* gardé en mémoire */ }
+    console.log("[Structures] Épaisseur des traits : ×" + b);
+    try {
+      if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+        window.dispatchEvent(new CustomEvent("kta:epaisseurTraitsChange", { detail: { facteur: b } }));
+      }
+    } catch (e) {}
+    return b;
+  },
+  // Largeur d'écran d'un trait dont la loi donne `w` (arrondi au dixième, comme la loi : ×1 rend `w` tel quel).
+  ecran: function (w) {
+    if (!Number.isFinite(w)) return w;
+    return Math.round(w * window.KtaEpaisseurTraits.facteur() * 10) / 10;
+  }
+};
+
 function _largeurFrontPourZoom(z) {
   if (!Number.isFinite(z)) z = 0;
   return _largeurFrontPourRatio(Math.pow(2, z));
@@ -207,9 +252,12 @@ function majLargeurFronts() {
     if (window.map && typeof window.map.getZoom === "function") z = window.map.getZoom();
   } catch (e) { return; }
 
+  // Traits au réglage d'épaisseur de l'appareil ; le contour d'une surface suit la loi seule (wFront brut).
+  const ep = window.KtaEpaisseurTraits.ecran;
   const wFront = _largeurFrontPourZoom(z);
-  const wTrace = window.ktaLargeurTracePourRatio(Math.pow(2, z));
-  const wRaye = window.ktaLargeurRayePourRatio(Math.pow(2, z));
+  const wLigne = ep(wFront);
+  const wTrace = ep(window.ktaLargeurTracePourRatio(Math.pow(2, z)));
+  const wRaye = ep(window.ktaLargeurRayePourRatio(Math.pow(2, z)));
   const bord = function (wOrig) { return window.ktaBordSurfacePourLargeur(wOrig, wFront); };
 
   // ⚠️ Les registres rangent aussi les polylignes sous la clé `polygon` (lue par _filtreNiveauSurPolygonData).
@@ -232,7 +280,7 @@ function majLargeurFronts() {
     return n;
   };
 
-  appliquer(window._ktaDataStructurePolygons, wFront);
+  appliquer(window._ktaDataStructurePolygons, wLigne);
   appliquer(window._ktaDataPolylines, wTrace);
   // Tracés de SESSION : même largeur que ceux des calques, fantômes tactiles compris (road.js).
   if (typeof window.ktaMajLargeurTracesSession === "function") window.ktaMajLargeurTracesSession(wTrace);
@@ -242,7 +290,7 @@ function majLargeurFronts() {
     if (Array.isArray(structureLayers)) {
       structureLayers.forEach(function (l) {
         if (!l || !l.options) return;
-        if (l.options.fill !== true) { l.options.weight = l.options.ktaRayures ? wRaye : wFront; return; }
+        if (l.options.fill !== true) { l.options.weight = l.options.ktaRayures ? wRaye : wLigne; return; }
         if (l._ktaWOrig === undefined) l._ktaWOrig = l.options.weight;
         l.options.weight = bord(l._ktaWOrig);
       });
@@ -265,6 +313,10 @@ function majLargeurFronts() {
   } catch (e) {}
 }
 window.majLargeurFronts = majLargeurFronts;
+// Réglage changé (Configuration de l'accueil) : la carte du plan, si elle est ouverte, se repeint.
+if (typeof window.addEventListener === "function") {
+  window.addEventListener("kta:epaisseurTraitsChange", function () { if (window.map) majLargeurFronts(); });
+}
 
 // Point d'entrée unique et idempotent du recalcul au zoom.
 // 🩸 Pas seulement depuis renderStructures : un plan importé rend ses fronts par un datalayer

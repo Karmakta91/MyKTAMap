@@ -2714,6 +2714,28 @@ Tracker (l'app floutée derrière), au lieu de la bulle Leaflet (trop grande pou
 
 Garde-fou : `scripts/smoke/checkup-fiche-plein-ecran.js` (Chromium + WebKit, téléphone et PC).
 
+## Épaisseur des traits (`js/structures.js > KtaEpaisseurTraits`)
+
+Réglage d'accessibilité, décisions KARMA du 18/11/2026 (1b 2a 3a) :
+
+- **Réglage d'appareil** : ⚙️ Configuration de l'accueil › Affichage › curseur « Épaisseur des traits »
+  (`#loaderEpaisseurTraits`, ×0,75 à ×2 par crans de 0,25, ×1 au départ ; `homeConfig.js > _initEpaisseurTraitsHome`).
+  Gardé dans `localStorage["myktamap_epaisseur_traits_v1"]` (copie en mémoire si le stockage est refusé), jamais
+  dans la session, un export ou l'export du profil (hors `profileExportImport.js > PREF_KEYS`).
+- **Un facteur par-dessus la loi au zoom**, à l'écran seulement : `KtaEpaisseurTraits.ecran(w)` multiplie la largeur
+  que donne la loi (arrondi au dixième, ×1 rend `w` tel quel). Appliqué aux tracés (session et calques), fronts,
+  murs en ligne et arcs : `structures.js > majLargeurFronts`, `road.js > _largeurTraceSession`,
+  `osmView.js > _majLargeurFrontsOsm`, `osmHomePreview.js > _majLargeurFrontsHome`. Le contour des piliers et murs
+  reste calculé sur la largeur de front brute (`ktaBordSurfacePourLargeur`).
+- **Exports intacts** : les lois (`ktaLargeur*PourRatio`, `ktaLargeurFrontPourPxParMetre`) n'ont pas de facteur ;
+  `exporter.js` les appelle telles quelles (`exports.md` §69.1). L'itinéraire (trait fixe) et les ronds de jonction
+  (leur propre loi) ne sont pas concernés.
+- **Changement à chaud** : `poser()` émet `kta:epaisseurTraitsChange`, la carte du plan et les deux cartes OSM
+  ouvertes se repeignent.
+
+Garde-fous : `scripts/check-api-surface.js` (facteur borné, lois sans facteur),
+`scripts/smoke/checkup-epaisseur-traits.js` (×2 sur les trois cartes, exports inchangés).
+
 ## 🎨 Icônes de l'interface
 
 Deux familles : les **icônes SVG au trait** (`js/ktaIcones.js`) pour tout ce qui joue le rôle d'icône (boutons,

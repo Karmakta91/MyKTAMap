@@ -11,7 +11,9 @@
 //   2. de près : fronts à la loi (lisibles), contours jamais plus épais que leur trait d'origine ;
 //   3. après un re-rendu (filtre basculé) : la loi s'applique encore aux deux plans ;
 //   4. Vue OSM (modale) : même loi pour les contours ;
-//   5. Vue OSM fermée dans la même image qu'un zoom, redessin en attente : aucune erreur de page.
+//   5. Vue OSM fermée dans la même image qu'un zoom, redessin en attente : aucune erreur de page ;
+//   6. réglage « Épaisseur des traits » à ×2 (structures.js > KtaEpaisseurTraits) : fronts, tracés et arcs doublés
+//      sur les deux cartes, contours inchangés, puis retour à ×1.
 // CAPTURES=<dossier> : captures très dézoomé / de près (à regarder, jamais à commiter).
 // Usage : node scripts/smoke/checkup-largeur-osm-home.js   (SMOKE_PORT pour une copie de travail)
 "use strict";
@@ -57,12 +59,16 @@ async function capture(page, nom) {
 
 // Dans la page : largeurs RENDUES des structures de la carte de l'accueil, par pane de plan (fronts / surfaces),
 // et la loi attendue au zoom courant.
-function lireLargeursHome(idB) {
+// `f` : réglage « Épaisseur des traits » attendu (×1 par défaut) ; les contours gardent la loi seule.
+function lireLargeursHome(a) {
+  const idB = a.idB, f = a.f || 1;
+  const ep = function (w) { return Math.round(w * f * 10) / 10; };
   const m = window.__acc;
   const pxm = m ? window.ktaPxParMetreOsm(m) : null;
-  const loi = pxm ? window.ktaLargeurFrontPourPxParMetre(pxm) : null;
-  const wTrace = loi ? Math.max(1, Math.round(loi * 0.6 * 10) / 10) : null;
-  const wRaye = loi ? Math.max(2, Math.round(loi * 0.6 * 10) / 10) : null;
+  const loiBrute = pxm ? window.ktaLargeurFrontPourPxParMetre(pxm) : null;
+  const loi = loiBrute ? ep(loiBrute) : null;
+  const wTrace = loiBrute ? ep(Math.max(1, Math.round(loiBrute * 0.6 * 10) / 10)) : null;
+  const wRaye = loiBrute ? ep(Math.max(2, Math.round(loiBrute * 0.6 * 10) / 10)) : null;
   const parPlan = {};
   document.querySelectorAll("[class*='leaflet-ktaOsmPlan_'][class*='-pane']").forEach(function (pane) {
     const cls = Array.from(pane.classList).find(function (c) { return /^leaflet-ktaOsmPlan_/.test(c); });
@@ -96,7 +102,7 @@ function lireLargeursHome(idB) {
     };
   });
   return { zoom: m ? m.getZoom() : null, pxm: pxm, loi: loi,
-           wTrace: wTrace, bordLoi: loi ? Math.max(0.5, Math.min(1, loi / 4)) : null, parPlan: parPlan };
+           wTrace: wTrace, bordLoi: loiBrute ? Math.max(0.5, Math.min(1, loiBrute / 4)) : null, parPlan: parPlan };
 }
 
 (async function main() {
@@ -220,6 +226,37 @@ function lireLargeursHome(idB) {
       });
     }
 
+    // Vue OSM, réglage « Épaisseur des traits » à ×2 : fronts et arcs doublés aussitôt, contours inchangés.
+    const modale2 = await page.evaluate(function () {
+      const m = window.__ktaOsmCarte;
+      if (!m) return null;
+      window.KtaEpaisseurTraits.poser(2);
+      const loi = window.ktaLargeurFrontPourPxParMetre(window.ktaPxParMetreOsm(m));
+      const wRaye = Math.max(2, Math.round(loi * 0.6 * 10) / 10);
+      let fronts = 0, frontsKo = 0, surf = 0, bordMax = 0, arcs = 0, arcsKo = 0;
+      m.eachLayer(function (l) {
+        if (!(l instanceof L.Polyline) || !l.options) return;
+        const c = String(l.options.color || "").toLowerCase();
+        if (l.options.ktaRayures) { arcs++; if (l.options.weight !== Math.round(wRaye * 20) / 10) arcsKo++; return; }
+        if (l.options.fill === true && c === "#000000") { surf++; bordMax = Math.max(bordMax, l.options.weight); }
+        else if (l.options.fill !== true && (c === "#f4c542" || c === "#ff9933")) {
+          fronts++; if (l.options.weight !== Math.round(loi * 20) / 10) frontsKo++;
+        }
+      });
+      window.KtaEpaisseurTraits.poser(1);
+      return { zoom: m.getZoom(), loi: loi, bordLoi: Math.max(0.5, Math.min(2, loi / 4)), fronts: fronts,
+               frontsKo: frontsKo, surfaces: surf, bordMax: bordMax, arcs: arcs, arcsKo: arcsKo };
+    });
+    if (!modale2) pb("Vue OSM ×2 : carte introuvable");
+    else {
+      verif("Vue OSM ×2 (zoom " + modale2.zoom + ") : " + modale2.fronts + " fronts au double de la loi (" +
+            (modale2.loi * 2) + " px)", modale2.fronts > 0 && modale2.frontsKo === 0, modale2.frontsKo + " hors");
+      verif("Vue OSM ×2 : " + modale2.arcs + " arcs au double de leur loi", modale2.arcs === N_ARCS && modale2.arcsKo === 0,
+            JSON.stringify(modale2));
+      verif("Vue OSM ×2 : contours des " + modale2.surfaces + " surfaces inchangés (≤ " + modale2.bordLoi + " px)",
+            modale2.surfaces > 0 && modale2.bordMax <= modale2.bordLoi, "vu " + modale2.bordMax);
+    }
+
     // 🩸 Modale fermée dans la même image qu'un zoom, un redessin déjà en attente : la repeinture de la loi ne doit
     // pas laisser partir l'image programmée sur un renderer démonté (TypeError sur le contexte supprimé).
     const avantFermeture = erreurs.length;
@@ -268,7 +305,7 @@ function lireLargeursHome(idB) {
     const zoomer = async function (z) {
       await page.evaluate(function (zz) { window.__acc.setZoom(zz, { animate: false }); }, z);
       await page.waitForTimeout(1200);
-      return page.evaluate(lireLargeursHome, ID_B);
+      return page.evaluate(lireLargeursHome, { idB: ID_B });
     };
     const controler = function (lib, r, deLoin) {
       ["A", "B"].forEach(function (k) {
@@ -308,8 +345,22 @@ function lireLargeursHome(idB) {
     await zoomer(15);
     await page.evaluate(function () { window.dispatchEvent(new CustomEvent("kta:tailleIconesChange")); });
     await page.waitForTimeout(1500);
-    const rerendu = await page.evaluate(lireLargeursHome, ID_B);
+    const rerendu = await page.evaluate(lireLargeursHome, { idB: ID_B });
     controler("après re-rendu :", rerendu, true);
+
+    // Réglage « Épaisseur des traits » à ×2 (structures.js > KtaEpaisseurTraits) : fronts, tracés et arcs doublés
+    // aussitôt (événement, sans zoom), contours des piliers inchangés ; puis retour à ×1.
+    console.log("— épaisseur des traits ×2 —");
+    await page.evaluate(function () { window.KtaEpaisseurTraits.poser(2); });
+    await page.waitForTimeout(800);
+    const double = await page.evaluate(lireLargeursHome, { idB: ID_B, f: 2 });
+    verif("×2 : fronts au double de ×1 (" + rerendu.loi + " → " + double.loi + " px)", double.loi === rerendu.loi * 2);
+    controler("×2 :", double, true);
+    const doublePres = await zoomer(19).then(function () { return page.evaluate(lireLargeursHome, { idB: ID_B, f: 2 }); });
+    controler("×2 de près :", doublePres, false);
+    await page.evaluate(function () { window.KtaEpaisseurTraits.poser(1); });
+    await page.waitForTimeout(800);
+    controler("retour à ×1 :", await page.evaluate(lireLargeursHome, { idB: ID_B }), false);
 
     if (erreurs.length) pb("erreurs de page : " + erreurs.slice(0, 3).join(" | "));
     await ctx.close();

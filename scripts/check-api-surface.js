@@ -1,6 +1,7 @@
 // check-api-surface.js — garde-fou BLOQUANT : CHARGE réellement les modules IIFE dans un vm et
 // vérifie que chaque méthode annoncée existe et se comporte (userProfile, styleResolver,
-// legendCustomization, osmMesure, volumeExploite, profondeurNiveaux, convertirObjet, loi de largeur des fronts).
+// legendCustomization, osmMesure, volumeExploite, profondeurNiveaux, convertirObjet, loi de largeur des fronts et
+// réglage d'épaisseur des traits).
 // 🩸 `node -c` ne valide QUE la syntaxe : une constante supprimée mais encore citée dans le bloc
 // d'exports passe `node -c` et meurt en ReferenceError au chargement navigateur (module entier
 // perdu, méthodes disparues des exports sans signal).
@@ -85,6 +86,26 @@ function charger(fichier, nomGlobal, prealables) {
   t("largeur : densité nulle → null, aucune largeur inventée",
     win.ktaLargeurFrontPourPxParMetre(0) === null);
   t("px/m : sans carte → null", win.ktaPxParMetreOsm(null) === null);
+
+  // Épaisseur des traits : facteur d'ÉCRAN borné, jamais dans les lois (les exports les appellent telles quelles).
+  // Sans localStorage (ici absent), le choix vit en mémoire.
+  const ET = win.KtaEpaisseurTraits;
+  if (!ET) { t("épaisseur des traits : KtaEpaisseurTraits exposé", false); return; }
+  const lois = function () {
+    return [win.ktaLargeurFrontPourRatio(1), win.ktaLargeurTracePourRatio(1), win.ktaLargeurRayePourRatio(1),
+      win.ktaLargeurFrontPourPxParMetre(3)].join("|");
+  };
+  const avant = lois();
+  t("épaisseur des traits : ×1 au départ", ET.facteur() === 1 && ET.ecran(3.8) === 3.8);
+  ET.poser(2);
+  t("épaisseur des traits : ×2 double le trait d'écran", ET.facteur() === 2 && ET.ecran(3.8) === 7.6);
+  t("épaisseur des traits : les lois (exports) restent sans facteur", lois() === avant);
+  ET.poser(9);
+  t("épaisseur des traits : borné à ×2", ET.facteur() === 2);
+  ET.poser(0.1);
+  t("épaisseur des traits : borné à ×0,75", ET.facteur() === 0.75 && ET.ecran(4) === 3);
+  ET.poser("x");
+  t("épaisseur des traits : valeur illisible → ×1", ET.facteur() === 1);
 })();
 
 // ───────── osmMesure.js ─────────

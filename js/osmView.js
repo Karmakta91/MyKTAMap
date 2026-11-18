@@ -288,8 +288,10 @@
     const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
       ? window.ktaLargeurFrontPourPxParMetre(pxm) : null;
     if (!w) return;
-    const wTrace = (typeof window.ktaLargeurTracePourRatio === "function")
-      ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w;
+    // Traits au réglage d'épaisseur de l'appareil (structures.js > KtaEpaisseurTraits) ; contours sur `w` brut.
+    const ep = window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran : function (v) { return v; };
+    const wTrace = ep((typeof window.ktaLargeurTracePourRatio === "function")
+      ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w);
     try {
       _structLayer.eachLayer(function (lay) {
         if (!lay || !lay.options) return;
@@ -300,7 +302,7 @@
           return;
         }
         // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
-        lay.options.weight = lay.options.ktaRayures ? Math.max(2, Math.round(w * 0.6 * 10) / 10) : w;
+        lay.options.weight = ep(lay.options.ktaRayures ? Math.max(2, Math.round(w * 0.6 * 10) / 10) : w);
       });
       if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
         _roadLayer.eachLayer(function (lay) {
@@ -324,6 +326,9 @@
       }
     } catch (e) {}
   }
+
+  // Réglage d'épaisseur changé : la Vue OSM ouverte se repeint (sans carte, rien à faire).
+  window.addEventListener("kta:epaisseurTraitsChange", function () { _majLargeurFrontsOsm(); });
 
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};

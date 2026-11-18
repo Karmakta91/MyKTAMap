@@ -612,7 +612,8 @@ window.ktaPurgerFlashSnap = function() {
 
 // ── Rendu ──────────────────────
 // Épaisseur d'un tracé de session au zoom courant : la loi des tracés de calque (structures.js >
-// ktaLargeurTracePourRatio), pour qu'un tracé de session et un tracé de calque aient le même trait au même zoom.
+// ktaLargeurTracePourRatio) et le réglage d'épaisseur, pour qu'un tracé de session et un tracé de calque aient le
+// même trait au même zoom.
 // null = loi indisponible : le style garde son épaisseur.
 // ⚠️ L'itinéraire n'y passe jamais : trait fixe, toujours au-dessus et lisible de haut (ce n'est pas un relevé).
 function _largeurTraceSession() {
@@ -621,7 +622,9 @@ function _largeurTraceSession() {
   let z;
   try { z = window.map.getZoom(); } catch (e) { return null; }
   if (!Number.isFinite(z)) return null;
-  const w = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+  let w = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+  // Réglage d'épaisseur de l'appareil (structures.js > KtaEpaisseurTraits), comme les tracés de calque.
+  if (window.KtaEpaisseurTraits) w = window.KtaEpaisseurTraits.ecran(w);
   return (Number.isFinite(w) && w > 0) ? w : null;
 }
 // Zone tactile du fantôme : le trait + 14 px, jamais moins de 18 px.
