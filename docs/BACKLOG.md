@@ -78,11 +78,6 @@
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
-- **Dette technique, un lot** — trié le 18/11/2026 (KARMA) : `_redraw()` direct en Vue OSM (annuler le redessin en
-  attente) ; pile de test sur le port 9000 de Sonar ; `check-entete-licence.js` étendu à `css/` ; `planRegistry.js >
-  _openIDB` en connexion partagée ; redessin inutile de `mapBearing.js` (option a) ; `_syncH` (150-200 ms) mesuré.
-  `qui: Claude · action: un commit par point, checkups des modules touchés · fini: 6 points soldés ou expliqués
-  · depuis: 18/11/2026 · taille: M`
 - **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
   comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
   zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône). Recos validées par KARMA le 12/11/2026.
