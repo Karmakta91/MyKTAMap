@@ -6548,7 +6548,7 @@
   "config.fichePe.label": "Abrir las fichas en una ventana",
   "config.fichePe.hint": "Las fichas de los puntos, trazados, zonas y estructuras se abren en una ventana en el centro de la pantalla, con la app difuminada detrás, en lugar de una burbuja en el mapa. Al principio: marcada en un teléfono, desmarcada en un ordenador o una tableta en horizontal.",
   "config.epaisseurTraits.label": "Grosor de las líneas",
-  "config.epaisseurTraits.hint": "Trazados, frentes de explotación, muros en línea y arcos de sostenimiento, en el plano y en los mapas OSM. Los contornos de los pilares y las exportaciones no cambian.",
+  "config.epaisseurTraits.hint": "Trazados, frentes de explotación, muros en línea, arcos de sostenimiento e itinerario, en el plano y en los mapas OSM. Los contornos de los pilares y las exportaciones no cambian.",
   "config.epaisseurTraits.valeur": "×{v}",
   "fichePe.titre": "Ficha",
   "config.panneaux.label": "Anclar los paneles de herramientas a su botón",

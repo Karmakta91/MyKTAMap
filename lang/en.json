@@ -6548,7 +6548,7 @@
   "config.fichePe.label": "Open cards in a window",
   "config.fichePe.hint": "The cards of points, paths, zones and structures open in a window in the middle of the screen, with the app blurred behind, instead of a bubble on the map. At first: ticked on a phone, unticked on a computer or a tablet in landscape.",
   "config.epaisseurTraits.label": "Line thickness",
-  "config.epaisseurTraits.hint": "Paths, quarry faces, line walls and support arches, on the plan and the OSM maps. Pillar outlines and exports do not change.",
+  "config.epaisseurTraits.hint": "Paths, quarry faces, line walls, support arches and the route, on the plan and the OSM maps. Pillar outlines and exports do not change.",
   "config.epaisseurTraits.valeur": "×{v}",
   "fichePe.titre": "Card",
   "config.panneaux.label": "Anchor tool panels to their button",

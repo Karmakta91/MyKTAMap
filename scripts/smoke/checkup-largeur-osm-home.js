@@ -13,7 +13,7 @@
 //   4. Vue OSM (modale) : même loi pour les contours ;
 //   5. Vue OSM fermée dans la même image qu'un zoom, redessin en attente : aucune erreur de page ;
 //   6. réglage « Épaisseur des traits » à ×2 (structures.js > KtaEpaisseurTraits) : fronts, tracés et arcs doublés
-//      sur les deux cartes, contours inchangés, puis retour à ×1.
+//      sur les deux cartes, itinéraire de la Vue OSM doublé (trait fixe), contours inchangés, puis retour à ×1.
 // CAPTURES=<dossier> : captures très dézoomé / de près (à regarder, jamais à commiter).
 // Usage : node scripts/smoke/checkup-largeur-osm-home.js   (SMOKE_PORT pour une copie de travail)
 "use strict";
@@ -175,6 +175,8 @@ function lireLargeursHome(a) {
         structs.push({ type: "arc", level: 0, points: [{ x: x, y: H * 0.2 }, { x: x, y: H * 0.8 }] });
       }
       window.setStructures(structs);
+      // itinéraire de session : la Vue OSM le dessine (trait fixe), la carte de l'accueil non
+      window.setRoads([{ uid: "rd_clo_iti", type: "itinerary", points: [{ x: W * 0.1, y: H * 0.5 }, { x: W * 0.9, y: H * 0.5 }] }]);
       window.SessionPersist.save();
       return id;
     }, { png: PNG_TUILE, nPiliers: N_PILIERS, nFronts: N_FRONTS, nArcs: N_ARCS });
@@ -230,7 +232,16 @@ function lireLargeursHome(a) {
     const modale2 = await page.evaluate(function () {
       const m = window.__ktaOsmCarte;
       if (!m) return null;
+      const itiPoids = function () {
+        const w = [];
+        m.eachLayer(function (l) {
+          if (l instanceof L.Polyline && l.options && String(l.options.color).toLowerCase() === "#00d4ff") w.push(l.options.weight);
+        });
+        return w;
+      };
+      const iti1 = itiPoids();
       window.KtaEpaisseurTraits.poser(2);
+      const iti2 = itiPoids();
       const loi = window.ktaLargeurFrontPourPxParMetre(window.ktaPxParMetreOsm(m));
       const wRaye = Math.max(2, Math.round(loi * 0.6 * 10) / 10);
       let fronts = 0, frontsKo = 0, surf = 0, bordMax = 0, arcs = 0, arcsKo = 0;
@@ -245,7 +256,8 @@ function lireLargeursHome(a) {
       });
       window.KtaEpaisseurTraits.poser(1);
       return { zoom: m.getZoom(), loi: loi, bordLoi: Math.max(0.5, Math.min(2, loi / 4)), fronts: fronts,
-               frontsKo: frontsKo, surfaces: surf, bordMax: bordMax, arcs: arcs, arcsKo: arcsKo };
+               frontsKo: frontsKo, surfaces: surf, bordMax: bordMax, arcs: arcs, arcsKo: arcsKo, iti1: iti1, iti2: iti2,
+               iti0: itiPoids() };
     });
     if (!modale2) pb("Vue OSM ×2 : carte introuvable");
     else {
@@ -255,6 +267,9 @@ function lireLargeursHome(a) {
             JSON.stringify(modale2));
       verif("Vue OSM ×2 : contours des " + modale2.surfaces + " surfaces inchangés (≤ " + modale2.bordLoi + " px)",
             modale2.surfaces > 0 && modale2.bordMax <= modale2.bordLoi, "vu " + modale2.bordMax);
+      verif("Vue OSM ×2 : itinéraire doublé aussitôt (" + modale2.iti1.join() + " → " + modale2.iti2.join() +
+            " px), revenu à ×1 ensuite", modale2.iti1.length === 1 && modale2.iti2[0] === modale2.iti1[0] * 2 &&
+            modale2.iti0[0] === modale2.iti1[0], JSON.stringify({ x1: modale2.iti1, x2: modale2.iti2, retour: modale2.iti0 }));
     }
 
     // 🩸 Modale fermée dans la même image qu'un zoom, un redessin déjà en attente : la repeinture de la loi ne doit

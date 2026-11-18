@@ -2728,8 +2728,13 @@ Réglage d'accessibilité, décisions KARMA du 18/11/2026 (1b 2a 3a) :
   `osmView.js > _majLargeurFrontsOsm`, `osmHomePreview.js > _majLargeurFrontsHome`. Le contour des piliers et murs
   reste calculé sur la largeur de front brute (`ktaBordSurfacePourLargeur`).
 - **Exports intacts** : les lois (`ktaLargeur*PourRatio`, `ktaLargeurFrontPourPxParMetre`) n'ont pas de facteur ;
-  `exporter.js` les appelle telles quelles (`exports.md` §69.1). L'itinéraire (trait fixe) et les ronds de jonction
-  (leur propre loi) ne sont pas concernés.
+  `exporter.js` les appelle telles quelles (`exports.md` §69.1). Les ronds de jonction (leur propre loi) ne sont pas
+  concernés.
+- **Itinéraire** : hors loi du zoom (trait fixe : 7 px sur la carte du plan, 5 px dans la Vue OSM), multiplié par
+  le seul facteur, raccords en pointillé compris (`road.js > _largeurFixeEcran`, `osmView.js > _largeurItiOsm`) ;
+  renderer SVG, donc repeint par `setStyle` (`road.js > _poserLargeursFixes`, `osmView.js > _majLargeurItiOsm`).
+  Pas de zone tactile ni de flèche sur son trait ; ses marqueurs d'étape sont des icônes, inchangés. La carte OSM de
+  l'accueil ne le dessine pas ; il n'est jamais exporté.
 - **Changement à chaud** : `poser()` émet `kta:epaisseurTraitsChange`, la carte du plan et les deux cartes OSM
   ouvertes se repeignent.
 

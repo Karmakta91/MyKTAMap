@@ -329,7 +329,7 @@
   }
 
   // Réglage d'épaisseur changé : la Vue OSM ouverte se repeint (sans carte, rien à faire).
-  window.addEventListener("kta:epaisseurTraitsChange", function () { _majLargeurFrontsOsm(); });
+  window.addEventListener("kta:epaisseurTraitsChange", function () { _majLargeurFrontsOsm(); _majLargeurItiOsm(); });
 
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};
@@ -944,6 +944,17 @@
     console.log("[OsmView] Roads : " + added + " polyline(s) rendue(s) (" + skipped + " skip <2 pts)");
   }
 
+  // Trait fixe de l'itinéraire (hors loi du zoom), au réglage d'épaisseur de l'appareil (structures.js >
+  // KtaEpaisseurTraits).
+  function _largeurItiOsm() {
+    return window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran(ITI_WEIGHT) : ITI_WEIGHT;
+  }
+  function _majLargeurItiOsm() {
+    if (!_itiLayer) return;
+    const w = _largeurItiOsm();
+    _itiLayer.eachLayer(function (l) { if (l.options && l.options.weight !== w) l.setStyle({ weight: w }); });
+  }
+
   // Itinéraire actif : une polyline cyan pointillée plus épaisse ; aucun → couche vide.
   function _renderItinerary() {
     if (!_proj || !_osmMap) return;
@@ -964,7 +975,7 @@
     try {
       L.polyline(latlngs, {
         color:     ITI_COLOR,
-        weight:    ITI_WEIGHT,
+        weight:    _largeurItiOsm(),
         opacity:   0.95,
         dashArray: ITI_DASHARRAY,
         interactive: false

@@ -34,7 +34,8 @@ let _interRenderTimer = null;
 // État de rendu par road entre deux renderRoads() complets, pour le refresh viewport incrémental
 // (_refreshRoadsViewportOnly, addTo/remove ciblé) et pour l'épaisseur au zoom (ktaMajLargeurTracesSession). Entrée :
 // { road, target (layerGroup parent), layers, inViewport (attaché au target), bbox (AABB plan), trace (polyligne
-// visible, null pour l'itinéraire), fantome (zone tactile ou null) }.
+// visible, null pour l'itinéraire), fantome (zone tactile ou null), fixes (traits fixes de l'itinéraire : [{ layer,
+// base }], ou null) }.
 // ⚠️ bbox est un instantané : une road dont les points changent exige un renderRoads complet.
 let _roadRenderState = [];
 
@@ -615,7 +616,8 @@ window.ktaPurgerFlashSnap = function() {
 // ktaLargeurTracePourRatio) et le réglage d'épaisseur, pour qu'un tracé de session et un tracé de calque aient le
 // même trait au même zoom.
 // null = loi indisponible : le style garde son épaisseur.
-// ⚠️ L'itinéraire n'y passe jamais : trait fixe, toujours au-dessus et lisible de haut (ce n'est pas un relevé).
+// ⚠️ L'itinéraire n'y passe jamais : trait fixe, toujours au-dessus et lisible de haut (ce n'est pas un relevé) ;
+// seul le réglage d'épaisseur s'y applique (_largeurFixeEcran).
 function _largeurTraceSession() {
   if (typeof window.ktaLargeurTracePourRatio !== "function" || !window.map ||
       typeof window.map.getZoom !== "function") return null;
@@ -627,16 +629,22 @@ function _largeurTraceSession() {
   if (window.KtaEpaisseurTraits) w = window.KtaEpaisseurTraits.ecran(w);
   return (Number.isFinite(w) && w > 0) ? w : null;
 }
+// Trait fixe (itinéraire et ses raccords) au réglage d'épaisseur de l'appareil, hors loi du zoom.
+function _largeurFixeEcran(base) {
+  return window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran(base) : base;
+}
 // Zone tactile du fantôme : le trait + 14 px, jamais moins de 18 px.
 function _largeurFantome(w) { return Math.max((w || 3) + 14, 18); }
 
-// Recalcul au zoom des tracés de session (appelé par structures.js > majLargeurFronts au zoomend) : trait et
-// fantôme mutés en place, aucune couche recréée (le diff de _roadRenderState reste valable). La repeinture du canvas
-// est faite par l'appelant.
+// Recalcul des tracés de session (appelé par structures.js > majLargeurFronts au zoomend et au changement du réglage
+// d'épaisseur) : trait et fantôme mutés en place, aucune couche recréée (le diff de _roadRenderState reste valable) ;
+// la repeinture du canvas est faite par l'appelant. Traits fixes (itinéraire, renderer SVG) : setStyle, car le SVG ne
+// relit pas un `weight` muté.
 window.ktaMajLargeurTracesSession = function (wTrace) {
   if (!(Number.isFinite(wTrace) && wTrace > 0)) return 0;
   let n = 0;
   for (const e of _roadRenderState) {
+    if (e?.fixes) _poserLargeursFixes(e.fixes);
     if (!e?.trace?.options) continue;
     e.trace.options.weight = wTrace;
     if (e.fantome?.options) _poserLargeurFantome(e.fantome, _largeurFantome(wTrace));
@@ -644,6 +652,12 @@ window.ktaMajLargeurTracesSession = function (wTrace) {
   }
   return n;
 };
+function _poserLargeursFixes(fixes) {
+  for (const f of fixes) {
+    const w = _largeurFixeEcran(f.base);
+    if (f.layer.options.weight !== w) f.layer.setStyle({ weight: w });
+  }
+}
 // 🩸 Le test de clic du canvas lit `_pxBounds`, élargi du demi-trait au dernier `_project` : recalé avec le trait.
 function _poserLargeurFantome(fantome, w) {
   fantome.options.weight = w;
@@ -905,6 +919,10 @@ function renderRoads(opts) {
     // Même loi au zoom que les tracés de calque (jonctions comprises : un calque les y soumet aussi).
     const _wLoi = (road.type !== "itinerary") ? _largeurTraceSession() : null;
     if (_wLoi) style.weight = _wLoi;
+    // Itinéraire : trait fixe du style, multiplié par le seul réglage d'épaisseur ; `fixes` les repeint au changement.
+    const _wIti = (road.type === "itinerary") ? (style.weight || 7) : null;
+    const _fixes = [];
+    if (_wIti) style.weight = _largeurFixeEcran(_wIti);
     const target = _targetLayerForRoad(road.type);
 
     let polyline;
@@ -922,6 +940,7 @@ function renderRoads(opts) {
         window.KtaExtensions.marquerCouche(polyline, road.uid, style.dashArray);
       }
     }
+    if (_wIti) _fixes.push({ layer: polyline, base: _wIti });
     // Hors viewport : polyline gardée en RAM, pas attachée ; roadLayers la garde pour le nettoyage suivant.
     if (_isInViewport) polyline.addTo(target);
     roadLayers.push(polyline);
@@ -933,16 +952,18 @@ function renderRoads(opts) {
     if (road.type === "itinerary" && Array.isArray(road.raccords)) {
       road.raccords.forEach(function(rc) {
         if (!rc || !rc.de || !rc.vers || !(Number(rc.distPx) > 0.5)) return;
+        const baseRaccord = Math.max(2, Math.round(_wIti * 0.6));
         const pointille = L.polyline(
           [convertCoord(rc.de.x, rc.de.y), convertCoord(rc.vers.x, rc.vers.y)],
           Object.assign({}, style, {
             renderer:    _rendererItineraire(),
             className:   "kta-itinerary-raccord",
-            weight:      Math.max(2, Math.round((style.weight || 5) * 0.6)),
+            weight:      _largeurFixeEcran(baseRaccord),
             dashArray:   "4 8",
             interactive: false
           })
         );
+        _fixes.push({ layer: pointille, base: baseRaccord });
         if (_isInViewport) pointille.addTo(target);
         roadLayers.push(pointille);
         _trackedLayers.push(pointille);
@@ -1026,7 +1047,8 @@ function renderRoads(opts) {
     }
 
     // État lu par _refreshRoadsViewportOnly. bbox null (itinéraire, ou culling OFF) = jamais rattachée/détachée.
-    // trace / fantome : lus par ktaMajLargeurTracesSession (itinéraire : pas de trace, son trait est fixe).
+    // trace / fantome / fixes : lus par ktaMajLargeurTracesSession (itinéraire : pas de trace, ses traits fixes dans
+    // `fixes` avec leur largeur de base).
     _roadRenderState.push({
       road:       road,
       target:     target,
@@ -1034,7 +1056,8 @@ function renderRoads(opts) {
       inViewport: _isInViewport,
       bbox:       _bb,
       trace:      road.type !== "itinerary" ? polyline : null,
-      fantome:    _fantome
+      fantome:    _fantome,
+      fixes:      _fixes.length ? _fixes : null
     });
   });
 

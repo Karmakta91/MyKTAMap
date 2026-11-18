@@ -10,6 +10,7 @@
 //      pilier ne change pas ; la loi au zoom continue de s'appliquer, doublée ;
 //   2. exports intacts : image PNG/PDF (MyKTAMapExporterGenererCanvas, même pipeline) et KML identiques à ×1 et ×2 ;
 //      dans l'image, un tracé de session aussi épais qu'un tracé de calque (même loi) ;
+//   2 bis. itinéraire : trait fixe (hors loi du zoom) multiplié par le réglage, raccord compris, SVG repeint ;
 //   3. le réglage vit dans localStorage, retrouvé au rechargement, borné à ×0,75 / ×2.
 // Les deux cartes OSM : scripts/smoke/checkup-largeur-osm-home.js (phase ×2).
 // Usage : node scripts/smoke/checkup-epaisseur-traits.js (SMOKE_PORT pour une autre copie) · code :
@@ -71,6 +72,18 @@ function lire(page) {
       if (cle && out.session[cle] === undefined) out.session[cle] = l.options.weight;
     });
     return out;
+  });
+}
+
+// Itinéraire de session : trait (options et attribut SVG rendu) et raccord en pointillé.
+function lireIti(page) {
+  return page.evaluate(function () {
+    const e = _roadRenderState.find(function (x) { return x.road && x.road.uid === "rd_cet_iti"; });
+    if (!e) return null;
+    const trait = e.layers[0], raccord = e.layers[1];
+    return { style: window.ktaResolveStyle("traces", "itinerary").weight, trait: trait.options.weight,
+      raccord: raccord ? raccord.options.weight : null,
+      dom: trait._path ? trait._path.getAttribute("stroke-width") : null };
   });
 }
 
@@ -136,7 +149,10 @@ function controler(r, f, etiquette, pilierRef) {
       const semis = { trace: { x: x, y: y }, front: { x: x, y: y + 20 }, murLigne: { x: x, y: y + 40 },
         arc: { x: x, y: y + 60 }, pilier: { x: x + 40, y: y + 80 }, calque: { x: x, y: y + 120 } };
       const seg = function (p) { return [{ x: p.x, y: p.y }, { x: p.x + 100, y: p.y }]; };
-      window.setRoads([{ uid: "rd_cet_trace", type: "principal", level: 0, points: seg(semis.trace) }]);
+      // Itinéraire (hors loi du zoom) et un raccord en pointillé : lus à part (lireIti), jamais exportés.
+      window.setRoads([{ uid: "rd_cet_trace", type: "principal", level: 0, points: seg(semis.trace) },
+        { uid: "rd_cet_iti", type: "itinerary", points: seg({ x: x, y: y + 160 }),
+          raccords: [{ de: { x: x + 120, y: y + 175 }, vers: { x: x + 100, y: y + 160 }, distPx: 25 }] }]);
       // Tracé de CALQUE pour l'export : registre des routes embarquées d'un calque déclaré sans fichier (l'export
       // relit alors le registre, exporter.js > repli registre).
       const grp = window.L.layerGroup().addTo(window.map);
@@ -207,6 +223,9 @@ function controler(r, f, etiquette, pilierRef) {
     verifier(exp1.epCalque > 0 && exp1.epSession === exp1.epCalque,
       "export : tracé de session aussi épais que le tracé de calque (" + exp1.epSession + " px / " + exp1.epCalque + " px)",
       { session: exp1.epSession, calque: exp1.epCalque });
+    const iti1 = await lireIti(page);
+    verifier(iti1.trait === iti1.style && iti1.raccord === Math.max(2, Math.round(iti1.style * 0.6)),
+      "itinéraire à ×1 : trait fixe du style (" + iti1.style + " px), raccord " + iti1.raccord + " px", iti1);
 
     const r1 = await lire(page);
     controler(r1, 1, "×1 (zoom " + r1.zoom + ")");
@@ -218,6 +237,18 @@ function controler(r, f, etiquette, pilierRef) {
     controler(r2, 2, "×2 sans zoom", r1.session.pilier);
     verifier(r2.session.trace === r1.session.trace * 2 && r2.session.front === r1.session.front * 2,
       "×2 double exactement le trait rendu", { avant: r1.session, apres: r2.session });
+
+    const iti2 = await lireIti(page);
+    verifier(iti2.trait === iti1.trait * 2 && iti2.raccord === iti1.raccord * 2 && iti2.dom === String(iti2.trait),
+      "itinéraire à ×2 sans zoom : trait et raccord doublés, SVG repeint (" + iti2.trait + " px)", { x1: iti1, x2: iti2 });
+    await page.evaluate(function () { const m = window.map; m.setZoom(m.getMinZoom(), { animate: false }); });
+    await page.waitForTimeout(400);
+    const itiZoom = await lireIti(page);
+    verifier(itiZoom.trait === iti2.trait, "itinéraire hors loi du zoom : même trait au zoom minimal", itiZoom);
+    await page.evaluate(function () {
+      const m = window.map; m.setZoom(Math.round((m.getMinZoom() + m.getMaxZoom()) / 2) + 1, { animate: false });
+    });
+    await page.waitForTimeout(400);
 
     const exp2 = await empreinte();
     verifier(exp2.image === exp1.image, "export image (PNG/PDF) identique à ×1 et ×2", { x1: exp1.image, x2: exp2.image });
@@ -241,7 +272,8 @@ function controler(r, f, etiquette, pilierRef) {
     verifier(bornes.haut === 2 && bornes.bas === 0.75, "réglage borné à ×0,75 / ×2", bornes);
     const r075 = await lire(page);
     controler(r075, 0.75, "×0,75");
-
+    const iti075 = await lireIti(page);
+    verifier(iti075.trait === Math.round(iti1.trait * 0.75 * 10) / 10, "itinéraire à ×0,75 (" + iti075.trait + " px)", iti075);
     await page.evaluate(function () { window.KtaEpaisseurTraits.poser(1.5); });
     await page.reload({ waitUntil: "domcontentloaded" });
     await attendre(page, function () { return !!window.KtaEpaisseurTraits; }, 20000);

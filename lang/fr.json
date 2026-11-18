@@ -6548,7 +6548,7 @@
   "config.fichePe.label": "Ouvrir les fiches dans une fenêtre",
   "config.fichePe.hint": "Les fiches des points, tracés, zones et structures s'ouvrent dans une fenêtre au milieu de l'écran, l'app floutée derrière, au lieu d'une bulle sur la carte. Au départ : cochée sur un téléphone, décochée sur un ordinateur ou une tablette en paysage.",
   "config.epaisseurTraits.label": "Épaisseur des traits",
-  "config.epaisseurTraits.hint": "Tracés, fronts, murs en ligne et arcs, sur le plan et les cartes OSM. Les contours des piliers et les exports ne changent pas.",
+  "config.epaisseurTraits.hint": "Tracés, fronts, murs en ligne, arcs et itinéraire, sur le plan et les cartes OSM. Les contours des piliers et les exports ne changent pas.",
   "config.epaisseurTraits.valeur": "×{v}",
   "fichePe.titre": "Fiche",
   "config.panneaux.label": "Ancrer les panneaux d'outils au bouton",

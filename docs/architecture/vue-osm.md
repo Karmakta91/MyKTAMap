@@ -1159,7 +1159,8 @@ pile, principal **et empilés**. Garde-fou : `scripts/smoke/checkup-largeur-osm-
 
 Les deux cartes multiplient fronts, tracés, murs en ligne et arcs par le réglage
 d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits.ecran`, `ui.md`), contours
-des piliers exclus, et se repeignent à `kta:epaisseurTraitsChange`.
+des piliers exclus, et se repeignent à `kta:epaisseurTraitsChange` ; la Vue OSM y soumet aussi
+son itinéraire (5 px × facteur, hors loi du zoom, `_majLargeurItiOsm`).
 
 🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
 comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant
