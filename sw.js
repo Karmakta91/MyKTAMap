@@ -447,6 +447,7 @@ const ASSETS_TO_CACHE = [
   // Worker de la détection (importScripts ktaDetection.js) : absent du cache, le calcul se fait dans la page
   "./js/ktaDetectionWorker.js",
   "./js/detectionStructures.js",
+  "./js/detectionGenerateur.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/vuePlan.js",

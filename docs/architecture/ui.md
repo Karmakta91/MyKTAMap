@@ -1910,7 +1910,9 @@ sélecteur du « Curseur de précision » de `css/style.css` : une classe propre
 par `interface.js > _initPrecisionCursor`) ; pendant la visée, toucher un objet déjà posé n'ouvre pas sa fiche (mode
 « clic carte », `utils.js > _modeClicCarteActif`), retour normal à la fermeture. Échap ferme, sauf fenêtre affichée au-dessus.
 Calcul, lecture de l'image, doublons et couleurs par plan : `plans-loader.md` § Détecter les structures. Parcours :
-`scripts/smoke/checkup-detection.js` (Chromium et WebKit). i18n `detect.*` (fr/en/es). Aucune popup native.
+`scripts/smoke/checkup-detection.js` (Chromium et WebKit). Dans le Générateur (`js/detectionGenerateur.js`) : bouton
+de l'étape Calques de données, fenêtre plein écran `.kta-detect-gen` (z-index 100001, sous-modale au-dessus du
+Générateur) à mini-carte, bandeau posé dans la fenêtre ; `scripts/smoke/checkup-detection-generateur.js`. i18n `detect.*` (fr/en/es). Aucune popup native.
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)

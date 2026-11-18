@@ -47,7 +47,8 @@ window.KtaDetectionUI = (function () {
   // Forme d'un contexte : { carte (L.Map, CRS.Simple), largeur, hauteur (px de l'image lue), versCarte(x, y) → LatLng,
   //   depuisCarte(latlng) → { x, y }, dessiner(ctx2d, region, echelle) → Promise<{ ok }>, multi, niveau(type) →
   //   entier | null, existantes() → [{ type, points, level }], pxParM() → nombre | null, cle (couleurs retenues),
-  //   poser(structures) → nombre de masquées, refuse() → bool, entrer(), sortir(), parent (reçoit le bandeau) }.
+  //   poser(structures) → nombre de masquées, refuse() → bool, entrer(), sortir(), parent (reçoit le bandeau),
+  //   hotes? (fenêtres sous le parcours, ignorées par l'Échap), messagePoses?(n) (texte après « Valider ») }.
   function contextePlan() {
     const C = window.APP_CONFIG;
     if (!window.map || !C || typeof window.ktaDessinerRegionPlan !== "function") return null;
@@ -565,9 +566,10 @@ window.KtaDetectionUI = (function () {
     if (!poses.length) return;
     _lacherExecuteur();
     // Posées mais masquées (filtres, niveau) : le dire, sinon « rien n'est apparu ».
-    const masquees = _e.ctx.poser(poses) || 0;
+    const ctx = _e.ctx, masquees = ctx.poser(poses) || 0;
     fermer();
-    _toast(_t("detect.toast.poses", { n: poses.length }), "success");
+    _toast(ctx.messagePoses ? ctx.messagePoses(poses.length) : _t("detect.toast.poses", { n: poses.length }),
+      "success");
     if (masquees) _toast(_t("detect.toast.masquees", { n: masquees }), "warn");
   }
 
@@ -600,8 +602,13 @@ window.KtaDetectionUI = (function () {
   function _onKey(ev) {
     if (ev.key !== "Escape" || !_e) return;
     // une fenêtre AFFICHÉE au-dessus garde son Échap (une fenêtre masquée reste parfois dans le DOM)
+    // 🩸 Sauf la fenêtre qui porte le bandeau et celles que le contexte déclare sous le parcours (`ctx.hotes` : le
+    //   Générateur, lui-même une fenêtre), sinon l'Échap n'y fermerait jamais le parcours.
+    const hotes = _e.ctx.hotes || [];
     const fenetres = document.querySelectorAll(".kta-readme-modal-overlay, [aria-modal='true']");
-    const dessus = Array.prototype.some.call(fenetres, function (el) { return el.getClientRects().length > 0; });
+    const dessus = Array.prototype.some.call(fenetres, function (el) {
+      return el.getClientRects().length > 0 && !el.contains(_e.bandeau) && hotes.indexOf(el) < 0;
+    });
     if (dessus) return;
     ev.stopPropagation();
     fermer();

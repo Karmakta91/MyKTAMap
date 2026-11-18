@@ -814,8 +814,31 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
   de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
   règle de niveau, écriture (`poser`). Sans argument, `contextePlan()` : le plan ouvert, la session, une étape ⏪.
-  Le Générateur fournit le sien (sa mini-carte, l'image source, un calque du ZIP). Règle de niveau commune :
+  Le Générateur fournit le sien (ci-dessous). Règle de niveau commune :
   `structures.js > ktaNiveauNouvelleStructure(type, { multiLevel, niveau })` (absent = le plan ouvert).
+- **Dans le Générateur** (`js/detectionGenerateur.js`, `createConf.js > _detecterStructuresGenerateur`) : bouton
+  « Détecter piliers et fronts » de l'étape Calques de données (mode Avancé), en Nouveau, en Modifier et dans
+  « Mettre à jour le plan ». Le même parcours, dans une fenêtre plein écran (`.kta-detect-gen`, z-index 100001, au-dessus
+  du Générateur) à mini-carte CRS.Simple sur un aperçu réduit (≤ 4 096 px de côté) ; la pipette et le calcul lisent
+  l'image SOURCE en pleine résolution (un élément Image décodé une fois, `drawImage` bloc par bloc, rectangle source
+  ramené dans l'image). Plan ouvert : fermé d'abord (`_fermerPlanAvantTuilage`). Couleurs retenues sous l'id du plan
+  en « Mettre à jour le plan » (les mêmes qu'en mode plan), sinon sous `generateur`. Niveau : case multi-niveau du
+  Générateur, niveau 0 (image de base), 2e masse au −1.
+  - Sortie : calque « Structures détectées » (`structures-detectees`, format de `structure.json`) ; une relance y
+    ajoute. ⚠️ **Repère** : en mode Modifier, les structures sont mises tout de suite dans le repère gardé du plan
+    (`_rognagePourRepere`) ; en nouveau plan, le rognage n'est connu qu'au tuilage : elles restent en px source sur
+    une ligne marquée (`item._ktaDetecte`) et `_genererZip` les décale du rognage réel, hors de la question du
+    rognage (rien n'y a été saisi à la main ; un fichier choisi ensuite sur la ligne redevient un calque fourni).
+  - Doublons : contre les structures de TOUS les calques de la page (fichiers du ZIP, calques de l'assistant),
+    ramenées en px source par le rognage prévu (`_rognagePrevu`), même règle qu'en mode plan.
+  - Échap ferme la fenêtre : le contexte déclare le Générateur dans `ctx.hotes` (sinon, fenêtre affichée, il
+    garderait l'Échap) ; message après « Valider » propre au contexte (`ctx.messagePoses` : pas d'« Annuler » ici).
+  - Mesure (19/11/2026, Chromium, iPhone émulé, processeur ×4, image fabriquée 20 000 × 12 000 px, 1 344 piliers) :
+    fenêtre prête en 5 s, pipette en 6 s, « Tout le plan » (mi-résolution, confirmé) en 3 min 22, 1 344 trouvés sur
+    1 344 ; pic mémoire du navigateur 1,7 Go, dont l'image décodée (~960 Mo, comme au tuilage). 🩸 Un vrai iPhone
+    plafonne bien plus bas : au-delà de ce que le tuilage du même appareil supporte, la détection échoue aussi
+    (non mesuré sur appareil réel).
+  - Checkup : `scripts/smoke/checkup-detection-generateur.js` (Chromium et WebKit).
 
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →

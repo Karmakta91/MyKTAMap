@@ -506,6 +506,15 @@ function afficherPlanner() {
             <!-- Feedback de l'import ZIP (succès / erreur) -->
             <div id="pl_importDataZip_status" style="display:none; margin-top:8px; font-size:12px;"></div>
           </div>
+          <div class="kta-planner-import-zip-box">
+            <div class="kta-planner-import-zip-titre">
+              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.boxTitre")}
+            </div>
+            <button class="kta-btn kta-btn-ghost kta-planner-import-zip-btn" id="pl_detectStructures" type="button">
+              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.btn")}
+            </button>
+            <div id="pl_detect_status" class="kta-tx-ok" style="display:none; margin-top:8px; font-size:12px;"></div>
+          </div>
 
           <div id="pl_dataLayers_list" class="kta-planner-layers-list">
             <p class="kta-planner-empty">${window.I18n.t("gen.dataLayers.vide")}</p>
@@ -1034,6 +1043,10 @@ function afficherPlanner() {
 
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
+
+  // Détecter piliers et fronts sur l'image source (js/detectionGenerateur.js).
+  const detectBtn = document.getElementById("pl_detectStructures");
+  if (detectBtn) detectBtn.addEventListener("click", function() { _detecterStructuresGenerateur(); });
 
   // Importer un calque de données ZIP (données + photos) exporté par la conversion session→data.
   const importZipBtn = document.getElementById("pl_importDataZip");
@@ -2487,6 +2500,123 @@ function _ajouterDataLayer(prefill) {
     if (!list.querySelector(".kta-planner-layer-item"))
       list.innerHTML = '<p class="kta-planner-empty">' + window.I18n.t("gen.dataLayers.vide") + '</p>';
   });
+  return item;
+}
+
+// ── Détecter piliers et fronts sur l'image source (js/detectionGenerateur.js) ──────────
+// Le parcours de la carte, dans une fenêtre au-dessus du Générateur ; les structures validées vont dans le calque
+// « Structures détectées » (DETECT_CALQUE, format de structure.json ; une relance y ajoute).
+// ⚠️ contrat (repère) : mode Modifier, le repère du plan est connu (_plannerRepere > _rognagePourRepere) : les
+//   structures y sont mises tout de suite. Nouveau plan : le rognage n'est connu qu'au tuilage ; elles restent en px
+//   de l'image SOURCE sur une ligne marquée (item._ktaDetecte), et _genererZip les décale du rognage réel, hors de la
+//   question du rognage (elles ne sont pas « saisies » par l'utilisateur).
+// Doublons : contre les structures de TOUS les calques de la page, ramenées en px source par le rognage prévu.
+const DETECT_CALQUE = "structures-detectees";
+
+// Fichier qu'une ligne de calque de données écrira (même ordre que _genererZip).
+function _fichierLigneCalque(item) {
+  const lid = item.dataset.layerId;
+  const dlId = (document.getElementById(lid + "_id") || {}).value || "";
+  return _getFile(lid + "_file", null) || item._ktaFichierMaj ||
+    (item.dataset.ktaFichier ? _getFile(null, item.dataset.ktaFichier) : null) ||
+    (dlId ? _getFile(null, dlId.trim() + ".json") : null);
+}
+// Rognage que la génération appliquera à cette image (prévu : la case V2 peut encore changer en nouveau plan).
+function _rognagePrevu(img, fichier) {
+  if (_plannerMode === "modifier" && _plannerRepere) return _rognagePourRepere(_plannerRepere, img, _detectContentBBox);
+  if (!document.getElementById("pl_tilingV2")?.checked) return null;
+  const alpha = typeof window.ktaDetecterAlpha === "function" && window.ktaDetecterAlpha(img, fichier && fichier.type);
+  return alpha ? null : _detectContentBBox(img);
+}
+async function _structuresDesCalques(rog) {
+  const out = [];
+  for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
+    const f = _fichierLigneCalque(item);
+    if (!f) continue;
+    let d;
+    try { d = JSON.parse(await f.text()); } catch (e) { continue; }   // calque non JSON : rien à comparer
+    const dx = (item._ktaDetecte || !rog) ? 0 : rog.x, dy = (item._ktaDetecte || !rog) ? 0 : rog.y;
+    (Array.isArray(d.structures) ? d.structures : []).forEach(function(s) {
+      if (!s || !Array.isArray(s.points)) return;
+      out.push({ type: s.type, level: s.level,
+                 points: s.points.map(function(p) { return { x: p.x + dx, y: p.y + dy }; }) });
+    });
+  }
+  return out;
+}
+// Verse les structures validées (px source) dans le calque « Structures détectées », créé au besoin.
+async function _verserDetectees(poses, rog) {
+  const nouveau = _plannerMode !== "modifier";
+  const list = document.getElementById("pl_dataLayers_list");
+  const idDe = function(it) {
+    return ((document.getElementById(it.dataset.layerId + "_id") || {}).value || "").trim();
+  };
+  const lignes = list ? Array.prototype.slice.call(list.querySelectorAll(".kta-planner-layer-item")) : [];
+  let item = lignes.find(function(it) { return nouveau ? !!it._ktaDetecte : idDe(it) === DETECT_CALQUE; });
+  if (!item) {
+    const pris = new Set(lignes.map(idDe));
+    let id = DETECT_CALQUE, n = 2;
+    while (pris.has(id)) id = DETECT_CALQUE + "-" + (n++);
+    item = _ajouterDataLayer({ id: id, label: window.I18n.t("gen.detect.calque"), visible: true,
+                               file: "data/" + id + ".json" });
+    if (!item) return;   // 10 calques au plus : _ajouterDataLayer l'a dit
+    if (nouveau) item._ktaDetecte = true;
+  }
+  const dx = (!nouveau && rog) ? rog.x : 0, dy = (!nouveau && rog) ? rog.y : 0;
+  const neuves = poses.map(function(s) {
+    return Object.assign({}, s, { points: s.points.map(function(p) { return { x: p.x - dx, y: p.y - dy }; }) });
+  });
+  let contenu = { type: "structures", version: 1, data: [], structures: [] };
+  const f = _fichierLigneCalque(item);
+  if (f) {
+    try {
+      const d = JSON.parse(await f.text());
+      if (d && typeof d === "object") {
+        contenu = Object.assign(contenu, d, { structures: Array.isArray(d.structures) ? d.structures : [] });
+      }
+    } catch (e) { /* fichier illisible : remplacé par le calque détecté */ }
+  }
+  contenu.structures = contenu.structures.concat(neuves);
+  const lid = item.dataset.layerId, nom = idDe(item) + ".json";
+  _plannerOrigAssets[nom] = _fichierJsonMaj(nom, contenu);
+  item.dataset.ktaFichier = nom;
+  item._ktaFichierMaj = null;
+  const champ = document.getElementById(lid + "_file");
+  if (champ) champ.value = "";   // un fichier choisi à la main gagnerait sur le calque détecté
+  const etiquette = document.getElementById(lid + "_file_nom");
+  if (etiquette) etiquette.textContent = "📄 " + nom;
+  const st = document.getElementById("pl_detect_status");
+  if (st) {
+    st.textContent = window.I18n.t("gen.detect.statut",
+      { n: neuves.length, total: contenu.structures.length, calque: idDe(item) });
+    st.style.display = "";
+  }
+}
+async function _detecterStructuresGenerateur() {
+  _plannerErreur("");
+  if (!window.KtaDetectionGenerateur) return;
+  const vierge = document.querySelector('input[name="pl_image_mode"][value="vierge"]');
+  let image = (vierge && vierge.checked) ? null : _getFile("pl_baseImage", null);
+  if (!image && _plannerMode === "modifier") {
+    const k = _nomImageBaseOrigine();
+    image = k ? _plannerOrigAssets[k] : null;
+  }
+  if (!image) { _plannerErreur(window.I18n.t("gen.detect.sansImage")); return; }
+  // Plan ouvert (« Mettre à jour le plan ») : fermé d'abord, l'image source décodée pèse comme au tuilage.
+  if ((await _fermerPlanAvantTuilage()) === null) return;
+  let rog = null;
+  const ok = await window.KtaDetectionGenerateur.ouvrir({
+    image: image,
+    multi: !!document.getElementById("pl_multiLevel")?.checked,
+    pxParM: parseFloat(document.getElementById("pl_scale")?.value) || null,
+    cle: (_plannerMaj && _plannerMaj.planId) || "generateur",
+    hote: document.getElementById("kta-planner-modal"),
+    existantes: function(img) { rog = _rognagePrevu(img, image); return _structuresDesCalques(rog); },
+    poser: function(poses) {
+      _verserDetectees(poses, rog).catch(function(err) { console.warn("[Planner] calque détecté :", err); });
+    }
+  });
+  if (!ok) _plannerErreur(window.I18n.t("gen.detect.echec"));
 }
 
 // ── Import d'un calque de données ZIP ──────────
@@ -3647,6 +3777,8 @@ async function _genererZip() {
     const _pointsGeneres = [];
     // Calques venus d'un fichier { fichier, contenu } : décalés après le tuilage si le rognage s'applique.
     const _calquesFournis = [];
+    // Calques détectés en nouveau plan (px source, _verserDetectees) : décalés du rognage réel, sans question.
+    const _calquesDetectes = [];
     // Décalage du rognage accepté par l'utilisateur ({ x, y }, sinon null) : appliqué aussi au calage GPS saisi.
     let _decalage = null;
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
@@ -3668,7 +3800,8 @@ async function _genererZip() {
         const _marque = _marquerUidCalque(await _lireFichier(dlFile));
         dataFolder.file(fileName, _marque);
         _collecterPointsCalque(_marque, _pointsGeneres);
-        _calquesFournis.push({ fichier: fileName, contenu: _marque });
+        const _detecte = !!item._ktaDetecte && !_getFile(lid + "_file", null);
+        (_detecte ? _calquesDetectes : _calquesFournis).push({ fichier: fileName, contenu: _marque });
       } else {
         dataFolder.file(fileName, JSON.stringify({ type: dlId, version: 1, data: [] }, null, 2));
       }
@@ -3931,6 +4064,15 @@ async function _genererZip() {
       }
       console.log("[Planner] Tiling V2 généré : " + v2Result.tilesCount + " tuiles" +
                   (v2Dims.cropOffset ? " | auto-crop offset (" + v2Dims.cropOffset.x + "," + v2Dims.cropOffset.y + ")" : ""));
+    }
+
+    // Calques détectés (px de l'image source) : mis dans le repère du plan par le rognage réel.
+    const _rogDetect = v2Dims && v2Dims.cropOffset;
+    if (_rogDetect) {
+      for (const c of _calquesDetectes) {
+        const neuf = _decalerCalque(c.contenu, _rogDetect.x, _rogDetect.y);
+        if (neuf != null) dataFolder.file(c.fichier, neuf);
+      }
     }
 
     // ── plan-config.json ──

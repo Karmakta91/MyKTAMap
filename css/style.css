@@ -20278,6 +20278,14 @@ button.kta-cfg-ligne-action {
   stroke-dasharray: 4 3; }
 .kta-detect-coin { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.6; }
 .kta-detect-apercu.kta-detect-trait { fill: none; stroke: var(--kta-interaction); stroke-width: 5; stroke-linecap: round; }
+/* Détection dans le Générateur (detectionGenerateur.js) : fenêtre plein écran au-dessus du Générateur (99999),
+   sous-modale ; le bandeau du parcours y est posé (z-index propre, au-dessus de la mini-carte). */
+.kta-detect-gen {
+  position: fixed; inset: 0; z-index: 100001; display: flex; flex-direction: column;
+  background: var(--kta-fond); color: var(--kta-texte);
+}
+.kta-detect-gen .kta-readme-modal-header { flex: 0 0 auto; }
+.kta-detect-gen-carte { flex: 1 1 auto; min-height: 0; background: var(--kta-surface); }
 .kta-verif-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-verif-info { flex: 1 1 160px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
 .kta-verif-objet { stroke: var(--kta-accent); fill: none; }
