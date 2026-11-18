@@ -110,14 +110,14 @@ function charger(fichier, nomGlobal, prealables) {
   t("mesure OSM : 1° de latitude ≈ 111,2 km", Math.abs(d - 111195) < 200);
   d = OM._distance([LL(45, 0), LL(45, 1)]);
   t("mesure OSM : 1° de longitude à 45°N ≈ 78,6 km", Math.abs(d - 78626) < 400);
-  d = OM._distance([LL(44.8, -0.25), LL(44.801, -0.25), LL(44.802, -0.25)]);
+  d = OM._distance([LL(45, 0), LL(45.001, 0), LL(45.002, 0)]);
   t("mesure OSM : les segments se cumulent", Math.abs(d - 222.4) < 2);
   t("mesure OSM : un seul point → 0", OM._distance([LL(44, 0)]) === 0);
 
-  const s = OM._surface([LL(44.80, -0.25), LL(44.80, -0.24), LL(44.81, -0.24), LL(44.81, -0.25)]);
-  const att = (0.01 * 111195) * (0.01 * 111195 * Math.cos(44.805 * Math.PI / 180));
+  const s = OM._surface([LL(45.00, 0), LL(45.00, 0.01), LL(45.01, 0.01), LL(45.01, 0)]);
+  const att = (0.01 * 111195) * (0.01 * 111195 * Math.cos(45.005 * Math.PI / 180));
   t("mesure OSM : surface d'un carré de 0,01° (1 % près)", Math.abs(s - att) / att < 0.01);
-  const s2 = OM._surface([LL(44.81, -0.25), LL(44.81, -0.24), LL(44.80, -0.24), LL(44.80, -0.25)]);
+  const s2 = OM._surface([LL(45.01, 0), LL(45.01, 0.01), LL(45.00, 0.01), LL(45.00, 0)]);
   t("mesure OSM : le sens de parcours ne change pas la surface", Math.abs(s - s2) < 1);
   t("mesure OSM : moins de 3 points → surface nulle", OM._surface([LL(44, 0), LL(45, 0)]) === 0);
 })();

@@ -1073,7 +1073,7 @@ demanderait une projection équivalente, et la précision gagnée serait très
 inférieure à celle d'un tracé fait à la main.
 
 **Prouvé contre des valeurs connues**, pas contre lui-même : 1° de latitude
-≈ 111,2 km, 1° de longitude à 45°N ≈ 78,6 km, un carré de 0,01° à 44,8°N.
+≈ 111,2 km, 1° de longitude à 45°N ≈ 78,6 km, un carré de 0,01° à 45°N.
 7 cas dans `check-api-surface.js`, avec un `distanceTo` de référence
 **indépendant du code testé**. Falsifiés : retirer la correction `cos(lat)` fait
 tomber la surface, retirer la valeur absolue fait tomber le sens de parcours.
@@ -1114,13 +1114,13 @@ Un même zoom couvre ~40 % de moins au nord de la France qu'à l'équateur. La
 calculer, plutôt que de tabler sur des paliers de zoom réglés à la main, est ce
 qui rend la largeur juste **partout** et pas seulement là où on a réglé.
 
-### Ce que ça change, chiffré (44,8°N)
+### Ce que ça change, chiffré (45°N)
 
 | Zoom | m/px | Avant | Après |
 |---|---|---|---|
-| 15 | 3,39 | 6 px | **1 px** |
+| 15 | 3,38 | 6 px | **1 px** |
 | 16 | 1,69 | 6 px | **1 px** |
-| 17 | 0,85 | 6 px | **1,8 px** |
+| 17 | 0,84 | 6 px | **1,8 px** |
 | 18 | 0,42 | 6 px | **3,5 px** |
 | 19 | 0,21 | 6 px | **7,1 px** |
 
