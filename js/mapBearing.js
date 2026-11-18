@@ -718,8 +718,12 @@
       r.options.padding = cible;
     } else {
       if (r._ktaPadOrigine == null) return;
+      const avant = r.options.padding;
       r.options.padding = r._ktaPadOrigine;
       r._ktaPadOrigine = null;
+      // 🩸 Padding jamais élargi (écran large : la cible retombe sur l'origine) : rien à redessiner. Sinon le retour
+      // au nord vidait et redessinait chaque canvas pour rien (mémoire qui monte sous WebKit).
+      if (avant === r.options.padding) return;
     }
     try {
       if (typeof r._reset === "function") r._reset();
