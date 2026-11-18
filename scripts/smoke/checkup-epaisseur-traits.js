@@ -9,6 +9,7 @@
 //   1. ×2 double aussitôt (sans zoom) tracés de session et de calque, fronts, murs en ligne et arcs ; le contour du
 //      pilier ne change pas ; la loi au zoom continue de s'appliquer, doublée ;
 //   2. exports intacts : image PNG/PDF (MyKTAMapExporterGenererCanvas, même pipeline) et KML identiques à ×1 et ×2 ;
+//      dans l'image, un tracé de session aussi épais qu'un tracé de calque (même loi) ;
 //   3. le réglage vit dans localStorage, retrouvé au rechargement, borné à ×0,75 / ×2.
 // Les deux cartes OSM : scripts/smoke/checkup-largeur-osm-home.js (phase ×2).
 // Usage : node scripts/smoke/checkup-epaisseur-traits.js (SMOKE_PORT pour une autre copie) · code :
@@ -136,6 +137,15 @@ function controler(r, f, etiquette, pilierRef) {
         arc: { x: x, y: y + 60 }, pilier: { x: x + 40, y: y + 80 }, calque: { x: x, y: y + 120 } };
       const seg = function (p) { return [{ x: p.x, y: p.y }, { x: p.x + 100, y: p.y }]; };
       window.setRoads([{ uid: "rd_cet_trace", type: "principal", level: 0, points: seg(semis.trace) }]);
+      // Tracé de CALQUE pour l'export : registre des routes embarquées d'un calque déclaré sans fichier (l'export
+      // relit alors le registre, exporter.js > repli registre).
+      const grp = window.L.layerGroup().addTo(window.map);
+      window.dataLayerGroups = window.dataLayerGroups || {};
+      window.dataLayerGroups["cet-calque"] = grp;
+      window.PLAN_CONFIG.dataLayers = (window.PLAN_CONFIG.dataLayers || []).concat([
+        { id: "cet-calque", label: "Calque checkup", file: "checkup/cet-absent.json", visible: true }]);
+      window.registerEmbeddedRoad({ uid: "rd_cet_calque_exp", type: "principal", level: 0,
+        points: seg({ x: x, y: y + 140 }) }, grp, true);
       window.setStructures([
         { uid: "st_cet_front", type: "front-1", level: 0, points: seg(semis.front) },
         { uid: "st_cet_mur", type: "mur-ligne", level: 0, points: seg(semis.murLigne) },
@@ -149,7 +159,8 @@ function controler(r, f, etiquette, pilierRef) {
       const e = { polyline: pl, type: "principal", level: 0, origOpacity: 1 };
       window._ktaDataPolylines.push(e);
       delete semis.calque;
-      window.__cet = { semis: semis, calque: e, region: { x: x - 20, y: y - 20, w: 160, h: 140 } };
+      window.__cet = { semis: semis, calque: e, region: { x: x - 20, y: y - 20, w: 160, h: 220 },
+        exp: { x: x + 50, ySession: y, yCalque: y + 140 } };
       const m2 = window.map;
       m2.setZoom(Math.round((m2.getMinZoom() + m2.getMaxZoom()) / 2) + 1, { animate: false });
       window.majLargeurFronts();
@@ -160,8 +171,20 @@ function controler(r, f, etiquette, pilierRef) {
     const empreinte = function () {
       return page.evaluate(async function () {
         const cv = await window.MyKTAMapExporterGenererCanvas({ ann: { points: false, roads: true, zones: true, structures: true },
-          scale: 2, bg: "white", includeImgLayers: false, region: window.__cet.region });
+          scale: 2, bg: "white", includeImgLayers: false, region: window.__cet.region,
+          dataLayers: { "cet-calque": true } });
         const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+        // Épaisseur dessinée d'un tracé horizontal : lignes encrées dans la colonne du milieu, autour de son y.
+        const R = window.__cet.region, E = window.__cet.exp;
+        const epaisseur = function (yPlan) {
+          const cx = Math.round((E.x - R.x) * 2), cy = Math.round((yPlan - R.y) * 2);
+          let n = 0;
+          for (let yy = Math.max(0, cy - 24); yy <= Math.min(cv.height - 1, cy + 24); yy++) {
+            const i = (yy * cv.width + cx) * 4;
+            if (d[i] < 245 || d[i + 1] < 245 || d[i + 2] < 245) n++;
+          }
+          return n;
+        };
         let h = 2166136261, encre = 0;
         for (let i = 0; i < d.length; i++) { h = Math.imul(h ^ d[i], 16777619) >>> 0; if ((i & 3) === 0 && d[i] < 250) encre++; }
         let kml = null;
@@ -173,13 +196,17 @@ function controler(r, f, etiquette, pilierRef) {
             include: { image: false, roads: true, structures: true, zones: false, points: false },
             data: { roads: window.getRoads(), structures: window.getStructures(), zones: [], points: [] } });
         } catch (e) { kml = "ERREUR " + e.message; }
-        return { image: h + ":" + cv.width + "x" + cv.height, encre: encre, kml: kml };
+        return { image: h + ":" + cv.width + "x" + cv.height, encre: encre, kml: kml,
+          epSession: epaisseur(E.ySession), epCalque: epaisseur(E.yCalque) };
       });
     };
     const exp1 = await empreinte();
     verifier(exp1.encre > 0, "export : l'image de la région contient les objets (" + exp1.encre + " px)", exp1.encre);
     verifier(typeof exp1.kml === "string" && !/^ERREUR/.test(exp1.kml) && /LineString/.test(exp1.kml),
       "export : le KML se génère et porte des lignes", String(exp1.kml).slice(0, 120));
+    verifier(exp1.epCalque > 0 && exp1.epSession === exp1.epCalque,
+      "export : tracé de session aussi épais que le tracé de calque (" + exp1.epSession + " px / " + exp1.epCalque + " px)",
+      { session: exp1.epSession, calque: exp1.epCalque });
 
     const r1 = await lire(page);
     controler(r1, 1, "×1 (zoom " + r1.zoom + ")");
@@ -195,6 +222,8 @@ function controler(r, f, etiquette, pilierRef) {
     const exp2 = await empreinte();
     verifier(exp2.image === exp1.image, "export image (PNG/PDF) identique à ×1 et ×2", { x1: exp1.image, x2: exp2.image });
     verifier(exp2.kml === exp1.kml, "export KML identique à ×1 et ×2");
+    verifier(exp2.epSession === exp1.epSession && exp2.epCalque === exp1.epCalque,
+      "export : épaisseurs inchangées par le réglage (" + exp2.epSession + " px)", { x1: exp1, x2: exp2 });
 
     // ×2 après un zoom minimal et après un re-rendu de la session.
     await page.evaluate(function () { const m = window.map; m.setZoom(m.getMinZoom(), { animate: false }); });
@@ -212,6 +241,7 @@ function controler(r, f, etiquette, pilierRef) {
     verifier(bornes.haut === 2 && bornes.bas === 0.75, "réglage borné à ×0,75 / ×2", bornes);
     const r075 = await lire(page);
     controler(r075, 0.75, "×0,75");
+
     await page.evaluate(function () { window.KtaEpaisseurTraits.poser(1.5); });
     await page.reload({ waitUntil: "domcontentloaded" });
     await attendre(page, function () { return !!window.KtaEpaisseurTraits; }, 20000);

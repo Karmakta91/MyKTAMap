@@ -164,8 +164,3 @@
   (« Vu, normal » de Vérifier le plan) et les raccords ignorés vivent dans `myktamap_plan_prefs_<plan>`, préfixe copié
   par `profileExportImport.js > PER_PLAN_PREFIXES`, alors que leur commentaire dit « jamais exporté ».
   `qui: KARMA · action: trancher : les exclure de l'export, ou corriger le commentaire · depuis: 18/11/2026 · taille: XS`
-
-- **Export PNG/PDF : tracés de session hors de la loi de largeur** — vu au lot « tracés de session au dézoom » (18/11).
-  ✅ vérifié : à l'écran, session et calques suivent la loi ; l'export avancé la donne aux tracés de calque seulement
-  (`exporter.js > _largeurTraceExp`), ceux de session sortent à `weight × scale`, plus épais au même export.
-  `qui: KARMA · action: trancher : loi aussi pour la session à l'export, ou écart gardé · depuis: 18/11/2026 · taille: XS`

@@ -1804,9 +1804,9 @@
         window.ktaPeindreRayures(ctx, style.rayures.color, ctx.lineWidth, ctx.globalAlpha);
       }
     }
-    // Tracés de galerie : même loi, minorée (cf. `wTrace` dans structures.js), pour les tracés EMBARQUÉS
-    // seulement. 🩸 Ceux de session gardent `weight × scale`, alors qu'à l'écran ils suivent aussi la loi (écart
-    // ouvert, docs/BACKLOG.md).
+    // Tracés de galerie (session et calques, jonctions comprises) : même loi, minorée (cf. `wTrace` dans
+    // structures.js), comme à l'écran. ⚠️ Sans le réglage d'épaisseur de l'appareil (KtaEpaisseurTraits) : un export
+    // ne dépend pas de l'appareil qui le produit.
     function _largeurTraceExp(style) {
       if (!_planCalibre) return ((style && style.weight) || 5) * scale;
       return (typeof window.ktaLargeurTracePourRatio === "function")
@@ -2329,7 +2329,7 @@
         _poser(function () {
           ctx.save();
           ctx.strokeStyle = s.color;
-          ctx.lineWidth = s.weight * scale;
+          ctx.lineWidth = _largeurTraceExp(s);
           ctx.lineJoin = "round";
           ctx.lineCap = "round";
           ctx.beginPath();
