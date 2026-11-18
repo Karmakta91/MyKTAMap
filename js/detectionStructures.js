@@ -29,6 +29,8 @@ window.KtaDetectionUI = (function () {
   const MAX_EXEMPLES = 6;
   const FENETRE_EXEMPLE = [192, 640];  // px plan lus autour d'un toucher de pipette (puis plus grand si coupé)
   const RECALCUL_MS = 200;             // curseur relâché : recalcul après ce délai sans autre mouvement
+  // plafond de la taille maximale : la marge des blocs (au-delà, une masse est « trop grande pour un bloc »)
+  const TAILLE_MAX_PLAFOND = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
   const SURFACE_PLEINE = 4096 * 4096;   // au-delà, « Tout le plan » se calcule à mi-résolution
   // Masse A, masse B (piliers), front (trait) ; types proposés dans l'aperçu et type par défaut.
   const CLASSES = ["a", "b", "f"];
@@ -57,7 +59,8 @@ window.KtaDetectionUI = (function () {
         }
       });
       if (o && o.curseurs && o.curseurs.tolerance > 0 && o.curseurs.taille > 0) {
-        out.curseurs = { tolerance: Number(o.curseurs.tolerance), taille: Number(o.curseurs.taille) };
+        out.curseurs = { tolerance: Number(o.curseurs.tolerance), taille: Number(o.curseurs.taille),
+                         tailleMax: Number(o.curseurs.tailleMax) > 0 ? Number(o.curseurs.tailleMax) : null };
       }
       return out;
     } catch (err) { return { a: [], b: [], f: [], curseurs: null }; }
@@ -84,9 +87,10 @@ window.KtaDetectionUI = (function () {
     const ctx = cv.getContext("2d", { willReadFrequently: true });
     ctx.fillStyle = "#ffffff";   // fond d'image (hors charte : jamais affiché, seulement lu)
     ctx.fillRect(0, 0, bw, bh);
-    await window.ktaDessinerRegionPlan(ctx, { x: x, y: y, w: w, h: h }, e, { niveau: _niveau() });
+    const r = await window.ktaDessinerRegionPlan(ctx, { x: x, y: y, w: w, h: h }, e, { niveau: _niveau() });
     const d = ctx.getImageData(0, 0, bw, bh);
-    return { data: d.data, w: bw, h: bh };
+    // `dessine` : une image a été posée (faux : zone sans image chargée, la fenêtre reste au blanc de fond)
+    return { data: d.data, w: bw, h: bh, dessine: !!(r && r.ok) };
   }
   // Exemple sous un point du plan : couleur, taille et étalement de la composante touchée (ktaDetection.js >
   // mesurerExemple), lus dans une fenêtre autour du doigt, agrandie une fois si la composante la dépasse.
@@ -95,8 +99,11 @@ window.KtaDetectionUI = (function () {
     for (let k = 0; k < FENETRE_EXEMPLE.length; k++) {
       const n = FENETRE_EXEMPLE[k], x0 = Math.floor(x - n / 2), y0 = Math.floor(y - n / 2);
       const b = await _lireBloc(x0, y0, n, n, 1);
+      // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour du « fond »
+      if (!b.dessine) return null;
       m = window.KtaDetection.mesurerExemple(b, x - x0, y - y0);
-      if (!m || !m.coupe) break;
+      // composante coupée par la fenêtre, ou fenêtre remplie par l'objet (son bord passe pour le fond) : plus grand
+      if (!m || !(m.coupe || m.fond)) break;
     }
     return m;
   }
@@ -253,7 +260,8 @@ window.KtaDetectionUI = (function () {
           _e.curseurs[nom] + '"> <span class="kta-detect-valeur">' + _e.curseurs[nom] + "</span></label>";
       };
       html = '<span class="kta-racc-info">' + _esc(_bilan()) + "</span>" +
-        '<div class="kta-racc-actions">' + cur("tolerance", 8, 60) + cur("taille", 2, 80) + "</div>" +
+        '<div class="kta-racc-actions">' + cur("tolerance", 8, 60) + cur("taille", 2, 80) +
+        cur("tailleMax", 4, TAILLE_MAX_PLAFOND) + "</div>" +
         '<div class="kta-racc-actions">' +
         CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(sel).join("") +
         _btn("valider", "detect.valider", "kta-btn-primary", { n: gardes }) + _btn("zone", "detect.recommencer") +
@@ -265,11 +273,12 @@ window.KtaDetectionUI = (function () {
     });
     const valider = b.querySelector('[data-detect="valider"]');
     if (valider && _e.apercu) valider.disabled = _e.apercu.objets.length - _e.apercu.retires.size === 0;
+    _majCurseur();
   }
 
   function _bilan() {
     const a = _e.apercu;
-    return _t("detect.apercu.bilan", { n: a.objets.length, d: a.deja, g: a.tropGrands }) + " " +
+    return _t("detect.apercu.bilan", { n: a.objets.length, d: a.deja, m: a.ecartees, g: a.tropGrands }) + " " +
       _t("detect.apercu.aide");
   }
   // Après un recalcul : seuls le bilan et « Ajouter » changent (refaire le bandeau lâcherait le curseur tenu).
@@ -317,7 +326,8 @@ window.KtaDetectionUI = (function () {
     _e.curseurs[nom] = Number(el.value);
     const v = el.parentNode && el.parentNode.querySelector(".kta-detect-valeur");
     if (v) v.textContent = el.value;
-    _e.couleurs.curseurs = { tolerance: _e.curseurs.tolerance, taille: _e.curseurs.taille };
+    _e.couleurs.curseurs = { tolerance: _e.curseurs.tolerance, taille: _e.curseurs.taille,
+                             tailleMax: _e.curseurs.tailleMax };
     _ecrireCouleurs(_e.couleurs);
     clearTimeout(_e.minuteur);
     _e.minuteur = setTimeout(_recalculer, RECALCUL_MS);
@@ -336,6 +346,7 @@ window.KtaDetectionUI = (function () {
       const c = _e.pipette, ex = await _exempleEn(x, y);
       if (!_e) return;
       if (!ex) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
+      if (ex.fond) { _toast(_t("detect.toast.surFond"), "warn"); return; }   // doigt sur le fond : pas d'exemple
       _e.couleurs[c] = _e.couleurs[c].concat([ex]).slice(-MAX_EXEMPLES);
       _e.couleurs.curseurs = null;   // nouvel exemple : les réglages repartent des exemples
       _ecrireCouleurs(_e.couleurs);
@@ -415,8 +426,11 @@ window.KtaDetectionUI = (function () {
     const d = _deduits(), sauves = _e.couleurs.curseurs;
     let tol = 0;
     Object.keys(d.tolerances).forEach(function (c) { tol = Math.max(tol, d.tolerances[c]); });
-    _e.curseurs = sauves ? { tolerance: sauves.tolerance, taille: sauves.taille }
-      : { tolerance: tol || 22, taille: d.taille || 13 };
+    // taille maximale : déduite du plus grand exemple (× 4 en aire), plafonnée à la marge des blocs (au-delà, une masse
+    // est « trop grande pour un bloc » de toute façon)
+    const tMax = Math.min(TAILLE_MAX_PLAFOND, d.tailleMax || TAILLE_MAX_PLAFOND);
+    _e.curseurs = sauves ? { tolerance: sauves.tolerance, taille: sauves.taille, tailleMax: sauves.tailleMax || tMax }
+      : { tolerance: tol || 22, taille: d.taille || 13, tailleMax: tMax };
     _e.deduits = d;
   }
   // Tolérance par classe : celle du curseur si l'utilisateur l'a bougé, sinon celle déduite de ses exemples.
@@ -428,7 +442,9 @@ window.KtaDetectionUI = (function () {
     });
   }
   function _reglages() {
-    return Object.assign({ bloc: _e.bloc }, window.KtaDetection.reglagesPourTaille(_e.curseurs.taille, _pxParM()));
+    const rg = window.KtaDetection.reglagesPourTaille(_e.curseurs.taille, _pxParM());
+    rg.aireMax = _e.curseurs.tailleMax >= TAILLE_MAX_PLAFOND ? 0 : _e.curseurs.tailleMax * _e.curseurs.tailleMax;
+    return Object.assign({ bloc: _e.bloc }, rg);
   }
   function _lacherExecuteur() {
     if (!_e) return;
@@ -475,7 +491,8 @@ window.KtaDetectionUI = (function () {
       if (_traitDejaPresent(m, lignes[cle])) deja++;
       else objets.push({ classe: m.classe, points: m.points, trait: true });
     });
-    _e.apercu = { objets: objets, retires: new Set(), types: types, deja: deja, tropGrands: res.tropGrands.length };
+    _e.apercu = { objets: objets, retires: new Set(), types: types, deja: deja, tropGrands: res.tropGrands.length,
+                  ecartees: res.ecartees || 0 };
   }
 
   // ── Validation : une étape d'historique, puis la session ──
@@ -566,7 +583,15 @@ window.KtaDetectionUI = (function () {
     if (window.map) window.map.off("click", _onClic);
     document.removeEventListener("keydown", _onKey, true);
     _e = null;
+    _majCurseur();
     if (window.MapBearing && typeof window.MapBearing.resume === "function") window.MapBearing.resume("detection");
+  }
+  // Réticule rouge de précision (css/style.css > « Curseur de précision ») pendant la pipette et le cadre : le centre
+  // de la croix (hotspot 14,14) est le pixel lu. ⚠️ Classe PROPRE au parcours : kta-precision-mode est recalculée par
+  // interface.js > _initPrecisionCursor à chaque écriture d'un flag window.modeX, elle effacerait la nôtre.
+  function _majCurseur() {
+    const viser = !!_e && ((_e.etape === "exemples" && !!_e.pipette) || _e.etape === "zone");
+    document.body.classList.toggle("kta-detect-pick-mode", viser);
   }
   // Harnais : état lisible sans DOM.
   function etat() {
@@ -576,7 +601,8 @@ window.KtaDetectionUI = (function () {
              pipette: _e.pipette, coins: _e.coins.length, curseurs: _e.curseurs, lectures: _e.lectures,
              recalculs: _e.recalculs, recalculable: !!_e.recalculable,
              apercu: a ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
-                           retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands } : null };
+                           retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands,
+                           ecartees: a.ecartees } : null };
   }
 
   return { ouvrir: ouvrir, fermer: fermer, etat: etat, PREFIXE: PREFIXE };

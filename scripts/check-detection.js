@@ -15,7 +15,9 @@
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
  * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
  * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
- * trait de la couleur des piliers ; recalcul sur les blocs gardés sans relecture.
+ * trait de la couleur des piliers ; pipette sur un trait de 2 px, un coin de pilier, le fond ; scènes « fond blanc »
+ * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; recalcul sur les
+ * blocs gardés sans relecture.
  * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs, sans comblement des trous,
  * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
  *
@@ -164,6 +166,22 @@ function sceneBleue() {
   img.bruit(10);
   return { img, vrais, petit: vrais.find((p) => Math.min(p.w, p.h) < 14),
     gros: vrais.find((p) => p.w > 30 && p.h > 30) };
+}
+// Scène « fond blanc » : plan au trait, galeries blanches entre des murs noirs, piliers de la couleur `pilier`
+// (blancs = celle du fond) cernés d'un trait noir de 1 ou 2 px.
+function sceneBlanche(pilier) {
+  const W = 700, H = 460, img = image(W, H), vrais = [];
+  let g = 3;
+  const al = () => { g = (g * 16807) % 2147483647; return g / 2147483647; };
+  for (let y = 40; y < H - 70; y += 72) for (let x = 40; x < W - 70; x += 72) {
+    const w = Math.round(14 + al() * 30), h = Math.round(14 + al() * 30), ep = al() < 0.5 ? 1 : 2;
+    vrais.push({ x, y, w, h });
+    img.rect(x - ep, y - ep, w + 2 * ep, h + 2 * ep, NOIR).rect(x, y, w, h, pilier);
+  }
+  // murs des galeries (traits noirs de 2 px) qui découpent le fond sans fermer de pilier
+  for (let x = 20; x < W; x += 144) img.rect(x, 0, 2, H, NOIR);
+  return { img, vrais, petit: vrais.reduce((a, p) => (p.w * p.h < a.w * a.h ? p : a)),
+    gros: vrais.reduce((a, p) => (p.w * p.h > a.w * a.h ? p : a)) };
 }
 function lancer(img, extra) {
   return D.detecter(Object.assign({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: img.W, h: img.H },
@@ -330,7 +348,25 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   t("exemple bruité : couleur médiane proche de l'orange, étalement mesuré (> 0)",
     ex2 && D.deltaE(D.rgbVersLab(...ex2.rgb), D.rgbVersLab(...ORANGE)) < 6 && ex2.etalement > 0, ex2);
   const ex3 = D.mesurerExemple(lecteurSync(image(100, 100).rect(0, 0, 100, 100, GRIS)), 50, 50);
-  t("exemple qui remplit la fenêtre : signalé coupé (sa taille ne compte pas)", ex3 && ex3.coupe, ex3);
+  t("exemple qui remplit la fenêtre : signalé coupé ou fond (l'appelant relit plus grand)",
+    ex3 && (ex3.coupe || ex3.fond), ex3);
+  // 🩸 Pipette sur un trait fin ou un coin de pilier, un peu à côté du centre : la médiane du carré 5 × 5 était
+  // le fond, le pixel touché rejeté, et la pipette disait « aucune image » (trait de 2 px : 2 touchers sur 2).
+  const trait2 = lecteurSync(image(192, 192).rect(0, 95, 192, 2, ORANGE));
+  const surTrait = [95, 96].map((y) => D.mesurerExemple(trait2, 96, y));
+  t("pipette sur un trait de 2 px : chaque toucher sur le trait donne un exemple orange",
+    surTrait.every((m) => m && !m.fond && D.deltaE(D.rgbVersLab(...m.rgb), D.rgbVersLab(...ORANGE)) < 6), surTrait);
+  const pil10 = lecteurSync(image(192, 192).rect(90, 90, 10, 10, ORANGE));
+  let ratesPil = 0;
+  for (let y = 90; y < 100; y++) for (let x = 90; x < 100; x++) {
+    const m = D.mesurerExemple(pil10, x, y);
+    if (!m || m.fond || m.aire !== 100) ratesPil++;
+  }
+  t("pipette sur un pilier de 10 × 10 : les 100 pixels touchés donnent le pilier entier (aire 100)", ratesPil === 0,
+    ratesPil);
+  const surFond = D.mesurerExemple(pil10, 20, 20);
+  t("pipette sur le fond : dit « fond » (pas « aucune image »), aucun exemple", surFond && surFond.fond === true,
+    surFond);
   const rd = D.reglagesDepuisExemples({ a: [{ rgb: ORANGE, epaisseur: 7, etalement: 20.9 },
     { rgb: [200, 120, 60], epaisseur: 30, etalement: 4 }], b: [{ rgb: GRIS, epaisseur: 5, etalement: 2, coupe: true }],
     f: [{ rgb: ORANGE, epaisseur: 3, etalement: 1 }] }, { a: "masse", b: "masse", f: "trait" });
@@ -401,6 +437,34 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     { id: "f", nature: "trait", couleurs: [ORANGE], tolerance: 14 }], reglages: { aireMin: 100, ouverture: 7 } });
   t("front et mur en trait de la couleur des piliers : 1 pilier (le mur n'en est pas un), 2 fronts trouvés",
     r.masses.length === 1 && r.traits.length === 2, { masses: r.masses.map(boiteDe), traits: r.traits.length });
+
+  // ── Fond blanc : piliers de la couleur du fond, cernés d'un trait (curseur « Taille maximale ») ──
+  for (const [nom, couleur] of [["blancs", BLANC], ["gris clair", [225, 225, 225]]]) {
+    const sc = sceneBlanche(couleur);
+    const dans = (m, p) => { const cx = m.boite.x + m.boite.w / 2, cy = m.boite.y + m.boite.h / 2;
+      return cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h; };
+    const ex = [sc.petit, sc.gros].map((p) => D.mesurerExemple(lecteurSync(sc.img), p.x + p.w / 2, p.y + p.h / 2));
+    t("fond blanc, piliers " + nom + " : la pipette sur un pilier cerné donne un exemple (pas « le fond »)",
+      ex.every((x) => x && !x.fond && !x.coupe), ex.map((x) => x && { fond: x.fond, coupe: x.coupe, aire: x.aire }));
+    if (!ex.every((x) => x && !x.fond)) continue;
+    const dd = D.reglagesDepuisExemples({ a: ex }, { a: "masse" });
+    const avec = async (aireMax) => D.detecter({ lireBloc: lecteur(sc.img),
+      region: { x: 0, y: 0, w: sc.img.W, h: sc.img.H }, limites: { w: sc.img.W, h: sc.img.H },
+      classes: [{ id: "a", couleurs: ex.map((x) => x.rgb), tolerance: dd.tolerances.a }],
+      reglages: Object.assign({ aireMax: aireMax }, D.reglagesPourTaille(dd.taille)) });
+    const rMax = await avec(dd.tailleMax * dd.tailleMax), rSans = await avec(0);
+    const nMax = sc.vrais.filter((p) => rMax.masses.some((m) => dans(m, p))).length;
+    const geante = (r) => r.masses.filter((m) => m.aire > dd.tailleMax * dd.tailleMax).length;
+    t("fond blanc, piliers " + nom + ", taille max déduite (" + dd.tailleMax + " px) : " + nMax + "/" +
+      sc.vrais.length +
+      " piliers, aucune masse plus grande que la taille max (" + rMax.ecartees + " écartée(s))",
+      nMax >= 0.9 * sc.vrais.length && geante(rMax) === 0, { tolerance: dd.tolerances.a, taille: dd.taille });
+    if (nom === "blancs") {
+      t("contre-épreuve : sans taille maximale, le fond et les galeries sortent en masses géantes (" +
+        geante(rSans) + ")",
+        geante(rSans) > 0);
+    }
+  }
 
   // ── Recalcul sur les blocs gardés : pas de relecture de l'image ──
   let lectures = 0;

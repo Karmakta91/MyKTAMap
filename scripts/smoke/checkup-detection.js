@@ -54,8 +54,9 @@ for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) SCENE.orange.push([20 + 
 for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) SCENE.gris.push([480 + c * 80, 20 + r * 80, 40, 40]);
 
 // Dans la page : scène fabriquée → tuiles V2 en Blob (RUNTIME_ASSETS), coin O rendu.
-async function preterScene(page) {
+async function preterScene(page, blanc) {
   return page.evaluate(async function (S) {
+    const planBlanc = S.__blanc;
     const pc = window.PLAN_CONFIG, p = pc.plan;
     const W = p.imageWidth || window.APP_CONFIG.imageWidth, H = p.imageHeight || window.APP_CONFIG.imageHeight;
     p.imageWidth = W; p.imageHeight = H;
@@ -78,6 +79,15 @@ async function preterScene(page) {
     }
     if (!O) return null;
     const dessiner = function (k) {
+      if (planBlanc) {   // plan au trait : piliers blancs (couleur du fond) cernés de noir (1 ou 2 px), murs de galerie
+        S.orange.concat(S.gris).forEach(function (q, i) {
+          const ep = i % 2 ? 1 : 2;
+          k.fillStyle = "#141414"; k.fillRect(O.x + q[0] - ep, O.y + q[1] - ep, q[2] + 2 * ep, q[3] + 2 * ep);
+          k.fillStyle = "#ffffff"; k.fillRect(O.x + q[0], O.y + q[1], q[2], q[3]);
+        });
+        k.fillStyle = "#141414"; k.fillRect(O.x + 10, O.y + 280, 600, 2);
+        return;
+      }
       k.fillStyle = "#ff9933";
       S.orange.forEach(function (q) { k.fillRect(O.x + q[0], O.y + q[1], q[2], q[3]); });
       const q0 = S.orange[0];
@@ -120,7 +130,7 @@ async function preterScene(page) {
     try { localStorage.removeItem("myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId); } catch (e) {}
     if (window.HistoryManager && typeof window.HistoryManager.reset === "function") window.HistoryManager.reset();
     return O;
-  }, SCENE);
+  }, Object.assign({ __blanc: !!blanc }, SCENE));
 }
 
 // Toucher la carte au point plan (x, y).
@@ -246,6 +256,20 @@ async function suite(nav) {
   e2 = await curseur("taille", tailleDeduite, 2);
   verifier(e2.apercu.n === 18 && e2.lectures === lus, "curseur remis à " + tailleDeduite + " px : 18 de nouveau, " +
     "toujours sans relecture", { n: e2.apercu.n, lectures: e2.lectures });
+  const tMax = e2.curseurs.tailleMax;
+  verifier(tMax >= 80 && tMax <= 256, "taille maximale déduite du plus grand exemple (× 4 en aire) : " + tMax + " px",
+    tMax);
+  e2 = await curseur("tailleMax", 30, 3);
+  verifier(e2.apercu.n === 2 && e2.apercu.ecartees >= 16 && e2.lectures === lus,
+    "curseur Taille maximale à 30 px : les 16 piliers écartés et comptés à part (" + e2.apercu.ecartees + "), fronts " +
+    "gardés, sans relire l'image", { n: e2.apercu.n, ecartees: e2.apercu.ecartees, lectures: e2.lectures });
+  const bilanMax = await page.evaluate(function () {
+    return document.querySelector("#kta-detect-bandeau .kta-racc-info").textContent;
+  });
+  verifier(bilanMax.indexOf(String(e2.apercu.ecartees)) >= 0, "le bilan dit combien la taille maximale en écarte",
+    bilanMax);
+  e2 = await curseur("tailleMax", tMax, 4);
+  verifier(e2.apercu.n === 18, "curseur Taille maximale remis : 18 de nouveau", e2.apercu.n);
   const garde = await page.evaluate(function () {
     const cle = "myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId;
     try { return JSON.parse(localStorage.getItem(cle)).curseurs; }
@@ -347,6 +371,88 @@ async function suite(nav) {
     return { r: r, bandeau: !!document.getElementById("kta-detect-bandeau") };
   });
   verifier(refus.r === false && !refus.bandeau, "lecture seule : le parcours ne s'ouvre pas", refus);
+
+  // 🩸 Pipette au PC sur un coin de pilier ou à côté d'un trait de front : la médiane du carré 5 × 5 valait le fond,
+  // et la pipette disait « aucune image » alors qu'on touchait bien l'image. Réticule rouge pendant la visée.
+  const reticule = function () {
+    return page.evaluate(function () {
+      return { classe: document.body.classList.contains("kta-detect-pick-mode"),
+               curseur: getComputedStyle(window.map.getContainer()).cursor.indexOf("svg") >= 0 };
+    });
+  };
+  await page.evaluate(function (o) {
+    // structures posées plus haut retirées (une étape ⏪) : un clic sur l'une d'elles ouvrirait sa fiche
+    window.HistoryManager.undo();
+    window.map.closePopup();
+    // vue remise sur la scène (la rotation éprouvée juste avant a pu la déplacer)
+    window.map.fitBounds(L.latLngBounds([window.convertCoord(o.x - 20, o.y - 20),
+      window.convertCoord(o.x + 660, o.y + 470)]), { animate: false });
+    window.KtaDetectionUI.ouvrir();
+  }, O);
+  await page.waitForTimeout(300);
+  await bouton(page, "effacer");
+  verifier(!(await reticule()).classe, "réticule absent tant qu'aucune pipette n'est armée");
+  await bouton(page, "pipette-a");
+  const visee = await reticule();
+  verifier(visee.classe && visee.curseur, "pipette armée : réticule rouge de précision sur la carte", visee);
+  const q2 = SCENE.orange[5];
+  await toucher(page, O.x + q2[0] + 0.5, O.y + q2[1] + 0.5);       // pixel du coin du pilier
+  await bouton(page, "pipette-f");
+  await toucher(page, O.x + 300, O.y + 403);                        // 1 px sous le bord du front de 4 px
+  e = await etat(page);
+  verifier(e.exemples.a === 1 && e.exemples.f === 1,
+    "pipette sur un coin de pilier et juste à côté d'un front : un exemple chacun, pas « aucune image »",
+    { exemples: e.exemples, toasts: await page.evaluate(function () {
+      return Array.prototype.map.call(document.querySelectorAll("[class*='toast']"), function (t) {
+        return t.textContent;
+      }).join(" | ").slice(0, 200);
+    }) });
+  await toucher(page, O.x + 300, O.y + 300);                        // le fond, loin de tout
+  const fond = await page.evaluate(function () {
+    const txt = Array.prototype.map.call(document.querySelectorAll("[class*='toast']"), function (t) {
+      return t.textContent;
+    }).join(" | ");
+    return { f: window.KtaDetectionUI.etat().exemples.f, dit: txt.indexOf(window.I18n.t("detect.toast.surFond")) >= 0 };
+  });
+  verifier(fond.f === 1 && fond.dit, "pipette sur le fond : « c'est le fond », aucun exemple ajouté", fond);
+  await bouton(page, "zone");
+  verifier((await reticule()).classe, "tracé du cadre : réticule présent");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+  verifier(!(await reticule()).classe, "après Échap : réticule retiré");
+
+  // ── Fond blanc : piliers blancs cernés d'un trait, fond et galeries de la même couleur ──
+  console.log("— fond blanc —");
+  await page.evaluate(function () {
+    try { localStorage.removeItem("myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId); } catch (err) {}
+  });
+  const O2 = await preterScene(page, true);
+  await page.waitForTimeout(400);
+  await page.evaluate(function () { window.KtaDetectionUI.ouvrir(); });
+  const qb = SCENE.orange[1], qg = SCENE.gris[3];
+  await toucher(page, O2.x + qb[0] + qb[2] / 2, O2.y + qb[1] + qb[3] / 2);   // un pilier blanc (grand)
+  await toucher(page, O2.x + qg[0] + qg[2] / 2, O2.y + qg[1] + qg[3] / 2);   // un autre (40 px)
+  e = await etat(page);
+  verifier(e.exemples.a === 2, "fond blanc : la pipette sur un pilier blanc cerné donne un exemple (pas « le fond »)",
+    e.exemples);
+  const c2 = SCENE.cadre;
+  await bouton(page, "zone");
+  await toucher(page, O2.x + c2[0], O2.y + c2[1]);
+  await toucher(page, O2.x + c2[2], O2.y + c2[3]);
+  await attendre(page, function () {
+    const s2 = window.KtaDetectionUI.etat();
+    return s2 && s2.etape === "apercu";
+  }, 60000);
+  e = await etat(page);
+  // le fond (qui déborde du cadre, sa boîte commence dans la marge) n'appartient à aucun bloc : jamais posé
+  const plusGrand = await page.evaluate(function () {
+    return window.KtaDetectionUI.etat().curseurs.tailleMax;
+  });
+  verifier(e.apercu && e.apercu.n === 16, "fond blanc : les 16 piliers, sans la masse du fond ni des galeries",
+    e.apercu);
+  verifier(plusGrand > 0 && plusGrand < 256, "fond blanc : taille maximale déduite des exemples (" + plusGrand + " px)",
+    plusGrand);
+  await page.keyboard.press("Escape");
 
   verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 3));
   await ctx.close();

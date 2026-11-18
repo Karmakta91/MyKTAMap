@@ -99,6 +99,7 @@
   // au centre d'un pilier étroit laisse de chaque côté une bande plus fine que l'ouverture, qui l'effacerait et
   // couperait le pilier en deux. Par SEGMENTS de ligne et union-find (le fond blanc fait peu de segments) : un
   // remplissage pixel par pixel de tout le fond doublait le temps de la détection.
+  const TROU_COMPACT = 0.35;   // part minimale de sa boîte qu'un trou doit remplir pour être comblé
   function _comblerTrous(m, W, H, max) {
     const deb = [], fin = [], lig = [], par = [];
     const racine = function (i) { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
@@ -121,15 +122,22 @@
       }
       precD = curD; precF = deb.length;
     }
-    const aire = new Float64Array(deb.length), bord = new Uint8Array(deb.length);
-    for (let i = 0; i < deb.length; i++) {
+    const n = deb.length, aire = new Float64Array(n), bord = new Uint8Array(n);
+    const x0 = new Int32Array(n).fill(W), x1 = new Int32Array(n);
+    const y0 = new Int32Array(n).fill(H), y1 = new Int32Array(n);
+    for (let i = 0; i < n; i++) {
       const r = racine(i);
       aire[r] += fin[i] - deb[i];
       if (lig[i] === 0 || lig[i] === H - 1 || deb[i] === 0 || fin[i] === W) bord[r] = 1;
+      if (deb[i] < x0[r]) x0[r] = deb[i]; if (fin[i] > x1[r]) x1[r] = fin[i];
+      if (lig[i] < y0[r]) y0[r] = lig[i]; if (lig[i] + 1 > y1[r]) y1[r] = lig[i] + 1;
     }
-    for (let i = 0; i < deb.length; i++) {
+    for (let i = 0; i < n; i++) {
       const r = racine(i);
       if (bord[r] || aire[r] > max) continue;
+      // 🩸 Seulement un trou COMPACT (pastille, numéro : plus du tiers de sa boîte) : le trait fin qui cerne un pilier
+      //   de la couleur du fond est aussi un « trou » fermé, en anneau ; le combler soudait le pilier au fond.
+      if (aire[r] < TROU_COMPACT * (x1[r] - x0[r]) * (y1[r] - y0[r])) continue;
       const L = lig[i] * W;
       for (let x = deb[i]; x < fin[i]; x++) m[L + x] = 1;
     }
@@ -203,6 +211,9 @@
     const W = o.w, H = o.h, N = W * H, d = o.data, e = o.echelle || 1;
     const R = Math.max(1, Math.floor((o.reglages.ouverture * e) / 2));
     const aireMin = o.reglages.aireMin * e * e, eps = Math.max(0.5, o.reglages.simplification * e);
+    // aire maximale (curseur « Taille maximale ») : une masse plus grande est écartée et comptée à part — fond ou
+    // galeries de la couleur de piliers clairs cernés d'un trait (les piliers, séparés par le trait, restent)
+    const aireMax = o.reglages.aireMax > 0 ? o.reglages.aireMax * e * e : Infinity;
     // 🩸 Un trait de front a souvent la couleur d'un pilier : les traits ne concourent pas avec les masses pour un
     //   pixel ; chacun est lu à part (couleur du trait MOINS les masses pleines, plus bas).
     const clMasses = o.classes.filter(function (c) { return c.nature !== "trait"; });
@@ -215,7 +226,7 @@
     }
     const coeur = o.coeur || { x: 0, y: 0, w: W, h: H }, bords = o.bords || { g: true, h: true, d: true, b: true };
     const masses = [], tropGrands = [];
-    let ignorees = 0;
+    let ignorees = 0, ecartees = 0;
     const m = new Uint8Array(N), tmp = new Uint8Array(N), vu = new Uint8Array(N), pile = new Int32Array(N);
     const pleins = clTraits.length ? new Uint8Array(N) : null;   // masses après ouverture, retirées des traits
     const trouMax = Math.max(0, Math.round((o.reglages.trouMax === undefined ? REGLAGES.trouMax : o.reglages.trouMax) *
@@ -245,6 +256,7 @@
         // rendue par le bloc qui contient le coin haut-gauche de sa boîte
         if (x0 < coeur.x || y0 < coeur.y || x0 >= coeur.x + coeur.w || y0 >= coeur.y + coeur.h) continue;
         if (aire < aireMin) { ignorees++; continue; }
+        if (aire > aireMax) { ecartees++; continue; }
         const boite = { x: o.x0 + x0 / e, y: o.y0 + y0 / e, w: (x1 - x0 + 1) / e, h: (y1 - y0 + 1) / e };
         const coupee = (x0 === 0 && !bords.g) || (y0 === 0 && !bords.h) || (x1 === W - 1 && !bords.d) ||
           (y1 === H - 1 && !bords.b);
@@ -269,7 +281,7 @@
         traits.push({ classe: cl.id, points: pts });
       });
     });
-    return { masses: masses, tropGrands: tropGrands, ignorees: ignorees, traits: traits };
+    return { masses: masses, tropGrands: tropGrands, ignorees: ignorees, ecartees: ecartees, traits: traits };
   }
 
   // ── Bandes : un trait de la couleur des piliers (galerie, mur levé en trait) n'est pas une masse ──
@@ -570,7 +582,7 @@
     for (let y = reg.y; y < reg.y + reg.h; y += pas) {
       for (let x = reg.x; x < reg.x + reg.w; x += pas) blocs.push([x, y]);
     }
-    const res = { masses: [], tropGrands: [], ignorees: 0, traits: [], blocs: blocs.length };
+    const res = { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [], blocs: blocs.length };
     for (let i = 0; i < blocs.length; i++) {
       if (opts.signal && opts.signal.aborted) throw Object.assign(new Error("annulé"), { name: "AbortError" });
       const cx = blocs[i][0], cy = blocs[i][1];
@@ -588,6 +600,7 @@
       res.masses.push.apply(res.masses, r.masses);
       res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
       res.ignorees += r.ignorees;
+      res.ecartees += r.ecartees || 0;
       if (r.traits) res.traits.push.apply(res.traits, r.traits);
       if (r.garde) gardes++;
       if (opts.onProgres) opts.onProgres(i + 1, blocs.length);
@@ -623,11 +636,12 @@
   }
   // Fusion des résultats de blocs (même règle que detecter).
   function _fusion(resultats, e) {
-    const res = { masses: [], tropGrands: [], ignorees: 0, traits: [], blocs: resultats.length };
+    const res = { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [], blocs: resultats.length };
     resultats.forEach(function (r) {
       res.masses.push.apply(res.masses, r.masses);
       res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
       res.ignorees += r.ignorees;
+      res.ecartees += r.ecartees || 0;
       if (r.traits) res.traits.push.apply(res.traits, r.traits);
     });
     res.traits = _raccorder(res.traits, Math.max(1.5, 2 / (e || 1)));
@@ -697,13 +711,15 @@
   }
 
   // ── Un exemple touché à la pipette : sa composante, sa taille, l'étalement de sa couleur ──
-  // mesurerExemple({ data, w, h }, px, py, { seuil }) → { rgb, aire, epaisseur, etalement, ecartFond, coupe } ou null.
+  // mesurerExemple({ data, w, h }, px, py, { seuil }) → { rgb, aire, epaisseur, etalement, ecartFond, coupe },
+  //   { fond: true, rgb } (le doigt est sur le fond) ou null (rien d'opaque sous le doigt).
   // La composante = pixels 4-connexes à moins du seuil (ΔE) de la couleur sous le doigt (médiane 5 × 5) ; épaisseur =
   // 2 × la plus grande distance au bord (chanfrein 3-4) ; étalement = 90e centile des ΔE à la couleur médiane.
   // `ecartFond` : ΔE entre cette couleur et le fond (médiane du bord de la fenêtre).
   // 🩸 Seuil = la moitié de l'écart au fond, plafonné à `seuil` (28) : un bleu clair est à ΔE 26 du blanc, un seuil
   //   fixe faisait déborder la composante sur tout le fond.
   // `coupe` : la composante touche le bord de la fenêtre lue (plus grande qu'elle) ou la remplit à moitié (fond).
+  const FOND_MIN = 10;   // ΔE au fond sous lequel le carré touché est du fond (pas d'objet sous le doigt)
   function mesurerExemple(b, px, py, o) {
     const W = b.w, H = b.h, d = b.data, plafond = (o && o.seuil) || 28;
     px = Math.floor(px); py = Math.floor(py);
@@ -716,16 +732,6 @@
       return v;
     };
     const med = function (vals) { vals.sort(function (a, b2) { return a - b2; }); return vals[vals.length >> 1]; };
-    const r0 = [], g0 = [], b0 = [];
-    for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
-      for (let i = Math.max(0, px - 2); i <= Math.min(W - 1, px + 2); i++) {
-        const k = (j * W + i) * 4;
-        if (d[k + 3] < 128) continue;
-        r0.push(d[k]); g0.push(d[k + 1]); b0.push(d[k + 2]);
-      }
-    }
-    if (!r0.length) return null;
-    const lab0 = rgbVersLab(med(r0), med(g0), med(b0));
     // fond : médiane des pixels du bord de la fenêtre
     const rf = [], gf = [], bf = [];
     const bord = function (i) {
@@ -734,11 +740,56 @@
     };
     for (let x = 0; x < W; x++) { bord(x); bord((H - 1) * W + x); }
     for (let y = 1; y < H - 1; y++) { bord(y * W); bord(y * W + W - 1); }
-    const ecartFond = rf.length ? deltaE(lab0, rgbVersLab(med(rf), med(gf), med(bf))) : 100;
+    const labFond = rf.length ? rgbVersLab(med(rf), med(gf), med(bf)) : null;
+    // 🩸 Couleur de l'exemple = celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le plus loin du fond)
+    //   et de ses semblables, et la composante part de CE pixel. La médiane du carré entier valait le fond sur un
+    //   trait fin ou un coin de pilier touché un peu à côté : le pixel touché était rejeté et la pipette disait
+    //   « aucune image » (mesuré : trait de 2 px, 2 touchers sur 2 ; pilier de 10 px, 12 sur 100).
+    const carre = [];
+    for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
+      for (let i = Math.max(0, px - 2); i <= Math.min(W - 1, px + 2); i++) {
+        if (d[(j * W + i) * 4 + 3] >= 128) carre.push(j * W + i);
+      }
+    }
+    if (!carre.length) return null;   // rien d'opaque sous le doigt : hors de l'image
+    let graine = carre[0], encre = -1, presG = Infinity;
+    carre.forEach(function (q) {
+      const e = labFond ? deltaE(lab(q), labFond) : 0;
+      // à encre égale, le pixel le plus proche du doigt
+      const pres = Math.abs((q % W) - px) + Math.abs(Math.floor(q / W) - py);
+      if (e > encre + 0.5 || (Math.abs(e - encre) <= 0.5 && pres < presG)) { encre = e; graine = q; presG = pres; }
+    });
+    if (labFond && encre < FOND_MIN) {
+      // 🩸 Couleur du fond sous le doigt : un pilier BLANC cerné d'un trait sur un plan blanc en est un. Objet si la
+      //   zone de cette couleur est ENFERMÉE (ne touche pas le bord de la fenêtre) ; sinon c'est le fond, on le dit.
+      const p0 = py * W + px, lab0f = lab(p0), vuF = new Uint8Array(W * H), pileF = [p0];
+      let ouverte = false, nF = 0;
+      vuF[p0] = 1;
+      while (pileF.length && !ouverte) {
+        const q = pileF.pop();
+        if (d[q * 4 + 3] < 128 || deltaE(lab(q), lab0f) > 6) continue;
+        const qx = q % W, qy = (q - qx) / W;
+        if (qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1 || ++nF > (W * H) / 2) { ouverte = true; break; }
+        [q - 1, q + 1, q - W, q + W].forEach(function (t) { if (!vuF[t]) { vuF[t] = 1; pileF.push(t); } });
+      }
+      if (ouverte) {
+        const k = graine * 4;
+        return { fond: true, rgb: [d[k], d[k + 1], d[k + 2]] };
+      }
+      graine = p0;   // objet de la couleur du fond : la composante part du pixel touché
+    }
+    const r0 = [], g0 = [], b0 = [], labG = lab(graine);
+    carre.forEach(function (q) {
+      if (deltaE(lab(q), labG) > 12) return;
+      const k = q * 4;
+      r0.push(d[k]); g0.push(d[k + 1]); b0.push(d[k + 2]);
+    });
+    const lab0 = rgbVersLab(med(r0), med(g0), med(b0));
+    const ecartFond = labFond ? deltaE(lab0, labFond) : 100;
     const seuil = Math.max(6, Math.min(plafond, ecartFond / 2));
     const N = W * H, vu = new Uint8Array(N), liste = [], max = Math.floor(N / 2);
     let coupe = false;
-    const pile = [py * W + px];
+    const pile = [graine];
     vu[pile[0]] = 1;
     while (pile.length) {
       const q = pile.pop();
@@ -806,9 +857,10 @@
   //   plusieurs exemples couvrent déjà leur écart. L'ajouter soudait des piliers voisins à travers le flou (mesuré :
   //   ΔE 39 → 179 piliers sur 216, ΔE 27 → 214).
   const TOL_PLANCHER = 22, TOL_MARGE = 6, TOL_MAX = 60, TOL_PART_FOND = 0.6, TOL_MIN = 6;
+  const TAILLE_MAX_FACTEUR = 4;
   function reglagesDepuisExemples(exemples, natures) {
     const tolerances = {};
-    let taille = null;
+    let taille = null, aireMaxEx = 0;
     Object.keys(exemples).forEach(function (c) {
       const ex = (exemples[c] || []).filter(function (x) { return x && Array.isArray(x.rgb); });
       if (!ex.length) return;
@@ -816,17 +868,21 @@
       ex.forEach(function (x) { etal = Math.max(etal, Number(x.etalement) || 0); });
       // 🩸 jamais au-delà de 60 % de l'écart au fond : un pilier bleu clair sur blanc (ΔE 26) ferait du fond un pilier
       let plafondFond = TOL_MAX;
+      // (écart nul compris : pilier blanc cerné d'un trait sur un plan blanc → tolérance au plus bas)
       ex.forEach(function (x) {
-        if (x.ecartFond > 0) plafondFond = Math.min(plafondFond, x.ecartFond * TOL_PART_FOND);
+        if (typeof x.ecartFond === "number") plafondFond = Math.min(plafondFond, x.ecartFond * TOL_PART_FOND);
       });
       const voulue = Math.max(TOL_PLANCHER, etal + TOL_MARGE);
       tolerances[c] = Math.round(Math.max(TOL_MIN, Math.min(plafondFond, TOL_MAX, voulue)));
       if (natures && natures[c] === "trait") return;
       ex.forEach(function (x) {
         if (x.epaisseur > 0 && !x.coupe && (taille === null || x.epaisseur < taille)) taille = x.epaisseur;
+        if (x.aire > 0 && !x.coupe && x.aire > aireMaxEx) aireMaxEx = x.aire;
       });
     });
-    return { tolerances: tolerances, taille: taille };
+    // taille maximale = côté du carré de TAILLE_MAX_FACTEUR × l'aire du plus GRAND exemple de masse (× 4 en aire)
+    const tailleMax = aireMaxEx > 0 ? Math.round(Math.sqrt(aireMaxEx * TAILLE_MAX_FACTEUR)) : null;
+    return { tolerances: tolerances, taille: taille, tailleMax: tailleMax };
   }
   // Réglages pour une « taille minimale » (largeur du plus petit pilier, px du plan) : ouverture = la moitié, aire
   // minimale = la moitié du carré, trou comblé à 60 % du carré. Plan calibré (pxParM) : bornes en mètres (aire jamais

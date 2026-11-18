@@ -1638,10 +1638,12 @@ html.kta-theme-light .kta-lost-warn-overflow strong {
 }
 
 /* Curseur de précision : réticule or + contour sombre, visible sur plan blanc comme sombre. Posé dès qu'un
-   mode « clic sur la carte » est actif (body.kta-precision-mode, interface.js) et en mode « perdu ».
+   mode « clic sur la carte » est actif (body.kta-precision-mode, interface.js), en mode « perdu » et pendant la
+   pipette et le cadre de la détection (body.kta-detect-pick-mode, detectionStructures.js).
    Hotspot (14,14) = le point cliqué ; repli `crosshair`. */
 body.kta-precision-mode .leaflet-container,
-body.kta-lost-click-mode .leaflet-container {
+body.kta-lost-click-mode .leaflet-container,
+body.kta-detect-pick-mode .leaflet-container {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23000' stroke-width='4.5' opacity='0.85'/%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23ff1e1e' stroke-width='2'/%3E%3C/g%3E%3Ccircle cx='14' cy='14' r='2.2' fill='%23000' opacity='0.85'/%3E%3Ccircle cx='14' cy='14' r='1.2' fill='%23ff1e1e'/%3E%3C/svg%3E") 14 14, crosshair !important;
 }
 

@@ -848,12 +848,26 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   (blocs gardés, 19/11/2026) : ≈ 0,5 s pour 2 048², ≈ 1,7 s pour 4 096², ≈ 1,5 s pour tout le plan à mi-résolution.
 - **Parcours** (`window.KtaDetectionUI`) : bandeau en bas d'écran (style des raccords). Exemples à la pipette
   (Masse A, Masse B, Front : chaque toucher MESURE la composante, fenêtre de 192 px autour du doigt, 640 si elle la
-  dépasse ; 6 exemples au plus par classe) → cadre par deux coins ou « Tout le plan » (au-delà de 4 096² px :
-  mi-résolution, confirmé) → aperçu dans le pane `ktaDetection` (renderer SVG propre : la carte est en canvas, où
-  l'aperçu ne serait ni touchable ni stylé) avec deux curseurs, **Tolérance de couleur** et **Taille minimale**,
-  partis des réglages déduits : un curseur relâché recalcule sur les blocs gardés (200 ms sans mouvement), sans
-  relire l'image ; les valeurs sont gardées avec les couleurs du plan (même clé) jusqu'au prochain exemple → « Ajouter
-  N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+  dépasse ou la remplit ; 6 exemples au plus par classe ; réticule rouge de précision sur la carte pendant la
+  pipette et le cadre, `body.kta-detect-pick-mode`, centre de la croix = pixel lu) → cadre par deux coins ou « Tout
+  le plan » (au-delà de 4 096² px : mi-résolution, confirmé) → aperçu dans le pane `ktaDetection` (renderer SVG
+  propre : la carte est en canvas, où l'aperçu ne serait ni touchable ni stylé) avec trois curseurs, **Tolérance de
+  couleur**, **Taille minimale** et **Taille maximale**, partis des réglages déduits : un curseur relâché recalcule
+  sur les blocs gardés (200 ms sans mouvement), sans relire l'image ; les valeurs sont gardées avec les couleurs du
+  plan (même clé) jusqu'au prochain exemple → « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+- 🩸 **Pipette** : la couleur de l'exemple est celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le
+  plus loin du fond) et de ses semblables, et la composante part de ce pixel. La médiane du carré entier valait le
+  fond sur un trait fin ou un coin de pilier touché un peu à côté : la pipette disait « aucune image » (trait de
+  2 px : 2 touchers sur 2 ; pilier de 10 px : 12 sur 100). Carré entièrement de la couleur du fond : « c'est le fond »
+  (avant : un exemple blanc ajouté en silence), SAUF si la zone touchée est enfermée par un trait (pilier blanc cerné
+  sur plan blanc) : c'est alors un objet. « Aucune image » seulement si rien n'a été dessiné à cet endroit (plan V1 :
+  zone jamais affichée).
+- **Taille maximale** : déduite du plus grand exemple de masse (× 4 en aire), plafonnée à la marge des blocs ; une
+  masse plus grande est écartée et comptée à part (« écartés par la taille maximale », distinct de « trop grands pour
+  un bloc »). Cas des plans aux piliers blancs ou clairs cernés d'un trait : fond et galeries de la couleur des
+  piliers forment des masses géantes, écartées ; les piliers, séparés par le trait, restent. 🩸 Seuls les trous
+  COMPACTS sont comblés (plus du tiers de leur boîte) : le trait qui cerne un pilier est un « trou » en anneau dans le
+  masque du fond, le combler soudait le pilier au fond (scène fabriquée : 26 piliers sur 45 au lieu de 45).
 - **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
   carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
   Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.
