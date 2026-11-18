@@ -78,6 +78,27 @@
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
+- **Dette technique, un lot** — trié le 18/11/2026 (KARMA) : `_redraw()` direct en Vue OSM (annuler le redessin en
+  attente) ; pile de test sur le port 9000 de Sonar ; `check-entete-licence.js` étendu à `css/` ; `planRegistry.js >
+  _openIDB` en connexion partagée ; redessin inutile de `mapBearing.js` (option a) ; `_syncH` (150-200 ms) mesuré.
+  `qui: Claude · action: un commit par point, checkups des modules touchés · fini: 6 points soldés ou expliqués
+  · depuis: 18/11/2026 · taille: M`
+- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
+  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
+  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône). Recos validées par KARMA le 12/11/2026.
+  `qui: Claude · action: coder les 4 recos (export avancé et PDF) · fini: point précis dessiné à l'export, checkup
+  · depuis: 06/11/2026 · taille: S`
+- **Jonctions qui traversent un mur, mode strict par plan** — les liens de jonction imparfaite
+  (`pathfinder.js > _enrichirGrapheAvecCroisements`) ignorent murs en ligne et zones inaccessibles ; idée KARMA d'un
+  mode strict par plan (tolérance 0). ⚠️ D'abord rejouer l'itinéraire réel : suit-il un VRAI tracé à travers le mur ?
+  `qui: Claude · action: rejouer le trajet, refuser un lien qui croise un obstacle dur, topo du mode strict · fini: lien
+  coupé par un mur ligne fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
+- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
+  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
+  des niveaux, et correction du message faux `prof.incoherent.suite`. Validé par KARMA le 18/11/2026.
+  `qui: Claude · action: avertissement dans la table des niveaux + message corrigé · fini: écart négatif signalé,
+  checkup · depuis: 12/11/2026 · taille: S`
+
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
@@ -139,60 +160,3 @@
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
-
-- **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
-  15/11), déjà présent avant la masse au sol.
-  `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
-- **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
-  annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
-  `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`
-- **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
-  `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
-  `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
-- **En-tête de licence : étendre le garde-fou** — `check-entete-licence.js` ne lit que `js/` et `sw.js` ; `addons/`
-  et `css/` portent l'en-tête aujourd'hui sans que rien ne l'impose.
-  `qui: Claude · action: ajouter addons/**/*.js et css/*.css au périmètre · depuis: 13/11/2026 · taille: XS`
-
-- **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
-  d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
-  `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
-  `qui: KARMA · action: coller en console la ligne tags / clés / nombre de points envoyée le 12/11 · fini: cause
-  identifiée, test rouge puis vert · depuis: 12/11/2026 · taille: S`
-- **Sonar : porte en échec sur une fausse alerte** — scan de rattrapage de la v2.25.0 : une seule anomalie de
-  fiabilité, `js/verifierPlan.js > _identite`, S7758 (`codePointAt`). Ne pas suivre : l'empreinte FNV se calcule sur
-  les unités UTF-16, `codePointAt` changerait l'identité des objets ignorés (types avec emoji). Sécurité : 0.
-  `qui: Claude · action: NOSONAR commenté sur la ligne (décision KARMA du 12/11), session Dev · fini: porte verte au
-  prochain scan · depuis: 12/11/2026 · taille: XS`
-- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
-  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
-  des niveaux, et correction du message faux `prof.incoherent.suite`. Après la mise en prod de la v2.25.0 (gel).
-  `qui: KARMA · action: valider la proposition · depuis: 12/11/2026 · taille: S`
-- **Connexions IndexedDB jamais fermées** — audit pro
-  `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `planRegistry.js > _openIDB` ouvre une
-  connexion à chaque appel, jamais fermée. (Le splash, lui, reste bloquant : décision du 12/11/2026.)
-  `qui: Claude · action: une connexion partagée, rouverte si fermée · depuis: 06/11/2026 · taille: S`
-- **Rotation 2D : redessin inutile et geste lourd** — enquête du 06/11 (plantage non reproduit) : `mapBearing.js >
-  _majPaddingUnRenderer` vide et redessine le canvas des vecteurs 2 fois par rotation sans changement (mémoire qui monte
-  sous WebKit) ; au téléphone, ~1 500 couches de POI + `--kta-bearing` sur toute la carte figent le geste (jusqu'à 1,7 s).
-  `qui: Claude · action: a) supprimer le redessin inutile (risque faible) ; b) et c) en QCM · depuis: 06/11/2026
-  · taille: S`
-- **Mode « strict » des jonctions, par plan** — la règle stricte du 05/11 n'a pas réglé l'itinéraire de KARMA qui
-  traverse un mur. Idée KARMA : tolérance 0, deux tracés qui ne se touchent pas = réseau coupé (seuls sommets partagés
-  et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).
-  `qui: Claude · action: rejouer l'itinéraire réel, puis topo (réglage Générateur + par plan, Raccords à vérifier)
-  · depuis: 06/11/2026 · taille: S`
-- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
-  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
-  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône). Recos validées par KARMA le 12/11/2026.
-  `qui: Claude · action: coder les 4 recos (export avancé et PDF) · fini: point précis dessiné à l'export, checkup
-  · depuis: 06/11/2026 · taille: S`
-- **Jonctions qui traversent un mur dessiné** — ✅ vu 05/11 (code) : les liens de jonction imparfaite
-  (pathfinder.js > _enrichirGrapheAvecCroisements) ne testent ni les murs en ligne ni les zones inaccessibles, qui
-  ne bloquent que le long des tracés.
-  `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
-  fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
-
-- **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
-  principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
-  (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
-  `qui: Claude · action: topo (ce que masque hidden aujourd'hui, ce qui manque) · depuis: 01/11/2026 · taille: S`
