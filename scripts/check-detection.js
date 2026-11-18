@@ -13,8 +13,9 @@
  * trait de la couleur d'un pilier (le pilier reste une masse, le trait ne le traverse pas), ergot, bruit, trait sur
  * plusieurs blocs raccordé. Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
- * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie (limite mesurée) ; recalcul sur
- * les blocs gardés sans relecture.
+ * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
+ * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
+ * trait de la couleur des piliers ; recalcul sur les blocs gardés sans relecture.
  * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs, sans comblement des trous,
  * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
  *
@@ -214,7 +215,8 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   t("ouverture : l'appendice n'allonge pas la masse", r.masses.length === 1 && boiteDe(r.masses[0])[2] <= 150.01,
     r.masses[0] && boiteDe(r.masses[0]));
   // contre-épreuve : sans ouverture (côté 1), le contour creux sort
-  r = await lancer(bruitee, { reglages: { aireMin: 100, ouverture: 1 } });
+  // (sans le critère des bandes, qui retire aussi un contour creux : c'est l'ouverture qu'on éprouve ici)
+  r = await lancer(bruitee, { reglages: { aireMin: 100, ouverture: 1, bandes: false } });
   t("contre-épreuve : sans ouverture, le contour creux est pris pour une masse", r.masses.length >= 2, r.masses.length);
 
   // ── Aire minimale ──
@@ -372,16 +374,33 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   const exBleu = [bleue.petit, bleue.gros].map((p) =>
     D.mesurerExemple(lecteurSync(bleue.img), p.x + p.w / 2, p.y + p.h / 2));
   const dBleu = D.reglagesDepuisExemples({ a: exBleu }, { a: "masse" });
-  const bleuAvec = async (taille) => trouvesBleu(await D.detecter({ lireBloc: lecteur(bleue.img),
+  const bleueAvec = (taille, bandes) => D.detecter({ lireBloc: lecteur(bleue.img),
     region: { x: 0, y: 0, w: bleue.img.W, h: bleue.img.H }, limites: { w: bleue.img.W, h: bleue.img.H },
-    reglages: D.reglagesPourTaille(taille), classes: [{ id: "a", couleurs: exBleu.map((x) => x.rgb),
-      tolerance: dBleu.tolerances.a }] }));
-  const nBleuDeduit = await bleuAvec(dBleu.taille), nBleu16 = await bleuAvec(16);
-  console.log("ℹ️ scène bleue : taille déduite " + dBleu.taille + " px → " + nBleuDeduit + "/" + bleue.vrais.length +
-    " (bandes soudées aux piliers : limite connue, critère de forme proposé) ; curseur à 16 px → " + nBleu16 + "/" +
-    bleue.vrais.length);
-  t("scène bleue : la taille minimale au-dessus de l'épaisseur des bandes (16 px) retrouve ≥ 85 % des piliers",
-    nBleu16 >= 0.85 * bleue.vrais.length, nBleu16);
+    reglages: Object.assign({ bandes: bandes }, D.reglagesPourTaille(taille)),
+    classes: [{ id: "a", couleurs: exBleu.map((x) => x.rgb), tolerance: dBleu.tolerances.a }] });
+  const rBleu = await bleueAvec(dBleu.taille, true), nBleu = trouvesBleu(rBleu);
+  // une masse dont le centre n'est dans aucun pilier = une bande (ou un morceau de bande) posée en pilier
+  const horsPilier = rBleu.masses.filter((m) => !bleue.vrais.some((p) => {
+    const cx = m.boite.x + m.boite.w / 2, cy = m.boite.y + m.boite.h / 2;
+    return cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h;
+  }));
+  t("scène bleue, bandes de galerie soudées (6 à 10 px), réglages déduits SANS curseur : " + nBleu + "/" +
+    bleue.vrais.length + " piliers (> 90 %)", nBleu > 0.9 * bleue.vrais.length, { taille: dBleu.taille });
+  t("scène bleue : aucune bande posée en pilier (toute masse a son centre dans un pilier)", horsPilier.length === 0,
+    horsPilier.map((m) => m.boite));
+  const nSansCritere = trouvesBleu(await bleueAvec(dBleu.taille, false));
+  t("contre-épreuve : sans le critère des bandes, la scène bleue retombe sous 70 % (" + nSansCritere + "/" +
+    bleue.vrais.length + ")", nSansCritere < 0.7 * bleue.vrais.length);
+  // pilier allongé (12 × 48, épaisseur constante sur son axe) : la pointe libre ne rend rien, il reste un pilier
+  r = await lancer(image(200, 200).rect(60, 40, 12, 48, ORANGE), { reglages: { aireMin: 100, ouverture: 7 } });
+  t("pilier allongé (12 × 48) : jamais pris pour une bande", r.masses.length === 1, r.masses.map(boiteDe));
+  // front (4 px) et mur levé en trait (10 px) de la couleur des piliers : la classe trait les voit toujours, et le
+  // mur n'est pas posé en pilier
+  r = await lancer(image(500, 300).rect(40, 40, 40, 40, ORANGE).rect(20, 150, 440, 4, ORANGE)
+    .rect(20, 220, 440, 10, ORANGE), { classes: [{ id: "a", couleurs: [ORANGE], tolerance: 14 },
+    { id: "f", nature: "trait", couleurs: [ORANGE], tolerance: 14 }], reglages: { aireMin: 100, ouverture: 7 } });
+  t("front et mur en trait de la couleur des piliers : 1 pilier (le mur n'en est pas un), 2 fronts trouvés",
+    r.masses.length === 1 && r.traits.length === 2, { masses: r.masses.map(boiteDe), traits: r.traits.length });
 
   // ── Recalcul sur les blocs gardés : pas de relecture de l'image ──
   let lectures = 0;

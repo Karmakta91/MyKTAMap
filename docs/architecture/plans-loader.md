@@ -828,10 +828,19 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
   les morceaux bout à bout (même classe, bouts à moins de 2 px).
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
-  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; 🩸 une
-  bande de galerie de la couleur des piliers, plus épaisse que l'ouverture, se soude aux piliers qu'elle touche
-  (scène fabriquée : 37 piliers sur 54 ; curseur « Taille minimale » au-dessus de l'épaisseur des bandes : 53 sur 54,
-  mais les piliers plus petits sont perdus). Critère de forme proposé, pas codé.
+  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
+  d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par
+  une bande peut sortir en deux morceaux.
+- ⚠️ **Bandes** (décision produit) : une bande de galerie (ou un mur levé en trait) de la couleur des piliers, plus
+  épaisse que l'ouverture, se soudait aux piliers qu'elle touche. Après l'ouverture, `_retirerBandes` examine les
+  composantes ALLONGÉES ou PEU REMPLIES (les piliers compacts sont sautés : sur tout le bloc, le coût montait jusqu'à
+  +146 %), chacune dans son cadre : distance au bord (chanfrein 3-4), squelette, branches découpées en TRONÇONS où
+  l'épaisseur reste à 30 % de sa moyenne courante (une bande qui traverse un pilier donne une seule branche).
+  Un tronçon d'écart-type < 20 % de sa moyenne et plus long que 4 × son épaisseur est un trait : effacé (disque de
+  rayon = distance au bord). Un bout qui entre dans un pilier ou sort par le bord du bloc rend une épaisseur à la
+  longueur (la transition est hors du tronçon) ; un bout libre ne rend rien. Option `bandes: false` : sans le
+  critère (contre-épreuve). Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
+  Surcoût mesuré (iPhone émulé ×4) : +11 à +21 % sans bande, +50 à +76 % quand des bandes sont soudées.
 - **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
   2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms

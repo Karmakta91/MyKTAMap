@@ -11,6 +11,8 @@
 // extérieur suivi sur les BORDS des pixels (aire exacte), Douglas-Peucker à `simplification`.
 // Traits (classe nature "trait") : couleur du trait MOINS les masses pleines, fermeture, squelette (Zhang-Suen),
 // chemins sans ergots ni bruit, découpés au cœur du bloc puis raccordés bout à bout entre blocs.
+// Bandes de la couleur des piliers (galerie, mur en trait) retirées par leur forme (_retirerBandes : tronçons du
+// squelette d'épaisseur constante plus longs que 4 × cette épaisseur).
 // Réglages déduits des exemples touchés (mesurerExemple, reglagesDepuisExemples, reglagesPourTaille) ; recalcul sur
 // les blocs gardés par l'exécuteur, sans relire l'image (recalculer).
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
@@ -223,6 +225,7 @@
       if (trouMax > 0) _comblerTrous(m, W, H, trouMax);
       _passe(m, tmp, W, H, R, true);
       _passe(tmp, m, W, H, R, false);
+      if (o.reglages.bandes !== false) _retirerBandes(m, W, H);
       if (pleins) for (let i = 0; i < N; i++) if (m[i]) pleins[i] = 1;
       vu.fill(0);
       for (let p = 0; p < N; p++) {
@@ -267,6 +270,115 @@
       });
     });
     return { masses: masses, tropGrands: tropGrands, ignorees: ignorees, traits: traits };
+  }
+
+  // ── Bandes : un trait de la couleur des piliers (galerie, mur levé en trait) n'est pas une masse ──
+  // ⚠️ contrat (décision produit) : un tronçon du squelette d'épaisseur presque constante (écart-type < BANDE_ECART
+  //   de la moyenne) sur une longueur > BANDE_LONGUEUR × son épaisseur est un trait ; ses pixels sont retirés de la
+  //   masse (disque de rayon = distance au bord autour du tronçon). Les piliers soudés à une bande s'en détachent,
+  //   les petits restent (squelette court).
+  // 🩸 Par TRONÇONS, pas par branche entière : une bande qui traverse un pilier donne une seule branche (pas de
+  //   carrefour), bande et pilier mêlés ; l'écart-type de la branche la rejetait en bloc (mesuré : 41 piliers sur 54).
+  //   Un tronçon s'arrête où l'épaisseur s'écarte de plus de BANDE_RUPTURE de sa moyenne courante (entrée dans un
+  //   pilier) ; on n'efface jamais au-delà, le pilier n'est pas entamé.
+  const BANDE_ECART = 0.2, BANDE_LONGUEUR = 4, BANDE_RUPTURE = 0.3;
+  function _distance(m, W, H) {   // chanfrein 3-4 (unités : 3 par pixel), 0 hors masse
+    const d = new Int32Array(W * H);
+    for (let i = 0; i < W * H; i++) d[i] = m[i] ? 1e6 : 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (!d[i]) continue;
+      const g = x > 0 ? d[i - 1] : 0, h = y > 0 ? d[i - W] : 0;
+      const hg = x > 0 && y > 0 ? d[i - W - 1] : 0, hd = x < W - 1 && y > 0 ? d[i - W + 1] : 0;
+      d[i] = Math.min(d[i], g + 3, h + 3, hg + 4, hd + 4);
+    }
+    for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) {
+      const i = y * W + x;
+      if (!d[i]) continue;
+      const dr = x < W - 1 ? d[i + 1] : 0, b = y < H - 1 ? d[i + W] : 0;
+      const bd = x < W - 1 && y < H - 1 ? d[i + W + 1] : 0, bg = x > 0 && y < H - 1 ? d[i + W - 1] : 0;
+      d[i] = Math.min(d[i], dr + 3, b + 3, bd + 4, bg + 4);
+    }
+    return d;
+  }
+  // 🩸 Squelette et distance coûtent cher sur tout le bloc (mesuré : jusqu'à +146 % de temps) : seules les
+  //   composantes ALLONGÉES (longueur > 3 × épaisseur estimée aire / longueur) ou PEU REMPLIES (aire < moitié de leur
+  //   boîte : bande oblique, pilier soudé à une bande) sont examinées, chacune dans son cadre.
+  function _retirerBandes(m, W, H) {
+    const N = W * H, vu = new Uint8Array(N);
+    let retires = 0;
+    for (let p = 0; p < N; p++) {
+      if (!m[p] || vu[p]) continue;
+      const px = [p];
+      vu[p] = 1;
+      let x0 = W, y0 = H, x1 = -1, y1 = -1;
+      for (let k = 0; k < px.length; k++) {
+        const q = px[k], qx = q % W, qy = (q - qx) / W;
+        if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
+        if (qx > 0 && m[q - 1] && !vu[q - 1]) { vu[q - 1] = 1; px.push(q - 1); }
+        if (qx < W - 1 && m[q + 1] && !vu[q + 1]) { vu[q + 1] = 1; px.push(q + 1); }
+        if (qy > 0 && m[q - W] && !vu[q - W]) { vu[q - W] = 1; px.push(q - W); }
+        if (qy < H - 1 && m[q + W] && !vu[q + W]) { vu[q + W] = 1; px.push(q + W); }
+      }
+      const bw = x1 - x0 + 1, bh = y1 - y0 + 1, L = Math.max(bw, bh), aire = px.length;
+      if (!(L > 3 * (aire / L) || aire < 0.5 * bw * bh)) continue;   // pilier compact : rien à chercher
+      // cadre de la composante, 1 px de marge
+      const cw = bw + 2, chh = bh + 2, c = new Uint8Array(cw * chh);
+      px.forEach(function (q) { const qx = q % W, qy = (q - qx) / W; c[(qy - y0 + 1) * cw + (qx - x0 + 1)] = 1; });
+      retires += _bandesCadre(c, cw, chh, x0 - 1, y0 - 1, W, H);
+      px.forEach(function (q) { const qx = q % W, qy = (q - qx) / W; m[q] = c[(qy - y0 + 1) * cw + (qx - x0 + 1)]; });
+    }
+    return retires;
+  }
+  // Une composante dans son cadre (W × H), placé en (ox, oy) dans un bloc Wb × Hb.
+  function _bandesCadre(m, W, H, ox, oy, Wb, Hb) {
+    const dist = _distance(m, W, H);
+    const S = new Uint8Array(m);
+    _squelette(S, W, H);
+    let retires = 0;
+    const effacer = function (i) {
+      const r = Math.ceil(dist[i] / 3) + 1, cx = i % W, cy = (i - cx) / W;
+      for (let y = Math.max(0, cy - r); y <= Math.min(H - 1, cy + r); y++) {
+        for (let x = Math.max(0, cx - r); x <= Math.min(W - 1, cx + r); x++) {
+          if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r && m[y * W + x]) { m[y * W + x] = 0; retires++; }
+        }
+      }
+    };
+    const auBord = function (i) {   // bord du BLOC, pas du cadre
+      const x = ox + (i % W), y = oy + Math.floor(i / W);
+      return x <= 1 || y <= 1 || x >= Wb - 2 || y >= Hb - 2;
+    };
+    // tronçon [a, b[ d'une branche : un trait si assez long pour son épaisseur et d'épaisseur régulière.
+    // 🩸 Un bout qui entre dans une zone plus épaisse (pilier) ou sort par le bord du bloc rend une épaisseur à la
+    //   longueur : la transition, où la bande s'élargit, est hors du tronçon (pont court entre deux piliers mesuré
+    //   sous 4 ×). Un bout LIBRE ne rend rien : la pointe d'un pilier allongé reste un pilier.
+    const juger = function (ch, ep, a, b) {
+      const L = b - a;
+      if (L < 4) return;
+      let s = 0, s2 = 0;
+      for (let j = a; j < b; j++) { s += ep[j]; s2 += ep[j] * ep[j]; }
+      const moy = s / L, ecart = Math.sqrt(Math.max(0, s2 / L - moy * moy));
+      const rendu = ((a > 0 && ep[a - 1] > moy) || (a === 0 && auBord(ch[0])) ? moy : 0) +
+        ((b < ch.length && ep[b] > moy) || (b === ch.length && auBord(ch[ch.length - 1])) ? moy : 0);
+      if (moy > 0 && ecart <= BANDE_ECART * moy && L + rendu > BANDE_LONGUEUR * moy) {
+        for (let j = a; j < b; j++) effacer(ch[j]);
+      }
+    };
+    _chemins(S, W, H).forEach(function (t) {
+      const ch = t.ch;
+      if (ch.length < 8) return;
+      const ep = ch.map(function (i) { return (2 * dist[i]) / 3; });
+      let a = 0, s = ep[0], n2 = 1;
+      for (let j = 1; j < ch.length; j++) {
+        const moy = s / n2;
+        if (Math.abs(ep[j] - moy) > BANDE_RUPTURE * moy) {   // rupture : entrée ou sortie d'un pilier
+          juger(ch, ep, a, j);
+          a = j; s = ep[j]; n2 = 1;
+        } else { s += ep[j]; n2++; }
+      }
+      juger(ch, ep, a, ch.length);
+    });
+    return retires;
   }
 
   // ── Traits (fronts) ──

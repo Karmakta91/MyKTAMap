@@ -4,7 +4,8 @@
 // checkup-detection.js — « Détecter les piliers » dans l'app réelle (js/detectionStructures.js)
 // =====================================================================
 // Relevé fictif seulement. Le checkup FABRIQUE une scène connue (12 piliers orange dont un à pastille, 4 gris, 2 fronts
-// orange de la couleur des piliers, plus un point trop petit et un contour creux gris qui ne doivent pas sortir) et la
+// orange de la couleur des piliers, une bande grise soudée à deux piliers gris, plus un point trop petit et un contour
+// creux gris qui ne doivent pas sortir) et la
 // prête au plan en tuiles V2 (Blob dans RUNTIME_ASSETS, comme un ZIP), puis, sous chaque moteur de KTA_MOTEURS :
 //   1. entrée outil Structures : pipette (Masse A, Masse B, Front) en touchant la carte, cadre par deux coins ;
 //   2. aperçu : 16 piliers et 2 fronts, RIEN d'écrit avant « Valider » ; un toucher en retire un ;
@@ -46,6 +47,7 @@ const SCENE = {
   orange: [], gris: [],
   pastille: { c: 0, r: 0 }, petit: [20, 300, 6, 6], creux: [120, 300, 80, 80, 3],
   fronts: [[[20, 400], [600, 400]], [[455, 160], [455, 380]]], epaisseur: 4,
+  bande: [470, 56, 145, 8],   // bande de galerie grise soudée aux deux piliers gris du haut : jamais un pilier
   cadre: [5, 5, 620, 430]
 };
 for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) SCENE.orange.push([20 + c * 110, 20 + r * 90, 50, 40]);
@@ -89,7 +91,9 @@ async function preterScene(page) {
       S.fronts.forEach(function (f) {
         k.beginPath(); k.moveTo(O.x + f[0][0], O.y + f[0][1]); k.lineTo(O.x + f[1][0], O.y + f[1][1]); k.stroke();
       });
-      k.fillStyle = "#969696";   // contour creux GRIS : masse B, jamais un trait
+      k.fillStyle = "#969696";
+      k.fillRect(O.x + S.bande[0], O.y + S.bande[1], S.bande[2], S.bande[3]);
+      // contour creux GRIS : masse B, jamais un trait
       const c = S.creux;
       k.fillRect(O.x + c[0], O.y + c[1], c[2], c[4]); k.fillRect(O.x + c[0], O.y + c[1] + c[3] - c[4], c[2], c[4]);
       k.fillRect(O.x + c[0], O.y + c[1], c[4], c[3]); k.fillRect(O.x + c[0] + c[2] - c[4], O.y + c[1], c[4], c[3]);
@@ -277,7 +281,7 @@ async function suite(nav) {
     "front horizontal : un trait d'un tenant, bouts à 4 px près", fh && fh.points);
   verifier(poses.every(function (x) { return /^st_/.test(x.uid || "") && Number.isFinite(x.maj); }),
     "chaque structure a son uid et son updatedAt");
-  const gx = O.x + g0[0], gy = O.y + g0[1];
+  const g2 = SCENE.gris[2], gx = O.x + g2[0], gy = O.y + g2[1];   // rangée du bas : la bande ne la touche pas
   const gris = poses.find(function (x) {
     const xs = x.points.map(function (p) { return p.x; }), ys = x.points.map(function (p) { return p.y; });
     return Math.abs(Math.min.apply(null, xs) - gx) < 1.5 && Math.abs(Math.min.apply(null, ys) - gy) < 1.5 &&
