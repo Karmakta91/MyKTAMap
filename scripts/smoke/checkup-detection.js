@@ -380,9 +380,15 @@ async function suite(nav) {
                curseur: getComputedStyle(window.map.getContainer()).cursor.indexOf("svg") >= 0 };
     });
   };
+  // Fiche ou bulle ouverte (popup Leaflet, fenêtre de fiche, fenêtre modale affichée).
+  const ficheOuverte = function () {
+    return page.evaluate(function () {
+      const els = document.querySelectorAll(".leaflet-popup, [aria-modal='true'], .kta-fiche-fenetre");
+      return Array.prototype.some.call(els, function (el) { return el.getClientRects().length > 0; });
+    });
+  };
   await page.evaluate(function (o) {
-    // structures posées plus haut retirées (une étape ⏪) : un clic sur l'une d'elles ouvrirait sa fiche
-    window.HistoryManager.undo();
+    // 🩸 les 18 structures posées plus haut RESTENT sur la carte : la pipette touche un pilier déjà validé
     window.map.closePopup();
     // vue remise sur la scène (la rotation éprouvée juste avant a pu la déplacer)
     window.map.fitBounds(L.latLngBounds([window.convertCoord(o.x - 20, o.y - 20),
@@ -397,11 +403,12 @@ async function suite(nav) {
   verifier(visee.classe && visee.curseur, "pipette armée : réticule rouge de précision sur la carte", visee);
   const q2 = SCENE.orange[5];
   await toucher(page, O.x + q2[0] + 0.5, O.y + q2[1] + 0.5);       // pixel du coin du pilier
+  verifier(!(await ficheOuverte()), "pipette sur un pilier déjà posé : sa fiche ne s'ouvre pas");
   await bouton(page, "pipette-f");
   await toucher(page, O.x + 300, O.y + 403);                        // 1 px sous le bord du front de 4 px
   e = await etat(page);
   verifier(e.exemples.a === 1 && e.exemples.f === 1,
-    "pipette sur un coin de pilier et juste à côté d'un front : un exemple chacun, pas « aucune image »",
+    "pipette sur un coin de pilier (déjà posé) et juste à côté d'un front : un exemple chacun, pas « aucune image »",
     { exemples: e.exemples, toasts: await page.evaluate(function () {
       return Array.prototype.map.call(document.querySelectorAll("[class*='toast']"), function (t) {
         return t.textContent;
@@ -420,6 +427,15 @@ async function suite(nav) {
   await page.keyboard.press("Escape");
   await page.waitForTimeout(200);
   verifier(!(await reticule()).classe, "après Échap : réticule retiré");
+  const q3 = SCENE.orange[2];
+  await toucher(page, O.x + q3[0] + q3[2] / 2, O.y + q3[1] + q3[3] / 2);
+  verifier(await ficheOuverte(), "parcours fermé : toucher un pilier posé rouvre sa fiche (retour normal)");
+  await page.evaluate(function () {
+    window.map.closePopup();
+    // structures posées plus haut retirées (une étape ⏪) avant la scène « fond blanc »
+    window.HistoryManager.undo();
+  });
+  await page.waitForTimeout(300);
 
   // ── Fond blanc : piliers blancs cernés d'un trait, fond et galeries de la même couleur ──
   console.log("— fond blanc —");

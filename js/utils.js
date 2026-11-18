@@ -813,6 +813,9 @@ window._modeClicCarteActif = function() {
     if (document.querySelector(".kta-iti-floater")) return true;
     // mode « clic carte » du Mode perdu
     if (document.body && document.body.classList.contains("kta-lost-click-mode")) return true;
+    // pipette et cadre du détecteur de structures (detectionStructures.js > _majCurseur) : le toucher sur un objet
+    // existant est un exemple ou un coin, jamais sa fiche ni un ajustement de ses sommets
+    if (document.body && document.body.classList.contains("kta-detect-pick-mode")) return true;
     // sélection de la position de légende de l'export externe
     if (document.getElementById("kta-export-pick-banner")) return true;
     // le tracé de polygone du Mode Secours gère déjà son stopPropagation + overlay plein écran

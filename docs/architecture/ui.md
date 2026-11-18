@@ -1907,7 +1907,8 @@ zone, aperçu) ; aperçu dans le pane `ktaDetection` (renderer SVG propre, class
 charte ; la pastille d'exemple prend la couleur lue sur le plan), trois curseurs (tolérance, tailles minimale et
 maximale). Pendant la pipette et le cadre, réticule rouge de précision (`body.kta-detect-pick-mode`, ajoutée au
 sélecteur du « Curseur de précision » de `css/style.css` : une classe propre, `kta-precision-mode` étant recalculée
-par `interface.js > _initPrecisionCursor`). Échap ferme, sauf fenêtre affichée au-dessus.
+par `interface.js > _initPrecisionCursor`) ; pendant la visée, toucher un objet déjà posé n'ouvre pas sa fiche (mode
+« clic carte », `utils.js > _modeClicCarteActif`), retour normal à la fermeture. Échap ferme, sauf fenêtre affichée au-dessus.
 Calcul, lecture de l'image, doublons et couleurs par plan : `plans-loader.md` § Détecter les structures. Parcours :
 `scripts/smoke/checkup-detection.js` (Chromium et WebKit). i18n `detect.*` (fr/en/es). Aucune popup native.
 ---

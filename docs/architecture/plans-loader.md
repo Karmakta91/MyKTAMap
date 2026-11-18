@@ -865,7 +865,9 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **Parcours** (`window.KtaDetectionUI`) : bandeau en bas d'écran (style des raccords). Exemples à la pipette
   (Masse A, Masse B, Front : chaque toucher MESURE la composante, fenêtre de 192 px autour du doigt, 640 si elle la
   dépasse ou la remplit ; 6 exemples au plus par classe ; réticule rouge de précision sur la carte pendant la
-  pipette et le cadre, `body.kta-detect-pick-mode`, centre de la croix = pixel lu) → cadre par deux coins ou « Tout
+  pipette et le cadre, `body.kta-detect-pick-mode`, centre de la croix = pixel lu ; cette classe est un mode « clic
+  carte » (`utils.js > _modeClicCarteActif`) : un toucher sur une structure, un tracé ou un POI déjà posés est un
+  exemple ou un coin, jamais sa fiche ni un ajustement de sommets) → cadre par deux coins ou « Tout
   le plan » (au-delà de 4 096² px : mi-résolution, confirmé) → aperçu dans le pane `ktaDetection` (renderer SVG
   propre : la carte est en canvas, où l'aperçu ne serait ni touchable ni stylé) avec trois curseurs, **Tolérance de
   couleur**, **Taille minimale** et **Taille maximale**, partis des réglages déduits : un curseur relâché recalcule
