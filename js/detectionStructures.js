@@ -4,22 +4,20 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// detectionStructures.js — « Détecter » piliers et fronts sur l'image du plan (mode plan) : exemples à la pipette,
-// cadre
-// (deux coins) ou tout le plan, calcul par js/ktaDetection.js (worker), aperçu superposé, « Valider ».
-// Ouvert depuis l'outil Structures et depuis l'📊 Éditeur de données : un seul parcours (décision produit).
-// ⚠️ contrat (décision produit) : rien n'est écrit avant « Valider » ; puis UNE étape ⏪ pour tout annuler. Niveau de
-//   chaque structure posée : structures.js > ktaNiveauNouvelleStructure (même règle que le tracé à la main).
-// ⚠️ contrat : couleurs retenues PAR PLAN sur l'appareil (PREFIXE + id du plan), jamais dans la session ni dans
-//   l'export du profil (profileExportImport.js les exclut) ; retirées avec le plan (planRegistry.js >
-//   purgeAssociatedData).
-// 🩸 Image lue par tiling.js > ktaDessinerRegionPlan (calques du niveau actif, tuiles V2, image du fond) en pixels du
-//   plan : aucune conversion ; convertCoord seulement pour l'aperçu.
-// 🩸 La vue tourne-t-elle ? Redressée et rotation bloquée pendant le parcours (MapBearing.suspend) : le cadre se
-//   trace droit dans le repère du plan.
-// Écarte ce qui recouvre déjà une structure du même niveau (session et calques) : relancer ne double rien.
-// Réglages déduits des exemples touchés ; deux curseurs dans l'aperçu (tolérance, taille minimale) recalculent sur
-// les blocs déjà lus. Expose : window.KtaDetectionUI = { ouvrir, fermer, etat, PREFIXE }.
+// detectionStructures.js — « Détecter » piliers et fronts sur une image : exemples à la pipette, cadre (deux coins)
+// ou tout le plan, calcul par js/ktaDetection.js (worker), aperçu superposé, « Valider ». Ouvert depuis l'outil
+// Structures et l'📊 Éditeur de données (un seul parcours, décision produit).
+// ⚠️ contrat : tout ce qui touche au plan passe par un CONTEXTE (ouvrir(ctx) ; absent = contextePlan(), le plan
+//   ouvert) — sa forme : au-dessus de contextePlan.
+// ⚠️ contrat (décision produit) : rien n'est écrit avant « Valider » ; en mode plan, UNE étape ⏪ pour tout annuler.
+//   Niveau de chaque structure : structures.js > ktaNiveauNouvelleStructure (même règle que le tracé à la main).
+// ⚠️ contrat : couleurs retenues par plan sur l'appareil (PREFIXE + ctx.cle), jamais dans la session ni dans l'export
+//   du profil (profileExportImport.js les exclut) ; retirées avec le plan (planRegistry.js > purgeAssociatedData).
+// 🩸 Mode plan : image lue par tiling.js > ktaDessinerRegionPlan (calques du niveau actif, tuiles V2, fond) en pixels
+//   du plan ; la vue est redressée et sa rotation bloquée pendant le parcours (MapBearing.suspend).
+// Écarte ce qui recouvre déjà une structure du même niveau : relancer ne double rien. Réglages déduits des exemples ;
+// trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus.
+// Expose : window.KtaDetectionUI = { ouvrir(ctx?), fermer, etat, contextePlan, PREFIXE }.
 // Garde-fous : scripts/smoke/checkup-detection.js, scripts/check-detection.js · Doc : plans-loader.md (Détecter).
 
 window.KtaDetectionUI = (function () {
@@ -43,10 +41,72 @@ window.KtaDetectionUI = (function () {
   const _toast = function (msg, type) {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, type);
   };
-  let _e = null;   // parcours ouvert : { etape, couleurs, pipette, coins, couche, bandeau, apercu, ctrl }
+  let _e = null;   // parcours ouvert : { ctx, etape, couleurs, pipette, coins, couche, bandeau, apercu, ctrl }
+
+  // ── Contexte du plan ouvert (session, carte du plan, image par tiling.js) ──
+  // Forme d'un contexte : { carte (L.Map, CRS.Simple), largeur, hauteur (px de l'image lue), versCarte(x, y) → LatLng,
+  //   depuisCarte(latlng) → { x, y }, dessiner(ctx2d, region, echelle) → Promise<{ ok }>, multi, niveau(type) →
+  //   entier | null, existantes() → [{ type, points, level }], pxParM() → nombre | null, cle (couleurs retenues),
+  //   poser(structures) → nombre de masquées, refuse() → bool, entrer(), sortir(), parent (reçoit le bandeau) }.
+  function contextePlan() {
+    const C = window.APP_CONFIG;
+    if (!window.map || !C || typeof window.ktaDessinerRegionPlan !== "function") return null;
+    const multi = C.multiLevel === true;
+    return {
+      carte: window.map, largeur: C.imageWidth, hauteur: C.imageHeight, multi: multi,
+      cle: window._currentLoadedPlanId || "default", parent: document.body,
+      versCarte: function (x, y) { return window.convertCoord(x, y); },
+      depuisCarte: function (ll) { return { x: ll.lng, y: C.imageHeight - ll.lat }; },
+      // calques du niveau actif, tuilés ou non
+      dessiner: function (k, region, echelle) {
+        return window.ktaDessinerRegionPlan(k, region, echelle, { niveau: multi ? (C.activeLevel || 0) : 0 });
+      },
+      niveau: function (type) { return window.ktaNiveauNouvelleStructure(type); },
+      existantes: function () {
+        return (typeof window.getStructures === "function" ? window.getStructures() : [])
+          .concat(window._ktaDataStructurePolygons || []);
+      },
+      pxParM: function () {
+        const tr = window.PLAN_CONFIG && window.PLAN_CONFIG.tracking;   // échelle écrite dans le plan seulement
+        return tr && Number(tr.scale) > 0 ? Number(tr.scale) : null;
+      },
+      refuse: function () {
+        return typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee();   // 🔒 lecture seule
+      },
+      entrer: function () {
+        if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+        if (typeof window.ktaFermerOutils === "function") window.ktaFermerOutils();
+        const B = window.MapBearing;
+        if (B && typeof B.suspend === "function") B.suspend("detection");
+      },
+      sortir: function () {
+        if (window.MapBearing && typeof window.MapBearing.resume === "function") window.MapBearing.resume("detection");
+      },
+      poser: _poserSession
+    };
+  }
+  // Une étape d'historique, puis la session. Rend le nombre de structures posées mais masquées (filtres, niveau).
+  function _poserSession(poses) {
+    const avant = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
+    window.setStructures(window.getStructures().concat(poses));
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(_t("detect.historique", { n: poses.length }), avant, "structures");
+    }
+    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save();
+    // 🩸 Les filtres de niveau et de type passent l'opacité à 0 sans retirer la couche : la couche sur la carte ne
+    //   suffit pas, il faut son opacité et les niveaux affichés.
+    const C = window.APP_CONFIG, multi = C.multiLevel === true;
+    const vis = Array.isArray(C.visibleLevels) ? C.visibleLevels : [C.activeLevel || 0];
+    return poses.filter(function (s) {
+      if (multi && vis.indexOf(Number.isInteger(s.level) ? s.level : 0) < 0) return true;
+      const f = typeof window.ktaFicheObjetDe === "function" ? window.ktaFicheObjetDe(s) : null;
+      const op = f && f.layer && f.layer._map ? f.layer.options : null;
+      return !!f && !(op && ((op.opacity === undefined ? 1 : op.opacity) > 0 || op.fillOpacity > 0));
+    }).length;
+  }
 
   // ── Couleurs par plan (appareil) ──
-  function _planId() { return window._currentLoadedPlanId || "default"; }
+  function _planId() { return _e ? _e.ctx.cle : "default"; }
   function _lireCouleurs() {
     try {
       const o = JSON.parse(localStorage.getItem(PREFIXE + _planId()) || "null");
@@ -75,10 +135,6 @@ window.KtaDetectionUI = (function () {
   function _aDesExemples(c) { return CLASSES.some(function (k) { return c[k].length > 0; }); }
 
   // ── Lecture de l'image ──
-  function _niveau() {
-    const c = window.APP_CONFIG || {};
-    return c.multiLevel === true ? (c.activeLevel || 0) : 0;
-  }
   async function _lireBloc(x, y, w, h, e) {
     if (_e) _e.lectures++;
     const bw = Math.max(1, Math.round(w * e)), bh = Math.max(1, Math.round(h * e));
@@ -87,7 +143,12 @@ window.KtaDetectionUI = (function () {
     const ctx = cv.getContext("2d", { willReadFrequently: true });
     ctx.fillStyle = "#ffffff";   // fond d'image (hors charte : jamais affiché, seulement lu)
     ctx.fillRect(0, 0, bw, bh);
-    const r = await window.ktaDessinerRegionPlan(ctx, { x: x, y: y, w: w, h: h }, e, { niveau: _niveau() });
+    if (!_e) {   // parcours fermé pendant une lecture (le calcul est déjà annulé)
+      const fini = new Error("parcours fermé");
+      fini.name = "AbortError";
+      throw fini;
+    }
+    const r = await _e.ctx.dessiner(ctx, { x: x, y: y, w: w, h: h }, e);
     const d = ctx.getImageData(0, 0, bw, bh);
     // `dessine` : une image a été posée (faux : zone sans image chargée, la fenêtre reste au blanc de fond)
     return { data: d.data, w: bw, h: bh, dessine: !!(r && r.ok) };
@@ -122,16 +183,15 @@ window.KtaDetectionUI = (function () {
     pts.forEach(function (p) { x += p.x; y += p.y; });
     return { x: x / pts.length, y: y / pts.length };
   }
+  function _autreNiveau(s, niveau) {
+    return _e.ctx.multi && niveau !== null && (Number.isInteger(s.level) ? s.level : 0) !== niveau;
+  }
   function _existantes(niveau) {
-    const multi = window.APP_CONFIG && window.APP_CONFIG.multiLevel === true;
     const out = [];
-    const prendre = function (s) {
-      if (!s || !Array.isArray(s.points) || s.points.length < 3) return;
-      if (multi && niveau !== null && (Number.isInteger(s.level) ? s.level : 0) !== niveau) return;
+    _e.ctx.existantes().forEach(function (s) {
+      if (!s || !Array.isArray(s.points) || s.points.length < 3 || _autreNiveau(s, niveau)) return;
       out.push({ points: s.points, c: _centre(s.points) });
-    };
-    (typeof window.getStructures === "function" ? window.getStructures() : []).forEach(prendre);
-    (window._ktaDataStructurePolygons || []).forEach(prendre);
+    });
     return out;
   }
   // Fronts existants du même niveau (polylignes, session et calques) ; un front détecté est « déjà là » si ses
@@ -142,16 +202,12 @@ window.KtaDetectionUI = (function () {
     return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
   }
   function _existantsTraits(niveau) {
-    const multi = window.APP_CONFIG && window.APP_CONFIG.multiLevel === true;
     const ligne = function (t) {
       return typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t);
     };
-    return (typeof window.getStructures === "function" ? window.getStructures() : [])
-      .concat(window._ktaDataStructurePolygons || [])
-      .filter(function (s) {
-        return s && ligne(s.type) && Array.isArray(s.points) && s.points.length >= 2 &&
-          !(multi && niveau !== null && (Number.isInteger(s.level) ? s.level : 0) !== niveau);
-      });
+    return _e.ctx.existantes().filter(function (s) {
+      return s && ligne(s.type) && Array.isArray(s.points) && s.points.length >= 2 && !_autreNiveau(s, niveau);
+    });
   }
   function _traitDejaPresent(m, existants) {
     const pts = [];
@@ -177,7 +233,7 @@ window.KtaDetectionUI = (function () {
   // 🩸 Renderer SVG propre : la carte est en canvas (preferCanvas), où className ne fait rien et aucun élément ne
   //   reçoit le toucher ; l'aperçu doit être touchable objet par objet et stylé par la feuille de style.
   function _couche() {
-    const map = window.map;
+    const map = _e.ctx.carte;
     if (!map.getPane("ktaDetection")) {
       const p = map.createPane("ktaDetection");
       p.style.zIndex = "650";
@@ -192,14 +248,14 @@ window.KtaDetectionUI = (function () {
     if (_e.coins.length !== 1) return;
     const p = _e.coins[0];
     const c = _couche();
-    L.circleMarker(window.convertCoord(p.x, p.y), { pane: "ktaDetection", renderer: _e.rendu, radius: 6,
+    L.circleMarker(_e.ctx.versCarte(p.x, p.y), { pane: "ktaDetection", renderer: _e.rendu, radius: 6,
       className: "kta-detect-coin", interactive: false }).addTo(c);
   }
   function _dessinerApercu() {
     _viderCouche();
     const a = _e.apercu, c = _couche();
     a.objets.forEach(function (m, i) {
-      const ll = m.points.map(function (p) { return window.convertCoord(p.x, p.y); });
+      const ll = m.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); });
       const opts = { pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false,
         className: "kta-detect-apercu kta-detect-classe-" + m.classe + (m.trait ? " kta-detect-trait" : "") +
           (a.retires.has(i) ? " kta-detect-retire" : "") };
@@ -341,7 +397,7 @@ window.KtaDetectionUI = (function () {
   // ── Carte : pipette et coins du cadre ──
   async function _onClic(ev) {
     if (!_e || !ev || !ev.latlng) return;
-    const x = ev.latlng.lng, y = window.APP_CONFIG.imageHeight - ev.latlng.lat;
+    const pt = _e.ctx.depuisCarte(ev.latlng), x = pt.x, y = pt.y;
     if (_e.etape === "exemples" && _e.pipette) {
       const c = _e.pipette, ex = await _exempleEn(x, y);
       if (!_e) return;
@@ -361,7 +417,7 @@ window.KtaDetectionUI = (function () {
   }
 
   async function _toutLePlan() {
-    const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
+    const W = _e.ctx.largeur, H = _e.ctx.hauteur;
     const grand = W * H > SURFACE_PLEINE;
     if (grand) {
       const ok = await window.ktaConfirm(_t("detect.tout.confirm"), { titre: _t("detect.titre") });
@@ -386,7 +442,7 @@ window.KtaDetectionUI = (function () {
     try {
       const res = await window.KtaDetection.detecter({
         lireBloc: _lireBloc, region: region, echelle: echelle,
-        limites: { w: window.APP_CONFIG.imageWidth, h: window.APP_CONFIG.imageHeight },
+        limites: { w: e.ctx.largeur, h: e.ctx.hauteur },
         classes: _classes(), reglages: _reglages(), executeur: ex, garder: true,
         signal: e.ctrl.signal,
         onProgres: function (i, n) { if (_e === e) { e.progres = [i, n]; _majBandeau(); } }
@@ -413,10 +469,7 @@ window.KtaDetectionUI = (function () {
   // ⚠️ contrat (décision produit) : chaque toucher de pipette mesure la composante touchée ; tolérance et taille
   //   minimale en découlent. Un curseur bougé l'emporte, retenu avec les couleurs du plan, jusqu'au prochain exemple.
   function _natures() { return { a: "masse", b: "masse", f: "trait" }; }
-  function _pxParM() {
-    const tr = window.PLAN_CONFIG && window.PLAN_CONFIG.tracking;   // échelle écrite dans le plan seulement
-    return tr && Number(tr.scale) > 0 ? Number(tr.scale) : null;
-  }
+  function _pxParM() { return _e.ctx.pxParM(); }
   function _deduits() {
     const ex = {};
     CLASSES.forEach(function (c) { ex[c] = _e.couleurs[c]; });
@@ -481,12 +534,12 @@ window.KtaDetectionUI = (function () {
     const objets = [];
     let deja = 0;
     res.masses.forEach(function (m) {
-      const niv = window.ktaNiveauNouvelleStructure(types[m.classe]), cle = String(niv);
+      const niv = _e.ctx.niveau(types[m.classe]), cle = String(niv);
       if (!surfaces[cle]) surfaces[cle] = _existantes(niv);
       if (_dejaPresente(m, surfaces[cle])) deja++; else objets.push({ classe: m.classe, points: m.points });
     });
     (res.traits || []).forEach(function (m) {
-      const niv = window.ktaNiveauNouvelleStructure(types[m.classe]), cle = String(niv);
+      const niv = _e.ctx.niveau(types[m.classe]), cle = String(niv);
       if (!lignes[cle]) lignes[cle] = _existantsTraits(niv);
       if (_traitDejaPresent(m, lignes[cle])) deja++;
       else objets.push({ classe: m.classe, points: m.points, trait: true });
@@ -495,60 +548,39 @@ window.KtaDetectionUI = (function () {
                   ecartees: res.ecartees || 0 };
   }
 
-  // ── Validation : une étape d'historique, puis la session ──
+  // ── Validation : les structures gardées, écrites par le contexte (mode plan : une étape ⏪, puis la session) ──
   function _valider() {
     const a = _e && _e.apercu;
-    if (!a) return;
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return;   // 🔒 lecture seule
-    const avant = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
-    const arr = window.getStructures().slice(), poses = [];
+    if (!a || _e.ctx.refuse()) return;
+    const poses = [];
     a.objets.forEach(function (m, i) {
       if (a.retires.has(i)) return;
       const s = { type: a.types[m.classe], points: m.points.map(function (p) { return { x: p.x, y: p.y }; }) };
-      const niv = window.ktaNiveauNouvelleStructure(s.type);
+      const niv = _e.ctx.niveau(s.type);
       if (niv !== null) s.level = niv;
       window.KtaUid.ensure(s, "st");
       window.KtaUid.touch(s);
-      arr.push(s);
       poses.push(s);
     });
     if (!poses.length) return;
     _lacherExecuteur();
-    window.setStructures(arr);
-    if (window.HistoryManager && avant) {
-      window.HistoryManager.record(_t("detect.historique", { n: poses.length }), avant, "structures");
-    }
-    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save();
     // Posées mais masquées (filtres, niveau) : le dire, sinon « rien n'est apparu ».
-    // 🩸 Les filtres de niveau et de type passent l'opacité à 0 sans retirer la couche : la couche sur la carte ne
-    //   suffit pas, il faut son opacité et les niveaux affichés.
-    const multi = window.APP_CONFIG.multiLevel === true;
-    const vis = Array.isArray(window.APP_CONFIG.visibleLevels) ? window.APP_CONFIG.visibleLevels
-      : [window.APP_CONFIG.activeLevel || 0];
-    const masquees = poses.filter(function (s) {
-      if (multi && vis.indexOf(Number.isInteger(s.level) ? s.level : 0) < 0) return true;
-      const f = typeof window.ktaFicheObjetDe === "function" ? window.ktaFicheObjetDe(s) : null;
-      const op = f && f.layer && f.layer._map ? f.layer.options : null;
-      return !!f && !(op && ((op.opacity === undefined ? 1 : op.opacity) > 0 || op.fillOpacity > 0));
-    }).length;
+    const masquees = _e.ctx.poser(poses) || 0;
     fermer();
     _toast(_t("detect.toast.poses", { n: poses.length }), "success");
     if (masquees) _toast(_t("detect.toast.masquees", { n: masquees }), "warn");
   }
 
   // ── Ouverture / fermeture ──
-  function ouvrir() {
+  function ouvrir(contexte) {
     if (_e) return true;
-    if (!window.map || !window.APP_CONFIG || !window.KtaDetection ||
-        typeof window.ktaDessinerRegionPlan !== "function") {
-      return false;
-    }
-    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;   // 🔒 lecture seule
-    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
-    if (typeof window.ktaFermerOutils === "function") window.ktaFermerOutils();
-    if (window.MapBearing && typeof window.MapBearing.suspend === "function") window.MapBearing.suspend("detection");
-    _e = { etape: "exemples", couleurs: _lireCouleurs(), pipette: null, coins: [], couche: null, apercu: null,
+    const ctx = contexte || contextePlan();
+    if (!ctx || !window.KtaDetection) return false;
+    if (ctx.refuse()) return false;
+    ctx.entrer();
+    _e = { ctx: ctx, etape: "exemples", couleurs: null, pipette: null, coins: [], couche: null, apercu: null,
            ctrl: null, progres: [0, 1], lectures: 0, recalculs: 0, ex: null, curseurs: null };
+    _e.couleurs = _lireCouleurs();
     if (!_aDesExemples(_e.couleurs)) _e.pipette = "a";
     const b = document.createElement("div");
     b.id = "kta-detect-bandeau";
@@ -558,9 +590,9 @@ window.KtaDetectionUI = (function () {
     b.addEventListener("click", _onBandeau);
     b.addEventListener("change", _onType);
     b.addEventListener("input", _onCurseur);
-    document.body.appendChild(b);
+    (ctx.parent || document.body).appendChild(b);
     _e.bandeau = b;
-    window.map.on("click", _onClic);
+    ctx.carte.on("click", _onClic);
     document.addEventListener("keydown", _onKey, true);
     _majBandeau();
     return true;
@@ -580,11 +612,12 @@ window.KtaDetectionUI = (function () {
     _lacherExecuteur();
     if (_e.couche) _e.couche.remove();
     if (_e.bandeau) _e.bandeau.remove();
-    if (window.map) window.map.off("click", _onClic);
+    const ctx = _e.ctx;
+    ctx.carte.off("click", _onClic);
     document.removeEventListener("keydown", _onKey, true);
     _e = null;
     _majCurseur();
-    if (window.MapBearing && typeof window.MapBearing.resume === "function") window.MapBearing.resume("detection");
+    ctx.sortir();
   }
   // Réticule rouge de précision (css/style.css > « Curseur de précision ») pendant la pipette et le cadre : le centre
   // de la croix (hotspot 14,14) est le pixel lu. ⚠️ Classe PROPRE au parcours : kta-precision-mode est recalculée par
@@ -605,5 +638,5 @@ window.KtaDetectionUI = (function () {
                            ecartees: a.ecartees } : null };
   }
 
-  return { ouvrir: ouvrir, fermer: fermer, etat: etat, PREFIXE: PREFIXE };
+  return { ouvrir: ouvrir, fermer: fermer, etat: etat, contextePlan: contextePlan, PREFIXE: PREFIXE };
 })();

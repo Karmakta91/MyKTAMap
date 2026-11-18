@@ -35,10 +35,13 @@ window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
 // level). ⚠️ contrat (décision produit) : pilier-2 et front-2 sont la 2e masse, un banc FIXE du terrain sous la 1re
 // (niveau 0) : toujours au niveau −1, quel que soit le niveau actif (« niveau actif − 1 » rangeait au −2 un pilier
 // dessiné depuis le −1). Le reste : niveau actif. La fiche (liste Niveau) change ensuite la valeur telle quelle.
-window.ktaNiveauNouvelleStructure = function (type) {
-  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return null;
+// `opts` { multiLevel, niveau } : même règle hors plan ouvert (Générateur : case multi-niveau, niveau de l'image) ;
+// absent = le plan ouvert (APP_CONFIG).
+window.ktaNiveauNouvelleStructure = function (type, opts) {
+  const c = opts || window.APP_CONFIG;
+  if (!c || c.multiLevel !== true) return null;
   if (type === "pilier-2" || type === "front-2") return -1;
-  return window.APP_CONFIG.activeLevel || 0;
+  return (opts ? opts.niveau : c.activeLevel) || 0;
 };
 function _isPolylineType(type) {
   if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;

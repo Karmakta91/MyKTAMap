@@ -437,6 +437,45 @@ async function suite(nav) {
   });
   await page.waitForTimeout(300);
 
+  // ── Contexte fourni (le Générateur fournira le sien) : le parcours n'écrit que par lui ──
+  console.log("— contexte fourni —");
+  const regle = await page.evaluate(function () {
+    const N = window.ktaNiveauNouvelleStructure;
+    return [N("pilier-1", { multiLevel: true, niveau: 2 }), N("pilier-2", { multiLevel: true, niveau: 2 }),
+      N("front-2", { multiLevel: true, niveau: 0 }), N("pilier-1", { multiLevel: false, niveau: 2 })];
+  });
+  verifier(JSON.stringify(regle) === "[2,-1,-1,null]",
+    "règle de niveau paramétrée : niveau donné, pilier-2 et front-2 au −1, rien hors multi-niveau", regle);
+  const avantCtx = await page.evaluate(function (o) {
+    // vue remise sur la scène (la fiche ouverte juste avant a fait glisser la carte : un coin sous le bandeau)
+    window.map.fitBounds(L.latLngBounds([window.convertCoord(o.x - 20, o.y - 20),
+      window.convertCoord(o.x + 660, o.y + 470)]), { animate: false });
+    window.__poses = null;
+    const c = window.KtaDetectionUI.contextePlan();
+    c.poser = function (poses) { window.__poses = poses; return 0; };
+    c.niveau = function (type) { return window.ktaNiveauNouvelleStructure(type, { multiLevel: true, niveau: 3 }); };
+    const ouvert = window.KtaDetectionUI.ouvrir(c);
+    return { ouvert: ouvert, session: window.getStructures().length,
+      pas: window.HistoryManager._peek().undo.length };
+  }, O);
+  await detecterCadre(page, O);
+  const nCtx = (await etat(page)).apercu.n;
+  await bouton(page, "valider");
+  await page.waitForTimeout(300);
+  const apresCtx = await page.evaluate(function () {
+    const p = window.__poses || [];
+    return { n: p.length, session: window.getStructures().length, ferme: !window.KtaDetectionUI.etat(),
+      pas: window.HistoryManager._peek().undo.length,
+      niveaux: p.map(function (s) { return s.type + "@" + s.level; }).slice(0, 4),
+      uid: p.every(function (s) { return /^st_/.test(s.uid || "") && Number.isFinite(s.updatedAt); }) };
+  });
+  verifier(avantCtx.ouvert && nCtx > 0 && apresCtx.n === nCtx && apresCtx.uid,
+    "contexte fourni : ses " + nCtx + " structures validées lui sont remises (uid, updatedAt)", { avantCtx, apresCtx });
+  verifier(apresCtx.session === avantCtx.session && apresCtx.pas === avantCtx.pas && apresCtx.ferme,
+    "contexte fourni : rien dans la session, aucune étape ⏪, parcours fermé", { avantCtx, apresCtx });
+  verifier(apresCtx.niveaux.every(function (t) { return /^pilier-2@-1$|^front-2@-1$|@3$/.test(t); }),
+    "contexte fourni : niveaux par SA règle (niveau 3, 2e masse au −1)", apresCtx.niveaux);
+
   // ── Fond blanc : piliers blancs cernés d'un trait, fond et galeries de la même couleur ──
   console.log("— fond blanc —");
   await page.evaluate(function () {

@@ -811,6 +811,12 @@ Détection des piliers (masses pleines) et des fronts (traits) sur l'image du pl
 calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
 l'interface : outil Structures et carte de l'📊 Éditeur de données, un même parcours (`js/detectionStructures.js`).
 
+- ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
+  de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
+  règle de niveau, écriture (`poser`). Sans argument, `contextePlan()` : le plan ouvert, la session, une étape ⏪.
+  Le Générateur fournit le sien (sa mini-carte, l'image source, un calque du ZIP). Règle de niveau commune :
+  `structures.js > ktaNiveauNouvelleStructure(type, { multiLevel, niveau })` (absent = le plan ouvert).
+
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
   `{ masses: [{ classe, points, aire, boite }], tropGrands, ignorees, blocs }`, coordonnées en **pixels du plan**.
