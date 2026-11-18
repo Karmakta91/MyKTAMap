@@ -309,6 +309,7 @@ Carte `.kta-nord-ctrl` > `button.kta-nord-btn` (`mapBearing.js > _creerBoutonNor
 **Variable CSS partagée** `--kta-statusbar-h` :
 - Initialisée à `calc(52px + env(safe-area-inset-bottom, 0px))` (fallback CSS au boot).
 - Mise à jour par JS via `ResizeObserver` sur le status bar — lit `offsetHeight` à chaque resize, écrit dans `document.documentElement.style.setProperty("--kta-statusbar-h", h + "px")`.
+- 🩸 Aucune lecture immédiate au démarrage (`refonteInterface.js > _setupStatusBarResizeObserver`) : le premier rappel du `ResizeObserver`, après la première mise en page, fait la synchro. Lire `offsetHeight` juste après `observe()` forçait une mise en page synchrone (~140 ms en iPhone émulé, processeur ×4). Sans `ResizeObserver` : lecture immédiate.
 - Notifie Leaflet via `map.invalidateSize({ animate: false })` (debounce via rAF).
 
 **Tout suit la variable** :

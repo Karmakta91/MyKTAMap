@@ -453,8 +453,10 @@
       _statusBarRO.observe(_statusBarEl);
     }
 
-    // Synchro immédiate (et repli sans ResizeObserver : chargement + orientationchange/resize).
-    _syncH();
+    // 🩸 Pas de synchro immédiate quand le ResizeObserver existe : il rappelle _syncH de lui-même à la première mise
+    // en page, avant la peinture. Lire offsetHeight ici, en plein démarrage, forçait une mise en page synchrone
+    // (~140 ms en iPhone émulé, processeur ×4). Repli sans ResizeObserver : synchro immédiate.
+    if (!_statusBarRO) _syncH();
     // Une seule fois pour la page : _onOrientationChange relit la barre COURANTE (_syncH > _statusBarEl).
     if (_rotationEcoutee) return;
     _rotationEcoutee = true;
