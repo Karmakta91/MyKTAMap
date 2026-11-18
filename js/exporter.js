@@ -1805,7 +1805,8 @@
       }
     }
     // Tracés de galerie : même loi, minorée (cf. `wTrace` dans structures.js), pour les tracés EMBARQUÉS
-    // seulement, comme à l'écran.
+    // seulement. 🩸 Ceux de session gardent `weight × scale`, alors qu'à l'écran ils suivent aussi la loi (écart
+    // ouvert, docs/BACKLOG.md).
     function _largeurTraceExp(style) {
       if (!_planCalibre) return ((style && style.weight) || 5) * scale;
       return (typeof window.ktaLargeurTracePourRatio === "function")

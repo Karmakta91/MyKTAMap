@@ -568,8 +568,9 @@ trait **plus épais** qu'avant dans l'aperçu. L'écran, lui, garde ses paliers 
 n'a pas de résolution native à laquelle se référer.
 
 **Portée** : fronts (structures polylignes) partout ; tracés **embarqués**
-seulement — à l'écran `majLargeurFronts` n'ajuste que `_ktaDataPolylines`, et un
-export doit montrer ce que montre la carte.
+seulement. ⚠️ Écart ouvert : à l'écran, `majLargeurFronts` soumet aussi les
+tracés de **session** à la loi (`road.js > ktaMajLargeurTracesSession`, hors
+itinéraire), l'export les garde à `weight × scale` (entrée de `docs/BACKLOG.md`).
 
 **Contour des surfaces (piliers, murs, structures perso fermées), à l'écran** :
 `majLargeurFronts` le pose au quart de la largeur d'un front, plafonné à

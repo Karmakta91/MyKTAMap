@@ -234,6 +234,8 @@ function majLargeurFronts() {
 
   appliquer(window._ktaDataStructurePolygons, wFront);
   appliquer(window._ktaDataPolylines, wTrace);
+  // Tracés de SESSION : même largeur que ceux des calques, fantômes tactiles compris (road.js).
+  if (typeof window.ktaMajLargeurTracesSession === "function") window.ktaMajLargeurTracesSession(wTrace);
 
   // Structures de SESSION : pas de registre, on parcourt les layers rendus.
   try {

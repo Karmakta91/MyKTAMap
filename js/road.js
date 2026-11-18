@@ -8,12 +8,15 @@
 // road.js — tracés (roads) de session : dessin, rendu Leaflet, cercles d'intersection, routes embarquées des
 // calques de données, magnétisme au dessin, décimation et culling PerfUltra.
 // Expose : initRoad, toggleRoadMode, renderRoads, getRoads/setRoads, registerEmbeddedRoad, clearEmbeddedRoads,
-//          getAllEmbeddedRoads, getRoadIntersections (ronds dessinés, lus par la vue 3D), ktaDecimerPointsTrace…
+//          getAllEmbeddedRoads, getRoadIntersections (ronds dessinés, lus par la vue 3D), ktaDecimerPointsTrace,
+//          ktaMajLargeurTracesSession…
 // Dépend de : styleResolver.js (window.ktaResolveStyle), LegendCustomization, HistoryManager, KtaUid, PerfUltra.
 // Pièges : 🩸 Styles des types : TOUJOURS window.ktaResolveStyle, jamais de table locale (check-style-canon.js).
 //          🩸 Intersections en O(N²×P²) : plafond de routes, AABB, débounce pendant le dessin.
 //          🩸 initRoad rejouée à chaque plan : listeners de singletons (PerfUltra) abonnés UNE fois.
 //          🩸 Deux roads de niveaux différents ne se croisent jamais (multi-niveau).
+//          ⚠️ Épaisseur : la loi au zoom des tracés de calque (structures.js > ktaLargeurTracePourRatio), posée au
+//             rendu puis remise au zoomend par majLargeurFronts → ktaMajLargeurTracesSession, sans recréer les couches.
 // Garde-fous : check-style-canon.js, check-map-listeners.js · Doc : docs/architecture/rendering-leaflet.md
 // =========================
 
@@ -29,8 +32,9 @@ let intersectionLayers = [];
 let _interRenderTimer = null;
 
 // État de rendu par road entre deux renderRoads() complets, pour le refresh viewport incrémental
-// (_refreshRoadsViewportOnly, addTo/remove ciblé). Entrée : { road, target (layerGroup parent), layers,
-// inViewport (attaché au target), bbox (AABB plan) }.
+// (_refreshRoadsViewportOnly, addTo/remove ciblé) et pour l'épaisseur au zoom (ktaMajLargeurTracesSession). Entrée :
+// { road, target (layerGroup parent), layers, inViewport (attaché au target), bbox (AABB plan), trace (polyligne
+// visible, null pour l'itinéraire), fantome (zone tactile ou null) }.
 // ⚠️ bbox est un instantané : une road dont les points changent exige un renderRoads complet.
 let _roadRenderState = [];
 
@@ -607,6 +611,44 @@ window.ktaPurgerFlashSnap = function() {
 };
 
 // ── Rendu ──────────────────────
+// Épaisseur d'un tracé de session au zoom courant : la loi des tracés de calque (structures.js >
+// ktaLargeurTracePourRatio), pour qu'un tracé de session et un tracé de calque aient le même trait au même zoom.
+// null = loi indisponible : le style garde son épaisseur.
+// ⚠️ L'itinéraire n'y passe jamais : trait fixe, toujours au-dessus et lisible de haut (ce n'est pas un relevé).
+function _largeurTraceSession() {
+  if (typeof window.ktaLargeurTracePourRatio !== "function" || !window.map ||
+      typeof window.map.getZoom !== "function") return null;
+  let z;
+  try { z = window.map.getZoom(); } catch (e) { return null; }
+  if (!Number.isFinite(z)) return null;
+  const w = window.ktaLargeurTracePourRatio(Math.pow(2, z));
+  return (Number.isFinite(w) && w > 0) ? w : null;
+}
+// Zone tactile du fantôme : le trait + 14 px, jamais moins de 18 px.
+function _largeurFantome(w) { return Math.max((w || 3) + 14, 18); }
+
+// Recalcul au zoom des tracés de session (appelé par structures.js > majLargeurFronts au zoomend) : trait et
+// fantôme mutés en place, aucune couche recréée (le diff de _roadRenderState reste valable). La repeinture du canvas
+// est faite par l'appelant.
+window.ktaMajLargeurTracesSession = function (wTrace) {
+  if (!(Number.isFinite(wTrace) && wTrace > 0)) return 0;
+  let n = 0;
+  for (let i = 0; i < _roadRenderState.length; i++) {
+    const e = _roadRenderState[i];
+    if (!e || !e.trace || !e.trace.options) continue;
+    e.trace.options.weight = wTrace;
+    if (e.fantome && e.fantome.options) {
+      e.fantome.options.weight = _largeurFantome(wTrace);
+      // 🩸 Le test de clic du canvas lit `_pxBounds`, élargi du demi-trait au dernier `_project` : à recaler.
+      if (e.fantome._map && typeof e.fantome._updateBounds === "function") {
+        try { e.fantome._updateBounds(); } catch (err) {}
+      }
+    }
+    n++;
+  }
+  return n;
+};
+
 // Cible des roads de session : window.layerEditor (calque « Mes annotations »). ⚠️ Exception : "itinerary" va sur
 // window.map, avec son propre cycle de vie (modale Itinéraire), et ne doit PAS suivre ce calque.
 // Le repli window.map n'est qu'un filet : map.js pose layerEditor dans initMapFromConfig(), avant initRoad() et la
@@ -771,6 +813,12 @@ function renderRoads(opts) {
   // Repeuplé ci-dessous : une entrée par road qui passe les filtres (hors viewport).
   _roadRenderState = [];
 
+  // Recalcul au zoom (structures.js > brancherLargeurFronts) branché aussi sur un plan sans structure ni calque ;
+  // seulement s'il manque : brancherLargeurFronts repasse sur tout le plan, trop cher à chaque point dessiné.
+  if (window.map && !window.map._ktaFrontZoomBound && typeof window.brancherLargeurFronts === "function") {
+    window.brancherLargeurFronts();
+  }
+
   const _decim        = !!(window.PerfUltra && window.PerfUltra.get("decim"));
   const _viewportCull = !!(window.PerfUltra && window.PerfUltra.get("viewportCull") && window.map);
   // Viewport en coordonnées plan, élargi de 10 % (pas d'apparition tardive au pan).
@@ -852,6 +900,9 @@ function renderRoads(opts) {
 
     const latlngs = workPoints.map(p => convertCoord(p.x, p.y));
     const style = _resolveRoadStyle(road.type) || { color: "white", weight: 5, opacity: 1 };
+    // Même loi au zoom que les tracés de calque (jonctions comprises : un calque les y soumet aussi).
+    const _wLoi = (road.type !== "itinerary") ? _largeurTraceSession() : null;
+    if (_wLoi) style.weight = _wLoi;
     const target = _targetLayerForRoad(road.type);
 
     let polyline;
@@ -873,6 +924,7 @@ function renderRoads(opts) {
     if (_isInViewport) polyline.addTo(target);
     roadLayers.push(polyline);
     const _trackedLayers = [polyline];
+    let _fantome = null;
 
     // Raccords de l'itinéraire : trajet À VOL D'OISEAU entre une étape et le tracé où elle s'accroche, dessiné en
     // pointillé = « pas une galerie » (le plan ne dit rien de ce qu'il y a entre les deux) (décision produit).
@@ -929,9 +981,8 @@ function renderRoads(opts) {
         } : { principal: "🟩 Tracé principal", secondaire: "🟪 Tracé secondaire", chemin: "🟨 Chemin" };
         return LBL[t] || (_i ? _i.t("road.popup.fallback", { type: t }) : ("Tracé " + t));
       }
-      const ghostWeight = Math.max((style.weight || 3) + 14, 18);
       const ghost = L.polyline(latlngs, {
-        weight:               ghostWeight,
+        weight:               _largeurFantome(style.weight),
         opacity:              0,           // invisible
         interactive:          true,
         bubblingMouseEvents:  false,
@@ -940,6 +991,7 @@ function renderRoads(opts) {
       if (_isInViewport) ghost.addTo(target);
       roadLayers.push(ghost);
       _trackedLayers.push(ghost);
+      _fantome = ghost;
       window.attacherNotePopup(
         ghost,
         function() { return _roadRef.description; },
@@ -972,12 +1024,15 @@ function renderRoads(opts) {
     }
 
     // État lu par _refreshRoadsViewportOnly. bbox null (itinéraire, ou culling OFF) = jamais rattachée/détachée.
+    // trace / fantome : lus par ktaMajLargeurTracesSession (itinéraire : pas de trace, son trait est fixe).
     _roadRenderState.push({
       road:       road,
       target:     target,
       layers:     _trackedLayers,
       inViewport: _isInViewport,
-      bbox:       _bb
+      bbox:       _bb,
+      trace:      road.type !== "itinerary" ? polyline : null,
+      fantome:    _fantome
     });
   });
 
