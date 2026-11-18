@@ -38,6 +38,11 @@
 
 ## Ensuite
 
+- **Épaisseur des traits réglable (accessibilité)** — QCM KARMA 18/11/2026 (1b 2a 3a) : réglage de l'APPAREIL
+  (Configuration › Affichage, jamais exporté), un curseur ×0,75 à ×2 par-dessus la loi du zoom (tracés, fronts, murs
+  en ligne, arcs ; contours des piliers inchangés), carte du plan et cartes OSM, exports inchangés.
+  `qui: Claude · action: lot après « tracés de session au dézoom » · fini: curseur appliqué partout, checkup
+  · depuis: 18/11/2026 · taille: S`
 - **Détection dans le Générateur** — décision 1a du 18/11 : même moteur, `KtaDetection.detecter` avec un `lireBloc`
   fourni par le Générateur depuis son image source ; piliers et fronts détectés en calque du plan généré.
   `qui: Claude · action: topo puis lot (piliers validés par KARMA le 18/11) · fini: détection au Générateur, checkup
