@@ -31,6 +31,11 @@
 
 ## Maintenant
 
+- **Détecter les piliers et les fronts sur l'image du plan (mode plan)** — QCM KARMA 18/11/2026 (1a 2a 3a 4a 5a) :
+  module commun, mode plan d'abord (Générateur au lot suivant) ; « 🔎 Détecter » dans Structures et l'📊 Éditeur ; rectangle
+  tracé + « Tout le plan » ; pipette des couleurs par plan ; aperçu, rien écrit avant « Valider », une étape ⏪.
+  `qui: Claude · action: lot Dev, topo technique d'abord · fini: détection sur relevé fictif, aperçu, validation,
+  ⏪, checkup Chromium et WebKit · depuis: 18/11/2026 · taille: L`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
