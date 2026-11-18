@@ -6,10 +6,11 @@
 // Image FABRIQUÉE 1200 × 900 : marges blanches de 100 px, contenu gris, repère rouge 20 × 20 en (400, 300) de la
 // source. Un calque pose un point au centre du repère ; le pixel sous ce point est lu dans les tuiles V2 du ZIP
 // produit (z0, la même image que celle que l'app affiche) : rouge = calque aligné.
-// 1. Nouveau plan V2, calque saisi sur l'image d'origine : la question du rognage est posée, « Les décaler » →
-//    aligné ; plan.rognage écrit. Même plan, calque saisi dans le repère rogné, « Les laisser » → aligné, intact.
+// 1. Nouveau plan V2, calque, calage GPS et calage d'un calque image saisis sur l'image d'origine : la question du
+//    rognage est posée, « Les décaler » → calque aligné, un point du plan à la bonne lat/lng, cibles du calage
+//    décalées ; plan.rognage écrit. Même plan, calque saisi dans le repère rogné, « Les laisser » → rien ne bouge.
 // 2. « Mettre à jour le plan » (ktaGenerateurMaj) sur le plan rogné, calque dans le repère rogné : même rognage,
-//    aligné, pas de question.
+//    aligné, pas de question (🩸 et le calque image rouvert est retrouvé dans le ZIP source).
 // 3. Plan V1 (jamais rogné) régénéré en V2 par le mode Modifier : image entière gardée, calque aligné, sans rognage.
 // 🩸 Avant le correctif : cas 1 (pas de question, calque décalé du rognage) et cas 3 (rognage appliqué au
 // régénéré) sortaient décalés.
@@ -30,8 +31,13 @@ const LS_PREGATES = {
   "myktamap_tutorial_seen_v1": "1"
 };
 const REPERE = { x: 400, y: 300, c: 20 };
+// Calage GPS (coordonnées fictives) et calage d'un calque image, saisis en pixels de l'image d'origine.
+const GEO = { A: { x: 100, y: 100, lat: 0.5, lng: 0.5 }, B: { x: 1100, y: 800, lat: 0.49, lng: 0.51 } };
+const CALAGE = { sourceA: { sx: 0, sy: 0 }, targetA: { x: 200, y: 200 }, sourceB: { sx: 10, sy: 10 },
+  targetB: { x: 600, y: 500 } };
 
 const problemes = [];
+const journal = [];   // dernières lignes de la console de la page (diagnostic)
 function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
 function ok(msg) { console.log("  ✅ " + msg); }
 function verifier(c, msg, detail) {
@@ -44,7 +50,8 @@ function calque(dx, dy) {
   const x = REPERE.x - dx, y = REPERE.y - dy, c = REPERE.c;
   const carre = [{ x: x, y: y }, { x: x + c, y: y }, { x: x + c, y: y + c }, { x: x, y: y + c }];
   return { type: "points", version: 1,
-    data: [{ id: "repere", nom: "Repère", x: x + c / 2, y: y + c / 2, tags: ["default"], precis: { x: x + 5, y: y + 5 } }],
+    data: [{ id: "repere", nom: "Repère", x: x + c / 2, y: y + c / 2, tags: ["default"],
+      precis: { x: x + 5, y: y + 5 } }],
     roads: [{ type: "principal", points: [{ x: x + c / 2, y: y + c / 2 }, { x: x + 200, y: y + c / 2 }] }],
     zones: [{ type: "eau", points: carre }],
     structures: [{ type: "pilier-1", points: carre }] };
@@ -82,6 +89,27 @@ async function nouveauPlan(page, png, nom, contenuCalque, v2) {
   await page.evaluate(function (v) {
     const c = document.getElementById("pl_tilingV2"); if (c && c.checked !== v) c.click();
   }, v2);
+}
+
+// Calage GPS (points A, B) et calque image calé, saisis sur l'image d'origine.
+async function saisirCalages(page, png) {
+  await page.evaluate(function (G) {
+    ["A", "B"].forEach(function (k) {
+      document.getElementById("pl_geo_" + k + "_x").value = String(G[k].x);
+      document.getElementById("pl_geo_" + k + "_y").value = String(G[k].y);
+      document.getElementById("pl_geo_" + k + "_coords").value = G[k].lat + ", " + G[k].lng;
+    });
+    document.getElementById("pl_addImageLayer").click();
+  }, GEO);
+  const lid = await page.evaluate(function () {
+    const it = document.querySelector("#pl_imageLayers_list .kta-planner-layer-item:last-child");
+    document.getElementById(it.dataset.layerId + "_id").value = "calque-image";
+    return it.dataset.layerId;
+  });
+  await page.setInputFiles("#" + lid + "_file", { name: "calque-image.png", mimeType: "image/png", buffer: png });
+  await page.evaluate(function (a) {
+    document.querySelector("[data-layer-id='" + a.lid + "']")._calibration = JSON.parse(JSON.stringify(a.c));
+  }, { lid: lid, c: CALAGE });
 }
 
 // Lance la génération ; `reponse` : true / false = la réponse à donner si la question du rognage vient. Rend
@@ -144,7 +172,19 @@ async function mettreAJour(page, nomZip, calques, nomSortie) {
     }
     await page.waitForTimeout(300);
   }
-  await page.evaluate(function (n) { window.__zips[n] = window.__zipMaj; }, nomSortie);
+  const fini = await page.evaluate(function (n) { window.__zips[n] = window.__zipMaj; return !!window.__zipMaj; },
+    nomSortie);
+  if (!fini) {
+    // diagnostic : fenêtres et statut du Générateur au moment où rien n'est sorti
+    const vu = await page.evaluate(function () {
+      const t = Array.prototype.map.call(document.querySelectorAll(
+        "#kta-planner-erreur, #kta-planner-zip-status, .kta-readme-modal-overlay, [class*='toast']"),
+      function (el) { return el.textContent.trim().slice(0, 160); });
+      return t.join(" | ");
+    });
+    throw new Error("mise à jour sans ZIP produit — à l'écran : " + vu +
+      "\n  journal : " + journal.slice(-15).join("\n    "));
+  }
   return { questions: questions };
 }
 
@@ -171,10 +211,21 @@ async function relire(page, nomZip, idCalque) {
         pixel = [d[0], d[1], d[2]];
       }
     }
+    // GPS du point du calque par le calage écrit, et celui attendu (repère du calage saisi, point de la source).
+    const K = window.KmzExport, g = cfg.plan.georef;
+    let gps = null, attendu = null;
+    if (g) {
+      gps = K.planToGps(K.buildTransformCalib(g), p.x, p.y);
+      attendu = K.planToGps(K.buildTransformCalib({ pointA: a.geo.A, pointB: a.geo.B, modele: g.modele }),
+        a.source.x, a.source.y);
+    }
+    const il = (cfg.imageLayers || []).find(function (l) { return l.id === "calque-image"; });
     return { W: cfg.plan.imageWidth, H: cfg.plan.imageHeight, v2: !!cfg.plan.tiledV2, rognage: cfg.plan.rognage || null,
+      georef: g ? { ax: g.pointA.x, ay: g.pointA.y } : null, gps: gps, attendu: attendu,
+      calage: il ? il.calibration || null : null,
       point: { x: p.x, y: p.y }, precis: p.precis, route: j.roads[0].points[0], zone: j.zones[0].points[0],
       structure: j.structures[0].points[0], pixel: pixel };
-  }, { zip: nomZip, id: idCalque });
+  }, { zip: nomZip, id: idCalque, geo: GEO, source: { x: REPERE.x + REPERE.c / 2, y: REPERE.y + REPERE.c / 2 } });
 }
 
 async function jouer(nomMoteur) {
@@ -189,6 +240,7 @@ async function jouer(nomMoteur) {
     }, LS_PREGATES);
     const erreurs = [];
     page.on("pageerror", function (e) { erreurs.push(String(e)); });
+    page.on("console", function (m) { journal.push(m.text().slice(0, 200)); if (journal.length > 40) journal.shift(); });
     await accueil(page);
     const png = Buffer.from(await page.evaluate(function (R) {
       const c = document.createElement("canvas"); c.width = 1200; c.height = 900;
@@ -199,8 +251,10 @@ async function jouer(nomMoteur) {
       return c.toDataURL("image/png").split(",")[1];
     }, REPERE), "base64");
 
-    console.log("— 1. nouveau plan rogné, calque saisi sur l'image d'origine, « Les décaler » —");
+    console.log("— 1. nouveau plan rogné, calque, calage GPS et calage d'image saisis sur l'origine, " +
+      "« Les décaler » —");
     await nouveauPlan(page, png, "Essai rognage", calque(0, 0), true);
+    await saisirCalages(page, png);
     const g1 = await generer(page, "decale", true);
     const r1 = await relire(page, "decale", "calque-essai");
     verifier(!!g1.question && /rogn|crop|recort/i.test(g1.question), "la question du rognage est posée", g1.question);
@@ -209,19 +263,34 @@ async function jouer(nomMoteur) {
     const ox = r1.rognage ? r1.rognage.x : 0, oy = r1.rognage ? r1.rognage.y : 0;
     verifier(!!g1.question && g1.question.indexOf(String(ox)) >= 0 && g1.question.indexOf(String(oy)) >= 0,
       "la question dit le décalage (" + ox + " × " + oy + " px)", g1.question);
-    verifier(rouge(r1.pixel), "« Les décaler » : le point du calque tombe sur le repère (pixel " + JSON.stringify(r1.pixel) +
-      ")", r1);
+    verifier(rouge(r1.pixel), "« Les décaler » : le point du calque tombe sur le repère (pixel " +
+      JSON.stringify(r1.pixel) + ")", r1);
     const c = REPERE.c / 2;
     verifier(r1.route.x === REPERE.x + c - ox && r1.zone.y === REPERE.y - oy && r1.structure.x === REPERE.x - ox &&
       r1.precis.x === REPERE.x + 5 - ox, "tracé, zone, structure et point précis décalés aussi", r1);
+    verifier(!!g1.question && /GPS/.test(g1.question), "la question dit ce qu'elle déplace (calques, calage GPS, " +
+      "calages)", g1.question);
+    verifier(!!r1.georef && r1.georef.ax === GEO.A.x - ox && r1.georef.ay === GEO.A.y - oy,
+      "calage GPS décalé (point A en " + (r1.georef && r1.georef.ax) + ", " + (r1.georef && r1.georef.ay) + ")",
+      r1.georef);
+    const dGps = (r1.gps && r1.attendu) ? Math.max(Math.abs(r1.gps.lat - r1.attendu.lat),
+      Math.abs(r1.gps.lng - r1.attendu.lng)) : Infinity;
+    verifier(dGps < 1e-9, "un point du plan retombe à la bonne lat/lng (écart " + dGps + "°)",
+      { gps: r1.gps, attendu: r1.attendu });
+    verifier(!!r1.calage && r1.calage.targetA.x === CALAGE.targetA.x - ox &&
+      r1.calage.targetB.y === CALAGE.targetB.y - oy && r1.calage.sourceA.sx === CALAGE.sourceA.sx, "calage du calque image : cibles décalées, source intacte", r1.calage);
 
     console.log("— 1 bis. même plan, calque saisi dans le repère rogné, « Les laisser » —");
     await nouveauPlan(page, png, "Essai rognage", calque(ox, oy), true);
+    await saisirCalages(page, png);
     const g1b = await generer(page, "laisse", false);
     const r1b = await relire(page, "laisse", "calque-essai");
     verifier(!!g1b.question, "la question est posée", g1b.question);
     verifier(r1b.point.x === REPERE.x + c - ox && r1b.point.y === REPERE.y + c - oy,
       "« Les laisser » : calque intact", r1b.point);
+    verifier(!!r1b.georef && r1b.georef.ax === GEO.A.x && !!r1b.calage && r1b.calage.targetA.x === CALAGE.targetA.x,
+      "« Les laisser » : calage GPS et calage d'image intacts (rien ou tout)",
+      { georef: r1b.georef, calage: r1b.calage });
     verifier(rouge(r1b.pixel), "et aligné sur le repère (pixel " + JSON.stringify(r1b.pixel) + ")", r1b);
 
     console.log("— 2. « Mettre à jour le plan » rogné, calque dans le repère rogné —");
@@ -234,14 +303,16 @@ async function jouer(nomMoteur) {
       "même repère : " + r2.W + " × " + r2.H + ", rognage " + JSON.stringify(r2.rognage), r2);
     verifier(rouge(r2.pixel), "calque de la mise à jour aligné (pixel " + JSON.stringify(r2.pixel) + ")", r2);
     const r2b = await relire(page, "maj", "calque-essai");
-    verifier(rouge(r2b.pixel), "calque déjà dans le plan toujours aligné (pixel " + JSON.stringify(r2b.pixel) + ")", r2b);
+    verifier(rouge(r2b.pixel), "calque déjà dans le plan toujours aligné (pixel " + JSON.stringify(r2b.pixel) + ")",
+      r2b);
 
     console.log("— 3. plan V1 (jamais rogné) régénéré en V2 par le mode Modifier —");
     await nouveauPlan(page, png, "Essai V1", calque(0, 0), false);
     const g3 = await generer(page, "v1", null);
     verifier(g3.question === null, "plan V1 sans rognage : pas de question", g3.question);
     const r3a = await relire(page, "v1", "calque-essai");
-    verifier(!r3a.v2 && r3a.W === 1200 && r3a.H === 900 && !r3a.rognage, "plan V1 : image entière, pas de rognage", r3a);
+    verifier(!r3a.v2 && r3a.W === 1200 && r3a.H === 900 && !r3a.rognage, "plan V1 : image entière, pas de rognage",
+      r3a);
     const m3 = await mettreAJour(page, "v1", [], "v1v2");
     const r3 = await relire(page, "v1v2", "calque-essai");
     verifier(m3.questions === 0, "pas de question du rognage", m3);

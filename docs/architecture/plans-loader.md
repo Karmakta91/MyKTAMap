@@ -391,12 +391,14 @@ ce qui est en pixels (calques, géoréf, calibrations) doit être dans ce repèr
   `_rognagePourRepere`) — même rognage s'il l'était (`plan.rognage`, ou à défaut une détection des marges qui
   redonne les mêmes dimensions), aucun sinon. 🩸 Un plan V1 (jamais rogné) régénéré en V2 était rogné : tous ses
   calques se décalaient.
-- **Nouveau plan** rogné avec des calques de données fournis : `ktaConfirm` « L'image est rognée de X × Y px. Vos
-  calques ont-ils été saisis sur l'image d'origine ? » → [Les décaler] réécrit les calques du ZIP décalés du rognage
-  (`_decalerCalque` : toute paire `x`/`y` et `x2`/`y2`, donc points, sommets, point précis, raccords) ;
-  [Les laisser] les garde tels quels. Seul l'utilisateur sait dans quel repère il les a saisis.
-- Hors périmètre : la géoréf et les calibrations de calques image saisies dans le Générateur d'un NOUVEAU plan ne
-  sont pas décalées (même question possible, non traitée).
+- **Nouveau plan** rogné avec des pixels saisis (calques de données fournis, calage GPS `pl_geo_A|B|C_x|y`, calages
+  des calques image) : UNE `ktaConfirm` « L'image est rognée de X × Y px. Vos calques ont-ils été saisis sur l'image
+  d'origine ? », suivie de ce qu'elle déplace → [Les décaler] décale TOUT ensemble : calques réécrits dans le ZIP
+  (`_decalerCalque` : toute paire `x`/`y` et `x2`/`y2`, donc points, sommets, point précis, raccords), points du
+  calage GPS (`_readGeoPx`, lat/lng inchangées : un point du plan retombe à la même position), cibles `targetA`/
+  `targetB` des calages (pixels du plan ; les sources `sourceA`/`sourceB` sont des pixels du calque et ne bougent
+  pas ; copie, `item._calibration` reste dans le repère saisi). [Les laisser] ne décale rien. Seul l'utilisateur
+  sait dans quel repère il a saisi.
 Checkup : `scripts/smoke/checkup-rognage.js` (pixel lu dans les tuiles du ZIP, Chromium et WebKit).
 
 #### 58.5 bis Niveaux en hauteur (sol, hauteur, écart)

@@ -88,7 +88,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Session JSON Full / Avancé + conversion session → calque de données | `sessionExporter.js`, `sessionPersist.js` |
 | **Export anonymisé** (ids remappés, photos ré-encodées sans EXIF, fail-closed) | `sessionExporter.js` |
-| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge ; marges blanches retirées en V2 : un plan modifié garde son repère, un nouveau plan aux calques fournis demande s’il faut les décaler) | `createConf.js` |
+| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge ; marges blanches retirées en V2 : un plan modifié garde son repère, un nouveau plan aux calques, calage GPS ou calages d’images saisis demande s’il faut les décaler, tous ensemble) | `createConf.js` |
 | Import unifié ZIP / KMZ / GPX (drop zone home + générateur) | `homeLoader.js`, `kmzImport.js`, `gpxImport.js` |
 | 🌍 **KMZ géolocalisé** export / import round-trip (Google Earth, OsmAnd, Avenza, Locus) | `kmzExport.js`, `kmzImport.js` |
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |

@@ -3647,6 +3647,8 @@ async function _genererZip() {
     const _pointsGeneres = [];
     // Calques venus d'un fichier { fichier, contenu } : décalés après le tuilage si le rognage s'applique.
     const _calquesFournis = [];
+    // Décalage du rognage accepté par l'utilisateur ({ x, y }, sinon null) : appliqué aussi au calage GPS saisi.
+    let _decalage = null;
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const dlId    = document.getElementById(lid + "_id").value.trim();
@@ -3886,11 +3888,24 @@ async function _genererZip() {
 
       tilingManifest = v2Result.manifest;
       v2Dims = v2Result.dims;
-      // Nouveau plan rogné avec des calques fournis : saisis sur l'image d'origine, ils seraient décalés du
-      // rognage. Seul l'utilisateur sait dans quel repère ils ont été saisis : on lui demande.
+      // Nouveau plan rogné avec des pixels saisis (calques fournis, calage GPS, calages des calques image) : saisis
+      // sur l'image d'origine, ils seraient décalés du rognage. Seul l'utilisateur sait dans quel repère ils ont été
+      // saisis : UNE question, qui décale tout ensemble ou rien.
       const _rog = v2Dims.cropOffset;
-      if (_rog && _plannerMode === "nouveau" && _calquesFournis.length && typeof window.ktaConfirm === "function") {
-        const decaler = await window.ktaConfirm(window.I18n.t("gen.rognage.question", { x: _rog.x, y: _rog.y }), {
+      const _geoSaisi = ["A", "B", "C"].some(function(k) {
+        return ["x", "y"].some(function(c) {
+          const el = document.getElementById("pl_geo_" + k + "_" + c);
+          return !!(el && String(el.value).trim() !== "");
+        });
+      });
+      const _calages = imageLayers.filter(function(l) { return !!l.calibration; });
+      const _quoi = [];
+      if (_calquesFournis.length) _quoi.push(window.I18n.t("gen.rognage.quoi.calques"));
+      if (_geoSaisi) _quoi.push(window.I18n.t("gen.rognage.quoi.georef"));
+      if (_calages.length) _quoi.push(window.I18n.t("gen.rognage.quoi.calages"));
+      if (_rog && _plannerMode === "nouveau" && _quoi.length && typeof window.ktaConfirm === "function") {
+        const decaler = await window.ktaConfirm(window.I18n.t("gen.rognage.question", { x: _rog.x, y: _rog.y }) +
+          "\n\n" + window.I18n.t("gen.rognage.deplace", { liste: _quoi.join(", ") }), {
           titre:       window.I18n.t("gen.rognage.titre"),
           okLabel:     window.I18n.t("gen.rognage.decaler"),
           cancelLabel: window.I18n.t("gen.rognage.laisser")
@@ -3900,8 +3915,18 @@ async function _genererZip() {
             const neuf = _decalerCalque(c.contenu, _rog.x, _rog.y);
             if (neuf != null) dataFolder.file(c.fichier, neuf);
           }
-          console.log("[Planner] Calques décalés du rognage (" + _rog.x + "," + _rog.y + ") : " +
-                      _calquesFournis.length);
+          // Cibles des calages = pixels du plan principal (les sources, pixels du calque image, ne bougent pas).
+          // Copie : item._calibration reste dans le repère saisi (une seconde génération ne décale pas deux fois).
+          _calages.forEach(function(l) {
+            const c = l.calibration;
+            l.calibration = Object.assign({}, c, {
+              targetA: { x: c.targetA.x - _rog.x, y: c.targetA.y - _rog.y },
+              targetB: { x: c.targetB.x - _rog.x, y: c.targetB.y - _rog.y }
+            });
+          });
+          _decalage = { x: _rog.x, y: _rog.y };
+          console.log("[Planner] Décalés du rognage (" + _rog.x + "," + _rog.y + ") : " + _calquesFournis.length +
+                      " calque(s), " + _calages.length + " calage(s)" + (_geoSaisi ? ", calage GPS" : ""));
         }
       }
       console.log("[Planner] Tiling V2 généré : " + v2Result.tilesCount + " tuiles" +
@@ -4007,16 +4032,21 @@ async function _genererZip() {
     const _coordsA = _readGeoCoords("pl_geo_A_coords", "pl_geo_A_err", window.I18n.t("gen.geo.labelA"));
     const _coordsB = _readGeoCoords("pl_geo_B_coords", "pl_geo_B_err", window.I18n.t("gen.geo.labelB"));
     const _coordsC = _readGeoCoords("pl_geo_C_coords", "pl_geo_C_err", window.I18n.t("gen.geo.labelC"));
-    const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
+    // Pixel saisi dans le repère du plan généré (rognage accepté : _decalage).
+    function _readGeoPx(id, axe) {
+      const v = _readGeo(id);
+      return (v != null && _decalage) ? v - _decalage[axe] : v;
+    }
+    const _geoA = { x: _readGeoPx("pl_geo_A_x", "x"), y: _readGeoPx("pl_geo_A_y", "y"),
                     lat: _coordsA.lat, lng: _coordsA.lng };
-    const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
+    const _geoB = { x: _readGeoPx("pl_geo_B_x", "x"), y: _readGeoPx("pl_geo_B_y", "y"),
                     lat: _coordsB.lat, lng: _coordsB.lng };
     const _allGeoFilled =
       _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
       _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;
     if (_allGeoFilled) {
       // Point C optionnel mais tout ou rien (C partiel = oubli).
-      const _geoC = { x: _readGeo("pl_geo_C_x"), y: _readGeo("pl_geo_C_y"),
+      const _geoC = { x: _readGeoPx("pl_geo_C_x", "x"), y: _readGeoPx("pl_geo_C_y", "y"),
                       lat: _coordsC.lat, lng: _coordsC.lng };
       const _cRempli = _geoC.x != null || _geoC.y != null || _geoC.lat != null;
       const _cComplet = _geoC.x != null && _geoC.y != null && _geoC.lat != null && _geoC.lng != null;
