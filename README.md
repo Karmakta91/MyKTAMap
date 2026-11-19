@@ -611,7 +611,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-secours-balayage.js` | Secteurs ou parcours de balayage du Mode Secours faux sur le graphe d'un réseau fictif | pre-commit |
 | `check-secours-relais.js` | Relais Secours qui écrase l'intervention en cours par le scénario d'un autre appareil | pre-commit |
 | `check-selection-multi.js` | Sélection multiple qui mêle ligne et surface, conversion ou niveau en lot en plusieurs gestes d'annulation, jonction déplacée par le niveau en lot | pre-commit |
-| `check-couper-trace.js` | ✂️ Couper un tracé : morceaux qui ne partagent plus le sommet, second morceau au même uid, coupe à un bout ou d'une jonction, plusieurs gestes d'annulation | pre-commit |
+| `check-couper-trace.js` | ✂️ Couper un tracé ou une structure en ligne : morceaux qui ne partagent plus le sommet, second morceau au même uid ou au préfixe d'une autre famille, coupe à un bout, d'une jonction ou d'un pilier, plusieurs gestes d'annulation | pre-commit |
 | `check-session-store.js` | Accès direct à `localStorage["myktamap_session_v1_<planId>"]` au lieu de `KtaSessionStore` | pre-commit |
 | `check-style-canon.js` | Table de style locale qui diverge de `styleResolver.js > CANON` | pre-commit |
 | `check-style-resolver.js` | `ktaResolveStyle` / `ktaSwatchColor` / `ktaTypeSwatchHtml` faux (built-in, motif, customs, couleurs choisies) | pre-commit |
@@ -854,6 +854,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.29.0, branche `Karma_dev`)
+
+- **✂️ Couper une structure en ligne** (`js/structures.js > ktaFormesAjustables.structures`, `js/ajusterSommets.js > _couper`, `ui.md` § Ajuster une forme, `check-couper-trace.js`, `checkup-ajuster-sommets.js`) : le ✂️ de l'appui long coupe aussi un front, un mur en ligne, un arc ou une structure personnalisée en ligne à un sommet intérieur, mêmes règles que pour un tracé (le premier morceau garde l'objet, le second reçoit un uid neuf, une entrée ⏪) ; jamais un pilier ni un mur fermé. Le second morceau d'une structure reçoit un uid de structure (`st_`) : `_couper` prenait le préfixe des tracés en dur, la prise le déclare désormais (`uidType`). Textes du ✂️ neutres (« Couper à ce sommet », « Coupé en deux »).
 
 #### v2.29.0 (19/11/2026) — Détecter piliers et fronts, épaisseur des traits réglable, rognage du Générateur (branche `Karma_dev`)
 

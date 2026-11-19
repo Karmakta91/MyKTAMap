@@ -2547,14 +2547,18 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 - **Rampes d'une masse au sol** : elles suivent leur segment quand un sommet est ajouté, inséré ou supprimé
   (`masseSol.js > suivreBords`, appelée avant chaque `splice` de `_ecrire` et `_poser`) ; une rampe dont le segment
   disparaît est retirée, dans la même entrée ⏪. Règle : `data-formats.md` § rampes.
-- **✂️ Couper un tracé** (décision du 08/11/2026) : même menu, troisième bouton `.kta-ajuster-couper`, seulement sur un
-  **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary`) et
-  `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
-  en place) ; le second, `KtaUid.cloneNeuf(o, "rd")` (uid neuf ; type, niveau, note suivent), commence à ce même sommet,
+- **✂️ Couper un tracé ou une structure en ligne** : même menu, troisième bouton `.kta-ajuster-couper`, seulement
+  sur un **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary` ;
+  structures : `_isPolylineType` — fronts, `mur-ligne`, `arc`, types perso en ligne ; jamais un pilier ni un mur
+  fermé) et `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
+  en place) ; le second, `KtaUid.cloneNeuf(o, a.uidType || "rd")` (uid neuf au préfixe de la famille : `rd` pour un tracé,
+  `st` pour une structure ; type, niveau, note et champs multi-niveaux suivent), commence à ce même sommet,
   **dupliqué** (copie) : les deux tracés se touchent, l'itinéraire passe toujours. Il entre juste après le premier dans
-  `roadsData`. Pas de coupe en milieu de segment (on ajoute d'abord un sommet), jamais un bout (chaque morceau garde
+  sa liste (`roadsData`, `structuresData`). En 3D, une ligne est bâtie pavé par pavé (`vue3d.js > _pavesLigne`) :
+  deux morceaux donnent les mêmes pavés que la ligne entière, sans trou au sommet partagé. Pas de coupe en milieu de segment (on ajoute d'abord un sommet), jamais un bout (chaque morceau garde
   2 points), objets de session seulement. Une écriture (contrat ci-dessous, étiquette `ajuster.histo.couper`), un
-  ⏪ recolle. Garde-fou : `scripts/check-couper-trace.js` (prise réelle de road.js extraite, dans un `vm`).
+  ⏪ recolle. Garde-fous : `scripts/check-couper-trace.js` (prises réelles de road.js et structures.js extraites, dans un `vm`),
+  `scripts/smoke/checkup-ajuster-sommets.js` (tracé et front, au doigt).
 - **Insérer à la suite** (＋, QCM du 05/11/2026) : à partir du sommet X, chaque tap sur la carte insère un sommet
   entre le dernier posé et X + 1 (le premier entre X et X + 1), la forme se redessine à chaque point. Forme fermée,
   X dernier : X + 1 = le premier (point ajouté en fin de liste). Ligne, X dernier : la ligne se prolonge. Bandeau
