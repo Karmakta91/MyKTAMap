@@ -47,10 +47,6 @@
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
-- **Vérifier le plan, lot 3 : corrections sûres** — doublon identique, contour dégénéré, filets et historique, calque
-  passé en session, plan partagé (traces, droits) ; galerie volontairement condamnée écrite sur l'objet (question 6).
-  `qui: Claude · action: lot 3 de ETUDE_VERIFIER_PLAN.md · fini: corrections annulables, check-filets-donnees étendu
-  · depuis: 11/11/2026 · taille: M`
 - **Vérifier le plan, lot 4 : passe au chargement et fin du Générateur** — bloquants seuls, pastille et toast une fois
   tant que le nombre ne change pas, au repos ; coût mesuré d'abord sur le plus gros relevé des checkups.
   `qui: Claude · action: mesurer le coût puis lot 4 de ETUDE_VERIFIER_PLAN.md · fini: pastille et toast une fois,

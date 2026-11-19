@@ -1863,7 +1863,8 @@
     });
     return bilan;
   }
-  // Lu aussi par « Vérifier le plan » (verifierPlan.js > _c10) sur une enveloppe de chaque objet, compte seul.
+  // Lu aussi par « Vérifier le plan » : compte seul sur une enveloppe de chaque objet (verifierPlan.js > _c10),
+  // puis appliqué à l'objet de session par sa correction (verifierPlan.js > _ecrire).
   window.ktaDedupliquerFichier = _dedupliquerFichier;
 
   function _ouvrirDedup() {

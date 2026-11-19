@@ -825,8 +825,9 @@ et effondrement sont des zones à coût (ci-dessus). `check-verifier-plan.js` re
 Contrôle des données du plan ouvert, lancé depuis la carte de l'Éditeur de données (UI : `ui.md` §91.6 ; étude et
 décisions : `docs/ETUDE_VERIFIER_PLAN.md`). Il lit ce que lit l'itinéraire : `Pathfinder.collecterTraces()`, zones et
 structures de session plus registres des calques (sans les calques en modification), points de session et des calques,
-plus les dimensions de l'image et `availableLevels`. Lecture seule, sauf **Raccorder** (C5), qui est l'écriture de
-`raccordsTraces.js`. Un objet de calque est listé comme un autre ; aucune correction ne le touche dans ce lot.
+plus les dimensions de l'image et `availableLevels`. Il n'écrit que sur un geste : **Raccorder** (C5, l'écriture de
+`raccordsTraces.js`), les **corrections sûres** et la **galerie condamnée** (§ Corrections ci-dessous). Un objet de
+calque est listé comme un autre.
 
 ⚠️ **Même vérité que le graphe** : C1, C3 et C12 appellent les tests du pathfinder, exposés pour lui dans
 `Pathfinder.controle`, jamais une copie ; de même C5 appelle `KtaRaccords.detecter`, C9 `ktaResolveStyle`, C10
@@ -837,17 +838,17 @@ déclarés coupés sont exactement ceux que `grapheDeTraces(…, { includeZones:
 
 | Contrôle | Règle | Gravité |
 |---|---|---|
-| **C1** tracé coupé | Chaque segment de galerie (tout type sauf jonction et itinéraire) contre les obstacles durs de son niveau (plan ouvert : `controle.obstaclesDuPlan`, la collecte même de l'itinéraire ; données fournies : `obstaclesDe` ; puis `preparer`), zones candidates par une grille de leurs boîtes (`controle.grilleZones`, 128 px, filtre exact). Un constat par paire (tracé, obstacle) ; zone : longueur du tracé dans la zone (`longueurDansPolygone`) ; mur : point de croisement. **Au bord** sous 0,5 m (`BORD_M` ; plan sans échelle : 10 px/m supposés, `ECHELLE_SANS_CALAGE`) : longueur dans la zone, ou distance du croisement au bout du tracé le plus proche | Bloquant |
+| **C1** tracé coupé | Chaque segment de galerie (tout type sauf jonction et itinéraire) contre les obstacles durs de son niveau (plan ouvert : `controle.obstaclesDuPlan`, la collecte même de l'itinéraire ; données fournies : `obstaclesDe` ; puis `preparer`), zones candidates par une grille de leurs boîtes (`controle.grilleZones`, 128 px, filtre exact). Un constat par paire (tracé, obstacle) ; zone : longueur du tracé dans la zone (`longueurDansPolygone`) ; mur : point de croisement. **Au bord** sous 0,5 m (`BORD_M` ; plan sans échelle : 10 px/m supposés, `ECHELLE_SANS_CALAGE`) : longueur dans la zone, ou distance du croisement au bout du tracé le plus proche. Obstacle marqué **galerie condamnée** (`condamne: true`) : paire retirée par `_c1` (l'avertissement à la saisie aussi), l'obstacle bloque toujours l'itinéraire | Bloquant |
 | **C2** passage sans raccord | POI qui relie des niveaux (`KtaPoiJonction.estJonction`) avec un moyen de passage (pas le puits d'aération) : pour chaque niveau, aucun raccord validé (`accroches`), ou aucun qui retombe à `PROXIMITY_TOLERANCE` (15 px) d'une galerie de ce niveau (« perdu », comme `_injecterJonctionsPoi` qui l'ignore). Le nombre de galeries que `proposerRaccords` proposerait est affiché | Bloquant au niveau de départ ou d'arrivée ; **Info** pour un niveau intermédiaire sans raccord, marqué « traversé » (le pathfinder le traverse sans y déboucher : l'itinéraire n'est pas trompé, décision produit) |
 | **C3** tracé jonction mal posé | `fromLevel` = `toLevel`, ou un bout à plus de `PROXIMITY_TOLERANCE` de toute galerie de son niveau (le graphe ne le raccroche à rien) | Bloquant |
 | **C12** tracé qui traverse une zone Comblé ou effondrée | Même parcours que C1 (`_traversees`), sur les zones à coût que lit le graphe (`controle.zonesCoutDuPlan` / `zonesCoutDe`) : un constat par paire, longueur dans la zone, « au bord » sous 0,5 m. Ce n'est pas une erreur : l'itinéraire l'évite s'il peut et dit quand il y passe ; on confirme la galerie ou on corrige la zone (décision produit) | À revoir |
-| **C4** objets en double | Même famille, même type, même niveau (`level`, `niveaux`, bouts d'une jonction), même géométrie au **cm** près (échelle du plan, sinon 10 px/m) ; contour fermé : départ et sens quelconques ; point : même position, même tag, même nom. Table de hachage des empreintes, un constat par groupe (clé `C4|uid|uid…` triés). `identiques` : égaux en tout hors `uid`, `updatedAt`, `id`, `layerId` et champs `_…` (la copie qu'on pourra retirer, décision 7a). 🩸 Arrondi : deux copies de part et d'autre d'une frontière (écart < 1 cm) ne sont pas vues. Les deux morceaux d'un ✂️ (`ajusterSommets.js > _couper`) partagent un sommet mais pas leur géométrie : jamais en double | À revoir |
+| **C4** objets en double | Même famille, même type, même niveau (`level`, `niveaux`, bouts d'une jonction), même géométrie au **cm** près (échelle du plan, sinon 10 px/m) ; contour fermé : départ et sens quelconques ; point : même position, même tag, même nom. Table de hachage des empreintes, un constat par groupe (clé `C4|uid|uid…` triés). `identiques` : égaux en tout hors `uid`, `updatedAt`, `id`, `layerId`, champs `_…` et champs d'affichage des registres de calque (`polygon`, `origOpacity`, `origFillOpacity`) ; 🩸 la comparaison (`_stable`) ne descend que dans les tableaux et les objets simples, cycles gardés : une couche Leaflet compte comme un jeton fixe (deux doublons d'un calque faisaient déborder la pile). 🩸 Arrondi : deux copies de part et d'autre d'une frontière (écart < 1 cm) ne sont pas vues. Les deux morceaux d'un ✂️ (`ajusterSommets.js > _couper`) partagent un sommet mais pas leur géométrie : jamais en double | À revoir |
 | **C5** écart du réseau | `KtaRaccords.detecter()` tel quel (plan ouvert seulement). Bandeau : **Raccorder** (`KtaRaccords.raccorder`, son historique et le rapatriement d'un calque) ; **Vu, normal** = `KtaRaccords.ignorer` (une seule mémoire, celle de la carte Raccords, qui reste, décision 10a) | À revoir |
 | **C6** contour fermé dégénéré ou qui se recoupe | Zones, et structures dont le type n'est pas linéaire (`isStructurePolylineType`). Sommets consécutifs égaux et fermeture écrite retirés ; **dégénéré** : moins de 3 sommets distincts ou tous alignés (🩸 pas l'aire signée : un nœud papillon symétrique en a une nulle, il se recoupe) ; **se recoupe** : deux arêtes non voisines qui se croisent ou se touchent, arêtes triées en x puis balayées (20 000 sommets : ~50 ms) | À revoir |
 | **C7** hors de l'image | Un sommet (ou le point) au-delà de `[0, imageWidth] × [0, imageHeight]` de plus de 0,5 m : « dehors » (tout) ou « déborde » | Info |
 | **C8** niveau inconnu | Plan multi-niveau : `level` (absent = 0), bouts d'un tracé jonction, `niveaux` d'une zone (chacun compte) ou d'un point qui relie des niveaux (`KtaPoiJonction.porteNiveaux`) ; valeur non entière (« invalide ») ou absente d'`availableLevels` (« inconnu »). Un constat par (objet, valeur). 🩸 `main.js > _etendreAvailableLevelsSiBesoin` étend le sélecteur au chargement : « inconnu » ne vit que pour un objet arrivé après l'ouverture (import, synchro), « invalide » reste | À revoir |
 | **C9** type absent de la légende | `ktaResolveStyle(cat, type, { flat: true })` nul (ni built-in, ni type perso de **la même** catégorie), ou objet sans type ; point : tag absent de `window._iconMap` (plan ouvert) | Info |
-| **C10** sommets en double | `ktaDedupliquerFichier` sur une enveloppe `{ famille: [{ type, points }] }` de chaque objet : compte seul, rien n'est modifié ; « disparaîtrait » si le nettoyage le faisait passer sous son minimum. Le nettoyage reste celui de la carte Dédoublonner (fichiers) | Info |
+| **C10** sommets en double | `ktaDedupliquerFichier` sur une enveloppe `{ famille: [{ type, points }] }` de chaque objet : compte seul ; « disparaîtrait » si le nettoyage le faisait passer sous son minimum. Correction : la même fonction sur l'objet de session (§ Corrections) ; la carte Dédoublonner (fichiers) reste | Info |
 
 **C11** (liaison vers un plan absent) n'est pas un contrôle de la liste : le pied de la fenêtre compte les liaisons
 du plan dont l'autre plan n'est pas sur l'appareil (`liaisonsAbsentes()`, `InterPlanLinks.getLinksForPlan` +
@@ -872,10 +873,51 @@ get/setPlanVerifVus`), sur l'appareil seulement. Modifier l'objet ne fait pas re
 calque sans `uid` revient s'il est redessiné. **Saisie** : à chaque `kta:donneesPlanChange` (tracés, zones,
 structures, calques ; 700 ms de calme), C1 sur les seuls objets de session dont la signature a changé **et** dont
 `updatedAt` a moins d'une minute (la session restaurée ou rejouée par Ctrl+Z n'est pas une saisie) : un toast `warn`
-par coupure nouvelle, une fois par plan ouvert. Pas encore : avertissement à la saisie pour C12, corrections sûres
-(doublon identique, contour dégénéré : lot 3 de l'étude), passe au chargement et fin du Générateur (lot 4).
-Garde-fous : `check-verifier-plan.js` (Node, avec une falsification par contrôle C4 à C10),
-`checkup-verifier-plan.js`.
+par coupure nouvelle, une fois par plan ouvert. Pas encore : avertissement à la saisie pour C12, passe au chargement
+et fin du Générateur (lot 4 de l'étude).
+
+#### Corrections (`verifierPlan.js` § Corrections)
+
+Seulement sur un geste, seulement quand elles sont sûres (décisions 7a, 9a) :
+
+| Contrôle | Correction | Bouton du bandeau / de la liste |
+|---|---|---|
+| **C4** identiques en tout | Garder un exemplaire : le plus ancien (`updatedAt`) reste, les autres partent. Les exemplaires sont relus au geste (identités de la clé du constat, `_contenu` revérifié) : une copie modifiée entre-temps annule tout | **Garder un exemplaire** · **Garder un exemplaire de chacun (N)** |
+| **C6** dégénéré | Suppression de l'objet ; un contour **qui se recoupe** n'est jamais corrigé | **Supprimer le contour** · **Supprimer les contours dégénérés (N)** |
+| **C10** | `ktaDedupliquerFichier` appliqué à l'objet de session (rampes d'une masse au sol suivies) ; essayé d'abord sur une copie : un objet que le nettoyage ferait passer sous son minimum devient une **suppression** | **Retirer les sommets en double** · **Retirer tous les sommets en double (N)** |
+| **C1** | Galerie condamnée : `condamne: true` posé sur l'obstacle (zone inaccessible ou mur en ligne) ; **Galeries condamnées (N)** au pied de la liste, **Retirer** l'enlève | **Galerie condamnée** |
+
+⚠️ **Un chemin d'écriture, une entrée ⏪ par geste** (`_ecrire`, `_marquerCondamne`) : `captureState()` (toutes
+familles ; une seule pour la galerie condamnée) → mutation → `KtaUid.touch` des objets modifiés → rendu par
+`setRoads` / `setZones` / `setStructures` / `setEditorPoints` → `HistoryManager.record` (une fois, hors des boucles ;
+il pose les traces de suppression, ordinaires ou de copie de calque) → `SessionPersist.save`. Un point retiré fige
+la fiche de ses photos (`MyKTAMapPhotos.majFichesPoints`). Le bouton « tout » relit la liste sur le plan tel qu'il
+est et corrige tous les constats corrigibles du contrôle en un seul geste (50 doublons = une confirmation, une
+consultation de la prise, une entrée ⏪).
+
+🔒 **Suppression** : confirmation chiffrée (`ktaConfirm`, filet des actions destructives, `check-filets-donnees.js`),
+puis la prise `KtaExtensions.suppressionLot(plan, [{ famille, uid }])` — celle de la sélection multiple : sur un
+plan partagé, l'installation refuse sans le droit « gérer » au-delà de son seuil d'objets d'autres membres ; refus =
+message (celui de l'installation, sinon `verif.corr.refus`), rien n'est supprimé. Les opérations sont recalculées
+après les questions (une synchro a pu passer) ; un objet disparu = rien n'est écrit (`verif.corr.change`).
+
+**Qui est corrigé** (`_origine`, `_plan`) : objet de session ; objet d'un calque **rapatriable** (calque du plan
+avec un fichier, pas `editor`) après son passage en session (`FilterPanel.rapatrierCalque`, la question de
+« 🔄 Modifier » ; refus = rien), retrouvé par uid sinon par géométrie (`_srcCalque`). Jamais corrigés, mais
+affichés avec la raison dans le bandeau : plan en lecture seule (`ktaEditionRefusee`), calque sans fichier,
+exemplaires **mêlés** (dessinés ici et venus d'un calque, même rapatrié) — décision à prendre. 🩸 Les morceaux d'un
+✂️ partagent un sommet mais ni leur géométrie ni un sommet consécutif répété : jamais en double, jamais en C10.
+
+**Galerie condamnée** : champ neutre `condamne: true` sur la zone ou le mur en ligne (décision 6c : une galerie
+condamnée est une donnée du plan ; « Vu, normal » reste un avis sur l'appareil). Il suit la session, la synchro et la
+fusion par uid tels quels ; là où les objets sont recopiés champ par champ, il est transporté : registres des
+calques et `getAllEmbeddedZones` / `getAllEmbeddedStructures` (`utils.js`), KMZ (`mkm:condamne`, `kmzExport.js` /
+`kmzImport.js`), GeoJSON (propriété `condamne`) et import SIG (`sigImport.js > condamneDe`). Pas d'entrée de
+légende, rien dans le pathfinder : il ne fait que taire C1 (C12 l'ignore).
+
+Garde-fous : `check-verifier-plan.js` (Node : une falsification par contrôle C4 à C10, doublons d'un calque, galerie
+condamnée contre le graphe, corrections et leurs 8 falsifications), `check-filets-donnees.js` (ordre instantané →
+mutation → entrée ⏪ unique, confirmation → prise → écriture), `checkup-verifier-plan.js`.
 
 ---
 
