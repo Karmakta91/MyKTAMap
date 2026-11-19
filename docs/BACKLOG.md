@@ -38,10 +38,6 @@
 
 ## Ensuite
 
-- **Détection dans le Générateur** — décision 1a du 18/11 : même moteur, `KtaDetection.detecter` avec un `lireBloc`
-  fourni par le Générateur depuis son image source ; piliers et fronts détectés en calque du plan généré.
-  `qui: Claude · action: topo puis lot (piliers validés par KARMA le 18/11) · fini: détection au Générateur, checkup
-  · depuis: 18/11/2026 · taille: M`
 - **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
   pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
   haut. Sans rampe placée, talus 30° automatique inchangé. Priorité KARMA (« un gros plus »), juste après talus honnête.
