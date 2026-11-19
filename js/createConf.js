@@ -2608,7 +2608,7 @@ async function _detecterStructuresGenerateur() {
   const ok = await window.KtaDetectionGenerateur.ouvrir({
     image: image,
     multi: !!document.getElementById("pl_multiLevel")?.checked,
-    pxParM: parseFloat(document.getElementById("pl_scale")?.value) || null,
+    pxParM: Number.parseFloat(document.getElementById("pl_scale")?.value) || null,
     cle: (_plannerMaj && _plannerMaj.planId) || "generateur",
     hote: document.getElementById("kta-planner-modal"),
     existantes: function(img) { rog = _rognagePrevu(img, image); return _structuresDesCalques(rog); },
