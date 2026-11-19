@@ -443,6 +443,7 @@ const ASSETS_TO_CACHE = [
   "./js/recalageScan.js",
   "./js/raccordsTraces.js",
   "./js/verifierPlan.js",
+  "./js/verifierPlanAuto.js",
   "./js/ktaDetection.js",
   // Worker de la détection (importScripts ktaDetection.js) : absent du cache, le calcul se fait dans la page
   "./js/ktaDetectionWorker.js",

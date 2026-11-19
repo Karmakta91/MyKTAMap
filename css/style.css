@@ -20262,6 +20262,12 @@ button.kta-cfg-ligne-action {
   border: 1px solid var(--kta-bordure); border-radius: 8px;
 }
 .kta-verif-vu-txt { color: var(--kta-texte-2); font-size: 12px; overflow-wrap: anywhere; }
+/* Pastille des bloquants (js/verifierPlanAuto.js) : carte Vérifier le plan, tuile Éditeur de données. */
+.kta-verif-pastille {
+  display: inline-block; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; vertical-align: middle;
+  border-radius: 9px; background: var(--kta-avert); color: var(--kta-sur-accent);
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
+}
 /* Détecter les piliers (js/detectionStructures.js) : bandeau = celui des raccords ; aperçu dans le pane ktaDetection. */
 .kta-detect-pastille {
   display: inline-block; width: 12px; height: 12px; margin-left: 3px; vertical-align: middle;

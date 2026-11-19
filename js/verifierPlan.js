@@ -24,7 +24,7 @@
 // entrée ⏪, calque passé en session d'abord, suppression par la prise KtaExtensions.suppressionLot.
 // Expose : window.KtaVerifierPlan = { analyser, collecter, ouvrir, fermer, marquerVu, retablir, retablirTout,
 //   seuilBordPx, liaisonsAbsentes, liste, etat, montrer, corrigible, corriger, corrigerTout, condamner, condamnes,
-//   decondamner }.
+//   decondamner, bloquants } ; bloquants = { C1, C2, C3 } (d) → constats, lus par la passe légère (verifierPlanAuto.js).
 // Doc : docs/architecture/multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6 · Étude : ETUDE_VERIFIER_PLAN.md
 
 window.KtaVerifierPlan = (function () {
@@ -1517,6 +1517,8 @@ window.KtaVerifierPlan = (function () {
     retablirTout: retablirTout,
     seuilBordPx: seuilBordPx,
     liaisonsAbsentes: liaisonsAbsentes,
+    // Passe légère (verifierPlanAuto.js) : les contrôles bloquants eux-mêmes, jamais une copie.
+    bloquants: { C1: function (d) { return _c1(d); }, C2: _c2, C3: _c3 },
     // Copie de la liste courante (harnais, diagnostic) : rang, contrôle, gravité, motif, niveau, clé, au bord.
     liste: function () {
       return _liste.map(function (c, i) {

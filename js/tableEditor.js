@@ -444,7 +444,9 @@
             ${planAffiche && window.KtaVerifierPlan ? `<button class="kta-tbl-source-card" id="kta-tbl-src-verif">
               <span class="kta-tbl-source-ico">${window.ktaIcone("clipboard-list")}</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.verif"))}</span>
+                <span class="kta-tbl-source-titre" data-kta-verif-hote>${
+                  _sansIcone(window.I18n.t("tabledit.source.verif"))}${
+                  window.KtaVerifierPlanAuto ? window.KtaVerifierPlanAuto.pastilleHtml() : ""}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.verifHint")}</span>
               </span>
             </button>` : ""}
