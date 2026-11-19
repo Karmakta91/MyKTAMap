@@ -16,7 +16,11 @@
 //   · C4 à C10 : piliers posés deux fois comme la détection, pilier qui se recoupe, objets hors de l'image, zone au
 //     niveau 12, niveau écrit en texte, tracé de type inconnu, sommet répété, écart entre deux galeries ;
 //     rangement par gravité, fiche de l'autre exemplaire, « Vu, normal », Raccorder (C5) ; C11 : renvoi au
-//     gestionnaire des liaisons ; coût de la passe mesuré.
+//     gestionnaire des liaisons ; coût de la passe mesuré ;
+//   · corrections : « Garder un exemplaire de chacun » sur 51 groupes de piliers (confirmation chiffrée, UNE entrée
+//     ⏪ qui remet tout), contour dégénéré (bandeau), sommets en double (sans confirmation), calque en lecture seule
+//     et plan en lecture seule jamais corrigés ; galerie condamnée (C1 muet, itinéraire toujours refusé), qui survit
+//     aux allers-retours KMZ et GeoJSON → SIG et au rechargement, puis « Retirer ».
 // Usage : node scripts/smoke/checkup-verifier-plan.js (SMOKE_PORT pour une autre copie, KTA_MOTEURS : un moteur)
 // Code : js/verifierPlan.js, pathfinder.js > controle · doc : multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6
 // =====================================================================
@@ -484,6 +488,245 @@ async function jouer(nav, moteur) {
       "C5 : Raccorder pose le sommet sur l'autre galerie, l'écart quitte la liste", apresR);
     await page.evaluate(function () { window.KtaVerifierPlan.fermer(); });
 
+    // ── 7. Corrections sûres, ⏪, lecture seule, galerie condamnée ──
+    // 50 piliers posés deux fois (deux passes de détection), un contour dégénéré ; historique vidé : une seule
+    // entrée ⏪ attendue par geste (canUndo faux après une annulation).
+    await page.evaluate(function (c4) {
+      const P = window.__vp.P, s = [];
+      window.KtaVerifierPlan.retablir(c4);
+      for (let i = 0; i < 50; i++) {
+        const x = 400 + (i % 10) * 6, y = Math.floor(i / 10) * 6;
+        const pts = [P([x, y]), P([x + 2, y]), P([x + 2, y + 2]), P([x, y + 2])];
+        s.push({ uid: "st_vp_m" + i + "a", updatedAt: 1000, type: "pilier-1", level: 0, points: pts });
+        s.push({ uid: "st_vp_m" + i + "b", updatedAt: 2000, type: "pilier-1", level: 0,
+          points: pts.map(function (p) { return { x: p.x, y: p.y }; }) });
+      }
+      window.setStructures(window.getStructures().concat(s));
+      window.setZones(window.getZones().concat([{ uid: "zn_vp_deg", updatedAt: 1000, type: "eau", level: 0,
+        points: [P([480, 0]), P([484, 0]), P([480, 0]), P([484, 0])] }]));
+      window.HistoryManager.reset();
+    }, C4);
+    await page.waitForTimeout(400);
+    const compter = function () {
+      return page.evaluate(function () {
+        const st = window.getStructures().filter(function (o) { return /^st_vp_(m\d|d\d)/.test(o.uid); });
+        return { piliers: st.length, a: st.filter(function (o) { return /a$|d1$/.test(o.uid); }).length,
+          deg: window.getZones().filter(function (o) { return o.uid === "zn_vp_deg"; }).length,
+          c4: window.KtaVerifierPlan.analyser().liste.filter(function (c) {
+            return c.controle === "C4" && /_vp_/.test(c.cle); }).length,
+          canUndo: window.HistoryManager.canUndo() };
+      });
+    };
+    const avantC = await compter();
+    verifier(avantC.piliers === 102 && avantC.c4 === 51, "corrections : 51 groupes de piliers en double posés", avantC);
+    await ouvrirListe(page);
+    const tout = await page.evaluate(function () {
+      const b = document.querySelector('#kta-verif-modal [data-verif-tout="C4"]');
+      return b ? b.textContent : null;
+    });
+    verifier(!!tout && /51/.test(tout), "liste : bouton « Garder un exemplaire de chacun (51) » sous Objets en double", tout);
+    await page.click('#kta-verif-modal [data-verif-tout="C4"]');
+    await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 5000);
+    const conf = await page.evaluate(function () {
+      const o = document.getElementById("kta-confirm-oui");
+      return o.closest(".kta-readme-modal-overlay").textContent;
+    });
+    verifier(/51/.test(conf), "filet : confirmation chiffrée (51 objets) avant la suppression", conf.slice(0, 160));
+    await page.click("#kta-confirm-oui");
+    await page.waitForTimeout(900);
+    const apresC = await compter();
+    verifier(apresC.piliers === 51 && apresC.a === 51 && apresC.c4 === 0 && apresC.canUndo,
+      "« Garder un exemplaire » sur 51 groupes : 51 retirés, les plus anciens gardés, plus aucun doublon", apresC);
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(600);
+    const annule = await compter();
+    verifier(annule.piliers === 102 && annule.c4 === 51 && !annule.canUndo,
+      "⏪ : UNE annulation remet les 102 piliers (une seule entrée pour le geste)", annule);
+
+    // C6 dégénéré par le bandeau ; C6 qui se recoupe : aucun bouton.
+    await page.evaluate(function () { window.KtaVerifierPlan.ouvrir(); });
+    await attendre(page, function () { return !!document.getElementById("kta-verif-modal"); }, 5000);
+    const iDeg = await rang(page, "C6|zn_vp_deg"), iNoeud = await rang(page, "C6|st_vp_noeud");
+    await page.click('#kta-verif-modal [data-verif-i="' + iNoeud + '"]');
+    await page.waitForTimeout(500);
+    const bNoeud = await page.evaluate(function () {
+      return document.querySelector('#kta-verif-bandeau [data-verif="corriger"]').style.display !== "none";
+    });
+    verifier(!bNoeud, "C6 qui se recoupe : pas de bouton de correction");
+    await page.click('#kta-verif-bandeau [data-verif="fermer"]');
+    await page.waitForTimeout(300);
+    await page.click('#kta-verif-modal [data-verif-i="' + (await rang(page, "C6|zn_vp_deg")) + '"]');
+    await page.waitForTimeout(500);
+    const bDeg = await page.evaluate(function () {
+      const b = document.querySelector('#kta-verif-bandeau [data-verif="corriger"]');
+      return { vis: b.style.display !== "none", txt: b.textContent };
+    });
+    verifier(iDeg >= 0 && bDeg.vis, "C6 dégénéré : bouton « " + bDeg.txt + " » dans le bandeau", bDeg);
+    await page.click('#kta-verif-bandeau [data-verif="corriger"]');
+    await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 5000);
+    await page.click("#kta-confirm-oui");
+    await page.waitForTimeout(700);
+    verifier((await compter()).deg === 0, "C6 dégénéré : supprimé après confirmation");
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(500);
+    verifier((await compter()).deg === 1, "⏪ : le contour dégénéré revient");
+
+    // C10 : sommets retirés sans confirmation (rien ne disparaît), une entrée ⏪.
+    await page.evaluate(function () { window.KtaVerifierPlan.fermer(); window.HistoryManager.reset(); });
+    const nDbl = function () {
+      return page.evaluate(function () {
+        return window.getRoads().find(function (r) { return r.uid === "rd_vp_dbl"; }).points.length;
+      });
+    };
+    const r10 = await page.evaluate(function () {
+      const c = window.KtaVerifierPlan.analyser().liste.find(function (x) { return x.cle === "C10|rd_vp_dbl"; });
+      return window.KtaVerifierPlan.corriger(c).then(function (b) {
+        return { b: b, confirm: !!document.getElementById("kta-confirm-oui") };
+      });
+    });
+    verifier(!!r10.b && r10.b.sommets === 1 && !r10.confirm && (await nDbl()) === 3,
+      "C10 : sommet en double retiré par le dédoublonnage existant, sans confirmation", r10);
+    await page.evaluate(function () { window.HistoryManager.undo(); });
+    await page.waitForTimeout(400);
+    verifier((await nDbl()) === 4 && !(await page.evaluate(function () { return window.HistoryManager.canUndo(); })),
+      "⏪ : le sommet revient (une seule entrée)");
+
+    // Lecture seule : objet d'un calque sans fichier (en double dans le registre), puis plan en lecture seule.
+    const ro = await page.evaluate(function () {
+      const P = window.__vp.P;
+      const pts = [P([500, 0]), P([502, 0]), P([502, 2]), P([500, 2])];
+      const ent = function (uid) {
+        return { polygon: { _map: null }, layerId: "vp-calque-fige", type: "pilier-1", points: pts, level: 0,
+          uid: uid, updatedAt: 1000, origOpacity: 1, origFillOpacity: 0.85 };
+      };
+      window._ktaDataStructurePolygons.push(ent("st_vp_ro1"), ent("st_vp_ro2"));
+      const c = window.KtaVerifierPlan.analyser().liste.find(function (x) { return x.cle === "C4|st_vp_ro1|st_vp_ro2"; });
+      const res = { vu: !!c, corrigible: !!c && window.KtaVerifierPlan.corrigible(c) };
+      const vrai = window.ktaEditionRefusee;
+      window.ktaEditionRefusee = function () { return true; };
+      const c2 = window.KtaVerifierPlan.analyser().liste.find(function (x) { return x.cle === "C4|st_vp_d1|st_vp_d2"; });
+      res.planFige = !!c2 && window.KtaVerifierPlan.corrigible(c2);
+      window.ktaEditionRefusee = vrai;
+      res.planOuvert = !!c2 && window.KtaVerifierPlan.corrigible(c2);
+      return res;
+    });
+    verifier(ro.vu && !ro.corrigible, "calque en lecture seule : doublons affichés, jamais corrigibles", ro);
+    verifier(!ro.planFige && ro.planOuvert, "plan en lecture seule : aucune correction proposée", ro);
+    const iRo = await page.evaluate(function () {
+      window.KtaVerifierPlan.ouvrir();
+      const e = window.KtaVerifierPlan.liste().find(function (q) { return q.cle === "C4|st_vp_ro1|st_vp_ro2"; });
+      return e ? e.i : -1;
+    });
+    await page.click('#kta-verif-modal [data-verif-i="' + iRo + '"]');
+    await page.waitForTimeout(500);
+    const bRo = await page.evaluate(function () {
+      const b = document.getElementById("kta-verif-bandeau");
+      return { corr: b.querySelector('[data-verif="corriger"]').style.display !== "none",
+        note: b.querySelector(".kta-verif-note-corr").textContent };
+    });
+    verifier(!bRo.corr && bRo.note.length > 0, "calque en lecture seule : bandeau sans correction, la raison est dite",
+      bRo);
+    await page.evaluate(function () {
+      window.KtaVerifierPlan.fermer();
+      window._ktaDataStructurePolygons = window._ktaDataStructurePolygons.filter(function (e) {
+        return e.layerId !== "vp-calque-fige"; });
+    });
+
+    // Galerie condamnée : posée depuis le bandeau sur la zone de C1, C1 se tait, l'itinéraire ne passe toujours pas.
+    await page.evaluate(function () { window.HistoryManager.reset(); window.KtaVerifierPlan.ouvrir(); });
+    await attendre(page, function () { return !!document.getElementById("kta-verif-modal"); }, 5000);
+    await page.click('#kta-verif-modal [data-verif-i="' + (await rang(page, C1Z)) + '"]');
+    await page.waitForTimeout(500);
+    await page.click('#kta-verif-bandeau [data-verif="condamner"]');
+    await page.waitForTimeout(700);
+    const cond = await page.evaluate(async function (k) {
+      const P = window.__vp.P;
+      const z = window.getZones().find(function (o) { return o.uid === "zn_vp_dur"; });
+      let route = "passe";
+      try { await window.Pathfinder.computeRoute([P([0, 0]), P([50, 0])], { allowedTypes: ["principal"] }); }
+      catch (e) { route = e.code || "erreur"; }
+      return { champ: z.condamne, c1: window.KtaVerifierPlan.analyser().liste.some(function (c) { return c.cle === k; }),
+        route: route, canUndo: window.HistoryManager.canUndo(),
+        liste: window.KtaVerifierPlan.condamnes().map(function (e) { return e.uid; }) };
+    }, C1Z);
+    verifier(cond.champ === true && !cond.c1 && cond.route !== "passe" && cond.canUndo &&
+      cond.liste.indexOf("zn_vp_dur") >= 0,
+      "galerie condamnée : écrite sur la zone, C1 se tait, l'itinéraire ne passe toujours pas", cond);
+
+    // Le champ suit le plan : aller-retour KMZ (export du plan → import KMZ du Générateur) et GeoJSON → import SIG.
+    const rt = await page.evaluate(function () {
+      const KE = window.KmzExport, KI = window.KmzImport, S = window.SigImport, GJ = window.GeojsonExport;
+      const H0 = window.APP_CONFIG.imageHeight;
+      window.APP_CONFIG.imageHeight = 1000;
+      try {
+        const tr = KE.buildTransformCalib({ pointA: { x: 100, y: 900, lat: 46.5, lng: 3.0 },
+          pointB: { x: 900, y: 100, lat: 46.508, lng: 3.0105 }, pointC: { x: 900, y: 900, lat: 46.5, lng: 3.0105 } });
+        const carre = [{ x: 400, y: 400 }, { x: 440, y: 400 }, { x: 440, y: 440 }, { x: 400, y: 440 }];
+        const data = { editorPoints: [], roads: [], zones: [
+          { uid: "zn_rt_a", type: "inaccessible", level: 0, points: carre, condamne: true, description: "ZoneCondamnee" },
+          { uid: "zn_rt_b", type: "inaccessible", level: 0, points: carre.map(function (p) { return { x: p.x + 100, y: p.y }; }),
+            description: "ZoneOuverte" }],
+          structures: [{ uid: "st_rt_m", type: "mur-ligne", level: 0, points: [{ x: 600, y: 300 }, { x: 600, y: 500 }],
+            condamne: true, description: "MurCondamne" }] };
+        const inc = { points: false, roads: false, zones: true, structures: true, jonctions: false, itineraire: false };
+        const kml = KE.genererKml({ transform: tr, planName: "Test", include: inc, levels: null, data: data });
+        const doc = new DOMParser().parseFromString(kml, "text/xml");
+        const nw = KE.planToGps(tr, 0, 0), ne = KE.planToGps(tr, 1000, 0);
+        const ti = KI.buildTransform({ nw: { lat: nw.lat, lng: nw.lng }, ne: { lat: ne.lat, lng: ne.lng } }, 1000, 1000);
+        const r = KI.ingestPlacemarks(doc, ti, { pointTag: "point", roadType: "principal", zoneType: "eau" });
+        const de = function (l, txt) { return l.find(function (o) { return String(o.description || "").indexOf(txt) >= 0; }); };
+        const fc = GJ.generer({ transform: tr, epsg: 4326, planName: "Test", include: inc, levels: null, data: data });
+        const norm = { points: [], lignes: [], polygones: [] };
+        fc.features.forEach(function (f) {
+          const g = f.geometry, coords = (g.type === "Polygon" ? g.coordinates[0] : g.coordinates).map(function (c) {
+            return { lng: c[0], lat: c[1] }; });
+          (g.type === "Polygon" ? norm.polygones : norm.lignes).push({ props: f.properties, coords: coords });
+        });
+        const zDe = (S.proposerMapping(["inaccessible"], "zones"));
+        const sig = S.ingest(norm, tr, { cleType: "type", mapZones: zDe,
+          mapTraces: { "mur-ligne": "struct:mur-ligne" } });
+        return {
+          kmzA: (de(r.zones, "ZoneCondamnee") || {}).condamne === true,
+          kmzB: (de(r.zones, "ZoneOuverte") || {}).condamne === undefined && !!de(r.zones, "ZoneOuverte"),
+          kmzM: (de(r.structures, "MurCondamne") || {}).condamne === true,
+          geo: fc.features.filter(function (f) { return f.properties.condamne === true; }).length,
+          sig: sig.zones.filter(function (z) { return z.condamne === true; }).length +
+            sig.structures.filter(function (z) { return z.condamne === true; }).length
+        };
+      } finally { window.APP_CONFIG.imageHeight = H0; }
+    });
+    verifier(rt.kmzA && rt.kmzB && rt.kmzM, "galerie condamnée : survit à l'aller-retour KMZ (zone et mur en ligne), " +
+      "rien sur la zone ouverte", rt);
+    verifier(rt.geo === 2 && rt.sig === 2, "galerie condamnée : survit à l'aller-retour GeoJSON → import SIG", rt);
+
+    // … et à la session enregistrée (rechargement du plan, sans resemer).
+    await page.evaluate(function () { window.SessionPersist.save({ force: true }); });
+    await page.waitForTimeout(800);
+    await ouvrirPlan(page);
+    await page.waitForTimeout(500);
+    const recharge = await page.evaluate(function (k) {
+      const z = window.getZones().find(function (o) { return o.uid === "zn_vp_dur"; });
+      return { champ: z && z.condamne,
+        c1: window.KtaVerifierPlan.analyser().liste.some(function (c) { return c.cle === k; }) };
+    }, C1Z);
+    verifier(recharge.champ === true && !recharge.c1, "galerie condamnée : retrouvée au rechargement du plan, C1 muet",
+      recharge);
+    await ouvrirListe(page);
+    const nCond = await page.evaluate(function () {
+      return document.querySelectorAll("#kta-verif-modal [data-verif-decondamner]").length;
+    });
+    verifier(nCond >= 1, "liste : section « Galeries condamnées » avec « Retirer »", nCond);
+    await page.click('#kta-verif-modal [data-verif-decondamner="0"]');
+    await page.waitForTimeout(700);
+    const retire = await page.evaluate(function (k) {
+      const z = window.getZones().find(function (o) { return o.uid === "zn_vp_dur"; });
+      return { champ: z.condamne, c1: window.KtaVerifierPlan.analyser().liste.some(function (c) { return c.cle === k; }) };
+    }, C1Z);
+    verifier(retire.champ === undefined && retire.c1, "« Retirer » : le champ part, C1 revient", retire);
+    await page.evaluate(function () { window.KtaVerifierPlan.fermer(); });
+    await semer(page);
+    await page.waitForTimeout(400);
+
     // C11 : une liaison vers un plan absent de l'appareil → renvoi au gestionnaire des liaisons.
     const lien = await page.evaluate(function () {
       const pid = window._currentLoadedPlanId;
@@ -547,6 +790,7 @@ async function jouer(nav, moteur) {
     process.exit(1);
   }
   console.log("🎉 CHECKUP VERT — C1 à C10 signalés (et rien de plus), clic qui centre et ouvre la fiche, « vu, " +
-    "normal » retenu au rechargement, avertissement à la saisie, Raccorder (C5), renvoi des liaisons (C11).");
+    "normal » retenu au rechargement, avertissement à la saisie, Raccorder (C5), renvoi des liaisons (C11), " +
+    "corrections en un geste annulables, lecture seule respectée, galerie condamnée qui suit le plan.");
   process.exit(0);
 })();
