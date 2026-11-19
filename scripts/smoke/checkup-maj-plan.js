@@ -10,7 +10,8 @@
 // (plan fermé, session enregistrée) ; le ZIP téléchargé est relu (calque remplacé, objets versés, nouveau calque) ;
 // « Remplacer le plan dans l'app » rouvre le plan, puis propose le retrait. Attendu : même entrée du registre, nouveau calque
 // affiché, plus de copie ni d'objet versé dans la session, traces datées sous le fichier, et tout cela tient au
-// rechargement de la page.
+// rechargement de la page ; aucune fenêtre de session ni question « autre nom » après le retrait ni à la
+// réouverture. Deux passes : version changée, puis version et nom changés.
 // 🩸 check-maj-plan.js exécute les fonctions dans un `vm` ; seul ce parcours voit le Générateur, le ZIP réel et le
 // rechargement du plan.
 // Usage : node scripts/smoke/checkup-maj-plan.js (SMOKE_PORT pour une autre copie) · doc : plans-loader.md
@@ -42,6 +43,7 @@ async function accueil(page) {
   await attendre(page, function () { return !!window.PlanRegistry && typeof window.chargerZipFichier === "function"; }, 20000);
   await page.waitForTimeout(1500);
   await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+  await sondeSession(page);
 }
 
 async function cliquerOuiConfirm(page) {
@@ -50,7 +52,33 @@ async function cliquerOuiConfirm(page) {
   await page.evaluate(function () { document.getElementById("kta-confirm-oui").click(); });
 }
 
-(async function main() {
+// Fenêtres de session vues depuis le dernier relevé : « Session précédente restaurée » (#kta-session-modal) et la
+// question « enregistrée sous un autre nom » (bouton session.autreNom.restaurer). Posée à chaque page neuve (accueil).
+async function sondeSession(page) {
+  await page.evaluate(function () {
+    window.__fenSession = [];
+    const vus = new Set();
+    new MutationObserver(function () {
+      const m = document.getElementById("kta-session-modal");
+      if (m && !vus.has(m)) { vus.add(m); window.__fenSession.push("restauree : " + m.textContent.replace(/\s+/g, " ").slice(0, 80)); }
+      // Reconnue à son bouton « Restaurer la session » (le titre porte un emoji redessiné par l'app).
+      const oui = document.getElementById("kta-confirm-oui");
+      if (oui && !vus.has(oui) && oui.textContent.indexOf(window.I18n.t("session.autreNom.restaurer")) >= 0) {
+        vus.add(oui); window.__fenSession.push("autreNom");
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+}
+function fenetresSession(page) {
+  return page.evaluate(function () { const r = window.__fenSession || []; window.__fenSession = []; return r; });
+}
+
+// Deux passes, navigateur neuf chacune : version changée (le nom reste), puis version ET nom changés.
+// 🩸 Falsifié : sans sessionPersist.js > retenirModale, la passe 1 voit « Session précédente restaurée » (les objets
+// que le retrait enlève) avec la question du retrait ; sans renommerSession, la passe 2 voit « autre nom » à chaque
+// ouverture et perd les traces de suppression.
+async function passe(nomAussi) {
+  console.log("\n══ passe : version changée" + (nomAussi ? " et nom changé" : "") + " ══");
   const nav = await lancerNavigateur(chromium);
   const page = await nav.newPage({ viewport: { width: 1200, height: 850 }, acceptDownloads: true });
   await page.addInitScript(function (ls) {
@@ -163,6 +191,13 @@ async function cliquerOuiConfirm(page) {
     }, prep.cible);
     verifier(gen.cible && gen.maj.length === 2 && gen.nom, "Générateur ouvert en mode Modifier, déjà rempli (calque remplacé + nouveau calque)", gen);
     const idNouveau = gen.maj.find(function (id) { return id !== prep.cible; });
+    // Nouvelle version (comme KARMA), et nouveau nom en passe 2.
+    const nomVersion = await page.evaluate(function (nomAussi) {
+      const v = document.getElementById("pl_version"), n = document.getElementById("pl_name");
+      v.value = "V9"; v.dispatchEvent(new Event("input", { bubbles: true }));
+      if (nomAussi) { n.value = n.value + " bis"; n.dispatchEvent(new Event("input", { bubbles: true })); }
+      return n.value;
+    }, nomAussi);
 
     // ── 4. Génération en tuilage V2 : le plan ouvert est fermé d'abord (confirmation), puis ZIP relu ──
     const carteVivante = function () { return page.evaluate(function () { return !!(window.L && window.map instanceof window.L.Map); }); };
@@ -238,6 +273,7 @@ async function cliquerOuiConfirm(page) {
 
     // ── 5. Remplacer dans l'app, avec le retrait proposé ──
     const T0 = Date.now();
+    await fenetresSession(page);   // relevé remis à zéro : seules comptent les fenêtres de la suite
     await page.evaluate(function () { document.querySelector('#kta-maj-fin [data-maj-fin="remplacer"]').click(); });
     await cliquerOuiConfirm(page);
     await attendre(page, function () {
@@ -268,6 +304,10 @@ async function cliquerOuiConfirm(page) {
     verifier(apres.copies === 0 && apres.versesEnSession === 0, "session : plus de copie, plus d'objet versé (aucun doublon)", apres);
     verifier(apres.traces.length === 2 && apres.traces.every(function (d) { return d < Date.now() && d >= T0 - 600000; }),
       "traces de suppression posées pour les deux objets versés", apres.traces);
+    const fenRemplacer = await fenetresSession(page);
+    verifier(fenRemplacer.length === 0,
+      "🩸 après Remplacer et le retrait : ni « Session précédente restaurée » (objets que le retrait enlève), ni « autre nom »",
+      fenRemplacer);
 
     // ── 6. Rechargement complet de la page : tout tient ──
     await accueil(page);
@@ -277,11 +317,44 @@ async function cliquerOuiConfirm(page) {
     const rouvert = await etat();
     verifier(rouvert.nouveauAffiche && !rouvert.enModification && rouvert.copies === 0 && rouvert.versesEnSession === 0,
       "page rechargée : l'archive gardée est la nouvelle version, la session reste propre", rouvert);
+    const fenRouvert = await fenetresSession(page);
+    const nomSession = await page.evaluate(function (id) { const s = window.SessionPersist.getSaved(id); return s ? s.planName : null; }, depart.id);
+    verifier(fenRouvert.length === 0 && (nomSession === null || nomSession === nomVersion),
+      "🩸 réouverture : aucune question de session, la session porte le nom de la nouvelle version",
+      { fenetres: fenRouvert, session: nomSession, plan: nomVersion });
+
+    // ── 7. La retenue ne fuit pas : posée pour un AUTRE plan, elle ne cache pas la fenêtre de celui-ci ──
+    if (!nomAussi) {
+      await page.evaluate(async function () {
+        const pt = { x: 140, y: 160, nom: "point gardé", tags: ["pa"] };
+        window.KtaUid.ensure(pt, "pt"); window.KtaUid.touch(pt);
+        window.setEditorPoints((window.getEditorPoints() || []).concat([pt]));
+        await window.SessionPersist.save({ force: true });
+        window.SessionPersist.retenirModale("un-autre-plan");
+      });
+      await accueil(page);
+      await page.evaluate(function (id) {
+        window.SessionPersist.retenirModale("un-autre-plan");
+        return window.chargerPlanDuRegistre(id);
+      }, depart.id);
+      await attendre(page, function () { return !!document.getElementById("kta-session-modal"); }, 20000).catch(function () {});
+      const fenAutre = await fenetresSession(page);
+      verifier(fenAutre.some(function (f) { return /^restauree/.test(f); }),
+        "retenue posée pour un autre plan : la fenêtre « Session précédente restaurée » de ce plan s'ouvre", fenAutre);
+    }
     verifier(erreurs.length === 0, "aucune erreur JavaScript", erreurs.slice(0, 3));
   } catch (e) {
     pb("exception du harnais : " + (e && e.message));
   } finally {
     await nav.close();
+  }
+}
+
+(async function main() {
+  try {
+    await passe(false);
+    await passe(true);
+  } finally {
     server.close();
   }
   console.log("");
@@ -290,5 +363,6 @@ async function cliquerOuiConfirm(page) {
     problemes.forEach(function (p) { console.log("   • " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — mise à jour du plan : de la session au ZIP, puis remplacement dans l'app");
+  console.log("🎉 CHECKUP VERT — mise à jour du plan : de la session au ZIP, puis remplacement dans l'app, " +
+    "sans fenêtre de session ni question de nom après une nouvelle version");
 })();

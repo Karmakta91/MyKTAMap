@@ -144,7 +144,19 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire, libelleGroupe}",
   t("légende des types versés : même sous-ensemble que la conversion", /window\.ktaLegendePourCalque = function\(payload\) \{ return _legendePourPayload/.test(SE) &&
     /ktaLegendePourCalque\(tout\)/.test(MP));
   t("plan local : remplacement sous le MÊME id (session, calage, photos restent attachés), retrait proposé AVANT",
-    /if \(avant\) await _proposerNettoyage\(etat, false\);[\s\S]{0,200}chargerZipFichier\(fichier, [\s\S]{0,80}\{ planId: entree\.id, storeBlob: true/.test(MP));
+    /if \(avant\) await _proposerNettoyage\(etat, false\);[\s\S]{0,500}chargerZipFichier\(fichier, [\s\S]{0,80}\{ planId: entree\.id, storeBlob: true/.test(MP));
+  {
+    const SPj = lire("js/sessionPersist.js");
+    t("🩸 remplacement : nouveau nom déclaré et fenêtre de session retenue (plan fermé) AVANT le chargement, " +
+      "libérée dans un finally (sinon « Session précédente restaurée » annonce les objets que le retrait enlève)",
+      /SP\.renommerSession\(etat\.planId, etat\.nom\);\s+if \(!avant\) SP\.retenirModale\(etat\.planId\);[\s\S]{0,200}chargerZipFichier\(/.test(MP) &&
+      /\} finally \{\s+if \(contrat\) SP\.libererModale\(\);/.test(MP) && /etat\.nom = \(infos && infos\.nom\)/.test(MP));
+    t("🔒 session : retenue et renommage valables pour la seule ouverture suivante (consommés par onPlanLoaded) ; " +
+      "un autre nom n'est accepté que s'il est celui déclaré pour CE plan",
+      /_retenue = null; _modaleRetenue = null; _renommage = null;\s+_migrerAncienSlotUniqueSiBesoin|const retenir = [^\n]+\n[^\n]+\n\s+_retenue = null; _modaleRetenue = null; _renommage = null;/.test(SPj) &&
+      /_renommage\.planId === _currentPlanId/.test(SPj) &&
+      /const renomme = !nameMatch && !!renom && _normNomPlan\(renom\) === _normNomPlan\(currentName\);/.test(SPj));
+  }
   t("🩸 plan fermé par le Générateur : retrait APRÈS la réouverture (la session d'un plan fermé ne s'enregistre plus)",
     /function _planOuvert\(etat\) \{\s+return !etat\.planFerme/.test(MP) &&
     (MP.match(/if \(!avant && window\._currentLoadedPlanId === etat\.planId\) await _proposerNettoyage/g) || []).length === 2 &&

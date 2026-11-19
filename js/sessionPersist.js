@@ -6,7 +6,7 @@
 
 // sessionPersist.js — auto-sauvegarde de la session active, un slot par plan.
 // Expose : window.SessionPersist (onPlanLoaded, onPlanUnload, save, clear, getSaved(planId?),
-//   getLastSaveInfo, normNomPlan).
+//   getLastSaveInfo, normNomPlan, retenirModale / libererModale / renommerSession : majPlan.js > _remplacer).
 // Slot `myktamap_session_v1_<planId>` via window.KtaSessionStore (js/sessionStore.js : lecture synchrone
 // en mémoire, écriture IndexedDB en arrière-plan, repli localStorage). Changer de plan n'efface rien : la
 // session de chaque plan reste dans son slot. Tick (_tick) qui ne sérialise que la session « sale » (_sale :
@@ -67,6 +67,11 @@
   let _slotAssume    = false;
   // Question « restaurer la session d'un autre nom ? » en cours : aucune écriture tant qu'elle n'est pas tranchée.
   let _decisionEnAttente = false;
+  // « Mettre à jour le plan » (majPlan.js > _remplacer) : valables pour la SEULE ouverture suivante, consommés par
+  // onPlanLoaded quel que soit le plan ouvert (jamais de fuite sur une autre ouverture), levés par libererModale.
+  let _retenue = null;         // planId dont la fenêtre « Session précédente restaurée » attend le retrait
+  let _modaleRetenue = null;   // planId restauré sans fenêtre, à afficher (ou non) par libererModale
+  let _renommage = null;       // { planId, nom } : nouveau nom d'une version remplacée sous le même id
   // 🩸 Phase 2 de restauration (itinéraire différé) : à annuler sur « Effacer la session » ou changement de
   // plan, sinon l'itinéraire réapparaît 1,5 s plus tard.
   let _phase2TimeoutId = null;
@@ -1019,6 +1024,9 @@
     _decisionEnAttente = false;
     _annulerPhase2();   // sinon l'itinéraire de l'ancien plan arrive sur le nouveau
     _currentPlanId = planId || null;
+    const retenir = !!_currentPlanId && _retenue === _currentPlanId;
+    const renom = (_renommage && _currentPlanId && _renommage.planId === _currentPlanId) ? _renommage.nom : null;
+    _retenue = null; _modaleRetenue = null; _renommage = null;
     _lastHash = null;
     _sale = true;
     _dernierComplet = 0;
@@ -1052,10 +1060,18 @@
       const nameMatch   = (!saved.planName || !currentName)
                             ? true
                             : (_normNomPlan(saved.planName) === _normNomPlan(currentName));
+      // Nouvelle version du MÊME plan, remplacée par l'assistant sous le même id : son nouveau nom n'est pas une
+      // collision. 🔒 Seul ce chemin le déclare (renommerSession) ; tous les autres gardent la question.
+      const renomme = !nameMatch && !!renom && _normNomPlan(renom) === _normNomPlan(currentName);
 
-      if (nameMatch) {
+      if (nameMatch || renomme) {
         restored = _applyRestore(saved);
-        if (restored) { _slotAssume = true; _afficherModaleSession(restored); }
+        if (restored) {
+          _slotAssume = true;
+          // Réécrite sous le nouveau nom tout de suite, sinon la question reviendrait à l'ouverture suivante.
+          if (renomme) { _lastHash = null; save({ force: true }); }
+          if (retenir) _modaleRetenue = _currentPlanId; else _afficherModaleSession(restored);
+        }
       } else {
         // 🩸 Nom vraiment différent (plan renommé, ou collision) : copie dans 📦 Backups, écriture suspendue,
         // l'utilisateur tranche. Jamais d'effacement silencieux.
@@ -1066,6 +1082,25 @@
     _startPolling();
     _verifierMemoire(false);
     return restored;
+  }
+
+  // ── « Mettre à jour le plan » : remplacement sous le même id (majPlan.js > _remplacer) ──
+  // ⚠️ contrat : retenirModale(planId) et renommerSession(planId, nom) AVANT le chargement de la nouvelle version,
+  // libererModale() APRÈS le retrait proposé, dans un finally. La fenêtre retenue ne s'ouvre que si la session
+  // ACTUELLE n'est pas vide, avec ses vrais chiffres (sinon elle annonçait les objets que le retrait enlève).
+  function retenirModale(planId) { _retenue = planId || null; }
+  function renommerSession(planId, nom) {
+    _renommage = (planId && nom) ? { planId: planId, nom: String(nom) } : null;
+  }
+  function libererModale() {
+    const id = _modaleRetenue;
+    _retenue = null; _modaleRetenue = null; _renommage = null;
+    if (!id || id !== _currentPlanId) return;
+    const s = _gatherState();
+    const n = function (l) { return Array.isArray(l) ? l.length : 0; };
+    _afficherModaleSession({ points: n(s.editorPoints), roads: n(s.roads), zones: n(s.zones),
+      structures: n(s.structures), measure: n(s.measure), measureSurface: n(s.measureSurface),
+      trackerTimeline: n(s.trackerTimeline) });
   }
 
   function _proposerSessionAutreNom(saved, nomActuel, planId) {
@@ -1186,6 +1221,9 @@
     getSaved:     getSaved,
     getLastSaveInfo: getLastSaveInfo,
     normNomPlan:  _normNomPlan,        // même plan sous un autre nom (📦 Backups d'une autre version)
+    retenirModale: retenirModale,      // majPlan.js > _remplacer seulement (contrat ci-dessus)
+    libererModale: libererModale,
+    renommerSession: renommerSession,
     demanderEffacement: demanderEffacement   // « Effacer la session » (même parcours depuis 📊 Détails)
   };
 })();
