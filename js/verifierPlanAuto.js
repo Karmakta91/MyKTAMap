@@ -40,7 +40,7 @@ window.KtaVerifierPlanAuto = (function () {
   function _t(k, p) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(k, p) : k; }
   function _api() {
     const V = window.KtaVerifierPlan;
-    return V && V.bloquants && typeof V.bloquants.C1 === "function" ? V : null;
+    return typeof V?.bloquants?.C1 === "function" ? V : null;
   }
   function _maintenant() {
     return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
@@ -79,15 +79,15 @@ window.KtaVerifierPlanAuto = (function () {
       if (!parNiveau.has(n)) parNiveau.set(n, []);
       parNiveau.get(n).push(r);
     });
-    const points = !d.multiLevel ? [] : (d.points || []).filter(function (p) {
-      return !!(p && PJ && typeof PJ.estJonction === "function" && PJ.estJonction(p));
-    });
-    const trier = function (ctl, l) {
-      return l.map(function (o) { return { o: o, k: _niveauxDe(ctl, o).join(",") }; })
-        .sort(function (a, b) { return a.k < b.k ? -1 : a.k > b.k ? 1 : 0; }).map(function (e) { return e.o; });
-    };
-    return { C1: galeries, C2: d.multiLevel ? trier("C2", points) : [], C3: d.multiLevel ? trier("C3", jonctions) : [],
-      parNiveau: parNiveau };
+    const estJonction = typeof PJ?.estJonction === "function" ? PJ.estJonction : null;
+    const points = d.multiLevel && estJonction
+      ? (d.points || []).filter(function (p) { return !!p && estJonction(p); }) : [];
+    return { C1: galeries, C2: d.multiLevel ? _trierParNiveaux("C2", points) : [],
+      C3: d.multiLevel ? _trierParNiveaux("C3", jonctions) : [], parNiveau: parNiveau };
+  }
+  function _trierParNiveaux(ctl, l) {
+    return l.map(function (o) { return { o: o, k: _niveauxDe(ctl, o).join(",") }; })
+      .sort(function (a, b) { return a.k.localeCompare(b.k); }).map(function (e) { return e.o; });
   }
   function _galeriesDes(u, ctl, lot) {
     const niveaux = new Set();
@@ -97,9 +97,9 @@ window.KtaVerifierPlanAuto = (function () {
     return out;
   }
   function _donneesTranche(d, u, ctl, lot) {
-    if (ctl === "C1") return Object.assign({}, d, { roads: lot });
-    if (ctl === "C2") return Object.assign({}, d, { points: lot, roads: _galeriesDes(u, ctl, lot) });
-    return Object.assign({}, d, { roads: _galeriesDes(u, ctl, lot).concat(lot) });
+    if (ctl === "C1") return { ...d, roads: lot };
+    if (ctl === "C2") return { ...d, points: lot, roads: _galeriesDes(u, ctl, lot) };
+    return { ...d, roads: _galeriesDes(u, ctl, lot).concat(lot) };
   }
 
   // Données hors plan ouvert (Générateur) : le multi-niveau du graphe et de KtaPoiJonction.estJonction se lit sur
@@ -124,6 +124,46 @@ window.KtaVerifierPlanAuto = (function () {
     try { return fn(); } finally { PJ.proposerRaccords = avant; }
   }
 
+  // Une tranche de la passe p : le lot suivant du contrôle en cours, taille ajustée sur sa durée. → false : fini.
+  function _tranche(p) {
+    const ordre = ["C1", "C2", "C3"];
+    while (p.ic < ordre.length && p.pos >= p.u[ordre[p.ic]].length) { p.ic++; p.pos = 0; }
+    if (p.ic >= ordre.length) return false;
+    const ctl = ordre[p.ic];
+    const lot = p.u[ctl].slice(p.pos, p.pos + p.taille[ctl]);
+    const a = p.now();
+    const constats = _avecMulti(p.d, function () { return _controler(p.V, ctl, _donneesTranche(p.d, p.u, ctl, lot)); });
+    const dt = p.now() - a;
+    p.pos += lot.length;
+    p.res.tranches++;
+    if (dt > p.res.maxMs) p.res.maxMs = dt;
+    (constats || []).forEach(function (c) { if (c?.gravite === "bloquant") p.res.cles.push(c.cle); });
+    if (dt < TRANCHE_MS / 2) p.taille[ctl] *= 2;
+    else if (dt > TRANCHE_MS * 2) p.taille[ctl] = Math.max(1, Math.floor(p.taille[ctl] / 2));
+    return true;
+  }
+  function _controler(V, ctl, td) {
+    if (ctl !== "C2") return V.bloquants[ctl](td);
+    return _sansPropositions(function () { return V.bloquants.C2(td); });
+  }
+  // Un créneau de repos : collecte au premier, puis tranches tant que le budget le permet.
+  // → "suite" (replanifier), "fini", ou "abandon".
+  function _creneau(p, dl) {
+    if (!p.d) {
+      const a = p.now();
+      p.d = p.donnees || p.V.collecter();
+      p.u = _avecMulti(p.d, function () { return _unites(p.d); });
+      p.res.maxMs = Math.max(p.res.maxMs, p.now() - a);
+    }
+    const debut = p.now();
+    let encore = true;
+    do {
+      encore = _tranche(p);
+      if (p.now() - p.t0 > PLAFOND_MS || p.res.tranches > PLAFOND_TRANCHES) return "abandon";
+    } while (encore && p.now() - debut < BUDGET_MS && (!dl || dl.timeRemaining() > TRANCHE_MS));
+    return encore ? "suite" : "fini";
+  }
+
   // → Promise<{ cles, maxMs, tranches, ms } | null> (null : abandon, ou passe remplacée par une plus récente).
   // opts : { jeton, repos(fn) (planificateur, Node), maintenant() }.
   function lancer(donnees, opts) {
@@ -132,60 +172,22 @@ window.KtaVerifierPlanAuto = (function () {
     if (!V) return Promise.resolve(null);
     const repos = o.repos || _repos;
     const now = o.maintenant || _maintenant;
-    const jeton = o.jeton;
+    const p = { V: V, donnees: donnees, now: now, t0: now(), d: null, u: null, ic: 0, pos: 0, taille: { ...TAILLE0 },
+      res: { cles: [], maxMs: 0, tranches: 0, ms: 0 } };
     return new Promise(function (resolve) {
-      let d, u;
-      const t0 = now();
-      const res = { cles: [], maxMs: 0, tranches: 0, ms: 0 };
-      const ordre = ["C1", "C2", "C3"];
-      let ic = 0, pos = 0;
-      const taille = Object.assign({}, TAILLE0);
-      function abandon(motif, err) {
+      const abandon = function (motif, err) {
         console.warn("[VerifierPlan] passe légère abandonnée : " + motif, err || "");
         resolve(null);
-      }
-      function tranche() {
-        while (ic < ordre.length && pos >= u[ordre[ic]].length) { ic++; pos = 0; }
-        if (ic >= ordre.length) return false;
-        const ctl = ordre[ic];
-        const lot = u[ctl].slice(pos, pos + taille[ctl]);
-        const a = now();
-        const constats = _avecMulti(d, function () {
-          const td = _donneesTranche(d, u, ctl, lot);
-          return ctl === "C2" ? _sansPropositions(function () { return V.bloquants.C2(td); }) : V.bloquants[ctl](td);
-        });
-        const dt = now() - a;
-        pos += lot.length;
-        res.tranches++;
-        if (dt > res.maxMs) res.maxMs = dt;
-        (constats || []).forEach(function (c) { if (c && c.gravite === "bloquant") res.cles.push(c.cle); });
-        if (dt < TRANCHE_MS / 2) taille[ctl] *= 2;
-        else if (dt > TRANCHE_MS * 2) taille[ctl] = Math.max(1, Math.floor(taille[ctl] / 2));
-        return true;
-      }
-      function creneau(dl) {
-        if (jeton !== undefined && jeton !== _jeton) return resolve(null);
-        try {
-          if (!d) {
-            const a = now();
-            d = donnees || V.collecter();
-            u = _avecMulti(d, function () { return _unites(d); });
-            const dt = now() - a;
-            if (dt > res.maxMs) res.maxMs = dt;
-          }
-          const debut = now();
-          let encore = true;
-          do {
-            encore = tranche();
-            if (now() - t0 > PLAFOND_MS || res.tranches > PLAFOND_TRANCHES) return abandon("plafond dépassé");
-          } while (encore && now() - debut < BUDGET_MS && (!dl || dl.timeRemaining() > TRANCHE_MS));
-          if (encore) return repos(creneau);
-        } catch (e) {
-          return abandon("erreur du moteur", e);
-        }
-        res.ms = now() - t0;
-        resolve(res);
-      }
+      };
+      const creneau = function (dl) {
+        if (o.jeton !== undefined && o.jeton !== _jeton) return resolve(null);
+        let issue;
+        try { issue = _creneau(p, dl); } catch (e) { return abandon("erreur du moteur", e); }
+        if (issue === "abandon") return abandon("plafond dépassé");
+        if (issue === "suite") return repos(creneau);
+        p.res.ms = now() - p.t0;
+        return resolve(p.res);
+      };
       repos(creneau);
     });
   }
@@ -195,7 +197,7 @@ window.KtaVerifierPlanAuto = (function () {
     try {
       const v = JSON.parse(localStorage.getItem(CLE_LS) || "{}");
       return v && typeof v === "object" && !Array.isArray(v) ? v : {};
-    } catch (e) { return {}; }
+    } catch (e) { return {}; }   // illisible ou stockage refusé : rien de retenu, le toast reviendra
   }
   function _ecrireLs(planId, n) {
     try {
@@ -226,9 +228,9 @@ window.KtaVerifierPlanAuto = (function () {
   }
   function _urgence() {
     try {
-      if (window.EmergencyMode && window.EmergencyMode.isActif && window.EmergencyMode.isActif()) return true;
-      if (window.SecoursMode && window.SecoursMode.isOpen && window.SecoursMode.isOpen()) return true;
-      if (window.LostMode && window.LostMode.isActive && window.LostMode.isActive()) return true;
+      if (window.EmergencyMode?.isActif?.()) return true;
+      if (window.SecoursMode?.isOpen?.()) return true;
+      if (window.LostMode?.isActive?.()) return true;
     } catch (e) { /* module absent ou en erreur : pas d'urgence connue */ }
     return false;
   }
