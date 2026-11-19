@@ -856,6 +856,15 @@ du plan dont l'autre plan n'est pas sur l'appareil (`liaisonsAbsentes()`, `Inter
 **Coût** (passe complète, `analyser()`) : relevé fictif des checkups (~270 objets) 5 à 6 ms ; données fictives de
 19 834 objets (5 500 piliers, 10 000 tracés, 1 000 zones, 3 334 points) ~3,2 s en Node, dont ~2,5 s pour C5
 (`KtaRaccords.detecter`, inchangé) et ~0,35 s pour C4, C6 à C10. La passe au chargement (lot 4) se limite à C1–C3.
+🩸 **C5 est gardé en cache** (`verifierPlan.js > _detecterC5`) : `detecter` n'est relancé que si la signature de ce
+qu'il lit change — tracés (session et calques, tous leurs champs, sommets au millième de px), points (jonctions du
+graphe), échelle, multi-niveau, plan ouvert ; remis à zéro à la fermeture du plan. Rouvrir la fenêtre, Précédent /
+Suivant, « Vu, normal » ne le relancent pas. Signature relue à chaque passe plutôt que `kta:donneesPlanChange`
+(un indice, pas une preuve) : ~6 ms sur les 19 834 objets (Node hors bac à sable). Ignorés : une clé ajoutée est
+retirée du résultat gardé ; une clé retirée (Réafficher) recalcule si le résultat gardé la contenait déjà comme
+ignorée. Seulement pour le plan ouvert : des données passées à `analyser(donnees)` ne sont jamais servies par le
+cache. C10 (~40 ms sur le même jeu) n'en a pas besoin. Éprouvé par `check-verifier-plan.js` §13 bis (compte des
+appels, 3 falsifications) et le checkup (2 ouvertures = 1 appel, modification = 2, « Vu, normal » = 0 de plus).
 
 C2, C3 et C8 ne valent qu'en plan multi-niveau. **Vu, normal** : clé `contrôle|identité[|identité|détail]`
 (identité = `uid`, sinon empreinte du type et des sommets au dixième de px) dans la pref du plan `verifVus` (`config.js >

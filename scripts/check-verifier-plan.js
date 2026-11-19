@@ -481,6 +481,60 @@ function casC5() {
     w._ign.length === 1 && w._vus.length === 0 && w.KtaRaccords.detecter().liste.length === 0);
 }
 
+// ── 13 bis. C5 en cache : KtaRaccords.detecter seulement quand ce qu'il lit change ──
+// `mutation` : [motif, remplacement] sur verifierPlan.js (falsification). → liste des échecs (vide = tenu).
+function casCacheC5(mutation) {
+  const d = casC5(), echecs = [];
+  const w = bac(d, null, { _currentLoadedPlanId: "p1" }, mutation);
+  let n = 0;
+  const vrai = w.KtaRaccords.detecter;
+  w.KtaRaccords.detecter = function () { n++; return vrai.apply(this, arguments); };
+  const c5 = () => de(analyse(w).liste, "C5");
+  const ok = (nom, c) => { if (!c) echecs.push(nom + " (appels : " + n + ")"); };
+  ok("1re ouverture : un écart", c5().length === 1 && n === 1);
+  ok("2e ouverture sans changement : pas de nouvel appel", c5().length === 1 && n === 1);
+  w.KtaVerifierPlan.marquerVu(c5()[0]);
+  ok("« Vu, normal » (Ignorer) : écart retiré sans nouvel appel", c5().length === 0 && n === 1);
+  // Résultat gardé calculé SANS ignoré : le réafficher n'a pas besoin de recalcul (filtre seul).
+  w.setPlanRaccordsIgnores(null, []);
+  ok("ignorés réaffichés (résultat gardé sans ignoré) : l'écart revient sans appel", c5().length === 1 && n === 1);
+  w.KtaVerifierPlan.marquerVu(c5()[0]);
+  d.roads[0].nom = "A";         // champ sans effet sur l'écart : recalcul, l'ignoré est retenu par detecter
+  ok("champ d'un tracé changé : recalcul, l'écart reste ignoré", c5().length === 0 && n === 2);
+  w.setPlanRaccordsIgnores(null, []);
+  ok("ignorés réaffichés (résultat gardé AVEC l'ignoré) : recalcul, l'écart revient", c5().length === 1 && n === 3);
+  d.roads[1].points[1].y = 30;   // sommet éloigné à 30 px : plus d'écart proposé
+  ok("sommet déplacé : recalcul, l'écart disparaît", c5().length === 0 && n === 4);
+  c5();
+  ok("après la modification, réouverture sans changement : pas de nouvel appel", n === 4);
+  d.roads[1].level = 1;
+  ok("niveau d'un tracé changé : recalcul", (c5(), n === 5));
+  d.points = [{ uid: "pt_j", x: 50, y: 4, tags: ["puits"] }];
+  ok("point ajouté (jonctions du graphe) : recalcul", (c5(), n === 6));
+  w.APP_CONFIG.scale = 8;
+  ok("échelle changée : recalcul", (c5(), n === 7));
+  w.KtaVerifierPlan.analyser(w.KtaVerifierPlan.collecter());
+  ok("données passées à analyser() : jamais lues dans le cache", n === 8);
+  return echecs;
+}
+{
+  const e = casCacheC5();
+  t("C5 en cache : 1 appel pour 2 ouvertures sans changement, « Vu, normal » sans appel, recalcul après " +
+    "modification (sommet, champ, point, échelle, ignorés réaffichés)", e.length === 0, e);
+  const MUT_CACHE = [
+    { nom: "cache jamais relu", m: ["if (sig && _c5Cache && _c5Cache.sig === sig) {", "if (false) {"] },
+    { nom: "géométrie hors signature", m: ["if (p && typeof p === \"object\") { nombre(p.x); nombre(p.y); }",
+      "if (p && typeof p === \"object\") { /* rien */ }"] },
+    { nom: "ignorés retirés sans recalcul", m: ["if (!ign.has(k)) garde = false;", "/* rien */"] }
+  ];
+  MUT_CACHE.forEach(function (x) {
+    let echecs = [];
+    try { echecs = casCacheC5(x.m); } catch (err) { echecs = null; }
+    t("🔒 falsification du cache C5 (" + x.nom + ") : le test le voit", Array.isArray(echecs) && echecs.length > 0,
+      echecs);
+  });
+}
+
 // ── 14. C11 : liaisons vers un plan absent ──
 {
   const w = bac({}, null, { _currentLoadedPlanId: "p1",
@@ -497,7 +551,7 @@ const MUTANTS = [
     vu: l => l.some(c => c.cle === "C4|st_d1|st_d2") },
   { nom: "C4 (contour : départ et sens quelconques)", m: ["return a < b ? a : b;", "return l.join(\";\");"],
     cas: casC4, vu: l => l.some(c => c.cle === "C4|st_r1|st_r2") },
-  { nom: "C5", m: ["return ((r && r.liste) || []).map(", "return [].map("], cas: casC5,
+  { nom: "C5", m: ["return _detecterC5(d, cache).map(", "return [].map("], cas: casC5,
     vu: l => l.some(c => c.controle === "C5") },
   { nom: "C6 (se recoupe)", m: ["if (ip) return ip;", "if (ip && false) return ip;"], cas: casC6,
     vu: l => l.some(c => c.controle === "C6" && c.motif === "recoupe") },

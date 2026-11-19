@@ -14,7 +14,8 @@
 // ktaResolveStyle, C10 ktaDedupliquerFichier (tableEditor.js) : jamais une copie, sinon deux vérités.
 // Moteur PUR : analyser(donnees?) → { liste, vus } ; sans argument, le plan ouvert (collecter()). C4, C6 à C10 sont
 // linéaires (hachage, bornes ; C6 balaie les arêtes d'un contour triées en x). Éprouvé par
-// scripts/check-verifier-plan.js (Node) et scripts/smoke/checkup-verifier-plan.js.
+// scripts/check-verifier-plan.js (Node) et scripts/smoke/checkup-verifier-plan.js. C5 est gardé en cache tant que
+// ce qu'il lit ne change pas (_c5 : signature des tracés et des points ; C10, linéaire, n'en a pas besoin).
 // « Vu, normal » : clé « contrôle|identité[|identité|détail] » (identité = uid, sinon empreinte de la géométrie)
 // retenue par plan sur l'appareil (config.js > get/setPlanVerifVus). C5 : c'est « Ignorer » des Raccords (une seule
 // mémoire, celle de la carte Raccords). 🩸 Un objet sans uid revient s'il est redessiné.
@@ -585,12 +586,72 @@ window.KtaVerifierPlan = (function () {
 
   // ── C5 : écarts du réseau (Raccords à vérifier) ──────────
   // KtaRaccords.detecter tel quel, plan ouvert seulement (il lit la carte). « Raccorder » est son écriture.
-  function _c5(d) {
+  // ⚠️ Il coûte (graphe + grille : plus d'une seconde sur ~20 000 objets) : son résultat est gardé tant que la
+  // signature de ce qu'il lit ne change pas — tracés (session et calques, `d.roads` = Pathfinder.collecterTraces,
+  // sa source), points (jonctions du graphe), échelle, multi-niveau, plan. Relue à chaque analyse (quelques ms)
+  // plutôt que `kta:donneesPlanChange` : un indice, pas une preuve (utils.js > ktaSignalerDonneesPlan).
+  // Ignorés : un écart AJOUTÉ (« Vu, normal », Ignorer) est retiré du résultat gardé ; une liste qui perd une
+  // clé (Réafficher les ignorés) fait recalculer. Seulement pour le plan ouvert (`cache`) : des données passées
+  // à analyser() ne sont pas celles que detecter lit.
+  let _c5Cache = null;   // { sig, ign: Set, liste }
+  function _sigC5(d) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    const entier = function (q) { h1 = Math.imul(h1 ^ q, 2654435761); h2 = Math.imul(h2 ^ q, 1597334677); };
+    const texte = function (v) {
+      const t = typeof v === "string" ? v : (v === undefined ? "\u0000" : JSON.stringify(v));
+      for (let i = 0; i < t.length; i++) entier(t.charCodeAt(i));
+      entier(0x7c7c);   // séparateur : « 1|23 » ≠ « 12|3 »
+    };
+    // Coordonnée au millième de px : deux entiers (partie haute, partie basse), sans passer par une chaîne.
+    const nombre = function (x) {
+      if (typeof x !== "number" || !isFinite(x)) { texte(String(x)); return; }
+      const q = Math.round(x * 1000);
+      entier(q | 0); entier(Math.floor(q / 4294967296) | 0);
+    };
+    const C = window.APP_CONFIG || {};
+    texte(window._currentLoadedPlanId || ""); texte(C.scale); texte(C.multiLevel === true);
+    // Objet : chaque champ sauf la géométrie (clé puis valeur), puis les sommets nombre par nombre.
+    const objet = function (o) {
+      if (!o || typeof o !== "object") { texte(o); return; }
+      const cles = Object.keys(o).sort();
+      for (let i = 0; i < cles.length; i++) {
+        const k = cles[i], v = o[k];
+        if (k === "points" || typeof v === "function") continue;
+        texte(k); texte(v);
+      }
+      const pts = Array.isArray(o.points) ? o.points : [];
+      entier(pts.length);
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (p && typeof p === "object") { nombre(p.x); nombre(p.y); } else texte(p);
+      }
+    };
+    (d.roads || []).forEach(objet);
+    entier(0x2d2d);
+    (d.points || []).forEach(objet);
+    return (h1 >>> 0).toString(36) + "." + (h2 >>> 0).toString(36) + "." + (d.roads || []).length + "." +
+      (d.points || []).length;
+  }
+  function _detecterC5(d, cache) {
     const K = window.KtaRaccords;
-    if (!d.planOuvert || !K || typeof K.detecter !== "function") return [];
+    const ign = new Set(typeof window.getPlanRaccordsIgnores === "function" ? window.getPlanRaccordsIgnores() : []);
+    let sig = null;
+    if (cache) { try { sig = _sigC5(d); } catch (err) { sig = null; } }   // cycle, valeur exotique : pas de cache
+    if (sig && _c5Cache && _c5Cache.sig === sig) {
+      let garde = true;
+      _c5Cache.ign.forEach(function (k) { if (!ign.has(k)) garde = false; });
+      if (garde) return _c5Cache.liste.filter(function (e) { return !ign.has(e.cle); });
+    }
     let r = null;
     try { r = K.detecter(); } catch (err) { console.warn("[VerifierPlan] raccords :", err); r = null; }
-    return ((r && r.liste) || []).map(function (e) {
+    const liste = (r && r.liste) || [];
+    _c5Cache = sig && r ? { sig: sig, ign: ign, liste: liste } : null;
+    return liste;
+  }
+  function _c5(d, cache) {
+    const K = window.KtaRaccords;
+    if (!d.planOuvert || !K || typeof K.detecter !== "function") return [];
+    return _detecterC5(d, cache).map(function (e) {
       const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
       _etendre(b, e.a); _etendre(b, e.b);
       return { controle: "C5", gravite: CONTROLES.C5, cle: "C5|" + e.cle, motif: "ecart", niveau: e.niveau || 0,
@@ -630,7 +691,7 @@ window.KtaVerifierPlan = (function () {
     const d = donnees || collecter();
     const vus = new Set((opts && Array.isArray(opts.vus)) ? opts.vus : _vusDuPlan());
     const objs = _objets(d);
-    const tous = _c1(d).concat(_c2(d), _c3(d), _c12(d), _c4(d, objs), _c5(d), _c6(objs), _c7(d, objs), _c8(d, objs),
+    const tous = _c1(d).concat(_c2(d), _c3(d), _c12(d), _c4(d, objs), _c5(d, !donnees), _c6(objs), _c7(d, objs), _c8(d, objs),
       _c9(d, objs), _c10(objs));
     return {
       liste: _trier(tous.filter(function (c) { return !vus.has(c.cle); })),
@@ -1089,7 +1150,7 @@ window.KtaVerifierPlan = (function () {
   });
 
   // Plan quitté ou changé pendant la revue : le bandeau et sa marque partent avec lui, l'état de saisie aussi.
-  window.addEventListener("mktm:plan-ferme", function () { fermer(); _sigPlan = null; _sig = new Map(); });
+  window.addEventListener("mktm:plan-ferme", function () { fermer(); _sigPlan = null; _sig = new Map(); _c5Cache = null; });
 
   return {
     analyser: analyser,

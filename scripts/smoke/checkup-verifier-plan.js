@@ -402,6 +402,33 @@ async function jouer(nav, moteur) {
     });
     verifier(groupes.revoir && groupes.info,
       "fenêtre : C4, C5, C6, C8 rangés en « À revoir », C7, C9, C10 en « Pour info »", groupes.out);
+
+    // C5 en cache : KtaRaccords.detecter seulement quand les données du plan changent (compteur posé sur l'appel
+    // de verifierPlan.js ; la carte Raccords appelle sa propre fonction, pas celle-ci).
+    const modifier = function (nom) {
+      return page.evaluate(function (n) {
+        window.setRoads(window.getRoads().map(function (r) {
+          return r.uid === "rd_vp_ra" ? Object.assign({}, r, { nom: n }) : r;
+        }));
+      }, nom);
+    };
+    const rouvrir = async function () {
+      await page.evaluate(function () { window.KtaVerifierPlan.ouvrir(); });
+      await attendre(page, function () { return !!document.getElementById("kta-verif-modal"); }, 5000);
+      return page.evaluate(function () { return window.__nDet; });
+    };
+    await page.evaluate(function () {
+      const K = window.KtaRaccords, vrai = K.detecter;
+      window.__nDet = 0;
+      K.detecter = function () { window.__nDet++; return vrai.apply(this, arguments); };
+    });
+    await modifier("Galerie A");
+    const nOuv = [await rouvrir(), await rouvrir()];
+    verifier(nOuv[0] === 1 && nOuv[1] === 1, "🩸 C5 en cache : un seul appel à KtaRaccords.detecter pour deux " +
+      "ouvertures sans changement", nOuv);
+    await modifier("Galerie A bis");
+    const nMod = await rouvrir();
+    verifier(nMod === 2, "🩸 C5 en cache : recalculé après une modification des tracés (2 appels)", nMod);
     const i4 = await rang(page, C4);
     await page.click('#kta-verif-modal [data-verif-i="' + i4 + '"]');
     await page.waitForTimeout(700);
@@ -423,6 +450,8 @@ async function jouer(nav, moteur) {
     await page.waitForTimeout(400);
     l = await nosConstats(page);
     verifier(l.liste.indexOf(C4) < 0 && l.vus.indexOf(C4) >= 0, "C4 : « Vu, normal » le retire de la liste", l.vus);
+    const nVu = await page.evaluate(function () { return window.__nDet; });
+    verifier(nVu === 2, "🩸 C5 en cache : revue sur la carte et « Vu, normal » sans nouvel appel", nVu);
 
     // C5 : Raccorder depuis la liste (chemin de raccordsTraces.js), puis plus d'écart.
     const i5 = await page.evaluate(function () {
