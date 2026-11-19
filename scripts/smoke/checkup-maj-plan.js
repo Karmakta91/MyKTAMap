@@ -77,8 +77,10 @@ function fenetresSession(page) {
 // 🩸 Falsifié : sans sessionPersist.js > retenirModale, la passe 1 voit « Session précédente restaurée » (les objets
 // que le retrait enlève) avec la question du retrait ; sans renommerSession, la passe 2 voit « autre nom » à chaque
 // ouverture et perd les traces de suppression.
-async function passe(nomAussi) {
-  console.log("\n══ passe : version changée" + (nomAussi ? " et nom changé" : "") + " ══");
+// Passe 3, « Tout garder » au retrait : la session reste pleine, la fenêtre retenue doit s'ouvrir UNE fois, aux
+// vrais chiffres (objets versés compris). 🩸 Falsifié : libererModale qui n'ouvre jamais la fenêtre → échec.
+async function passe(nomAussi, garder) {
+  console.log("\n══ passe : version changée" + (nomAussi ? " et nom changé" : "") + (garder ? ", « Tout garder » au retrait" : "") + " ══");
   const nav = await lancerNavigateur(chromium);
   const page = await nav.newPage({ viewport: { width: 1200, height: 850 }, acceptDownloads: true });
   await page.addInitScript(function (ls) {
@@ -275,6 +277,40 @@ async function passe(nomAussi) {
     const T0 = Date.now();
     await fenetresSession(page);   // relevé remis à zéro : seules comptent les fenêtres de la suite
     await page.evaluate(function () { document.querySelector('#kta-maj-fin [data-maj-fin="remplacer"]').click(); });
+    if (garder) {
+      await attendre(page, function () { return !!document.getElementById("kta-confirm-non"); }, 30000);
+      await page.waitForTimeout(600);   // garde anti-double-clic de ktaConfirm
+      const question = await page.evaluate(function () {
+        const non = document.getElementById("kta-confirm-non");
+        const r = { bouton: non.textContent.trim(), attendu: window.I18n.t("maj.nettoyage.non") };
+        if (r.bouton === r.attendu) non.click();
+        return r;
+      });
+      await attendre(page, function () { return !!document.getElementById("kta-session-modal"); }, 15000).catch(function () {});
+      await page.waitForTimeout(1500);
+      const g = await page.evaluate(function (a) {
+        const tous = [].concat(window.getEditorPoints() || [], window.getRoads() || []);
+        const m = document.getElementById("kta-session-modal");
+        return {
+          texte: m ? m.textContent.replace(/\s+/g, " ") : null,
+          points: (window.getEditorPoints() || []).length,
+          tracés: (window.getRoads() || []).filter(function (r) { return r && r.type !== "itinerary"; }).length,
+          verses: tous.filter(function (o) { return o && (o.uid === a.pt || o.uid === a.rd); }).length,
+          copies: tous.filter(function (o) { return o && o._srcCalque; }).length
+        };
+      }, { pt: prep.pt, rd: prep.rd });
+      const vues = (await fenetresSession(page)).filter(function (f) { return /^restauree/.test(f); });
+      // Le nom du plan précède les chiffres sans espace (« …de test1 point ») : pas de \b, un non-chiffre avant.
+      const chiffres = !!g.texte && new RegExp("(?:^|\\D)" + g.points + " point").test(g.texte) &&
+        new RegExp("(?:^|\\D)" + g.tracés + " tracé").test(g.texte);
+      verifier(question.bouton === question.attendu, "question du retrait : « Tout garder » choisi", question);
+      verifier(g.verses === 2 && g.copies > 0, "« Tout garder » : objets versés et copies du calque restent dans la session", g);
+      verifier(vues.length === 1 && chiffres,
+        "🩸 « Tout garder » : « Session précédente restaurée » s'ouvre une fois, aux vrais chiffres (objets versés compris)",
+        { vues: vues.length, texte: g.texte, attendu: [g.points, g.tracés] });
+      verifier(erreurs.length === 0, "aucune erreur JavaScript", erreurs.slice(0, 3));
+      return;
+    }
     await cliquerOuiConfirm(page);
     await attendre(page, function () {
       return !!window.PLAN_CONFIG && (window.PLAN_CONFIG.dataLayers || []).some(function (d) { return d.label === "Ajouts du checkup"; });
@@ -354,6 +390,7 @@ async function passe(nomAussi) {
   try {
     await passe(false);
     await passe(true);
+    await passe(false, true);
   } finally {
     server.close();
   }
