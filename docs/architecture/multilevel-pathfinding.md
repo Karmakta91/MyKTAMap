@@ -824,12 +824,14 @@ et effondrement sont des zones à coût (ci-dessus). `check-verifier-plan.js` re
 
 Contrôle des données du plan ouvert, lancé depuis la carte de l'Éditeur de données (UI : `ui.md` §91.6 ; étude et
 décisions : `docs/ETUDE_VERIFIER_PLAN.md`). Il lit ce que lit l'itinéraire : `Pathfinder.collecterTraces()`, zones et
-structures de session plus registres des calques (sans les calques en modification), points de session et des calques.
-Lecture seule.
+structures de session plus registres des calques (sans les calques en modification), points de session et des calques,
+plus les dimensions de l'image et `availableLevels`. Lecture seule, sauf **Raccorder** (C5), qui est l'écriture de
+`raccordsTraces.js`. Un objet de calque est listé comme un autre ; aucune correction ne le touche dans ce lot.
 
 ⚠️ **Même vérité que le graphe** : C1, C3 et C12 appellent les tests du pathfinder, exposés pour lui dans
-`Pathfinder.controle`, jamais une copie. `_segmentBloqueParZoneInaccess` et `_segmentCoupeParMur` sont des façades de
-`_zonesQuiBloquent` / `_mursQuiCoupent` (qui rendent **tous** les obstacles d'un segment quand on le demande) : le
+`Pathfinder.controle`, jamais une copie ; de même C5 appelle `KtaRaccords.detecter`, C9 `ktaResolveStyle`, C10
+`ktaDedupliquerFichier` (`tableEditor.js`, exposé pour lui). `_segmentBloqueParZoneInaccess` et
+`_segmentCoupeParMur` sont des façades de `_zonesQuiBloquent` / `_mursQuiCoupent` (qui rendent **tous** les obstacles d'un segment quand on le demande) : le
 graphe et l'outil passent par le même code. `check-verifier-plan.js` vérifie, tracé par tracé, que les segments
 déclarés coupés sont exactement ceux que `grapheDeTraces(…, { includeZones: true })` écarte.
 
@@ -839,15 +841,32 @@ déclarés coupés sont exactement ceux que `grapheDeTraces(…, { includeZones:
 | **C2** passage sans raccord | POI qui relie des niveaux (`KtaPoiJonction.estJonction`) avec un moyen de passage (pas le puits d'aération) : pour chaque niveau, aucun raccord validé (`accroches`), ou aucun qui retombe à `PROXIMITY_TOLERANCE` (15 px) d'une galerie de ce niveau (« perdu », comme `_injecterJonctionsPoi` qui l'ignore). Le nombre de galeries que `proposerRaccords` proposerait est affiché | Bloquant au niveau de départ ou d'arrivée ; **Info** pour un niveau intermédiaire sans raccord, marqué « traversé » (le pathfinder le traverse sans y déboucher : l'itinéraire n'est pas trompé, décision produit) |
 | **C3** tracé jonction mal posé | `fromLevel` = `toLevel`, ou un bout à plus de `PROXIMITY_TOLERANCE` de toute galerie de son niveau (le graphe ne le raccroche à rien) | Bloquant |
 | **C12** tracé qui traverse une zone Comblé ou effondrée | Même parcours que C1 (`_traversees`), sur les zones à coût que lit le graphe (`controle.zonesCoutDuPlan` / `zonesCoutDe`) : un constat par paire, longueur dans la zone, « au bord » sous 0,5 m. Ce n'est pas une erreur : l'itinéraire l'évite s'il peut et dit quand il y passe ; on confirme la galerie ou on corrige la zone (décision produit) | À revoir |
+| **C4** objets en double | Même famille, même type, même niveau (`level`, `niveaux`, bouts d'une jonction), même géométrie au **cm** près (échelle du plan, sinon 10 px/m) ; contour fermé : départ et sens quelconques ; point : même position, même tag, même nom. Table de hachage des empreintes, un constat par groupe (clé `C4|uid|uid…` triés). `identiques` : égaux en tout hors `uid`, `updatedAt`, `id`, `layerId` et champs `_…` (la copie qu'on pourra retirer, décision 7a). 🩸 Arrondi : deux copies de part et d'autre d'une frontière (écart < 1 cm) ne sont pas vues. Les deux morceaux d'un ✂️ (`ajusterSommets.js > _couper`) partagent un sommet mais pas leur géométrie : jamais en double | À revoir |
+| **C5** écart du réseau | `KtaRaccords.detecter()` tel quel (plan ouvert seulement). Bandeau : **Raccorder** (`KtaRaccords.raccorder`, son historique et le rapatriement d'un calque) ; **Vu, normal** = `KtaRaccords.ignorer` (une seule mémoire, celle de la carte Raccords, qui reste, décision 10a) | À revoir |
+| **C6** contour fermé dégénéré ou qui se recoupe | Zones, et structures dont le type n'est pas linéaire (`isStructurePolylineType`). Sommets consécutifs égaux et fermeture écrite retirés ; **dégénéré** : moins de 3 sommets distincts ou tous alignés (🩸 pas l'aire signée : un nœud papillon symétrique en a une nulle, il se recoupe) ; **se recoupe** : deux arêtes non voisines qui se croisent ou se touchent, arêtes triées en x puis balayées (20 000 sommets : ~50 ms) | À revoir |
+| **C7** hors de l'image | Un sommet (ou le point) au-delà de `[0, imageWidth] × [0, imageHeight]` de plus de 0,5 m : « dehors » (tout) ou « déborde » | Info |
+| **C8** niveau inconnu | Plan multi-niveau : `level` (absent = 0), bouts d'un tracé jonction, `niveaux` d'une zone (chacun compte) ou d'un point qui relie des niveaux (`KtaPoiJonction.porteNiveaux`) ; valeur non entière (« invalide ») ou absente d'`availableLevels` (« inconnu »). Un constat par (objet, valeur). 🩸 `main.js > _etendreAvailableLevelsSiBesoin` étend le sélecteur au chargement : « inconnu » ne vit que pour un objet arrivé après l'ouverture (import, synchro), « invalide » reste | À revoir |
+| **C9** type absent de la légende | `ktaResolveStyle(cat, type, { flat: true })` nul (ni built-in, ni type perso de **la même** catégorie), ou objet sans type ; point : tag absent de `window._iconMap` (plan ouvert) | Info |
+| **C10** sommets en double | `ktaDedupliquerFichier` sur une enveloppe `{ famille: [{ type, points }] }` de chaque objet : compte seul, rien n'est modifié ; « disparaîtrait » si le nettoyage le faisait passer sous son minimum. Le nettoyage reste celui de la carte Dédoublonner (fichiers) | Info |
 
-C2 et C3 ne valent qu'en plan multi-niveau. **Vu, normal** : clé `contrôle|identité[|identité|détail]` (identité = `uid`,
-sinon empreinte du type et des sommets au dixième de px) dans la pref du plan `verifVus` (`config.js >
+**C11** (liaison vers un plan absent) n'est pas un contrôle de la liste : le pied de la fenêtre compte les liaisons
+du plan dont l'autre plan n'est pas sur l'appareil (`liaisonsAbsentes()`, `InterPlanLinks.getLinksForPlan` +
+`PlanRegistry.findById`) et **Voir les liaisons** ouvre le gestionnaire (`InterPlanLinks.ouvrirGestionnaire`).
+
+**Coût** (passe complète, `analyser()`) : relevé fictif des checkups (~270 objets) 5 à 6 ms ; données fictives de
+19 834 objets (5 500 piliers, 10 000 tracés, 1 000 zones, 3 334 points) ~3,2 s en Node, dont ~2,5 s pour C5
+(`KtaRaccords.detecter`, inchangé) et ~0,35 s pour C4, C6 à C10. La passe au chargement (lot 4) se limite à C1–C3.
+
+C2, C3 et C8 ne valent qu'en plan multi-niveau. **Vu, normal** : clé `contrôle|identité[|identité|détail]`
+(identité = `uid`, sinon empreinte du type et des sommets au dixième de px) dans la pref du plan `verifVus` (`config.js >
 get/setPlanVerifVus`), sur l'appareil seulement. Modifier l'objet ne fait pas revenir le constat ; 🩸 un objet de
 calque sans `uid` revient s'il est redessiné. **Saisie** : à chaque `kta:donneesPlanChange` (tracés, zones,
 structures, calques ; 700 ms de calme), C1 sur les seuls objets de session dont la signature a changé **et** dont
 `updatedAt` a moins d'une minute (la session restaurée ou rejouée par Ctrl+Z n'est pas une saisie) : un toast `warn`
-par coupure nouvelle, une fois par plan ouvert. Pas encore : passe au chargement, fin du Générateur, contrôles C4 à
-C10, avertissement à la saisie pour C12, corrections (lots 2 à 4 de l'étude). Garde-fous : `check-verifier-plan.js` (Node), `checkup-verifier-plan.js`.
+par coupure nouvelle, une fois par plan ouvert. Pas encore : avertissement à la saisie pour C12, corrections sûres
+(doublon identique, contour dégénéré : lot 3 de l'étude), passe au chargement et fin du Générateur (lot 4).
+Garde-fous : `check-verifier-plan.js` (Node, avec une falsification par contrôle C4 à C10),
+`checkup-verifier-plan.js`.
 
 ---
 

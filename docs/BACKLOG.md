@@ -47,11 +47,6 @@
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
-- **Vérifier le plan, lot 2 : contrôles C4 à C10** — doublons d'objets, contours dégénérés, hors image, niveau
-  inconnu, type absent de la légende ; Raccords (C5) et Dédoublonnage (C10) branchés, renvoi des liaisons (C11).
-  `docs/ETUDE_VERIFIER_PLAN.md`.
-  `qui: Claude · action: lot 2 de ETUDE_VERIFIER_PLAN.md · fini: C4 à C10 dans la liste, check-verifier-plan étendu
-  · depuis: 11/11/2026 · taille: M`
 - **Vérifier le plan, lot 3 : corrections sûres** — doublon identique, contour dégénéré, filets et historique, calque
   passé en session, plan partagé (traces, droits) ; galerie volontairement condamnée écrite sur l'objet (question 6).
   `qui: Claude · action: lot 3 de ETUDE_VERIFIER_PLAN.md · fini: corrections annulables, check-filets-donnees étendu
