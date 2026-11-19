@@ -822,8 +822,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   du Générateur) à mini-carte CRS.Simple sur un aperçu réduit (≤ 4 096 px de côté) ; la pipette et le calcul lisent
   l'image SOURCE en pleine résolution (un élément Image décodé une fois, `drawImage` bloc par bloc, rectangle source
   ramené dans l'image). Plan ouvert : fermé d'abord (`_fermerPlanAvantTuilage`). Couleurs retenues sous l'id du plan
-  en « Mettre à jour le plan » (les mêmes qu'en mode plan), sinon sous `generateur`. Niveau : case multi-niveau du
-  Générateur, niveau 0 (image de base), 2e masse au −1.
+  en « Mettre à jour le plan » (les mêmes qu'en mode plan), sinon sous `generateur`. Niveau, si la case multi-niveau
+  du Générateur est cochée : niveau 0 (image de base), 2e masse au −1 ; sinon aucun champ `level`.
   - Sortie : calque « Structures détectées » (`structures-detectees`, format de `structure.json`) ; une relance y
     ajoute. ⚠️ **Repère** : en mode Modifier, les structures sont mises tout de suite dans le repère gardé du plan
     (`_rognagePourRepere`) ; en nouveau plan, le rognage n'est connu qu'au tuilage : elles restent en px source sur
