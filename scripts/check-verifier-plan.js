@@ -10,7 +10,8 @@
  * Puis : cas positifs et négatifs de C1 (zone dure, zone souple, mur en ligne, pilier, niveaux, « au bord »), C2
  * (raccord manquant, perdu, puits d'aération, plan à un niveau), C3 (même niveau, bout en l'air), « vu, normal »,
  * table unique des types de zone durs (aucun test `"inaccessible"` écrit à part dans l'itinéraire) ; C4 (piliers
- * posés comme la détection, deux fois ; morceaux d'un ✂️ jamais en double), C5 (KtaRaccords, « vu » = Ignorer), C6
+ * posés comme la détection, deux fois ; morceaux d'un ✂️ jamais en double ; doublons d'un calque : couche Leaflet
+ * cyclique et champs d'affichage du registre, sans plantage), C5 (KtaRaccords, « vu » = Ignorer), C6
  * (pilier qui se recoupe, contour dégénéré, grand contour en temps borné), C7, C8 (zone sur plusieurs niveaux), C9,
  * C10 (dédoublonnage de tableEditor.js, compte seul), C11 (compte des liaisons vers un plan absent).
  * 🔒 Falsification : chaque contrôle C4 à C10 est rejoué sur une copie de verifierPlan.js où sa règle est cassée ;
@@ -318,6 +319,54 @@ function casC4() {
   const wm = bac({ structures: [pilierDet("st_n0", carre(0, 0, 10), { level: 0 }), pilierDet("st_n1", carre(0, 0, 10),
     { level: 1 })] }, { multiLevel: true, availableLevels: [0, 1] });
   t("C4 : même pilier sur deux niveaux → rien", de(analyse(wm).liste, "C4").length === 0);
+}
+
+// ── 7 bis. C4 dans un calque : entrées des registres (couche Leaflet cyclique, champs d'affichage) ──
+// Entrées comme utils.js les pousse dans _ktaDataStructurePolygons : `polygon` = la couche (cyclique par _map),
+// origOpacity / origFillOpacity. `variante` : "base" (mêmes champs d'affichage), "opacite" (origOpacity différente :
+// identiques grâce à la liste HORS_COMPARAISON seule), "cycle" (objet simple cyclique hors liste : seule la garde
+// des cycles l'empêche de planter), "classe" (instance de classe hors liste, état interne différent : seule la
+// restriction aux objets simples les rend identiques).
+function Couche(id, carte) { this._leaflet_id = id; this._map = carte; }
+function casC4Calque(variante) {
+  const carte = { _layers: {} };
+  const entree = function (uid, n) {
+    const couche = new Couche(n, carte);
+    carte._layers[n] = couche;
+    const e = { polygon: couche, layerId: "calque-a", type: "pilier-1", points: carre(0, 0, 10).map(p => P(p[0], p[1])),
+      level: 0, uid: uid, updatedAt: 1000, origOpacity: variante === "opacite" ? n / 10 : 1, origFillOpacity: 0.85 };
+    if (variante === "cycle") { const m = { nom: "meta" }; m.soi = m; e.meta = m; }
+    if (variante === "classe") e.rendu = new Couche(100 + n, carte);
+    return e;
+  };
+  return [entree("st_ca", 1), entree("st_cb", 2)];
+}
+function c4Calque(variante, mutation) {
+  const w = bac({}, null, { _ktaDataStructurePolygons: casC4Calque(variante) }, mutation);
+  return de(analyse(w).liste, "C4").find(c => c.cle === "C4|st_ca|st_cb");
+}
+{
+  ["base", "opacite", "cycle", "classe"].forEach(function (v) {
+    let c = null, err;
+    try { c = c4Calque(v); } catch (e) { err = e.message; }
+    t("C4 calque (" + v + ") : analyser() ne plante pas, les deux copies sont « identiques en tout »",
+      !!c && c.identiques === true, err || (c && c.motif));
+  });
+  const PARADES = [
+    { nom: "liste HORS_COMPARAISON (champs d'affichage)", v: "opacite",
+      m: ["polygon: 1, origOpacity: 1, origFillOpacity: 1 };", "polygon: 1 };"] },
+    { nom: "garde des cycles", v: "cycle", m: ["if (vus.has(v)) return '\"~cycle\"';", "/* sans garde */"] },
+    { nom: "objets simples seulement", v: "classe",
+      m: ["if (!Array.isArray(v) && !_simple(v)) return '\"~objet\"';", "/* tout objet */"] },
+    { nom: "garde générale entière", v: "cycle",
+      m: ["const vus = chemin || new WeakSet();", "const vus = { has() { return false; }, add() {}, delete() {} };" +
+        " const _simple = function () { return true; };"] }
+  ];
+  PARADES.forEach(function (x) {
+    let casse = false, err = null;
+    try { const c = c4Calque(x.v, x.m); casse = !c || c.identiques !== true; } catch (e) { casse = true; err = e.message; }
+    t("🔒 falsification C4 calque (" + x.nom + ") : sans elle, le cas « " + x.v + " » tombe", casse, err);
+  });
 }
 
 // ── 8. C6 : contour fermé dégénéré ou qui se recoupe ──

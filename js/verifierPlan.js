@@ -38,7 +38,9 @@ window.KtaVerifierPlan = (function () {
   const GRAVITE_C2_TRAVERSE = "info";
   const ORDRE_CONTROLES = ["C1", "C2", "C3", "C12", "C4", "C5", "C6", "C8", "C7", "C9", "C10"];
   // C4 : champs hors comparaison « identiques en tout » (identité, date, provenance) ; un champ `_…` est interne.
-  const HORS_COMPARAISON = { uid: 1, updatedAt: 1, id: 1, layerId: 1 };
+  // polygon, origOpacity, origFillOpacity : affichage des registres de calque (utils.js, _ktaDataPolygons et
+  // _ktaDataStructurePolygons), pas des données.
+  const HORS_COMPARAISON = { uid: 1, updatedAt: 1, id: 1, layerId: 1, polygon: 1, origOpacity: 1, origFillOpacity: 1 };
   const SAISIE_MS = 700;               // rafale de rendus (dessin, annulation) : une vérification à la fin
 
   let _liste = [];
@@ -365,11 +367,28 @@ window.KtaVerifierPlan = (function () {
     const a = av.join(";"), b = ar.join(";");
     return a < b ? a : b;
   }
-  function _stable(v) {
-    if (Array.isArray(v)) return "[" + v.map(_stable).join(",") + "]";
+  // 🩸 Ne descend que dans les tableaux et les objets simples (prototype Object ou null) : une couche Leaflet (ou
+  // tout champ d'affichage ajouté plus tard à un registre) compte comme un jeton fixe, et un cycle aussi — sans
+  // cette garde, deux doublons d'un calque faisaient déborder la pile et toute l'analyse tombait.
+  // Objet simple de n'importe quel contexte (JSON.parse, autre fenêtre) : son prototype est un Object.prototype,
+  // qui n'a lui-même aucun prototype ; une instance de classe en a toujours un de plus.
+  function _simple(v) {
+    const pr = Object.getPrototypeOf(v);
+    return pr === null || Object.getPrototypeOf(pr) === null;
+  }
+  function _stable(v, chemin) {
     if (v && typeof v === "object") {
-      return "{" + Object.keys(v).sort(function (x, y) { return x.localeCompare(y); }).map(function (k) { return JSON.stringify(k) + ":" + _stable(v[k]); })
-        .join(",") + "}";
+      const vus = chemin || new WeakSet();
+      if (vus.has(v)) return '"~cycle"';
+      if (!Array.isArray(v) && !_simple(v)) return '"~objet"';
+      vus.add(v);
+      const txt = Array.isArray(v)
+        ? "[" + v.map(function (x) { return _stable(x, vus); }).join(",") + "]"
+        : "{" + Object.keys(v).sort(function (x, y) { return x.localeCompare(y); }).map(function (k) {
+          return JSON.stringify(k) + ":" + _stable(v[k], vus);
+        }).join(",") + "}";
+      vus.delete(v);
+      return txt;
     }
     return v === undefined ? "null" : JSON.stringify(v);
   }
