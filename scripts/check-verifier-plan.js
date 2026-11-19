@@ -707,6 +707,10 @@ function bacCorr(d, o, mutation) {
   return { w: w, j: j, V: w.KtaVerifierPlan };
 }
 const pil = (uid, x, extra) => pilierDet(uid, carre(x, 0, 10), extra);
+// Entrée du registre d'un calque (utils.js > _ktaDataStructurePolygons) : champs d'affichage en plus des données.
+const entreeCalque = (uid, id) => ({ polygon: { _map: null }, layerId: id, type: "pilier-1",
+  points: carre(500, 0, 10).map(p => P(p[0], p[1])), level: 0, uid: uid, updatedAt: uid === "st_c1" ? 1 : 2,
+  origOpacity: 1, origFillOpacity: 0.85 });
 // 50 piliers posés deux fois (deux passes de détection) : la seconde passe est plus récente.
 function cas50() {
   const s = [];
@@ -766,9 +770,6 @@ async function testsCorrections() {
       d.structures.length === 100 && b.j.records.length === 0);
   }
   // Doublons dans un calque : passage en session d'abord (la question de « 🔄 Modifier »), puis la correction.
-  const entreeCalque = (uid, id) => ({ polygon: { _map: null }, layerId: id, type: "pilier-1",
-    points: carre(500, 0, 10).map(p => P(p[0], p[1])), level: 0, uid: uid, updatedAt: uid === "st_c1" ? 1 : 2,
-    origOpacity: 1, origFillOpacity: 0.85 });
   {
     const d = { structures: [] };
     const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c1", "cq"),
@@ -795,14 +796,68 @@ async function testsCorrections() {
     t("calque en lecture seule (sans fichier) : affiché, jamais corrigé", !!c && !b.V.corrigible(c) && r === null &&
       b.j.rapatries.length === 0 && b.j.records.length === 0);
   }
+  // Session ↔ calque : l'exemplaire dessiné ici part, celui du calque reste, même plus récent ; le calque n'est ni
+  // passé en session ni modifié ; confirmation, prise suppressionLot, UNE entrée ⏪ qui remet l'objet de session.
   {
-    // Un pilier dessiné ici et sa copie venue d'un calque passé en session (_srcCalque) : identiques en tout.
-    const d = { structures: [pil("st_s", 500, { updatedAt: 1 }), pil("st_c2", 500, { updatedAt: 2, _srcCalque: "cq" })] };
+    // Copie du calque déjà passée en session (_srcCalque), plus récente que l'objet dessiné ici.
+    const copieCq = pil("st_c2", 500, { updatedAt: 2, _srcCalque: "cq" });
+    const d = { structures: [pil("st_s", 500, { updatedAt: 1 }), copieCq] };
+    const avantCopie = JSON.stringify(copieCq);
     const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }] });
     const c = de(analyse(b.w).liste, "C4")[0];
+    t("session ↔ calque (copie en session) : identiques, corrigibles", !!c && c.identiques && b.V.corrigible(c),
+      c && c.cle);
     const r = await b.V.corriger(c);
-    t("session ↔ calque : en double, identiques, mais pas de correction tant que ce n'est pas tranché",
-      !!c && c.identiques && !b.V.corrigible(c) && r === null && d.structures.length === 2, c && c.cle);
+    t("session ↔ calque (copie en session) : l'objet de session part, la copie du calque reste intacte, " +
+      "aucun passage en session, une confirmation, la prise consultée, UNE entrée ⏪",
+      !!r && r.supprimes === 1 && d.structures.length === 1 && d.structures[0] === copieCq &&
+      JSON.stringify(copieCq) === avantCopie && b.j.rapatries.length === 0 && b.j.confirms.length === 1 &&
+      b.j.lots.length === 1 && b.j.lots[0] === 1 && b.j.records.length === 1 &&
+      b.j.records[0].avant.structures.some(x => x.uid === "st_s"), { r: r, s: d.structures.map(x => x.uid) });
+  }
+  {
+    // Objet d'un calque resté calque (registre), plus récent que l'objet dessiné ici.
+    const ent = entreeCalque("st_c2", "cq");
+    const d = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0 })] };
+    const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [ent] });
+    const avantEnt = JSON.stringify(ent);
+    const c = de(analyse(b.w).liste, "C4")[0];
+    t("session ↔ calque (registre) : identiques, corrigibles", !!c && c.identiques && b.V.corrigible(c), c && c.cle);
+    const r = await b.V.corriger(c);
+    const reg = b.w._ktaDataStructurePolygons;
+    t("session ↔ calque (registre) : l'objet de session part, le calque n'est jamais passé en session, son objet " +
+      "reste dans le registre, inchangé", !!r && r.supprimes === 1 && d.structures.length === 0 &&
+      b.j.rapatries.length === 0 && reg.length === 1 && reg[0] === ent && JSON.stringify(ent) === avantEnt,
+    { r: r, rap: b.j.rapatries, reg: reg.length });
+    t("session ↔ calque (registre) : UNE entrée ⏪, qui a capturé l'objet de session",
+      b.j.records.length === 1 && b.j.records[0].avant.structures.length === 1 &&
+      b.j.records[0].avant.structures[0].uid === "st_s");
+    t("session ↔ calque (registre) : plus aucun doublon après le geste", de(analyse(b.w).liste, "C4").length === 0);
+  }
+  {
+    const d = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0, description: "note" })] };
+    const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c2", "cq")] });
+    const c = de(analyse(b.w).liste, "C4")[0];
+    t("session ↔ calque qui diffèrent (note) : montrés, jamais corrigés", !!c && !c.identiques && !b.V.corrigible(c));
+  }
+  {
+    const d = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0 })] };
+    const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c2", "cq")],
+      refus: true });
+    const r = await b.V.corriger(de(analyse(b.w).liste, "C4")[0]);
+    t("session ↔ calque, plan partagé : refus de suppressionLot → rien supprimé, aucune entrée ⏪",
+      r === null && d.structures.length === 1 && b.j.records.length === 0 && b.j.rapatries.length === 0);
+    const d2 = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0 })] };
+    const b2 = bacCorr(d2, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c2", "cq")],
+      confirme: false });
+    await b2.V.corriger(de(analyse(b2.w).liste, "C4")[0]);
+    t("session ↔ calque : confirmation refusée → rien supprimé, prise jamais consultée",
+      d2.structures.length === 1 && b2.j.records.length === 0 && b2.j.lots.length === 0);
+    const d3 = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0 })] };
+    const b3 = bacCorr(d3, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c2", "cq")],
+      lectureSeule: true });
+    t("session ↔ calque, plan en lecture seule : pas corrigible",
+      !b3.V.corrigible(de(analyse(b3.w).liste, "C4")[0]));
   }
   // C6 : dégénéré supprimé (filet), qui se recoupe jamais.
   {
@@ -883,11 +938,25 @@ async function falsificationsCorrections() {
     { nom: "lecture seule", m: ["if (_lectureSeule()) return { refus: \"lectureSeule\" };", ""],
       v: async m => { const b = bacCorr(cas50(), { lectureSeule: true }, m);
         return !de(analyse(b.w).liste, "C4").some(c => b.V.corrigible(c)); } },
-    { nom: "session ↔ calque non corrigé", m: ["if (main && copie) return { refus: \"mixte\" };", ""],
+    { nom: "session ↔ calque : le calque n'est jamais passé en session", m: [
+      "if (mains.length && copie) return { objets: mains, calques: [], mixte: true };", ""],
+      v: async m => { const d = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0 })] };
+        const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c2", "cq")] }, m);
+        await b.V.corriger(de(analyse(b.w).liste, "C4")[0]);
+        return b.j.rapatries.length === 0 && b.w._ktaDataStructurePolygons.length === 1 && d.structures.length === 0; } },
+    { nom: "session ↔ calque : l'exemplaire de session part, même plus ancien", m: [
+      "if (c.controle === \"C4\" && p.mixte) {", "if (false) {"],
       v: async m => { const d = { structures: [pil("st_s", 500, { updatedAt: 1 }),
         pil("st_c2", 500, { updatedAt: 2, _srcCalque: "cq" })] };
         const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }] }, m);
-        return !b.V.corrigible(de(analyse(b.w).liste, "C4")[0]); } },
+        await b.V.corriger(de(analyse(b.w).liste, "C4")[0]);
+        return d.structures.length === 1 && d.structures[0].uid === "st_c2"; } },
+    { nom: "session ↔ calque : confirmation", m: ["      if (!ok) return null;\n", "\n"],
+      v: async m => { const d = { structures: [pil("st_s", 500, { updatedAt: 1, level: 0 })] };
+        const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c2", "cq")],
+          confirme: false }, m);
+        await b.V.corriger(de(analyse(b.w).liste, "C4")[0]);
+        return d.structures.length === 1; } },
     { nom: "C6 qui se recoupe jamais corrigé", m: ["if (c.controle === \"C6\" && c.motif !== \"degenere\") return null;", ""],
       v: async m => { const b = bacCorr(casC6(), null, m);
         return !b.V.corrigible(de(analyse(b.w).liste, "C6").find(c => c.objet.uid === "st_noeud")); } },

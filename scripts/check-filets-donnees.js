@@ -208,8 +208,9 @@ function bloc(src, debut, fin) {
   verif(plan.includes('if (c.controle === "C6" && c.motif !== "degenere") return null;') &&
         plan.includes('if (c.controle === "C4" && !c.identiques) return null;') &&
         plan.includes('if (_lectureSeule()) return { refus: "lectureSeule" };') &&
-        plan.includes('if (main && copie) return { refus: "mixte" };'),
-        "🩸 Vérifier le plan : seulement C4 identiques, C6 dégénéré, C10 ; ni lecture seule, ni session ↔ calque");
+        plan.includes('if (mains.length && copie) return { objets: mains, calques: [], mixte: true };'),
+        "🩸 Vérifier le plan : seulement C4 identiques, C6 dégénéré, C10 ; jamais en lecture seule ; session ↔ calque : " +
+        "les seuls exemplaires de session, aucun calque passé en session");
   const cond = bloc(s, "async function _marquerCondamne(o, f, valeur) {", "function condamner(c) {");
   verif(cond.indexOf("H.captureState(f)") > 0 && cond.indexOf("H.record(") > cond.indexOf("cible.condamne = true"),
         "Vérifier le plan : galerie condamnée écrite par le même chemin (instantané, mutation, entrée ⏪)");

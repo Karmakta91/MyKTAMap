@@ -6238,7 +6238,7 @@
   "verif.corr.change": "Le plan a changé entre-temps : rien n'a été corrigé. Relance la vérification.",
   "verif.corr.fait": "Plan corrigé : {n} objet(s) supprimé(s), {s} sommet(s) retiré(s) (Ctrl+Z pour annuler)",
   "verif.corr.histo": "Vérifier le plan : {n} correction(s)",
-  "verif.corr.mixte": "Un exemplaire dessiné ici, l'autre venu d'un calque : pas de correction ici pour l'instant.",
+  "verif.corr.mixte": "Un exemplaire dessiné ici, l'autre venu d'un calque : la correction retire celui de la session, le calque reste tel quel.",
   "verif.corr.figee": "Objet d'un calque en lecture seule : affiché, jamais corrigé.",
   "verif.condamner": "Galerie condamnée",
   "verif.condamnes": "Galeries condamnées ({n}) : l'itinéraire n'y passe pas, la vérification ne les signale plus",

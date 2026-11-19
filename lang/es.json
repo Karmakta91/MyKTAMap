@@ -6238,7 +6238,7 @@
   "verif.corr.change": "El mapa ha cambiado mientras tanto: no se ha corregido nada. Vuelve a lanzar la verificación.",
   "verif.corr.fait": "Mapa corregido: {n} objeto(s) eliminado(s), {s} vértice(s) quitado(s) (Ctrl+Z para deshacer)",
   "verif.corr.histo": "Revisar el mapa: {n} corrección(es)",
-  "verif.corr.mixte": "Un ejemplar dibujado aquí, el otro procedente de una capa: por ahora no hay corrección aquí.",
+  "verif.corr.mixte": "Un ejemplar dibujado aquí, el otro procedente de una capa: la corrección quita el de la sesión y deja la capa tal cual.",
   "verif.corr.figee": "Objeto de una capa de solo lectura: se muestra, nunca se corrige.",
   "verif.condamner": "Galería clausurada",
   "verif.condamnes": "Galerías clausuradas ({n}): el itinerario no pasa, la verificación ya no las señala",

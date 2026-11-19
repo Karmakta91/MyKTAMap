@@ -714,6 +714,7 @@ window.KtaVerifierPlan = (function () {
   // → { liste: constats à revoir, vus: constats déclarés « vu, normal » } ; triés par gravité, contrôle, niveau.
   // `opts.vus` : clés vues (sinon celles du plan ouvert).
   function analyser(donnees, opts) {
+    if (!donnees) _idx = null;   // lecture neuve du plan ouvert : corrigible() ne lit pas un index d'avant
     const d = donnees || collecter();
     const vus = new Set((opts && Array.isArray(opts.vus)) ? opts.vus : _vusDuPlan());
     const objs = _objets(d);
@@ -726,7 +727,6 @@ window.KtaVerifierPlan = (function () {
   }
 
   function _recalculer() {
-    _idx = null;
     const r = analyser();
     _liste = r.liste;
     _vus = r.vus;
@@ -764,7 +764,8 @@ window.KtaVerifierPlan = (function () {
   // KtaExtensions.suppressionLot (plan partagé : droit « gérer » au-delà du seuil de l'installation) ; un refus ne
   // supprime rien.
   // C4 : seulement si tous les exemplaires sont identiques en tout (_contenu) ; le plus ancien (updatedAt) reste.
-  // Exemplaires mêlés (dessinés ici et venus d'un calque) : pas de correction (décision à prendre).
+  // Exemplaires mêlés (dessinés ici et venus d'un calque, même passé en session) : ceux de la session partent, ceux
+  // du calque restent, quel que soit leur âge ; le calque n'est ni passé en session ni modifié (décision produit).
   // C10 : ktaDedupliquerFichier (tableEditor.js) appliqué à l'objet de session, jamais une copie de sa règle.
   const GET_F = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
   const SET_F = { editorPoints: "setEditorPoints", roads: "setRoads", zones: "setZones", structures: "setStructures" };
@@ -814,8 +815,9 @@ window.KtaVerifierPlan = (function () {
     return m.every(function (e) { return _contenu(e.o) === ref; }) ? m : null;
   }
 
-  // Ce que corrigerait un constat : { objets: [{ o, f }], calques: [ids à passer en session] }, ou { refus }
-  // (« lectureSeule », « mixte », « change ») ; null : ce contrôle n'a pas de correction sûre.
+  // Ce que corrigerait un constat : { objets: [{ o, f }], calques: [ids à passer en session], mixte }, ou { refus }
+  // (« lectureSeule », « change ») ; null : ce contrôle n'a pas de correction sûre. mixte (C4) : objets = les seuls
+  // exemplaires dessinés ici, tous à supprimer ; calques vide.
   function _plan(c) {
     if (!c || !CORRIGIBLES[c.controle]) return null;
     if (c.controle === "C6" && c.motif !== "degenere") return null;
@@ -823,16 +825,16 @@ window.KtaVerifierPlan = (function () {
     if (_lectureSeule()) return { refus: "lectureSeule" };
     const objets = c.controle === "C4" ? _membresC4(c) : [{ o: c.objet, f: c.famille }];
     if (!objets) return { refus: "change" };
-    const calques = [];
-    let main = 0, copie = 0;
+    const calques = [], mains = [];
+    let copie = 0;
     for (let i = 0; i < objets.length; i++) {
       const og = _origine(objets[i].o, objets[i].f);
       if (!og) return { refus: "lectureSeule" };
-      if (og.session && og.main) main++; else copie++;
+      if (og.session && og.main) mains.push(objets[i]); else copie++;
       if (!og.session && calques.indexOf(og.calque) < 0) calques.push(og.calque);
     }
-    if (main && copie) return { refus: "mixte" };
-    return { objets: objets, calques: calques };
+    if (mains.length && copie) return { objets: mains, calques: [], mixte: true };
+    return { objets: objets, calques: calques, mixte: false };
   }
   function corrigible(c) {
     const p = _plan(c);
@@ -873,7 +875,9 @@ window.KtaVerifierPlan = (function () {
       if (!p || p.refus) return null;
       const objs = p.objets.map(function (e) { return { o: _enSession(e.o, e.f), f: e.f }; });
       if (objs.some(function (e) { return !e.o; })) return null;
-      if (c.controle === "C4") {
+      if (c.controle === "C4" && p.mixte) {
+        objs.forEach(function (e) { prendre(suppr, e); });
+      } else if (c.controle === "C4") {
         objs.sort(function (a, b) { return (Number(a.o.updatedAt) || 0) - (Number(b.o.updatedAt) || 0); });
         objs.slice(1).forEach(function (e) { prendre(suppr, e); });
       } else if (c.controle === "C6") {
@@ -1239,11 +1243,12 @@ window.KtaVerifierPlan = (function () {
     corr.textContent = _t("verif.corr." + c.controle);
     const condamnable = c.controle === "C1" && !!c.autre && !_lectureSeule() && !!_origine(c.autre, c.autreFamille);
     _bandeau.querySelector('[data-verif="condamner"]').style.display = condamnable ? "" : "none";
+    // Note : la raison d'une correction absente, ou ce que fait la correction d'exemplaires mêlés (C4).
     const note = _bandeau.querySelector(".kta-verif-note-corr");
-    const raison = p && p.refus && p.refus !== "change" ? p.refus
-      : (c.controle === "C1" && c.autre && !condamnable ? "lectureSeule" : null);
-    note.textContent = raison ? _t(raison === "mixte" ? "verif.corr.mixte" : "verif.corr.figee") : "";
-    note.style.display = raison ? "" : "none";
+    const figee = (p && p.refus && p.refus !== "change") || (c.controle === "C1" && c.autre && !condamnable);
+    const cleNote = figee ? "verif.corr.figee" : (p && p.mixte ? "verif.corr.mixte" : null);
+    note.textContent = cleNote ? _t(cleNote) : "";
+    note.style.display = cleNote ? "" : "none";
     montrer(c);
     if (fiche) _ficheDiffere(c.objet, c.famille, c.ancre);
   }

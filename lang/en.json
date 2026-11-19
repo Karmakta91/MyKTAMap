@@ -6238,7 +6238,7 @@
   "verif.corr.change": "The map changed in the meantime: nothing was fixed. Run the check again.",
   "verif.corr.fait": "Map fixed: {n} object(s) deleted, {s} vertex(es) removed (Ctrl+Z to undo)",
   "verif.corr.histo": "Check the map: {n} fix(es)",
-  "verif.corr.mixte": "One copy drawn here, the other from a data layer: no fix here for now.",
+  "verif.corr.mixte": "One copy drawn here, the other from a data layer: the fix removes the session copy and leaves the layer as it is.",
   "verif.corr.figee": "Object of a read-only data layer: shown, never fixed.",
   "verif.condamner": "Sealed passage",
   "verif.condamnes": "Sealed passages ({n}): the route does not go through, the check no longer reports them",

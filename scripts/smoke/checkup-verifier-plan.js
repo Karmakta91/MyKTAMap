@@ -19,7 +19,8 @@
 //     gestionnaire des liaisons ; coût de la passe mesuré ;
 //   · corrections : « Garder un exemplaire de chacun » sur 51 groupes de piliers (confirmation chiffrée, UNE entrée
 //     ⏪ qui remet tout), contour dégénéré (bandeau), sommets en double (sans confirmation), calque en lecture seule
-//     et plan en lecture seule jamais corrigés ; galerie condamnée (C1 muet, itinéraire toujours refusé), qui survit
+//     et plan en lecture seule jamais corrigés ; doublon session ↔ calque (l'exemplaire de session part, le calque
+//     intact, une ⏪ le remet) ; galerie condamnée (C1 muet, itinéraire toujours refusé), qui survit
 //     aux allers-retours KMZ et GeoJSON → SIG et au rechargement, puis « Retirer ».
 // Usage : node scripts/smoke/checkup-verifier-plan.js (SMOKE_PORT pour une autre copie, KTA_MOTEURS : un moteur)
 // Code : js/verifierPlan.js, pathfinder.js > controle · doc : multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6
@@ -630,6 +631,76 @@ async function jouer(nav, moteur) {
       window.KtaVerifierPlan.fermer();
       window._ktaDataStructurePolygons = window._ktaDataStructurePolygons.filter(function (e) {
         return e.layerId !== "vp-calque-fige"; });
+    });
+
+    // C4 session ↔ calque : un pilier dessiné ici et le même dans un calque (rapatriable, plus ancien) ; la correction
+    // retire celui de la session, le calque n'est ni passé en session ni modifié ; UNE ⏪ remet l'objet de session.
+    const CLE_MX = "C4|st_vp_mxc|st_vp_mxs";
+    const mx0 = await page.evaluate(function (cle) {
+      const P = window.__vp.P;
+      const pts = function () { return [P([520, 0]), P([522, 0]), P([522, 2]), P([520, 2])]; };
+      window.__vpDataLayers = window.PLAN_CONFIG.dataLayers;
+      window.PLAN_CONFIG.dataLayers = (window.PLAN_CONFIG.dataLayers || []).concat([
+        { id: "vp-calque-mixte", file: "vp-calque-mixte.json" }]);
+      window._ktaDataStructurePolygons.push({ polygon: { _map: null }, layerId: "vp-calque-mixte", type: "pilier-1",
+        points: pts(), level: 0, uid: "st_vp_mxc", updatedAt: 500, origOpacity: 1, origFillOpacity: 0.85 });
+      window.setStructures(window.getStructures().concat([{ uid: "st_vp_mxs", updatedAt: 1000, type: "pilier-1",
+        level: 0, points: pts() }]));
+      window.HistoryManager.reset();
+      window.__rapatries = [];
+      window.__fpRap = window.FilterPanel.rapatrierCalque;
+      window.FilterPanel.rapatrierCalque = function (id) {
+        window.__rapatries.push(id);
+        return window.__fpRap.apply(this, arguments);
+      };
+      const ent = window._ktaDataStructurePolygons.find(function (e) { return e.uid === "st_vp_mxc"; });
+      window.__vpMxAvant = JSON.stringify({ t: ent.type, p: ent.points, l: ent.level, u: ent.updatedAt });
+      const c = window.KtaVerifierPlan.analyser().liste.find(function (x) { return x.cle === cle; });
+      return { vu: !!c, identiques: !!c && c.identiques, corrigible: !!c && window.KtaVerifierPlan.corrigible(c) };
+    }, CLE_MX);
+    verifier(mx0.vu && mx0.identiques && mx0.corrigible, "C4 session ↔ calque : en double, identiques, corrigible", mx0);
+    await page.evaluate(function () { window.KtaVerifierPlan.ouvrir(); });
+    await attendre(page, function () { return !!document.getElementById("kta-verif-modal"); }, 5000);
+    await page.click('#kta-verif-modal [data-verif-i="' + (await rang(page, CLE_MX)) + '"]');
+    await page.waitForTimeout(500);
+    const bMx = await page.evaluate(function () {
+      const b = document.getElementById("kta-verif-bandeau");
+      const corr = b.querySelector('[data-verif="corriger"]'), note = b.querySelector(".kta-verif-note-corr");
+      return { corr: corr.style.display !== "none", txt: corr.textContent,
+        note: note.style.display !== "none" ? note.textContent : "" };
+    });
+    verifier(bMx.corr && /session/i.test(bMx.note), "C4 session ↔ calque : bandeau « " + bMx.txt +
+      " », la note dit que le calque reste", bMx);
+    await page.click('#kta-verif-bandeau [data-verif="corriger"]');
+    await attendre(page, function () { return !!document.getElementById("kta-confirm-oui"); }, 5000);
+    await page.click("#kta-confirm-oui");
+    await page.waitForTimeout(900);
+    const etatMx = function () {
+      return page.evaluate(function (cle) {
+        const ent = window._ktaDataStructurePolygons.find(function (e) { return e.uid === "st_vp_mxc"; });
+        return { session: window.getStructures().filter(function (o) { return /^st_vp_mx/.test(o.uid); })
+          .map(function (o) { return o.uid; }),
+        calque: ent ? JSON.stringify({ t: ent.type, p: ent.points, l: ent.level, u: ent.updatedAt }) ===
+          window.__vpMxAvant : false,
+        rapatries: window.__rapatries.slice(), canUndo: window.HistoryManager.canUndo(),
+        c4: window.KtaVerifierPlan.analyser().liste.some(function (c) { return c.cle === cle; }) };
+      }, CLE_MX);
+    };
+    const mx1 = await etatMx();
+    verifier(mx1.session.length === 0 && mx1.calque && mx1.rapatries.length === 0 && !mx1.c4 && mx1.canUndo,
+      "C4 session ↔ calque corrigé en un geste : l'objet de session parti, calque intact (jamais passé en session)",
+      mx1);
+    await page.evaluate(function () { window.KtaVerifierPlan.fermer(); window.HistoryManager.undo(); });
+    await page.waitForTimeout(600);
+    const mx2 = await etatMx();
+    verifier(mx2.session.join() === "st_vp_mxs" && mx2.calque && !mx2.canUndo && mx2.c4,
+      "⏪ : UNE annulation remet l'objet de session, le calque reste intact", mx2);
+    await page.evaluate(function () {
+      window.FilterPanel.rapatrierCalque = window.__fpRap;
+      window.PLAN_CONFIG.dataLayers = window.__vpDataLayers;
+      window._ktaDataStructurePolygons = window._ktaDataStructurePolygons.filter(function (e) {
+        return e.layerId !== "vp-calque-mixte"; });
+      window.setStructures(window.getStructures().filter(function (o) { return !/^st_vp_mx/.test(o.uid); }));
     });
 
     // Galerie condamnée : posée depuis le bandeau sur la zone de C1, C1 se tait, l'itinéraire ne passe toujours pas.
