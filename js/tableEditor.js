@@ -6,7 +6,7 @@
 
 // tableEditor.js — édite en tableau un JSON (calque ou session), le plan en cours ou un ZIP importé ;
 //   héberge aussi le dédoublonnage de sommets (le recalage sur un autre scan vit dans js/recalageScan.js).
-// Expose : window.ouvrirTableEditor.
+// Expose : window.ouvrirTableEditor, window.ktaDedupliquerFichier (dédoublonnage pur, Vérifier le plan C10).
 // ⚠️ Calques de données : export seulement. Un fichier de SESSION s'applique en direct par « Appliquer à la session »
 //   (points, tracés, zones, structures : KtaConvertir.appliquerTableau, un seul chemin) : seules les cellules
 //   modifiées s'appliquent, mêmes chemins que la fiche, une entrée ⏪, type inconnu refusé.
@@ -1863,6 +1863,8 @@
     });
     return bilan;
   }
+  // Lu aussi par « Vérifier le plan » (verifierPlan.js > _c10) sur une enveloppe de chaque objet, compte seul.
+  window.ktaDedupliquerFichier = _dedupliquerFichier;
 
   function _ouvrirDedup() {
     const t = function(k, p) { return window.I18n.t(k, p); };

@@ -12,7 +12,11 @@
 //   · parcours à la souris depuis l'Éditeur de données : liste groupée par gravité, clic sur une ligne → carte centrée
 //     sur l'endroit, niveau changé, objet surligné, fiche ouverte ; Précédent / Suivant ;
 //   · « Vu, normal » : le constat quitte la liste, reste vu au rechargement, « Rétablir » le rend ;
-//   · saisie : un tracé ajouté à travers la zone inaccessible → un toast d'avertissement, une seule fois.
+//   · saisie : un tracé ajouté à travers la zone inaccessible → un toast d'avertissement, une seule fois ;
+//   · C4 à C10 : piliers posés deux fois comme la détection, pilier qui se recoupe, objets hors de l'image, zone au
+//     niveau 12, niveau écrit en texte, tracé de type inconnu, sommet répété, écart entre deux galeries ;
+//     rangement par gravité, fiche de l'autre exemplaire, « Vu, normal », Raccorder (C5) ; C11 : renvoi au
+//     gestionnaire des liaisons ; coût de la passe mesuré.
 // Usage : node scripts/smoke/checkup-verifier-plan.js (SMOKE_PORT pour une autre copie, KTA_MOTEURS : un moteur)
 // Code : js/verifierPlan.js, pathfinder.js > controle · doc : multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6
 // =====================================================================
@@ -91,8 +95,18 @@ function semer(page) {
       O2("zn_vp_dur", "inaccessible", [[20, -6], [30, -6], [30, 6], [20, 6]]),
       O2("zn_vp_eau", "eau", [[70, -6], [80, -6], [80, 6], [70, 6]])
     ]);
-    window.setStructures([O2("st_vp_mur", "mur-ligne", [[125, -10], [125, 10]])]);
+    const carre = function (x, y, c) { return [[x, y], [x + c, y], [x + c, y + c], [x, y + c]]; };
+    window.setStructures([O2("st_vp_mur", "mur-ligne", [[125, -10], [125, 10]]),
+      // C4 : deux passes de la détection sur le même pilier (forme de detectionStructures.js > _valider) ;
+      // C6 : un pilier détecté qui se recoupe.
+      O2("st_vp_d1", "pilier-1", carre(200, 0, 2)), O2("st_vp_d2", "pilier-1", carre(200, 0, 2)),
+      O2("st_vp_noeud", "pilier-1", [[220, 0], [222, 2], [222, 0], [220, 2]])]);
     window.setRoads([
+      O2("rd_vp_faute", "principall", [[200, 120], [220, 120]]),
+      O2("rd_vp_dbl", "principal", [[200, 150], [210, 150], [210, 150], [220, 150]]),
+      // C5 : sommet intérieur de rd_vp_rb à 1,6 m (4 px) de rd_vp_ra, bouts à 16 m : le graphe ne les joint pas.
+      O2("rd_vp_ra", "principal", [[300, 0], [340, 0]]),
+      O2("rd_vp_rb", "principal", [[310, 16], [320, 1.6], [330, 16]]),
       O2("rd_vp_coupe", "principal", [[0, 0], [50, 0]]),
       O2("rd_vp_eau", "principal", [[60, 0], [90, 0]]),
       O2("rd_vp_mur", "principal", [[110, 0], [140, 0]]),
@@ -116,7 +130,8 @@ function semer(page) {
 function nosConstats(page) {
   return page.evaluate(function () {
     const r = window.KtaVerifierPlan.analyser();
-    const f = function (c) { return /_vp_/.test(c.cle); };
+    // C5 a une clé de géométrie : reconnu par le tracé.
+    const f = function (c) { return /_vp_/.test(c.cle) || /_vp_/.test(String(c.objet && c.objet.uid)); };
     return { liste: r.liste.filter(f).map(function (c) { return c.cle; }),
       vus: r.vus.filter(f).map(function (c) { return c.cle; }) };
   });
@@ -189,7 +204,7 @@ async function jouer(nav, moteur) {
     const C2 = "C2|pt_vp_puits|1", C3 = "C3|rd_vp_jmeme|meme";
     verifier(l.liste.indexOf(C1Z) >= 0, "C1 : tracé à travers une zone inaccessible signalé");
     verifier(l.liste.indexOf(C1M) >= 0, "C1 : tracé qui croise un mur en ligne signalé");
-    verifier(!l.liste.some(function (k) { return /rd_vp_eau|rd_vp_libre|zn_vp_eau/.test(k); }),
+    verifier(!l.liste.some(function (k) { return /^C1\|/.test(k) && /rd_vp_eau|rd_vp_libre|zn_vp_eau/.test(k); }),
       "C1 : zone d'eau et tracé libre jamais signalés", l.liste);
     if (multi) {
       verifier(l.liste.indexOf(C2) >= 0, "C2 : puits sans raccord au niveau 1 signalé");
@@ -211,10 +226,13 @@ async function jouer(nav, moteur) {
     await ouvrirListe(page);
     const fen = await page.evaluate(function () {
       const m = document.getElementById("kta-verif-modal");
-      const info = m.querySelector(".kta-verif-g-info");
-      let apresInfo = [];
+      // Lignes du contrôle C2 sous « Pour info » (C7 y range aussi tous les objets du test, posés hors de l'image).
+      const info = m.querySelector(".kta-verif-g-info"), titreC2 = window.I18n.t("verif.controle.C2");
+      let apresInfo = [], dansC2 = false;
       for (let e = info && info.nextElementSibling; e; e = e.nextElementSibling) {
         if (e.classList.contains("kta-verif-gravite")) break;
+        if (e.classList.contains("kta-verif-controle")) { dansC2 = e.textContent.indexOf(titreC2) === 0; continue; }
+        if (!dansC2) continue;
         apresInfo = apresInfo.concat(Array.from(e.querySelectorAll(".kta-verif-ligne-objet")).map(function (x) {
           return x.textContent; }));
       }
@@ -323,6 +341,159 @@ async function jouer(nav, moteur) {
     const encore = await page.evaluate(function () { return window.KtaVerifierPlan.etat().avertis; });
     verifier(encore === apres.avertis, "saisie : pas de second toast pour la même coupure", encore);
 
+    // ── 6. Contrôles C4 à C10, renvoi C11 ──
+    // C8 : posés APRÈS l'ouverture (import, synchro) ; 🩸 au rechargement, main.js > _etendreAvailableLevelsSiBesoin
+    // étend le sélecteur jusqu'au niveau 12 et le constat « inconnu » s'éteint ; le niveau écrit en texte reste.
+    await page.evaluate(function () {
+      const P = window.__vp.P;
+      window.setZones(window.getZones().concat([{ uid: "zn_vp_n12", updatedAt: 1000, type: "eau", level: 12,
+        points: [P([260, 0]), P([264, 0]), P([264, 4]), P([260, 4])] }]));
+      window.setRoads(window.getRoads().concat([{ uid: "rd_vp_txt", updatedAt: 1000, type: "principal", level: "1",
+        points: [P([260, 30]), P([270, 30])] }]));
+    });
+    await page.waitForTimeout(400);
+    l = await nosConstats(page);
+    const C4 = "C4|st_vp_d1|st_vp_d2";
+    const detail = await page.evaluate(function () {
+      const r = window.KtaVerifierPlan.analyser();
+      const m = {};
+      r.liste.forEach(function (c) {
+        const uid = String(c.objet && c.objet.uid);
+        if (/_vp_/.test(uid)) (m[c.controle] = m[c.controle] || []).push(uid + ":" + c.motif + ":" + c.gravite);
+      });
+      return m;
+    });
+    inf("C4 à C10 du test : " + JSON.stringify(detail));
+    verifier(l.liste.indexOf(C4) >= 0 && (detail.C4 || []).indexOf("st_vp_d1:identiques:revoir") >= 0,
+      "C4 : deux passes de détection sur le même pilier → en double, identiques, à revoir", detail.C4);
+    verifier((detail.C4 || []).length === 1, "C4 : aucun autre objet du test en double", detail.C4);
+    verifier((detail.C6 || []).join() === "st_vp_noeud:recoupe:revoir", "C6 : seul le pilier en nœud se recoupe",
+      detail.C6);
+    verifier((detail.C7 || []).indexOf("rd_vp_coupe:dehors:info") >= 0, "C7 : objets posés hors de l'image → pour info",
+      detail.C7);
+    if (multi) {
+      verifier((detail.C8 || []).indexOf("zn_vp_n12:inconnu:revoir") >= 0 &&
+        (detail.C8 || []).indexOf("rd_vp_txt:invalide:revoir") >= 0,
+        "C8 : zone au niveau 12 (hors sélecteur) → inconnu ; niveau écrit « 1 » → invalide", detail.C8);
+    }
+    verifier((detail.C9 || []).join() === "rd_vp_faute:absent:info",
+      "C9 : seul le tracé « principall » est hors légende", detail.C9);
+    verifier((detail.C10 || []).join() === "rd_vp_dbl:sommets:info", "C10 : seul le tracé au sommet répété est compté",
+      detail.C10);
+    verifier((detail.C5 || []).length === 1 && /rd_vp_r[ab]:ecart:revoir/.test(detail.C5[0]),
+      "C5 : l'écart de 1,6 m entre les deux galeries est dans la liste", detail.C5);
+
+    await ouvrirListe(page);
+    const groupes = await page.evaluate(function () {
+      const m = document.getElementById("kta-verif-modal"), out = {};
+      let g = null;
+      Array.from(m.querySelectorAll(".kta-verif-gravite, .kta-verif-controle")).forEach(function (e) {
+        if (e.classList.contains("kta-verif-gravite")) {
+          g = e.className.replace(/.*kta-verif-g-(\w+).*/, "$1");
+          return;
+        }
+        (out[g] = out[g] || []).push(e.textContent);
+      });
+      const T = function (k) { return window.I18n.t("verif.controle." + k); };
+      const dans = function (gr, k) { return (out[gr] || []).some(function (x) { return x.indexOf(T(k)) === 0; }); };
+      const revoir = ["C4", "C5", "C6"].concat(window.APP_CONFIG.multiLevel ? ["C8"] : []);
+      return { revoir: revoir.every(function (k) { return dans("revoir", k); }),
+        info: ["C7", "C9", "C10"].every(function (k) { return dans("info", k); }), out: out };
+    });
+    verifier(groupes.revoir && groupes.info,
+      "fenêtre : C4, C5, C6, C8 rangés en « À revoir », C7, C9, C10 en « Pour info »", groupes.out);
+    const i4 = await rang(page, C4);
+    await page.click('#kta-verif-modal [data-verif-i="' + i4 + '"]');
+    await page.waitForTimeout(700);
+    const b4 = await page.evaluate(function () {
+      const b = document.getElementById("kta-verif-bandeau");
+      const vis = function (a) {
+        return b.querySelector('[data-verif="' + a + '"]').style.display !== "none";
+      };
+      return { autre: vis("fiche-autre"), autreTxt: b.querySelector('[data-verif="fiche-autre"]').textContent,
+        raccorder: vis("raccorder"), objet: document.querySelectorAll(".kta-verif-objet").length };
+    });
+    const txtCopie = await page.evaluate(function () { return window.I18n.t("verif.ficheCopie"); });
+    verifier(b4.autre && b4.autreTxt === txtCopie && !b4.raccorder && b4.objet === 1,
+      "C4 : bandeau, pilier surligné, « Fiche de l'autre exemplaire », pas de Raccorder", b4);
+    verifier(await visible(page, [201, 1]), "C4 : la carte est centrée sur le pilier en double");
+    await page.waitForTimeout(400);
+    verifier(!!(await bandeau(page)).fiche, "C4 : la fiche du pilier est ouverte");
+    await page.click('#kta-verif-bandeau [data-verif="vu"]');
+    await page.waitForTimeout(400);
+    l = await nosConstats(page);
+    verifier(l.liste.indexOf(C4) < 0 && l.vus.indexOf(C4) >= 0, "C4 : « Vu, normal » le retire de la liste", l.vus);
+
+    // C5 : Raccorder depuis la liste (chemin de raccordsTraces.js), puis plus d'écart.
+    const i5 = await page.evaluate(function () {
+      const e = window.KtaVerifierPlan.liste().find(function (q) { return q.controle === "C5" && /rd_vp_r/.test(
+        (window.KtaVerifierPlan.analyser().liste.find(function (c) { return c.cle === q.cle; }) || {}).objet.uid); });
+      return e ? e.i : -1;
+    });
+    await page.click('#kta-verif-bandeau [data-verif="fermer"]');
+    await page.waitForTimeout(300);
+    await page.click('#kta-verif-modal [data-verif-i="' + i5 + '"]');
+    await page.waitForTimeout(600);
+    const b5 = await page.evaluate(function () {
+      const b = document.getElementById("kta-verif-bandeau");
+      return { raccorder: b.querySelector('[data-verif="raccorder"]').style.display !== "none",
+        autre: b.querySelector('[data-verif="fiche-autre"]').style.display !== "none",
+        ecart: document.querySelectorAll(".kta-verif-obstacle").length };
+    });
+    verifier(b5.raccorder && !b5.autre && b5.ecart === 1,
+      "C5 : bandeau avec « Raccorder », écart tireté sur la carte", b5);
+    await page.click('#kta-verif-bandeau [data-verif="raccorder"]');
+    await page.waitForTimeout(900);
+    const apresR = await page.evaluate(function () {
+      const rb = window.getRoads().find(function (r) { return r.uid === "rd_vp_rb"; });
+      const ra = window.getRoads().find(function (r) { return r.uid === "rd_vp_ra"; });
+      return { y: rb.points[1].y, yA: ra.points[0].y,
+        c5: window.KtaVerifierPlan.analyser().liste.filter(function (c) {
+          return c.controle === "C5" && /rd_vp_r/.test(String(c.objet.uid)); }).length };
+    });
+    verifier(apresR.c5 === 0 && Math.abs(apresR.y - apresR.yA) < 0.01,
+      "C5 : Raccorder pose le sommet sur l'autre galerie, l'écart quitte la liste", apresR);
+    await page.evaluate(function () { window.KtaVerifierPlan.fermer(); });
+
+    // C11 : une liaison vers un plan absent de l'appareil → renvoi au gestionnaire des liaisons.
+    const lien = await page.evaluate(function () {
+      const pid = window._currentLoadedPlanId;
+      return window.InterPlanLinks.createLink({ planId: pid, x: 10, y: 10, pointNom: "vp" },
+        { planId: "plan-absent-vp", planName: "Plan absent", x: 10, y: 10, pointNom: "vp" }).id;
+    });
+    await ouvrirListe(page);
+    const c11 = await page.evaluate(function () {
+      const p = document.querySelector("#kta-verif-modal .kta-verif-c11");
+      return { n: window.KtaVerifierPlan.liaisonsAbsentes(), texte: p ? p.textContent : "" };
+    });
+    verifier(c11.n >= 1 && /\d/.test(c11.texte),
+      "C11 : liaisons vers un plan absent comptées au pied de la liste", c11);
+    await page.click('#kta-verif-modal [data-verif="liaisons"]');
+    await page.waitForTimeout(500);
+    const mgr = await page.evaluate(function () {
+      return { mgr: !!document.getElementById("kta-ipl-mgr-modal"),
+        liste: !!document.getElementById("kta-verif-modal") };
+    });
+    verifier(mgr.mgr && !mgr.liste, "C11 : « Voir les liaisons » ouvre le gestionnaire des liaisons", mgr);
+    await page.evaluate(function (id) {
+      window.InterPlanLinks.removeLink(id);
+      const m = document.getElementById("kta-ipl-mgr-modal");
+      if (m) m.remove();
+    }, lien);
+
+    // Coût de la passe complète sur le plan ouvert (relevé fictif et objets du test).
+    const cout = await page.evaluate(function () {
+      const d = window.KtaVerifierPlan.collecter();
+      const n = d.roads.length + d.zones.length + d.structures.length + d.points.length;
+      window.KtaVerifierPlan.analyser();
+      const t0 = performance.now();
+      const r = window.KtaVerifierPlan.analyser();
+      const par = {};
+      r.liste.concat(r.vus).forEach(function (c) { par[c.controle] = (par[c.controle] || 0) + 1; });
+      return { objets: n, ms: Math.round(performance.now() - t0), par: par };
+    });
+    inf("passe complète : " + cout.objets + " objets, " + cout.ms + " ms, constats " + JSON.stringify(cout.par));
+
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs);
   } finally {
     await page.close();
@@ -346,7 +517,7 @@ async function jouer(nav, moteur) {
     problemes.forEach(function (p) { console.log("   " + p); });
     process.exit(1);
   }
-  console.log("🎉 CHECKUP VERT — C1 à C3 signalés (et rien de plus), clic qui centre et ouvre la fiche, « vu, normal »" +
-    " retenu au rechargement, avertissement à la saisie.");
+  console.log("🎉 CHECKUP VERT — C1 à C10 signalés (et rien de plus), clic qui centre et ouvre la fiche, « vu, " +
+    "normal » retenu au rechargement, avertissement à la saisie, Raccorder (C5), renvoi des liaisons (C11).");
   process.exit(0);
 })();
