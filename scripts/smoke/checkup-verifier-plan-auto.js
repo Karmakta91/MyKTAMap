@@ -11,6 +11,7 @@
 //   · « Vu, normal » : la pastille baisse sans nouvelle passe ;
 //   · urgence (mode urgence actif) et plan en lecture seule : pastille seule, aucun toast ;
 //   · moteur qui lève : ni pastille ni toast, console.warn [VerifierPlan], plan utilisable ;
+//   · fin du Générateur pour le plan ouvert (planId) puis réouverture : le toast du Générateur seul, pastille présente ;
 //   · temps : plus longue tranche de la passe et plus longue tâche du fil principal pendant la passe (< 50 ms).
 // Usage : node scripts/smoke/checkup-verifier-plan-auto.js (SMOKE_PORT pour une autre copie, KTA_MOTEURS : un moteur)
 // Code : js/verifierPlanAuto.js · doc : multilevel-pathfinding.md § Vérifier le plan
@@ -251,8 +252,10 @@ async function jouer(nav, moteur) {
     await repasser(page);
     e = await passeFaite(page);
     t = await toastsAuto(page);
-    verifier(e.nombre === n1 - 1 && t.length === (n0 ? 2 : 1), "plan en lecture seule : pastille seule, aucun toast",
-      { nombre: e.nombre, toasts: t.length });
+    const pRo = await page.evaluate(function () { return window.KtaVerifierPlanAuto.pastilleHtml(); });
+    verifier(e.nombre === n1 - 1 && t.length === (n0 ? 2 : 1) && pRo.indexOf(">" + (n1 - 1) + "<") > 0,
+      "plan en lecture seule : pastille seule (" + (n1 - 1) + "), aucun toast",
+      { nombre: e.nombre, toasts: t.length, pastille: pRo });
     await page.evaluate(function () { window.ktaEditionRefusee = window.__refus; });
 
     // ── 8. Temps : relevé fictif + objets du test, passe rejouée seule ──
@@ -296,6 +299,36 @@ async function jouer(nav, moteur) {
     verifier(casse.warn.length === 1, "moteur qui lève : un console.warn [VerifierPlan]", casse.warn);
     verifier(casse.carte, "moteur qui lève : la carte répond", casse);
     await page.evaluate(function () { window.KtaVerifierPlan.bloquants.C1 = window.__c1; });
+
+    // ── 10. Fin du Générateur (plan mis à jour) puis ouverture : un seul toast, pastille présente ──
+    // Bloquants du test remis (nombre n1, différent du dernier annoncé) : sans la marque, l'ouverture aurait son toast.
+    await semer(page, multi);
+    await page.waitForTimeout(800);
+    const nGen = await page.evaluate(function () {
+      const vpa = function (l) { return l.filter(function (o) { return /_vpa_/.test(String(o.uid)); }); };
+      const f = { "data/galeries.json": JSON.stringify({ roads: vpa(window.getRoads()) }),
+        "data/obstacles.json": JSON.stringify({ zones: vpa(window.getZones()) }) };
+      const zip = { file: function (re) {
+        return Object.keys(f).filter(function (k) { return re.test(k); })
+          .map(function (k) { return { async: function () { return Promise.resolve(f[k]); } }; });
+      } };
+      const C = window.APP_CONFIG;
+      return window.KtaVerifierPlanAuto.verifierZip(zip, { multiLevel: C.multiLevel === true, echelle: C.scale,
+        image: { w: C.imageWidth, h: C.imageHeight }, planId: window._currentLoadedPlanId });
+    });
+    const avantOuv = (await toastsAuto(page)).length;
+    await ouvrirPlan(page);
+    e = await passeFaite(page);
+    t = await toastsAuto(page);
+    const gen = await page.evaluate(function () {
+      return window.__toasts.filter(function (x) { return x.msg.indexOf("Plan généré") === 0; }).length;
+    });
+    const pGen = await pastilles(page);
+    verifier(nGen === ajout && gen === 1, "fin du Générateur : un toast « Plan généré » (" + nGen + " bloquant(s))",
+      { nGen: nGen, toasts: gen });
+    verifier(e.nombre === n1 && t.length === avantOuv && pGen.carte === n1,
+      "ouverture qui suit : pas de second toast, pastille " + n1 + " présente",
+      { nombre: e.nombre, toastsAvant: avantOuv, toastsApres: t.length, pastille: pGen });
 
     // Nettoyage des objets du test (la session du relevé fictif reste celle d'avant).
     await page.evaluate(function () {

@@ -16,6 +16,11 @@
  *   G. Fin du Générateur (verifierZip) : calques d'un faux ZIP, plan généré multi-niveau alors que la page ne l'est
  *      pas → mêmes bloquants que le plan ouvert, toast « warn », APP_CONFIG.multiLevel rendu.
  *   E. Jeu fictif moyen (~2 000 objets, multi-niveau) : clés des tranches = bloquants d'analyser(), à l'identique.
+ *   H. C2 sans propositions : la passe passe { sansPropositions: true } à bloquants.C2, KtaPoiJonction.proposerRaccords
+ *      n'est jamais appelé ni réaffecté par le module ; la liste complète (analyser) les calcule toujours.
+ *   I. Fin du Générateur puis ouverture du plan mis à jour (planId) : un seul toast, la pastille reste ; marque
+ *      consommée à cette ouverture ; un autre plan n'est pas concerné ; lecture seule : pastille sans toast.
+ *   🔒 H et I sont rejoués sur une copie cassée du module (falsification) : le contrôle doit tomber.
  *   F. --cout : jeu fictif d'environ 20 000 objets, plus longue tranche < 50 ms (~6 s : hors pre-commit).
  * Usage : node scripts/check-verifier-plan-auto.js [--cout]   (exit 1 si un contrôle échoue)
  */
@@ -38,8 +43,11 @@ const P = (x, y) => ({ x: x, y: y });
 const R = (uid, type, pts, extra) => Object.assign({ uid: uid, type: type, points: pts.map(p => P(p[0], p[1])) },
   extra || {});
 
-function bac(d, cfg) {
+// mutations : { "js/<fichier>.js": [motif, remplacement] } (falsification ; motif introuvable = exception).
+function bac(d, cfg, mutations) {
   const avert = [];
+  const ecoutes = {};
+  const ls = {};
   const win = {
     console: { log() {}, warn() { avert.push(Array.prototype.join.call(arguments, " ")); }, error() {} },
     APP_CONFIG: Object.assign({ scale: 4, multiLevel: false, imageHeight: 100000, imageWidth: 100000 }, cfg || {}),
@@ -58,16 +66,29 @@ function bac(d, cfg) {
     getPlanVerifVus: function () { return win._vus.slice(); },
     setPlanVerifVus: function (_p, l) { win._vus = l.slice(); return true; },
     getPlanRaccordsIgnores: () => [],
-    addEventListener() {},
+    addEventListener(type, fn) { (ecoutes[type] = ecoutes[type] || []).push(fn); },
     ktaEsc: s => String(s),
     ktaIcone: () => "",
-    _currentLoadedPlanId: "plan_fictif"
+    _currentLoadedPlanId: "plan_fictif",
+    // Ouverture d'un plan (mktm:plan-pret) : images et attentes ramenées à un tour de boucle.
+    requestAnimationFrame: fn => setImmediate(fn),
+    setTimeout: fn => setImmediate(fn),
+    clearTimeout() {},
+    localStorage: { getItem: k => (k in ls ? ls[k] : null), setItem: (k, v) => { ls[k] = String(v); } },
+    document: { querySelectorAll: () => [], addEventListener() {}, getElementById: () => null }
   };
   win.window = win;
   win.__avert = avert;
+  win.__emettre = type => (ecoutes[type] || []).forEach(fn => fn({ type: type, detail: {} }));
   const ctx = vm.createContext(win);
   ["js/poiJonction.js", "js/pathfinder.js", "js/verifierPlan.js", "js/verifierPlanAuto.js"].forEach(function (f) {
-    vm.runInContext("var window = this;" + lire(f), ctx);
+    let src = lire(f);
+    const m = mutations && mutations[f];
+    if (m) {
+      if (src.indexOf(m[0]) < 0) throw new Error("motif de mutation introuvable : " + m[0]);
+      src = src.split(m[0]).join(m[1]);
+    }
+    vm.runInContext("var window = this;" + src, ctx);
   });
   return win;
 }
@@ -195,6 +216,131 @@ function jeu() {
     const zip0 = { file: () => [{ async: () => Promise.resolve(JSON.stringify({ roads: [j.roads[2]] })) }] };
     const n0 = await w0.KtaVerifierPlanAuto.verifierZip(zip0, { multiLevel: false });
     t("G : aucun bloquant → aucun toast", n0 === 0 && t0.length === 0, { n0, t0 });
+  }
+
+  // ── H. C2 sans propositions (option de _c2, plus de réaffectation de proposerRaccords) ──
+  const sansReaffectation = src => !/proposerRaccords\s*=(?!=)/.test(src.replace(/\/\/[^\n]*/g, ""));
+  const avecOption = src => /bloquants\.C2\(td,\s*\{\s*sansPropositions:\s*true\s*\}\)/.test(src);
+  // Passe sur le jeu de contrôle, appels de proposerRaccords comptés (pendant la passe, puis par analyser()).
+  async function compterPropositions(mutations) {
+    const w = bac(jeu(), { multiLevel: true }, mutations);
+    const PJ = w.KtaPoiJonction, vrai = PJ.proposerRaccords;
+    let appels = 0;
+    const espion = function () { appels++; return vrai.apply(this, arguments); };
+    PJ.proposerRaccords = espion;
+    const r = await w.KtaVerifierPlanAuto.lancer(null, { repos: reposImmediat, maintenant: maintenant });
+    const pendant = appels;
+    w.KtaVerifierPlan.analyser();
+    return { cles: r ? r.cles.length : -1, appels: pendant, appelsListe: appels - pendant,
+      espionEnPlace: PJ.proposerRaccords === espion };
+  }
+  {
+    const src = lire("js/verifierPlanAuto.js");
+    t("H : verifierPlanAuto.js ne réaffecte plus KtaPoiJonction.proposerRaccords", sansReaffectation(src));
+    t("H : la passe appelle bloquants.C2(td, { sansPropositions: true })", avecOption(src));
+    const c = await compterPropositions(null);
+    t("H : passe complète (4 bloquants) sans un seul appel de proposerRaccords, fonction jamais remplacée",
+      c.cles === 4 && c.appels === 0 && c.espionEnPlace, c);
+    t("H : la liste complète (analyser) calcule toujours les propositions de C2", c.appelsListe > 0, c);
+    t("🔒 falsification H (réaffectation remise) : le contrôle de texte tombe",
+      !sansReaffectation(src.replace("return V.bloquants.C2(td, { sansPropositions: true });",
+        "const PJ = window.KtaPoiJonction; PJ.proposerRaccords = function () { return null; }; " +
+        "return V.bloquants.C2(td);")));
+    t("🔒 falsification H (option absente) : le contrôle de texte tombe",
+      !avecOption(src.replace("{ sansPropositions: true }", "{}")));
+    let k;
+    try {
+      k = await compterPropositions({ "js/verifierPlan.js":
+        ["const proposer = !(opts && opts.sansPropositions === true);", "const proposer = true;"] });
+    } catch (e) { k = { erreur: e.message }; }
+    t("🔒 falsification H (_c2 ignore l'option) : la passe appelle proposerRaccords, le contrôle tombe",
+      !!k && k.appels > 0, k);
+  }
+
+  // ── I. Fin du Générateur puis ouverture : un seul toast ──
+  const fauxZip = (j) => {
+    const f = { "data/galeries.json": JSON.stringify({ roads: j.roads }),
+      "data/obstacles.json": JSON.stringify({ zones: j.zones, structures: j.structures }),
+      "data/points.json": JSON.stringify({ data: j.points }) };
+    return { file: (re) => Object.keys(f).filter(k => re.test(k)).map(k => ({ async: () => Promise.resolve(f[k]) })) };
+  };
+  // Générateur (planId donné ou non), puis ouverture du plan (mktm:plan-pret), éventuellement rouverte après un
+  // bloquant retiré. → { nombre, nombre2, toasts } (toasts : « g » Générateur, « o » ouverture).
+  async function genPuisOuverture(o, mutations) {
+    const j = jeu();
+    const w = bac(j, { multiLevel: true }, mutations);
+    const toasts = [];
+    w.OOMGuard = { showToast: (m) => toasts.push(m.indexOf("verif.auto.generateur") === 0 ? "g"
+      : m.indexOf("verif.auto.toast") === 0 ? "o" : m) };
+    w.requestIdleCallback = (fn) => setImmediate(() => fn(null));
+    if (o.lectureSeule) w.ktaEditionRefusee = () => true;
+    const A = w.KtaVerifierPlanAuto;
+    if (o.gen !== false) {
+      await A.verifierZip(fauxZip(j), { multiLevel: true, echelle: 4, image: { w: 1000, h: 1000 },
+        planId: o.planIdGen === undefined ? "plan_fictif" : o.planIdGen });
+    }
+    const ouvrir = async () => {
+      w.__emettre("mktm:plan-pret");
+      for (let i = 0; i < 400 && !A.etat(); i++) await new Promise(r => setImmediate(r));
+      return A.etat();
+    };
+    const e1 = await ouvrir();
+    let e2 = null;
+    if (o.rouvrirAutreNombre) {
+      j.roads.splice(j.roads.findIndex(r => r.uid === "rd_mur"), 1);
+      e2 = await ouvrir();
+    }
+    return { nombre: e1 ? e1.nombre : null, nombre2: e2 ? e2.nombre : null, toasts: toasts };
+  }
+  {
+    const r = await genPuisOuverture({});
+    t("I : Générateur (4 bloquants) puis ouverture du plan : un seul toast (celui du Générateur), pastille 4",
+      JSON.stringify(r.toasts) === '["g"]' && r.nombre === 4, r);
+    const r0 = await genPuisOuverture({ gen: false });
+    t("I : témoin, ouverture seule : un toast", JSON.stringify(r0.toasts) === '["o"]' && r0.nombre === 4, r0);
+    const r2 = await genPuisOuverture({ rouvrirAutreNombre: true });
+    t("I : marque consommée à cette ouverture : la suivante, nombre changé (3), refait un toast",
+      JSON.stringify(r2.toasts) === '["g","o"]' && r2.nombre2 === 3, r2);
+    const r3 = await genPuisOuverture({ planIdGen: "autre_plan" });
+    t("I : Générateur d'un autre plan : l'ouverture de celui-ci a son toast",
+      JSON.stringify(r3.toasts) === '["g","o"]', r3);
+    const r4 = await genPuisOuverture({ planIdGen: null });
+    t("I : plan neuf (sans planId) : rien de retenu, l'ouverture a son toast",
+      JSON.stringify(r4.toasts) === '["g","o"]', r4);
+    const r5 = await genPuisOuverture({ gen: false, lectureSeule: true });
+    t("I : plan en lecture seule : pastille (4), aucun toast", r5.toasts.length === 0 && r5.nombre === 4, r5);
+    const cc = lire("js/createConf.js");
+    const passePlanId = src =>
+      /verifierZip\(zip, \{[\s\S]{0,200}planId: \(_plannerMaj && _plannerMaj\.planId\) \|\| null \}\)/.test(src);
+    t("I : le Générateur passe le planId du plan mis à jour à verifierZip", passePlanId(cc));
+    t("🔒 falsification I (planId retiré de l'appel du Générateur) : le contrôle de texte tombe",
+      !passePlanId(cc.replace(", planId: (_plannerMaj && _plannerMaj.planId) || null", "")));
+    const rejouer = async (o, m) => {
+      try { return await genPuisOuverture(o, { "js/verifierPlanAuto.js": m }); } catch (e) { return { erreur: e.message }; }
+    };
+    const fc = await rejouer({ rouvrirAutreNombre: true }, ["if (gen) _avertisGenerateur.delete(planId);", ""]);
+    t("🔒 falsification I (marque jamais consommée) : la réouverture se tait, le contrôle tombe",
+      !!fc.toasts && JSON.stringify(fc.toasts) !== '["g","o"]', fc);
+    const fa = await rejouer({ planIdGen: "autre_plan" }, [
+      "const gen = silencieux ? null : _avertisGenerateur.get(planId);",
+      "const gen = silencieux ? null : _avertisGenerateur.values().next().value;"]);
+    t("🔒 falsification I (marque lue sans son planId) : l'autre plan se tait, le contrôle tombe",
+      !!fa.toasts && JSON.stringify(fa.toasts) !== '["g","o"]', fa);
+    let f;
+    try {
+      f = await genPuisOuverture({}, { "js/verifierPlanAuto.js":
+        ["if (averti) { _ecrireLs(planId, n); return _etat; }", ""] });
+    } catch (e) { f = { erreur: e.message }; }
+    t("🔒 falsification I (marque ignorée à l'ouverture) : deux toasts, le contrôle tombe",
+      !!f.toasts && JSON.stringify(f.toasts) !== '["g"]', f);
+    let f2;
+    try {
+      f2 = await genPuisOuverture({ gen: false, lectureSeule: true }, { "js/verifierPlanAuto.js":
+        ["function toastAutorise() { return !_urgence() && !_lectureSeule(); }",
+          "function toastAutorise() { return !_urgence(); }"] });
+    } catch (e) { f2 = { erreur: e.message }; }
+    t("🔒 falsification I (lecture seule ignorée) : un toast, le contrôle tombe", !!f2.toasts && f2.toasts.length > 0,
+      f2);
   }
 
   // ── E / F. Jeux fictifs : k = 1 → ~20 000 objets, k = 10 → ~2 000 ──

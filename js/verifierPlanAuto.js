@@ -6,7 +6,8 @@
 
 // verifierPlanAuto.js — passe légère de « Vérifier le plan » : les bloquants seuls (C1 à C3), au repos, à l'ouverture
 // d'un plan et à la fin du Générateur. Pastille du nombre sur l'entrée de l'outil, UN toast « warn » tant que ce
-// nombre ne change pas (mémorisé par plan sur l'appareil), rien quand il vaut 0.
+// nombre ne change pas (mémorisé par plan sur l'appareil), rien quand il vaut 0. Fin du Générateur puis ouverture du
+// plan mis à jour : un seul toast, celui du Générateur (marque en mémoire par planId, consommée à l'ouverture).
 // ⚠️ contrat : compte avec KtaVerifierPlan.bloquants (les fonctions de la liste, jamais une copie) ; gravité
 //   « bloquant » seulement (un niveau traversé de C2 est « info »), « Vu, normal » exclus à la LECTURE (nombre()),
 //   donc juste dès qu'on en marque un.
@@ -36,6 +37,9 @@ window.KtaVerifierPlanAuto = (function () {
   let _jeton = 0;
   let _etat = null;          // { planId, cles: [clés des bloquants], maxMs, tranches, ms }
   let _donneesTimer = 0;
+  // planId → Promise<bool> (toast du Générateur affiché pour ce plan) : en mémoire seulement, consommée par la
+  // première passe d'ouverture de ce plan (_passePlan), qui ne répète pas le toast.
+  const _avertisGenerateur = new Map();
 
   function _t(k, p) { return window.I18n && typeof window.I18n.t === "function" ? window.I18n.t(k, p) : k; }
   function _api() {
@@ -250,17 +254,23 @@ window.KtaVerifierPlanAuto = (function () {
   // ── Plan ouvert ──────────
   // `silencieux` : recompte après une modification (pastille seule ; le toast de saisie de verifierPlan.js dit déjà
   // une coupure nouvelle).
+  // Ouverture qui suit la fin du Générateur pour ce plan (_avertisGenerateur) : le toast du Générateur a déjà parlé,
+  // le nombre est retenu comme annoncé, la pastille reste.
   function _passePlan(silencieux) {
     const planId = window._currentLoadedPlanId || null;
     if (!planId || !_api()) return Promise.resolve(null);
+    const gen = silencieux ? null : _avertisGenerateur.get(planId);
+    if (gen) _avertisGenerateur.delete(planId);
     const jeton = ++_jeton;
-    return lancer(null, { jeton: jeton }).then(function (r) {
+    return Promise.all([lancer(null, { jeton: jeton }), gen || false]).then(function (res) {
+      const r = res[0], averti = res[1] === true;
       if (!r || jeton !== _jeton || planId !== (window._currentLoadedPlanId || null)) return null;
       _etat = { planId: planId, cles: r.cles, maxMs: r.maxMs, tranches: r.tranches, ms: r.ms };
       _majPastilles();
       if (silencieux) return _etat;
       const n = nombre();
       if (!n) { _ecrireLs(planId, 0); return _etat; }
+      if (averti) { _ecrireLs(planId, n); return _etat; }
       if (_lireLs()[planId] === n || !toastAutorise()) return _etat;
       _ecrireLs(planId, n);
       _toast(_t(n === 1 ? "verif.auto.toast.un" : "verif.auto.toast.n", { n: n }));
@@ -297,7 +307,8 @@ window.KtaVerifierPlanAuto = (function () {
 
   // ── Fin du Générateur ──────────
   // Lit les calques écrits dans le ZIP (data/*.json, après le décalage du rognage), comme le chargement les lira.
-  // cfg : { multiLevel, echelle, image: { w, h } }. → Promise<nombre | null> ; toast « warn » s'il y a des bloquants.
+  // cfg : { multiLevel, echelle, image: { w, h }, planId } (planId : plan mis à jour, null pour un plan neuf).
+  // → Promise<nombre | null> ; toast « warn » s'il y a des bloquants, retenu pour planId (_avertisGenerateur).
   function _lireCalque(json, d) {
     if (!json || typeof json !== "object") return;
     if (Array.isArray(json.roads)) d.roads = d.roads.concat(json.roads);
@@ -313,22 +324,30 @@ window.KtaVerifierPlanAuto = (function () {
   function verifierZip(zip, cfg) {
     const c = cfg || {};
     if (!zip || typeof zip.file !== "function" || !_api()) return Promise.resolve(null);
+    let averti = false;
     const d = { roads: [], zones: [], structures: [], points: [], multiLevel: c.multiLevel === true,
       echelle: Number(c.echelle) || 0, image: c.image || { w: 0, h: 0 }, niveaux: null, planOuvert: false };
     const fichiers = zip.file(/^data\/[^/]+\.json$/);
-    return Promise.all(fichiers.map(function (f) {
+    const p = Promise.all(fichiers.map(function (f) {
       return f.async("string").then(function (txt) {
         try { _lireCalque(JSON.parse(txt), d); } catch (e) { /* calque illisible : le chargement l'ignorera aussi */ }
       });
     })).then(function () { return lancer(d); }).then(function (r) {
       if (!r) return null;
       const n = r.cles.length;
-      if (n && !_urgence()) _toast(_t(n === 1 ? "verif.auto.generateur.un" : "verif.auto.generateur.n", { n: n }));
+      if (n && !_urgence()) {
+        _toast(_t(n === 1 ? "verif.auto.generateur.un" : "verif.auto.generateur.n", { n: n }));
+        averti = true;
+      }
       return n;
     }).catch(function (e) {
       console.warn("[VerifierPlan] passe du Générateur abandonnée", e);
       return null;
     });
+    if (typeof c.planId === "string" && c.planId) {
+      _avertisGenerateur.set(c.planId, p.then(function () { return averti; }));
+    }
+    return p;
   }
 
   return {

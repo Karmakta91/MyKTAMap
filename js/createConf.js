@@ -4238,10 +4238,11 @@ async function _genererZip() {
     const nomZip = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + (tilingV2On ? "_v2" : "") + ".zip";
 
     // Vérifier le plan, passe légère sur les calques écrits dans le ZIP (js/verifierPlanAuto.js) : au repos, un toast
-    // s'il y a des bloquants ; la suite (téléchargement, publication) ne l'attend pas.
+    // s'il y a des bloquants ; la suite (téléchargement, publication) ne l'attend pas. planId du plan mis à jour
+    // (Mettre à jour le plan, qui le rouvre) : la passe de cette réouverture ne répète pas le toast.
     if (window.KtaVerifierPlanAuto) {
       window.KtaVerifierPlanAuto.verifierZip(zip, { multiLevel: multiLevel, echelle: tracking.scale,
-        image: { w: planObj.imageWidth, h: planObj.imageHeight } });
+        image: { w: planObj.imageWidth, h: planObj.imageHeight }, planId: (_plannerMaj && _plannerMaj.planId) || null });
     }
 
     // Mise à jour d'un plan : l'assistant propose la suite (télécharger, remplacer, nouvelle version).
