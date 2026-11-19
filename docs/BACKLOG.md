@@ -47,10 +47,6 @@
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
-- **Vérifier le plan, lot 4 : passe au chargement et fin du Générateur** — bloquants seuls, pastille et toast une fois
-  tant que le nombre ne change pas, au repos ; coût mesuré d'abord sur le plus gros relevé des checkups.
-  `qui: Claude · action: mesurer le coût puis lot 4 de ETUDE_VERIFIER_PLAN.md · fini: pastille et toast une fois,
-  temps mesuré · depuis: 11/11/2026 · taille: S`
 - **Masse au sol en 3D (remblais, lot 4)** — sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ;
   mesure de perf. `docs/ETUDE_REMBLAIS.md`.
   `qui: Claude · action: lot 4 de ETUDE_REMBLAIS.md · fini: checkup-vue-3d vert, perf mesurée · depuis: 11/11/2026

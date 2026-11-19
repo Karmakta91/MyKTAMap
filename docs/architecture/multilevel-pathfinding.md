@@ -873,8 +873,7 @@ get/setPlanVerifVus`), sur l'appareil seulement. Modifier l'objet ne fait pas re
 calque sans `uid` revient s'il est redessiné. **Saisie** : à chaque `kta:donneesPlanChange` (tracés, zones,
 structures, calques ; 700 ms de calme), C1 sur les seuls objets de session dont la signature a changé **et** dont
 `updatedAt` a moins d'une minute (la session restaurée ou rejouée par Ctrl+Z n'est pas une saisie) : un toast `warn`
-par coupure nouvelle, une fois par plan ouvert. Pas encore : avertissement à la saisie pour C12, passe au chargement
-et fin du Générateur (lot 4 de l'étude).
+par coupure nouvelle, une fois par plan ouvert. Pas encore : avertissement à la saisie pour C12.
 
 #### Corrections (`verifierPlan.js` § Corrections)
 
@@ -918,6 +917,48 @@ légende, rien dans le pathfinder : il ne fait que taire C1 (C12 l'ignore).
 Garde-fous : `check-verifier-plan.js` (Node : une falsification par contrôle C4 à C10, doublons d'un calque, galerie
 condamnée contre le graphe, corrections et leurs 8 falsifications), `check-filets-donnees.js` (ordre instantané →
 mutation → entrée ⏪ unique, confirmation → prise → écriture), `checkup-verifier-plan.js`.
+
+**Passe légère** (`js/verifierPlanAuto.js`, décisions 3c et 4a de l'étude) : les **bloquants seuls**, comptés par
+`KtaVerifierPlan.bloquants` = `{ C1, C2, C3 }` (les fonctions de la liste, exposées pour elle : un filtre ajouté dans
+`_c1` vaut pour les deux), gravité `bloquant` seulement (un niveau traversé de C2 est « info »). Clés gardées ; les
+« Vu, normal » sont retirés **à la lecture** (`nombre()`), donc la pastille baisse dès qu'on en marque un.
+- **Quand** : à `mktm:plan-pret` (session restaurée), après la fermeture du splash (`KtaSplash.surFermeture`), deux
+  images et 1,5 s (tuiles et calques), puis au repos (`requestIdleCallback`, 2 s au plus). Par **tranches** : unités
+  = galeries (C1), passages entre niveaux (C2), tracés jonction (C3) ; une tranche reçoit les données entières sauf
+  la liste découpée, et pour C2 / C3 seulement les galeries des niveaux qu'elle lit (même résultat : `_segmentsNiveau`
+  filtre par niveau) ; taille doublée ou divisée pour viser 8 ms, tranches enchaînées dans 12 ms de repos. 🩸 Pendant
+  une tranche C2, `KtaPoiJonction.proposerRaccords` est neutralisé (rendu dans `finally`) : il ne sert qu'au texte
+  de la liste et parcourt tout le réseau par passage signalé (~17 ms chacun sur 10 000 tracés). 🩸 Une tranche ne
+  descend pas sous un objet : un tracé ou un passage démesuré reste d'un bloc. Après une modification
+  (`kta:donneesPlanChange`, 2 s de calme), recompte silencieux : la pastille suit, aucun toast (celui de la saisie
+  dit déjà une coupure nouvelle).
+- **Rendu** : pastille du nombre (`.kta-verif-pastille`) sur la carte Vérifier le plan de l'Éditeur de données et sur
+  la tuile Éditeur de données du lanceur Exporter (`interface.js > _creerTile`, `dynamicPastille`). Toast `warn`
+  s'il y a des bloquants et que leur nombre diffère du dernier annoncé pour ce plan
+  (`localStorage["myktamap_verif_auto_v1"]` = `{ planId: nombre }`, 200 plans au plus, propre à l'appareil : hors
+  export du profil) ; 0 bloquant : aucun toast, 0 retenu (un retour des bloquants sera annoncé).
+- **Contextes** : urgence (`EmergencyMode`, `SecoursMode` ouvert, `LostMode`) ou plan en lecture seule
+  (`ktaEditionRefusee(true)`, plan d'extension en lecture) : pastille seule, rien retenu, le toast viendra à une
+  ouverture hors de ces cas. Plan serveur : même passe sur ce que l'app a chargé ; une synchro arrivée ensuite
+  recompte (pastille). Kiosque : aucun flag ne la touche (`disableGenerator` retire seulement la passe du
+  Générateur, faute de Générateur).
+- **Fin du Générateur** (`createConf.js > _genererZip`, après `generateAsync`) : `verifierZip(zip, cfg)` relit les
+  calques écrits dans le ZIP (`data/*.json`, après le décalage du rognage : `roads`, `zones` par `ktaZoneLue`,
+  `structures`, `data` / `editorPoints` / `points`), même passe sans « Vu, normal », toast `warn` s'il y a des
+  bloquants ; le téléchargement et la publication ne l'attendent pas. 🩸 Le graphe et `estJonction` lisent le
+  multi-niveau sur `APP_CONFIG` : il prend celui du plan généré le temps du découpage et de chaque tranche
+  (synchrone, rendu dans `finally`).
+- **Abandon** : exception du moteur, ou plus de 60 s / 20 000 tranches (moteur qui ne rend plus la main entre deux
+  tranches) : `console.warn` préfixé `[VerifierPlan]`, ni pastille ni toast, le plan reste utilisable. Une boucle
+  sans fin DANS une tranche n'est pas rattrapable ici (C1 à C3 n'en ont pas : parcours bornés des listes).
+- **Coût** : relevé fictif des checkups, une tranche, ~3 ms, passe complète au repos ~40 ms ; données fictives de
+  20 034 objets multi-niveau (10 000 tracés, 200 jonctions, 5 500 piliers, 300 murs, 1 000 zones, 3 034 points dont
+  300 passages) en Node : 581 tranches, la plus longue 33 à 35 ms, ~6,4 s au total (C1 à C3 d'un bloc : ~13 s, dont
+  ~10 s de `proposerRaccords`).
+- Garde-fous : `check-verifier-plan-auto.js` (pre-commit : mêmes clés qu'`analyser()`, C1 à C3 seulement, jamais
+  pendant le splash, abandon, fin du Générateur ; `--cout` : les 20 034 objets, hors pre-commit) ;
+  `checkup-verifier-plan-auto.js` (pastilles, un toast, réouverture, urgence, lecture seule, moteur qui lève,
+  tâches longues pendant la passe).
 
 ---
 
