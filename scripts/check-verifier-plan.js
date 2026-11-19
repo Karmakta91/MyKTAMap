@@ -186,6 +186,39 @@ const roads = [
   t("C1 multi-niveau : niveau du constat = niveau du tracé", !!c && c.niveau === 1);
 }
 
+// ── 3 bis. « Galerie volontairement condamnée » (`condamne: true` sur la zone ou le mur en ligne) ──
+// Même paire tracé / obstacle : C1 la signale sans le champ, se tait avec ; l'itinéraire la refuse dans les deux cas
+// (le champ ne change rien au graphe). `mutation` : falsification sur verifierPlan.js.
+function casCondamne(condamne, mutation) {
+  const z = R("zn_cond", "inaccessible", [[100, -20], [140, -20], [140, 20], [100, 20]]);
+  const m = R("st_cond", "mur-ligne", [[500, -30], [500, 30]]);
+  if (condamne) { z.condamne = true; m.condamne = true; }
+  const rz = R("rd_cz", "principal", [[0, 0], [260, 0]]), rm = R("rd_cm", "principal", [[450, 0], [550, 0]]);
+  const w = bac({ roads: [rz, rm], zones: [z], structures: [m] }, null, null, mutation);
+  const cles = de(analyse(w).liste, "C1").map(c => c.cle).sort();
+  const C = w.Pathfinder.controle, prep = C.preparer(C.obstaclesDuPlan());
+  const bloque = C.zonesQuiBloquent(rz.points[0], rz.points[1], 0, prep.polys).length === 1 &&
+    C.mursQuiCoupent(rm.points[0], rm.points[1], 0, prep.grille).length === 1;
+  const g = w.Pathfinder.grapheDeTraces([rz, rm], { includeZones: true });
+  return { cles: cles, bloque: bloque, segments: g.segments.length };
+}
+{
+  const sans = casCondamne(false), avec = casCondamne(true);
+  t("condamnée : sans le champ, C1 signale tracé / zone et tracé / mur en ligne",
+    sans.cles.join() === "C1|rd_cm|st_cond,C1|rd_cz|zn_cond", sans.cles);
+  t("condamnée : avec `condamne: true`, C1 ne les signale plus", avec.cles.length === 0, avec.cles);
+  t("condamnée : l'itinéraire refuse les deux segments dans les deux cas (Pathfinder.controle, graphe sans segment)",
+    sans.bloque && avec.bloque && sans.segments === 0 && avec.segments === 0, { sans: sans, avec: avec });
+  const casse = casCondamne(true, ["      .filter(function (e) { return !(e.autre && e.autre.condamne === true); });",
+    ";"]);
+  t("🔒 falsification condamnée : sans le filtre de _c1, les deux paires reviennent", casse.cles.length === 2,
+    casse.cles);
+  const comble = R("zn_comble", "remblais", [[100, -20], [140, -20], [140, 20], [100, 20]], { condamne: true });
+  const wc = bac({ roads: [R("rd_cc", "principal", [[0, 0], [260, 0]])], zones: [comble] });
+  t("condamnée : le champ ne vaut que pour C1 — une zone Comblé qui le porte reste signalée en C12",
+    de(analyse(wc).liste, "C12").length === 1, de(analyse(wc).liste, "C12").map(c => c.cle));
+}
+
 // ── 4. C2 : passage entre niveaux sans raccord validé ──
 {
   const gal0 = R("rd_g0", "principal", [[0, 0], [200, 0]], { level: 0 });

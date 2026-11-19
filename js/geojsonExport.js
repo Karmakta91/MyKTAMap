@@ -174,6 +174,8 @@
         if (!Array.isArray(z.points) || z.points.length < 3) return;
         const props = proprietes("zone", z.type, _libelle("zones", z.type), z, KE.styleResolu("zones", z.type));
         if (multi) props.niveaux = nv;
+        // Galerie volontairement condamnée (verifierPlan.js) : relue par l'import SIG, colonne « condamne ».
+        if (z.condamne === true) props.condamne = true;
         // Masse au sol : part comblée (0-1), absente = ½ (relue par l'import SIG, colonne « comble »).
         if (z.type === "masse-sol") {
           props.comble = typeof window.ktaCombleZone === "function" ? window.ktaCombleZone(z)
@@ -204,8 +206,9 @@
         const pts = Array.isArray(s.points) ? s.points : [];
         const enLigne = KE.estLigneStructure(s);
         if (pts.length < (enLigne ? 2 : 3)) return;
-        ajouter(enLigne ? ligne(pts) : polygone(pts), proprietes("structure", s.type, _libelle("structures", s.type), s,
-                KE.styleResolu("structures", s.type)), s.uid);
+        const ps = proprietes("structure", s.type, _libelle("structures", s.type), s, KE.styleResolu("structures", s.type));
+        if (s.condamne === true) ps.condamne = true;
+        ajouter(enLigne ? ligne(pts) : polygone(pts), ps, s.uid);
       });
     }
 

@@ -133,7 +133,10 @@ window.KtaVerifierPlan = (function () {
     const C = _ctl();
     if (!C) return [];
     // Plan ouvert : la collecte même de l'itinéraire ; données fournies : le même filtre sur elles.
-    return _traversees(d, seulement, "C1", d.planOuvert ? C.obstaclesDuPlan() : C.obstaclesDe(d.zones, d.structures));
+    // ⚠️ Obstacle « galerie volontairement condamnée » (`condamne: true`, écrit sur l'objet) : il bloque toujours
+    // l'itinéraire, il ne fait que taire C1 (décision produit).
+    return _traversees(d, seulement, "C1", d.planOuvert ? C.obstaclesDuPlan() : C.obstaclesDe(d.zones, d.structures))
+      .filter(function (e) { return !(e.autre && e.autre.condamne === true); });
   }
 
   // ── C12 : tracé qui traverse une zone à coût (Comblé, effondrement) ──────────

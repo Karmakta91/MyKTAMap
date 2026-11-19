@@ -2594,6 +2594,7 @@ window.getAllEmbeddedZones = function() {
         out.rampes = e.rampes.map(function (r) { return r.fin ? { bord: r.bord, fin: r.fin } : { bord: r.bord }; });
       }
       if (e.description) out.description = e.description;
+      if (e.condamne === true) out.condamne = true;
       if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
       return out;
@@ -2624,6 +2625,7 @@ window.getAllEmbeddedStructures = function() {
     .map(function(e) {
       const out = { type: e.type, points: e.points, level: e.level || 0, layerId: e.layerId || null };
       if (e.description) out.description = e.description;
+      if (e.condamne === true) out.condamne = true;
       if (e.uid) out.uid = e.uid;
       if (typeof e.updatedAt === "number") out.updatedAt = e.updatedAt;
       return out;
@@ -3129,6 +3131,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             points:          structure.points,
             level:           Number.isInteger(structure.level) ? structure.level : 0,
             description:     structure.description || undefined,
+            // Mur en ligne déclaré « galerie volontairement condamnée » (verifierPlan.js) : gardé pour C1.
+            condamne:        structure.condamne === true ? true : undefined,
             uid:             (typeof structure.uid === "string" && structure.uid) ? structure.uid : undefined,
             updatedAt:       (typeof structure.updatedAt === "number") ? structure.updatedAt : undefined,
             origOpacity:     style.opacity     ?? 1,
@@ -3212,6 +3216,8 @@ function ajouterPointsDepuisJSON(url, layer) {
                                    return r.fin ? { bord: r.bord, fin: { x: r.fin.x, y: r.fin.y } } : { bord: r.bord };
                                  }) : undefined,
             description:     zone.description || undefined,
+            // Zone déclarée « galerie volontairement condamnée » (verifierPlan.js) : gardé pour C1 et les exports.
+            condamne:        zone.condamne === true ? true : undefined,
             uid:             (typeof zone.uid === "string" && zone.uid) ? zone.uid : undefined,
             updatedAt:       (typeof zone.updatedAt === "number") ? zone.updatedAt : undefined,
             origOpacity:     style.opacity     ?? 1,
