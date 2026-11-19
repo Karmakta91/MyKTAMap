@@ -64,6 +64,7 @@ function bac(d, cfg, extra, mutation) {
     getPlanRaccordsIgnores: function () { return win._ign.slice(); },
     setPlanRaccordsIgnores: function (_p, l) { win._ign = l.slice(); return true; },
     addEventListener() {},
+    document: { addEventListener() {}, getElementById: () => null },
     ktaEsc: s => String(s),
     ktaIcone: () => ""
   };
@@ -660,10 +661,257 @@ MUTANTS.forEach(function (x) {
   t("🔒 falsification " + x.nom + " : règle cassée → le cas positif n'est plus vu", perdu, err);
 });
 
-console.log("");
-if (ko) {
-  console.log("❌ check-verifier-plan : " + ko + " contrôle(s) en échec");
-  process.exit(1);
+// ── 16. Corrections sûres : C4 identiques, C6 dégénéré, C10 ; galerie condamnée ──
+// Écriture observée par des doublures : HistoryManager (une entrée ⏪ par geste), setters (rendu), ktaConfirm (filet),
+// KtaExtensions.suppressionLot (plan partagé), FilterPanel.rapatrierCalque (calque → session). `o` : { refus,
+// confirme, lectureSeule, calques, rapatrier } ; `mutation` : falsification de verifierPlan.js.
+function bacCorr(d, o, mutation) {
+  o = o || {};
+  const j = { records: [], confirms: [], alertes: [], lots: [], rapatries: [], touches: 0 };
+  const extra = {
+    setRoads: l => { d.roads = l; }, setZones: l => { d.zones = l; }, setStructures: l => { d.structures = l; },
+    setEditorPoints: l => { d.points = l; },
+    HistoryManager: {
+      captureState: cat => JSON.parse(JSON.stringify({ cat: cat || null, roads: d.roads || [], zones: d.zones || [],
+        structures: d.structures || [], points: d.points || [] })),
+      record: (label, avant, cat) => { j.records.push({ label: label, cat: cat || null, avant: avant }); }
+    },
+    KtaUid: { touch: x => { x.updatedAt = 9999; j.touches++; } },
+    ktaConfirm: msg => { j.confirms.push(msg); return Promise.resolve(o.confirme !== false); },
+    ktaAlerte: msg => { j.alertes.push(msg); return Promise.resolve(); },
+    ktaEditionRefusee: () => o.lectureSeule === true,
+    _currentLoadedPlanId: "plan-fictif",
+    KtaExtensions: { suppressionLot: (id, objets) => {
+      j.lots.push(objets.length);
+      return o.refus ? Promise.resolve({ permis: false, message: "refus-installation" }) : null;
+    } },
+    CalqueSession: {},
+    PLAN_CONFIG: { dataLayers: (o.calques || []).map(c => ({ id: c.id, file: c.file })) },
+    FilterPanel: { rapatrierCalque: id => {
+      j.rapatries.push(id);
+      if (o.rapatrier === false) return Promise.resolve(false);
+      const reg = extra._ktaDataStructurePolygons;
+      reg.filter(e => e.layerId === id).forEach(e => {
+        const c = JSON.parse(JSON.stringify(Object.assign({}, e, { polygon: undefined })));
+        delete c.layerId; delete c.polygon; delete c.origOpacity; delete c.origFillOpacity;
+        c._srcCalque = id;
+        d.structures = (d.structures || []).concat([c]);
+      });
+      extra._ktaDataStructurePolygons.splice(0).forEach(e => { if (e.layerId !== id) reg.push(e); });
+      return Promise.resolve(true);
+    } },
+    _ktaDataStructurePolygons: o.registre || [],
+    document: { addEventListener() {}, getElementById: () => null }
+  };
+  const w = bac(d, null, extra, mutation);
+  return { w: w, j: j, V: w.KtaVerifierPlan };
 }
-console.log("🎉 check-verifier-plan : C1 = graphe de l'itinéraire, C1 à C10 positifs et négatifs, " +
-  "falsifications tenues, « vu, normal » tenu");
+const pil = (uid, x, extra) => pilierDet(uid, carre(x, 0, 10), extra);
+// 50 piliers posés deux fois (deux passes de détection) : la seconde passe est plus récente.
+function cas50() {
+  const s = [];
+  for (let i = 0; i < 50; i++) {
+    s.push(pil("st_a" + i, i * 20, { updatedAt: 1000 }));
+    s.push(pil("st_b" + i, i * 20, { updatedAt: 2000 }));
+  }
+  return { structures: s };
+}
+async function testsCorrections() {
+  // 50 doublons d'un coup : une confirmation, une consultation de la prise, UNE entrée ⏪, les plus anciens restent.
+  {
+    const d = cas50(), b = bacCorr(d);
+    const avant = de(analyse(b.w).liste, "C4");
+    t("correction C4 : 50 groupes « identiques en tout », tous corrigibles",
+      avant.length === 50 && avant.every(c => b.V.corrigible(c)), avant.length);
+    const r = await b.V.corrigerTout("C4");
+    const restants = d.structures.map(x => x.uid);
+    t("correction C4 : « Garder un exemplaire » sur 50 doublons → 50 retirés, UNE entrée ⏪, une confirmation, " +
+      "une consultation de la prise (50 objets)", !!r && r.supprimes === 50 && b.j.records.length === 1 &&
+      b.j.confirms.length === 1 && b.j.lots.length === 1 && b.j.lots[0] === 50,
+      { r: r, records: b.j.records.length, confirms: b.j.confirms.length, lots: b.j.lots });
+    t("correction C4 : l'exemplaire gardé est le plus ancien (première passe)",
+      restants.length === 50 && restants.every(u => /^st_a/.test(u)), restants.slice(0, 3));
+    t("correction C4 : l'entrée ⏪ a capturé toutes les familles avant l'écriture (Ctrl+Z remet les 100)",
+      b.j.records[0] && b.j.records[0].cat === null && b.j.records[0].avant.structures.length === 100);
+    t("correction C4 : plus aucun doublon après le geste", de(analyse(b.w).liste, "C4").length === 0);
+  }
+  // Refus de l'installation (plan partagé) : message, rien supprimé, pas d'entrée ⏪.
+  {
+    const d = cas50(), b = bacCorr(d, { refus: true });
+    const r = await b.V.corrigerTout("C4");
+    t("plan partagé : refus de suppressionLot → message de l'installation, rien supprimé, aucune entrée ⏪",
+      r === null && d.structures.length === 100 && b.j.records.length === 0 &&
+      b.j.alertes.indexOf("refus-installation") >= 0, { n: d.structures.length, alertes: b.j.alertes });
+  }
+  // Confirmation refusée : rien.
+  {
+    const d = cas50(), b = bacCorr(d, { confirme: false });
+    await b.V.corrigerTout("C4");
+    t("filet : confirmation refusée → rien supprimé, prise jamais consultée",
+      d.structures.length === 100 && b.j.records.length === 0 && b.j.lots.length === 0);
+  }
+  // Copies qui diffèrent (une note) : on montre, on ne corrige pas.
+  {
+    const d = { structures: [pil("st_n1", 0), pil("st_n2", 0, { description: "note" })] }, b = bacCorr(d);
+    const c = de(analyse(b.w).liste, "C4")[0];
+    t("correction C4 : exemplaires qui diffèrent (note) → pas corrigibles (décision 7a)",
+      !!c && !c.identiques && !b.V.corrigible(c));
+  }
+  // Plan en lecture seule : rien de corrigible, rien d'écrit.
+  {
+    const d = cas50(), b = bacCorr(d, { lectureSeule: true });
+    const l = de(analyse(b.w).liste, "C4");
+    const r = await b.V.corrigerTout("C4");
+    t("lecture seule : aucun constat corrigible, rien écrit", !l.some(c => b.V.corrigible(c)) && r === null &&
+      d.structures.length === 100 && b.j.records.length === 0);
+  }
+  // Doublons dans un calque : passage en session d'abord (la question de « 🔄 Modifier »), puis la correction.
+  const entreeCalque = (uid, id) => ({ polygon: { _map: null }, layerId: id, type: "pilier-1",
+    points: carre(500, 0, 10).map(p => P(p[0], p[1])), level: 0, uid: uid, updatedAt: uid === "st_c1" ? 1 : 2,
+    origOpacity: 1, origFillOpacity: 0.85 });
+  {
+    const d = { structures: [] };
+    const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], registre: [entreeCalque("st_c1", "cq"),
+      entreeCalque("st_c2", "cq")] });
+    const c = de(analyse(b.w).liste, "C4")[0];
+    t("calque : doublons d'un calque rapatriable → corrigibles", !!c && b.V.corrigible(c));
+    const r = await b.V.corriger(c);
+    t("calque : le calque passe en session d'abord, puis une copie part (UNE entrée ⏪)",
+      !!r && b.j.rapatries.join() === "cq" && d.structures.length === 1 && d.structures[0].uid === "st_c1" &&
+      b.j.records.length === 1, { r: r, rap: b.j.rapatries, s: d.structures.map(x => x.uid) });
+  }
+  {
+    const d = { structures: [] };
+    const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }], rapatrier: false,
+      registre: [entreeCalque("st_c1", "cq"), entreeCalque("st_c2", "cq")] });
+    const r = await b.V.corriger(de(analyse(b.w).liste, "C4")[0]);
+    t("calque : passage en session refusé → rien corrigé", r === null && b.j.records.length === 0);
+  }
+  {
+    const d = { structures: [] };
+    const b = bacCorr(d, { calques: [{ id: "cq" }], registre: [entreeCalque("st_c1", "cq"), entreeCalque("st_c2", "cq")] });
+    const c = de(analyse(b.w).liste, "C4")[0];
+    const r = await b.V.corriger(c);
+    t("calque en lecture seule (sans fichier) : affiché, jamais corrigé", !!c && !b.V.corrigible(c) && r === null &&
+      b.j.rapatries.length === 0 && b.j.records.length === 0);
+  }
+  {
+    // Un pilier dessiné ici et sa copie venue d'un calque passé en session (_srcCalque) : identiques en tout.
+    const d = { structures: [pil("st_s", 500, { updatedAt: 1 }), pil("st_c2", 500, { updatedAt: 2, _srcCalque: "cq" })] };
+    const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }] });
+    const c = de(analyse(b.w).liste, "C4")[0];
+    const r = await b.V.corriger(c);
+    t("session ↔ calque : en double, identiques, mais pas de correction tant que ce n'est pas tranché",
+      !!c && c.identiques && !b.V.corrigible(c) && r === null && d.structures.length === 2, c && c.cle);
+  }
+  // C6 : dégénéré supprimé (filet), qui se recoupe jamais.
+  {
+    const d = casC6(), b = bacCorr(d);
+    const l = de(analyse(b.w).liste, "C6");
+    const deg = l.find(c => c.objet.uid === "zn_deux"), rec = l.find(c => c.objet.uid === "st_noeud");
+    t("correction C6 : dégénéré corrigible, contour qui se recoupe non", b.V.corrigible(deg) && !b.V.corrigible(rec));
+    const r = await b.V.corrigerTout("C6");
+    t("correction C6 : les 2 contours dégénérés supprimés en un geste (confirmation, une entrée ⏪)",
+      !!r && r.supprimes === 2 && !d.zones.some(z => z.uid === "zn_deux" || z.uid === "zn_ligne") &&
+      b.j.confirms.length === 1 && b.j.records.length === 1, r);
+  }
+  // C10 : ktaDedupliquerFichier sur l'objet de session ; un objet qui disparaîtrait devient une suppression.
+  {
+    const d = casC10(), b = bacCorr(d);
+    const r = await b.V.corrigerTout("C10");
+    const dbl = d.roads.find(x => x.uid === "rd_dbl"), zn = d.zones.find(x => x.uid === "zn_dbl");
+    t("correction C10 : sommets en double retirés (tracé 4 → 3, zone 6 → 4), tracé réduit à un point supprimé, " +
+      "UNE entrée ⏪", !!r && dbl.points.length === 3 && zn.points.length === 4 && !d.roads.some(x => x.uid === "rd_nul") &&
+      b.j.records.length === 1 && b.j.confirms.length === 1, r);
+    t("correction C10 : objets nettoyés touchés (updatedAt), aller-retour intact",
+      dbl.updatedAt === 9999 && d.roads.find(x => x.uid === "rd_retour").points.length === 3);
+  }
+  {
+    const d = { roads: [R("rd_seul", "principal", [[0, 0], [10, 0], [10, 0], [20, 0]])] }, b = bacCorr(d);
+    await b.V.corrigerTout("C10");
+    t("correction C10 sans suppression : aucune confirmation (rien ne disparaît), une entrée ⏪",
+      b.j.confirms.length === 0 && b.j.records.length === 1 && d.roads[0].points.length === 3);
+  }
+  // ✂️ : morceaux d'une coupe jamais corrigibles (ni C4, ni C10).
+  {
+    const b = bacCorr(casC4());
+    const l = analyse(b.w).liste.filter(c => /couper|front/.test(c.cle));
+    t("✂️ : les morceaux d'une coupe ne donnent aucun constat corrigible", !l.some(c => b.V.corrigible(c)));
+  }
+  // Galerie condamnée : écrite sur l'obstacle, une entrée ⏪ ciblée, C1 se tait ; retirée par le même chemin.
+  {
+    const z = R("zn_g", "inaccessible", [[100, -20], [140, -20], [140, 20], [100, 20]]);
+    const d = { roads: [R("rd_g", "principal", [[0, 0], [260, 0]])], zones: [z] }, b = bacCorr(d);
+    const c = de(analyse(b.w).liste, "C1")[0];
+    const ok = await b.V.condamner(c);
+    t("condamnée : `condamne: true` écrit sur la zone, touchée, UNE entrée ⏪ (zones), C1 se tait",
+      ok === true && d.zones[0].condamne === true && d.zones[0].updatedAt === 9999 && b.j.records.length === 1 &&
+      b.j.records[0].cat === "zones" && de(analyse(b.w).liste, "C1").length === 0);
+    t("condamnée : listée parmi les galeries condamnées", b.V.condamnes().length === 1);
+    await b.V.decondamner(0);
+    t("condamnée : « Retirer » enlève le champ (2e entrée ⏪) et C1 revient",
+      d.zones[0].condamne === undefined && b.j.records.length === 2 && de(analyse(b.w).liste, "C1").length === 1);
+    const ro = bacCorr({ roads: [R("rd_g", "principal", [[0, 0], [260, 0]])], zones: [R("zn_g", "inaccessible",
+      [[100, -20], [140, -20], [140, 20], [100, 20]])] }, { lectureSeule: true });
+    const r2 = await ro.V.condamner(de(analyse(ro.w).liste, "C1")[0]);
+    t("condamnée : plan en lecture seule → rien écrit", r2 === false && ro.j.records.length === 0);
+  }
+}
+
+// 🔒 Falsifications des corrections : chaque garde cassée doit faire tomber un test ci-dessus.
+async function falsifCorr(m, verif) {
+  try { return await verif(m); } catch (e) { return "exception : " + e.message; }
+}
+async function falsificationsCorrections() {
+  const F = [
+    { nom: "une entrée ⏪ par geste", m: ["    if (avant) H.record(libelle, avant);\n",
+      "    if (avant) ops.suppr.forEach(function () { H.record(libelle, avant); });\n"],
+      v: async m => { const b = bacCorr(cas50(), null, m); await b.V.corrigerTout("C4"); return b.j.records.length === 1; } },
+    { nom: "exemplaires revérifiés au geste", m: ["return m.every(function (e) { return _contenu(e.o) === ref; }) ? m : null;",
+      "return m;"],
+      v: async m => { const d = { structures: [pil("st_n1", 0), pil("st_n2", 0)] }, b = bacCorr(d, null, m);
+        const c = de(analyse(b.w).liste, "C4")[0];
+        d.structures[1].description = "note ajoutée par la synchro";
+        await b.V.corriger(c);
+        return d.structures.length === 2; } },
+    { nom: "prise suppressionLot consultée", m: ["if (!(await _permisSuppression(ops.suppr))) return null;", ""],
+      v: async m => { const d = cas50(), b = bacCorr(d, { refus: true }, m); await b.V.corrigerTout("C4");
+        return d.structures.length === 100; } },
+    { nom: "confirmation des suppressions", m: ["      if (!ok) return null;\n", "\n"],
+      v: async m => { const d = cas50(), b = bacCorr(d, { confirme: false }, m); await b.V.corrigerTout("C4");
+        return d.structures.length === 100; } },
+    { nom: "lecture seule", m: ["if (_lectureSeule()) return { refus: \"lectureSeule\" };", ""],
+      v: async m => { const b = bacCorr(cas50(), { lectureSeule: true }, m);
+        return !de(analyse(b.w).liste, "C4").some(c => b.V.corrigible(c)); } },
+    { nom: "session ↔ calque non corrigé", m: ["if (main && copie) return { refus: \"mixte\" };", ""],
+      v: async m => { const d = { structures: [pil("st_s", 500, { updatedAt: 1 }),
+        pil("st_c2", 500, { updatedAt: 2, _srcCalque: "cq" })] };
+        const b = bacCorr(d, { calques: [{ id: "cq", file: "cq.json" }] }, m);
+        return !b.V.corrigible(de(analyse(b.w).liste, "C4")[0]); } },
+    { nom: "C6 qui se recoupe jamais corrigé", m: ["if (c.controle === \"C6\" && c.motif !== \"degenere\") return null;", ""],
+      v: async m => { const b = bacCorr(casC6(), null, m);
+        return !b.V.corrigible(de(analyse(b.w).liste, "C6").find(c => c.objet.uid === "st_noeud")); } },
+    { nom: "C10 qui ferait disparaître l'objet = suppression", m: ["if (b && b.objets) prendre(suppr, objs[0]);",
+      "if (false) prendre(suppr, objs[0]);"],
+      v: async m => { const d = casC10(), b = bacCorr(d, null, m); await b.V.corrigerTout("C10");
+        return !d.roads.some(x => x.uid === "rd_nul"); } }
+  ];
+  for (const x of F) {
+    const sain = await falsifCorr(null, x.v);
+    const casse = await falsifCorr(x.m, x.v);
+    t("🔒 falsification correction (" + x.nom + ") : tenue saine, tombe cassée", sain === true && casse !== true,
+      { sain: sain, casse: casse });
+  }
+}
+
+(async function () {
+  await testsCorrections();
+  await falsificationsCorrections();
+  console.log("");
+  if (ko) {
+    console.log("❌ check-verifier-plan : " + ko + " contrôle(s) en échec");
+    process.exit(1);
+  }
+  console.log("🎉 check-verifier-plan : C1 = graphe de l'itinéraire, C1 à C10 positifs et négatifs, " +
+    "falsifications tenues, « vu, normal » tenu");
+})();

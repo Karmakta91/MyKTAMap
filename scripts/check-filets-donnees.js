@@ -182,6 +182,39 @@ function bloc(src, debut, fin) {
   verif(/localStorage\.removeItem\(LS_LOCK\)/.test(g), "gate : un code juste efface le verrou");
 }
 
+// ── Vérifier le plan : corrections sûres (C4 identiques, C6 dégénéré, C10) et galerie condamnée ──────
+{
+  const s = lire("js/verifierPlan.js");
+  const ecr = bloc(s, "function _ecrire(ops, libelle) {", "// Corrige des constats en UN geste");
+  const iCap = ecr.indexOf("H.captureState()"), iSplice = ecr.indexOf(".splice("), iRec = ecr.indexOf("H.record(");
+  verif(iCap > 0 && iSplice > iCap && iRec > iSplice,
+        "🩸 Vérifier le plan : instantané de TOUTES les familles avant la mutation, entrée ⏪ après");
+  verif((ecr.match(/H\.record\(/g) || []).length === 1 && !/forEach\([^)]*\)\s*\{[^}]*H\.record/.test(ecr),
+        "🩸 Vérifier le plan : une seule entrée ⏪ par geste (record hors des boucles)");
+  verif(ecr.includes("window.KtaUid.touch(") && ecr.includes("window[SET_F[f]](listes[f])") &&
+        ecr.includes("majFichesPoints"), "Vérifier le plan : touch, rendu par les setters, fiche des photos d'un point retiré");
+  const corr = bloc(s, "async function _corriger(cs) {", "function corriger(c) {");
+  const iConf = corr.indexOf("window.ktaConfirm("), iOk = corr.indexOf("if (!ok) return null;"),
+        iPerm = corr.indexOf("if (!(await _permisSuppression(ops.suppr))) return null;"), iEcr = corr.indexOf("_ecrire(");
+  verif(corr.includes('window.ktaEditionRefusee()) return null;'), "🔒 Vérifier le plan : lecture seule refusée (garde qui le dit)");
+  verif(iConf > 0 && iOk > iConf && iPerm > iOk && iEcr > iPerm,
+        "🩸 Vérifier le plan : suppression = confirmation chiffrée, puis la prise de l'installation, puis l'écriture");
+  verif(corr.includes("_rapatrier(calques)") && /FilterPanel\.rapatrierCalque\(/.test(s),
+        "Vérifier le plan : objet d'un calque passé en session d'abord (question de « 🔄 Modifier »)");
+  const perm = bloc(s, "function _permisSuppression(suppr) {", "function _sauver() {");
+  verif(perm.includes("K.suppressionLot(") && perm.includes("if (r && r.permis === true) return true;") &&
+        perm.includes("window.ktaAlerte("), "🔒 Vérifier le plan : plan partagé → prise suppressionLot, refus = message, rien supprimé");
+  const plan = bloc(s, "function _plan(c) {", "function corrigible(c) {");
+  verif(plan.includes('if (c.controle === "C6" && c.motif !== "degenere") return null;') &&
+        plan.includes('if (c.controle === "C4" && !c.identiques) return null;') &&
+        plan.includes('if (_lectureSeule()) return { refus: "lectureSeule" };') &&
+        plan.includes('if (main && copie) return { refus: "mixte" };'),
+        "🩸 Vérifier le plan : seulement C4 identiques, C6 dégénéré, C10 ; ni lecture seule, ni session ↔ calque");
+  const cond = bloc(s, "async function _marquerCondamne(o, f, valeur) {", "function condamner(c) {");
+  verif(cond.indexOf("H.captureState(f)") > 0 && cond.indexOf("H.record(") > cond.indexOf("cible.condamne = true"),
+        "Vérifier le plan : galerie condamnée écrite par le même chemin (instantané, mutation, entrée ⏪)");
+}
+
 // ── i18n ──────
 for (const lang of ["fr", "en", "es"]) {
   const dico = JSON.parse(lire("lang/" + lang + ".json"));
@@ -192,7 +225,8 @@ for (const lang of ["fr", "en", "es"]) {
     "export.full.tracker", "config.confirm.reset", "config.georef.confirmClear", "config.journal.label",
     "gen.confirm.abandon", "maint.reset_item_photos", "maint.reset_item_journal", "maint.reset_item_backups",
     "maint.reset_item_profile", "maint.reset_item_secours", "maint.btn_export_profile_first", "pin.err.lockoutTemp",
-    "pin.lockout.attente", "pin.lockout.escalade", "gate.lockout.attente"]
+    "pin.lockout.attente", "pin.lockout.escalade", "gate.lockout.attente", "verif.corr.confirm", "verif.corr.titre",
+    "verif.corr.ok", "verif.corr.refus", "verif.corr.histo", "verif.condamne.histo", "verif.decondamne.histo"]
     .filter(k => typeof dico[k] !== "string");
   verif(manquantes.length === 0, "🌍 " + lang + " : clés du lot présentes" + (manquantes.length ? " — manquantes : " + manquantes.join(", ") : ""));
 }

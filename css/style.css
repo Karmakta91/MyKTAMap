@@ -20288,6 +20288,9 @@ button.kta-cfg-ligne-action {
 .kta-detect-gen-carte { flex: 1 1 auto; min-height: 0; background: var(--kta-surface); }
 .kta-verif-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-verif-info { flex: 1 1 160px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
+/* Pourquoi le constat n'a pas de correction (calque en lecture seule, exemplaires mêlés) : verifierPlan.js. */
+.kta-verif-note-corr { flex: 1 1 100%; text-align: center; color: var(--kta-texte-2); font-size: 12px; }
+.kta-verif-controle .kta-btn { margin-left: 8px; vertical-align: middle; }
 .kta-verif-objet { stroke: var(--kta-accent); fill: none; }
 .kta-verif-obstacle { stroke: var(--kta-erreur); fill: var(--kta-erreur); fill-opacity: 0.12; }
 .kta-verif-cercle { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.2; }

@@ -19,9 +19,12 @@
 // « Vu, normal » : clé « contrôle|identité[|identité|détail] » (identité = uid, sinon empreinte de la géométrie)
 // retenue par plan sur l'appareil (config.js > get/setPlanVerifVus). C5 : c'est « Ignorer » des Raccords (une seule
 // mémoire, celle de la carte Raccords). 🩸 Un objet sans uid revient s'il est redessiné.
-// Lecture seule : seul « Raccorder » (C5, chemin de raccordsTraces.js) écrit.
+// Écritures, toujours sur un geste : « Raccorder » (C5, raccordsTraces.js), corrections sûres (C4 identiques en
+// tout, C6 dégénéré, C10) et galerie condamnée (`condamne` sur l'obstacle de C1) — § Corrections, un geste = une
+// entrée ⏪, calque passé en session d'abord, suppression par la prise KtaExtensions.suppressionLot.
 // Expose : window.KtaVerifierPlan = { analyser, collecter, ouvrir, fermer, marquerVu, retablir, retablirTout,
-//   seuilBordPx, liaisonsAbsentes, liste, etat, montrer }.
+//   seuilBordPx, liaisonsAbsentes, liste, etat, montrer, corrigible, corriger, corrigerTout, condamner, condamnes,
+//   decondamner }.
 // Doc : docs/architecture/multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6 · Étude : ETUDE_VERIFIER_PLAN.md
 
 window.KtaVerifierPlan = (function () {
@@ -723,6 +726,7 @@ window.KtaVerifierPlan = (function () {
   }
 
   function _recalculer() {
+    _idx = null;
     const r = analyser();
     _liste = r.liste;
     _vus = r.vus;
@@ -748,6 +752,286 @@ window.KtaVerifierPlan = (function () {
     const n = _vusDuPlan().length;
     if (typeof window.setPlanVerifVus === "function") window.setPlanVerifVus(null, []);
     return n;
+  }
+
+  // ── Corrections sûres (C4 identiques en tout, C6 dégénéré, C10) et galerie condamnée (C1) ──────────
+  // ⚠️ contrat : un geste = une écriture = UNE entrée ⏪ : captureState (toutes familles) → mutation → KtaUid.touch →
+  // rendu (setRoads / setZones / setStructures / setEditorPoints) → HistoryManager.record (qui pose les traces de
+  // suppression, ordinaires ou de copie de calque) → SessionPersist.save. Rien n'est corrigé sans geste.
+  // 🔒 Plan en lecture seule (ktaEditionRefusee) : aucune correction proposée ni écrite. Objet d'un calque : passage
+  // en session d'abord (FilterPanel.rapatrierCalque, la question de « 🔄 Modifier ») ; calque sans fichier ou calque
+  // « editor » hors session : affiché, jamais corrigé. Suppression : confirmation chiffrée, puis la prise
+  // KtaExtensions.suppressionLot (plan partagé : droit « gérer » au-delà du seuil de l'installation) ; un refus ne
+  // supprime rien.
+  // C4 : seulement si tous les exemplaires sont identiques en tout (_contenu) ; le plus ancien (updatedAt) reste.
+  // Exemplaires mêlés (dessinés ici et venus d'un calque) : pas de correction (décision à prendre).
+  // C10 : ktaDedupliquerFichier (tableEditor.js) appliqué à l'objet de session, jamais une copie de sa règle.
+  const GET_F = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
+  const SET_F = { editorPoints: "setEditorPoints", roads: "setRoads", zones: "setZones", structures: "setStructures" };
+  const CORRIGIBLES = { C4: 1, C6: 1, C10: 1 };
+
+  function _lectureSeule() {
+    return typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true) === true;
+  }
+  function _sessionDe(f) { return GET_F[f] ? _appel(GET_F[f]) : []; }
+  function _calqueDe(o) { return o.layerId === undefined ? o._ktaLayerId : o.layerId; }
+
+  // { session: true, main } (objet de session ; main = pas une copie de calque), { session: false, calque } (calque
+  // qu'on peut passer en session), null (lecture seule : rien ne le corrigera).
+  function _origine(o, f) {
+    if (!o || !GET_F[f]) return null;
+    if (_sessionDe(f).indexOf(o) >= 0) return { session: true, main: o._srcCalque === undefined };
+    const id = _calqueDe(o);
+    if (id == null || id === "editor") return null;
+    const pc = window.PLAN_CONFIG;
+    const lc = pc && Array.isArray(pc.dataLayers) ? pc.dataLayers.find(function (x) { return x && x.id === id; }) : null;
+    const FP = window.FilterPanel;
+    if (!lc || !lc.file || !window.CalqueSession || !FP || typeof FP.rapatrierCalque !== "function") return null;
+    return { session: false, calque: id };
+  }
+
+  // Objets du plan ouvert par identité, bâti une fois par lecture (liste, bandeau, geste) : une liste de milliers de
+  // doublons ne relit pas le plan pour chacun. Oublié à chaque recalcul et au début de chaque geste.
+  let _idx = null;
+  function _parIdentite() {
+    if (_idx) return _idx;
+    _idx = new Map();
+    _objets(collecter()).forEach(function (e) {
+      const k = _identite(e.o), l = _idx.get(k);
+      if (l) l.push(e); else _idx.set(k, [e]);
+    });
+    return _idx;
+  }
+
+  // Exemplaires d'un constat C4 (identités lues dans sa clé, même famille), identiques en tout, au moins deux.
+  function _membresC4(c) {
+    const idx = _parIdentite(), m = [];
+    new Set(String(c.cle).split("|").slice(1)).forEach(function (k) {
+      (idx.get(k) || []).forEach(function (e) { if (e.f === c.famille) m.push(e); });
+    });
+    if (m.length < 2) return null;
+    const ref = _contenu(m[0].o);
+    return m.every(function (e) { return _contenu(e.o) === ref; }) ? m : null;
+  }
+
+  // Ce que corrigerait un constat : { objets: [{ o, f }], calques: [ids à passer en session] }, ou { refus }
+  // (« lectureSeule », « mixte », « change ») ; null : ce contrôle n'a pas de correction sûre.
+  function _plan(c) {
+    if (!c || !CORRIGIBLES[c.controle]) return null;
+    if (c.controle === "C6" && c.motif !== "degenere") return null;
+    if (c.controle === "C4" && !c.identiques) return null;
+    if (_lectureSeule()) return { refus: "lectureSeule" };
+    const objets = c.controle === "C4" ? _membresC4(c) : [{ o: c.objet, f: c.famille }];
+    if (!objets) return { refus: "change" };
+    const calques = [];
+    let main = 0, copie = 0;
+    for (let i = 0; i < objets.length; i++) {
+      const og = _origine(objets[i].o, objets[i].f);
+      if (!og) return { refus: "lectureSeule" };
+      if (og.session && og.main) main++; else copie++;
+      if (!og.session && calques.indexOf(og.calque) < 0) calques.push(og.calque);
+    }
+    if (main && copie) return { refus: "mixte" };
+    return { objets: objets, calques: calques };
+  }
+  function corrigible(c) {
+    const p = _plan(c);
+    return !!(p && !p.refus);
+  }
+
+  // Copie de session d'un objet de calque passé en session (même uid, sinon même géométrie, même calque).
+  function _geo(o) {
+    return JSON.stringify((Array.isArray(o.points) ? o.points : [o]).map(function (p) { return [p.x, p.y]; }));
+  }
+  function _enSession(o, f) {
+    const ses = _sessionDe(f);
+    if (ses.indexOf(o) >= 0) return o;
+    const id = _calqueDe(o), geo = o.uid ? null : _geo(o);
+    for (let i = 0; i < ses.length; i++) {
+      const s = ses[i];
+      if (s && s._srcCalque === id && (o.uid ? s.uid === o.uid : _geo(s) === geo)) return s;
+    }
+    return null;
+  }
+
+  async function _rapatrier(calques) {
+    for (let i = 0; i < calques.length; i++) {
+      if (!(await window.FilterPanel.rapatrierCalque(calques[i]))) return false;
+    }
+    return true;
+  }
+
+  // Constats → { suppr: [{ o, f }], sommets: [{ o, f }] } sur les objets de session (calques déjà passés en
+  // session) ; null : un objet a disparu ou changé entre-temps.
+  function _operations(cs) {
+    _idx = null;
+    const suppr = [], sommets = [], vus = new Set();
+    const D = window.ktaDedupliquerFichier;
+    const prendre = function (l, e) { if (!vus.has(e.o)) { vus.add(e.o); l.push(e); } };
+    for (let i = 0; i < cs.length; i++) {
+      const c = cs[i], p = _plan(c);
+      if (!p || p.refus) return null;
+      const objs = p.objets.map(function (e) { return { o: _enSession(e.o, e.f), f: e.f }; });
+      if (objs.some(function (e) { return !e.o; })) return null;
+      if (c.controle === "C4") {
+        objs.sort(function (a, b) { return (Number(a.o.updatedAt) || 0) - (Number(b.o.updatedAt) || 0); });
+        objs.slice(1).forEach(function (e) { prendre(suppr, e); });
+      } else if (c.controle === "C6") {
+        prendre(suppr, objs[0]);
+      } else if (typeof D === "function") {
+        // Sur une copie d'abord : un objet que le nettoyage ferait passer sous son minimum est une SUPPRESSION.
+        const env = {};
+        env[objs[0].f] = [JSON.parse(JSON.stringify(objs[0].o))];
+        const b = D(env);
+        if (b && b.objets) prendre(suppr, objs[0]);
+        else if (b && b.sommets) prendre(sommets, objs[0]);
+      }
+    }
+    return { suppr: suppr, sommets: sommets };
+  }
+
+  // Plan partagé : la prise de la suppression en lot (KtaExtensions.suppressionLot). → Promise<bool>.
+  function _permisSuppression(suppr) {
+    const K = window.KtaExtensions;
+    const objets = suppr.map(function (e) { return { famille: e.f, uid: typeof e.o.uid === "string" ? e.o.uid : null }; });
+    const v = K && typeof K.suppressionLot === "function" ? K.suppressionLot(window._currentLoadedPlanId, objets) : null;
+    if (!v) return Promise.resolve(true);
+    return Promise.resolve(v).then(function (r) {
+      if (r && r.permis === true) return true;
+      window.ktaAlerte((r && r.message) || _t("verif.corr.refus"), { type: "erreur" });
+      return false;
+    });
+  }
+
+  function _sauver() {
+    if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
+      try { window.SessionPersist.save({ force: true }); } catch (err) { /* le poll de SessionPersist rattrape */ }
+    }
+  }
+
+  // L'écriture unique des corrections. → { supprimes, sommets } ou null (rien écrit).
+  function _ecrire(ops, libelle) {
+    const H = window.HistoryManager, D = window.ktaDedupliquerFichier;
+    const listes = {}, touchees = {}, retiresPts = [];
+    Object.keys(GET_F).forEach(function (f) { listes[f] = _sessionDe(f).slice(); });
+    if (ops.suppr.some(function (e) { return listes[e.f].indexOf(e.o) < 0; })) return null;
+    const avant = H && typeof H.captureState === "function" ? H.captureState() : null;
+    let n = 0, s = 0;
+    ops.suppr.forEach(function (e) {
+      listes[e.f].splice(listes[e.f].indexOf(e.o), 1);
+      if (e.f === "editorPoints") retiresPts.push(e.o);
+      touchees[e.f] = true;
+      n++;
+    });
+    ops.sommets.forEach(function (e) {
+      const env = {};
+      env[e.f] = [e.o];
+      const b = D(env);
+      if (!b || !b.sommets) return;
+      s += b.sommets;
+      if (e.o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(e.o);
+      touchees[e.f] = true;
+    });
+    if (!n && !s) return null;
+    if (retiresPts.length && window._currentLoadedPlanId && window.MyKTAMapPhotos &&
+        typeof window.MyKTAMapPhotos.majFichesPoints === "function") {
+      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, retiresPts);
+    }
+    Object.keys(touchees).forEach(function (f) {
+      try { window[SET_F[f]](listes[f]); } catch (err) { console.warn("[VerifierPlan] rendu :", err); }
+    });
+    if (touchees.roads && window.RoadGraph && typeof window.RoadGraph.invalidate === "function") {
+      window.RoadGraph.invalidate();
+    }
+    if (avant) H.record(libelle, avant);
+    _sauver();
+    return { supprimes: n, sommets: s };
+  }
+
+  // Corrige des constats en UN geste (un constat, ou tout un contrôle). → Promise<bilan | null>.
+  async function _corriger(cs) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return null;   // le dit
+    _idx = null;
+    const plans = cs.map(_plan);
+    if (!cs.length || plans.some(function (p) { return !p || p.refus; })) {
+      window.ktaAlerte(_t("verif.corr.change"));
+      return null;
+    }
+    const calques = [];
+    plans.forEach(function (p) { p.calques.forEach(function (id) { if (calques.indexOf(id) < 0) calques.push(id); }); });
+    if (calques.length && !(await _rapatrier(calques))) return null;
+    let ops = _operations(cs);
+    if (ops && ops.suppr.length) {
+      const n = ops.suppr.length;
+      const ok = await window.ktaConfirm(_esc(_t("verif.corr.confirm", { n: n })), {
+        titre: _esc(_t("verif.corr.titre")),
+        okLabel: window.ktaIcone("trash-2") + " " + _esc(_t("verif.corr.ok", { n: n }))
+      });
+      if (!ok) return null;
+      if (!(await _permisSuppression(ops.suppr))) return null;
+      ops = _operations(cs);   // une synchro a pu passer pendant les questions
+    }
+    const b = ops && (ops.suppr.length || ops.sommets.length)
+      ? _ecrire(ops, _t("verif.corr.histo", { n: ops.suppr.length + ops.sommets.length })) : null;
+    if (!b) {
+      window.ktaAlerte(_t("verif.corr.change"));
+      return null;
+    }
+    _toast(_t("verif.corr.fait", { n: b.supprimes, s: b.sommets }), "success");
+    return b;
+  }
+  function corriger(c) { return _corriger([typeof c === "number" ? _liste[c] : c]); }
+  // Tous les constats corrigibles d'un contrôle (relus sur le plan tel qu'il est), en un geste.
+  function _corrigiblesDe(controle) {
+    _recalculer();
+    return _liste.filter(function (c) { return c.controle === controle && corrigible(c); });
+  }
+  function corrigerTout(controle) {
+    const cs = _corrigiblesDe(controle);
+    return cs.length ? _corriger(cs) : Promise.resolve(null);
+  }
+
+  // ── Galerie volontairement condamnée (C1) ──
+  // `condamne: true` sur l'obstacle (zone ou mur en ligne) : voyage avec le plan, la synchro et les exports ; C1 se
+  // tait, l'itinéraire ne passe toujours pas. Posé ou retiré par le même chemin d'écriture, une entrée ⏪.
+  async function _marquerCondamne(o, f, valeur) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    const og = _origine(o, f);
+    if (!og) {
+      window.ktaAlerte(_t("verif.corr.figee"));
+      return false;
+    }
+    if (!og.session && !(await _rapatrier([og.calque]))) return false;
+    const cible = _enSession(o, f);
+    if (!cible) {
+      window.ktaAlerte(_t("verif.corr.change"));
+      return false;
+    }
+    const H = window.HistoryManager;
+    const avant = H && typeof H.captureState === "function" ? H.captureState(f) : null;
+    if (valeur) cible.condamne = true; else delete cible.condamne;
+    if (window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(cible);
+    try { window[SET_F[f]](_sessionDe(f).slice()); } catch (err) { console.warn("[VerifierPlan] rendu :", err); }
+    if (avant) H.record(_t(valeur ? "verif.condamne.histo" : "verif.decondamne.histo"), avant, f);
+    _sauver();
+    _toast(_t(valeur ? "verif.toast.condamne" : "verif.toast.decondamne"), "success");
+    return true;
+  }
+  function condamner(c) {
+    const x = typeof c === "number" ? _liste[c] : c;
+    if (!x || x.controle !== "C1" || !x.autre || _lectureSeule()) return Promise.resolve(false);
+    return _marquerCondamne(x.autre, x.autreFamille, true);
+  }
+  // Obstacles marqués condamnés du plan ouvert : [{ o, f }] (zones, murs en ligne ; session et calques).
+  function condamnes() {
+    const d = collecter(), out = [];
+    (d.zones || []).forEach(function (o) { if (o && o.condamne === true) out.push({ o: o, f: "zones" }); });
+    (d.structures || []).forEach(function (o) { if (o && o.condamne === true) out.push({ o: o, f: "structures" }); });
+    return out;
+  }
+  function decondamner(i) {
+    const e = condamnes()[i];
+    return e ? _marquerCondamne(e.o, e.f, false) : Promise.resolve(false);
   }
 
   // ── Textes ──────────
@@ -949,6 +1233,17 @@ window.KtaVerifierPlan = (function () {
     autre.style.display = c.autre && !(c.controle === "C4" && c.famille === "editorPoints") ? "" : "none";
     autre.textContent = _t(c.controle === "C4" ? "verif.ficheCopie" : "verif.ficheObstacle");
     _bandeau.querySelector('[data-verif="raccorder"]').style.display = c.controle === "C5" ? "" : "none";
+    // Correction sûre (C4, C6, C10) ou galerie condamnée (C1) : seulement quand on peut l'écrire ; sinon la raison.
+    const p = _plan(c), corr = _bandeau.querySelector('[data-verif="corriger"]');
+    corr.style.display = p && !p.refus ? "" : "none";
+    corr.textContent = _t("verif.corr." + c.controle);
+    const condamnable = c.controle === "C1" && !!c.autre && !_lectureSeule() && !!_origine(c.autre, c.autreFamille);
+    _bandeau.querySelector('[data-verif="condamner"]').style.display = condamnable ? "" : "none";
+    const note = _bandeau.querySelector(".kta-verif-note-corr");
+    const raison = p && p.refus && p.refus !== "change" ? p.refus
+      : (c.controle === "C1" && c.autre && !condamnable ? "lectureSeule" : null);
+    note.textContent = raison ? _t(raison === "mixte" ? "verif.corr.mixte" : "verif.corr.figee") : "";
+    note.style.display = raison ? "" : "none";
     montrer(c);
     if (fiche) _ficheDiffere(c.objet, c.famille, c.ancre);
   }
@@ -970,8 +1265,10 @@ window.KtaVerifierPlan = (function () {
       '<div class="kta-racc-nav">' + btn("prec", "verif.prec") + '<span class="kta-verif-pos"></span>' +
         btn("suiv", "verif.suiv") + '</div>' +
       '<span class="kta-verif-info"></span>' +
+      '<span class="kta-verif-note-corr"></span>' +
       '<div class="kta-racc-actions">' + btn("fiche", "verif.fiche", "kta-btn-primary") +
-        btn("fiche-autre", "verif.ficheObstacle") + btn("raccorder", "verif.raccorder") + btn("vu", "verif.vu") +
+        btn("fiche-autre", "verif.ficheObstacle") + btn("raccorder", "verif.raccorder") +
+        btn("corriger", "verif.corr.C4") + btn("condamner", "verif.condamner") + btn("vu", "verif.vu") +
         btn("fermer", "verif.fermer") + '</div>';
     document.body.appendChild(b);
     _bandeau = b;
@@ -990,6 +1287,12 @@ window.KtaVerifierPlan = (function () {
           if (!ok) return;
           _toast(_t("verif.toast.raccorde"), "success");
           _rafraichir();
+        });
+        return;
+      }
+      if (act === "corriger" || act === "condamner") {
+        Promise.resolve(act === "corriger" ? corriger(c) : condamner(c)).then(function (fait) {
+          if (fait) _rafraichir();
         });
         return;
       }
@@ -1031,7 +1334,10 @@ window.KtaVerifierPlan = (function () {
       ORDRE_CONTROLES.forEach(function (id) {
         const lc = lg.filter(function (c) { return c.controle === id; });
         if (!lc.length) return;
-        h += '<div class="kta-verif-controle">' + _esc(_titreControle(id)) + ' (' + lc.length + ')</div>' +
+        const nc = CORRIGIBLES[id] ? lc.filter(corrigible).length : 0;
+        h += '<div class="kta-verif-controle">' + _esc(_titreControle(id)) + ' (' + lc.length + ')' +
+          (nc > 1 ? ' <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-verif-tout="' + id + '">' +
+            _esc(_t("verif.corr.tout" + id, { n: nc })) + '</button>' : '') + '</div>' +
           '<ul class="kta-racc-liste">' + lc.map(function (c) {
             return '<li>' + _ligneHtml(c, 'data-verif-i="' + _liste.indexOf(c) + '"') + '</li>';
           }).join("") + '</ul>';
@@ -1042,6 +1348,16 @@ window.KtaVerifierPlan = (function () {
       h += '<div class="kta-racc-pied kta-verif-c11"><span>' + _esc(_t("verif.c11.texte", { n: absentes })) +
         '</span> <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-verif="liaisons">' +
         _esc(_t("verif.c11.bouton")) + '</button></div>';
+    }
+    const cond = condamnes();
+    if (cond.length) {
+      const fige = _lectureSeule();
+      h += '<div class="kta-verif-controle">' + _esc(_t("verif.condamnes", { n: cond.length })) + '</div>' +
+        '<ul class="kta-racc-liste kta-verif-vus kta-verif-condamnes">' + cond.map(function (e, i) {
+          return '<li class="kta-verif-vu"><span class="kta-verif-vu-txt">' + _esc(_nomObjet(e.f, e.o)) + '</span>' +
+            (fige || !_origine(e.o, e.f) ? '' : '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+              'data-verif-decondamner="' + i + '">' + _esc(_t("verif.decondamner")) + '</button>') + '</li>';
+        }).join("") + '</ul>';
     }
     if (_vus.length) {
       h += '<div class="kta-racc-pied"><button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
@@ -1172,6 +1488,21 @@ window.KtaVerifierPlan = (function () {
     }, SAISIE_MS);
   });
 
+  // Gestes de la liste (corriger tout un contrôle, retirer une galerie condamnée) : délégation sur le document, la
+  // fenêtre est refaite à chaque ouverture. La liste est refaite après le geste, qu'il ait abouti ou non. (Garde : le
+  // module se charge aussi hors navigateur, dans les garde-fous Node.)
+  if (typeof document !== "undefined") document.addEventListener("click", function (ev) {
+    const el = ev.target && ev.target.closest && ev.target.closest("#kta-verif-modal [data-verif-tout], " +
+      "#kta-verif-modal [data-verif-decondamner]");
+    if (!el) return;
+    const tout = el.getAttribute("data-verif-tout");
+    el.disabled = true;
+    Promise.resolve(tout ? corrigerTout(tout)
+      : decondamner(Number.parseInt(el.getAttribute("data-verif-decondamner"), 10))).then(function () {
+      if (document.getElementById("kta-verif-modal")) ouvrir();
+    });
+  });
+
   // Plan quitté ou changé pendant la revue : le bandeau et sa marque partent avec lui, l'état de saisie aussi.
   window.addEventListener("mktm:plan-ferme", function () { fermer(); _sigPlan = null; _sig = new Map(); _c5Cache = null; });
 
@@ -1190,13 +1521,19 @@ window.KtaVerifierPlan = (function () {
     liste: function () {
       return _liste.map(function (c, i) {
         return { i: i, controle: c.controle, gravite: c.gravite, motif: c.motif, niveau: c.niveau, cle: c.cle,
-          auBord: !!c.auBord };
+          auBord: !!c.auBord, corrigible: corrigible(c) };
       });
     },
     etat: function () {
       return { liste: _liste.length, vus: _vus.length, index: _index, bandeau: !!_bandeau,
         avertis: _avertis.size };
     },
+    corrigible: corrigible,
+    corriger: corriger,
+    corrigerTout: corrigerTout,
+    condamner: condamner,
+    condamnes: function () { return condamnes().map(function (e) { return { famille: e.f, uid: e.o.uid || null }; }); },
+    decondamner: decondamner,
     BORD_M: BORD_M,
     CONTROLES: Object.assign({}, CONTROLES)
   };
