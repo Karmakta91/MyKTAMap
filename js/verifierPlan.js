@@ -368,7 +368,7 @@ window.KtaVerifierPlan = (function () {
   function _stable(v) {
     if (Array.isArray(v)) return "[" + v.map(_stable).join(",") + "]";
     if (v && typeof v === "object") {
-      return "{" + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ":" + _stable(v[k]); })
+      return "{" + Object.keys(v).sort(function (x, y) { return x.localeCompare(y); }).map(function (k) { return JSON.stringify(k) + ":" + _stable(v[k]); })
         .join(",") + "}";
     }
     return v === undefined ? "null" : JSON.stringify(v);
@@ -599,21 +599,22 @@ window.KtaVerifierPlan = (function () {
     const entier = function (q) { h1 = Math.imul(h1 ^ q, 2654435761); h2 = Math.imul(h2 ^ q, 1597334677); };
     const texte = function (v) {
       const t = typeof v === "string" ? v : (v === undefined ? "\u0000" : JSON.stringify(v));
-      for (let i = 0; i < t.length; i++) entier(t.charCodeAt(i));
+      for (let i = 0; i < t.length; i++) entier(t.codePointAt(i));
       entier(0x7c7c);   // séparateur : « 1|23 » ≠ « 12|3 »
     };
     // Coordonnée au millième de px : deux entiers (partie haute, partie basse), sans passer par une chaîne.
     const nombre = function (x) {
-      if (typeof x !== "number" || !isFinite(x)) { texte(String(x)); return; }
+      if (typeof x !== "number" || !Number.isFinite(x)) { texte(String(x)); return; }
       const q = Math.round(x * 1000);
-      entier(q | 0); entier(Math.floor(q / 4294967296) | 0);
+      // `h ^ q` dans entier() ramène déjà q sur 32 bits (ToInt32) : pas de `| 0` à faire ici.
+      entier(q); entier(Math.floor(q / 4294967296));
     };
     const C = window.APP_CONFIG || {};
     texte(window._currentLoadedPlanId || ""); texte(C.scale); texte(C.multiLevel === true);
     // Objet : chaque champ sauf la géométrie (clé puis valeur), puis les sommets nombre par nombre.
     const objet = function (o) {
       if (!o || typeof o !== "object") { texte(o); return; }
-      const cles = Object.keys(o).sort();
+      const cles = Object.keys(o).sort(function (x, y) { return x.localeCompare(y); });
       for (let i = 0; i < cles.length; i++) {
         const k = cles[i], v = o[k];
         if (k === "points" || typeof v === "function") continue;
