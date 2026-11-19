@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.29.0 (détecter piliers et fronts, épaisseur des traits)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** La détection des piliers et des fronts lit l'image du plan déjà présente sur l'appareil et calcule sur place ; quatre fichiers de l'application s'ajoutent (`js/ktaDetection.js`, son travailleur `js/ktaDetectionWorker.js`, `js/detectionStructures.js`, `js/detectionGenerateur.js`), servis par le site lui-même et gardés hors ligne comme les autres. Les couleurs et réglages retenus restent dans le stockage local de l'appareil, jamais dans une session ni un export. L'épaisseur des traits est un réglage de l'appareil, jamais exporté. Le Générateur rogne et décale les calques sur l'appareil, sans rien envoyer.
+
 ### v2.28.1 (fiches en fenêtre, référencement du site)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Trois fichiers servis s'ajoutent à la racine du site : `robots.txt`, `sitemap.xml` et `og-myktamap.png` (l'image d'aperçu d'un lien partagé). Ce sont les moteurs de recherche et les aperçus de lien qui les lisent ; l'application ne les demande jamais et ne les garde pas hors ligne. Les données structurées de la page (`application/ld+json`) sont du texte dans la page, jamais exécuté, sans requête. La fiche en fenêtre au téléphone et le rendu 3D par défaut d'un plan sont dessinés et lus sur l'appareil.
