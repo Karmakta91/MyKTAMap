@@ -1073,7 +1073,7 @@ demanderait une projection équivalente, et la précision gagnée serait très
 inférieure à celle d'un tracé fait à la main.
 
 **Prouvé contre des valeurs connues**, pas contre lui-même : 1° de latitude
-≈ 111,2 km, 1° de longitude à 45°N ≈ 78,6 km, un carré de 0,01° à 44,8°N.
+≈ 111,2 km, 1° de longitude à 45°N ≈ 78,6 km, un carré de 0,01° à 45°N.
 7 cas dans `check-api-surface.js`, avec un `distanceTo` de référence
 **indépendant du code testé**. Falsifiés : retirer la correction `cos(lat)` fait
 tomber la surface, retirer la valeur absolue fait tomber le sens de parcours.
@@ -1083,7 +1083,7 @@ cohérence du code avec ses propres suppositions.*
 
 ---
 
-## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan (v1.83.0)
+## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan
 
 KARMA : « en mode OSM c'était pas mal, mais on peut faire aussi bien qu'en mode
 plan, ça reste encore limite ».
@@ -1114,13 +1114,13 @@ Un même zoom couvre ~40 % de moins au nord de la France qu'à l'équateur. La
 calculer, plutôt que de tabler sur des paliers de zoom réglés à la main, est ce
 qui rend la largeur juste **partout** et pas seulement là où on a réglé.
 
-### Ce que ça change, chiffré (44,8°N)
+### Ce que ça change, chiffré (45°N)
 
 | Zoom | m/px | Avant | Après |
 |---|---|---|---|
-| 15 | 3,39 | 6 px | **1 px** |
+| 15 | 3,38 | 6 px | **1 px** |
 | 16 | 1,69 | 6 px | **1 px** |
-| 17 | 0,85 | 6 px | **1,8 px** |
+| 17 | 0,84 | 6 px | **1,8 px** |
 | 18 | 0,42 | 6 px | **3,5 px** |
 | 19 | 0,21 | 6 px | **7,1 px** |
 
@@ -1129,14 +1129,38 @@ là où la carrière tient dans l'écran — précisément là où l'aplat se fo
 
 ### Mise en œuvre
 
-Même technique qu'en mode plan : on **mute `options.weight` en place** (le
-renderer canvas le relit à chaque frame), puis une repeinture **non clippée**
-(`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`). Aucun `setStyle`,
-intenable à ce volume.
+Fronts à la loi, tracés à 0,6 × la loi (plancher 1 px), **contours des piliers et
+murs** affinés comme en mode plan : `structures.js > ktaBordSurfacePourLargeur`
+(le quart d'un front, jamais plus que le trait d'origine, plancher 0,5 px). Un
+contour fixe de 1 ou 2 px, sur des centaines de piliers vus de haut, fait un aplat
+noir. Les zones gardent leur trait.
 
-Reposée à chaque **re-rendu** en plus du `zoomend` : recréer les layers remet le
-`weight` du gabarit. Le widget HOME traite le plan principal **et chaque plan
-empilé** — n'en faire qu'un laisserait les autres en aplat.
+**Arc de soutènement** : bleu rayé de rouge comme en mode plan (sinon on le confond
+avec le mur en ligne), à la loi des arcs (0,6 × front, plancher 2 px, comme
+`structures.js > ktaLargeurRayePourRatio`). Modale : `ktaPolylineStructure` peint les
+rayures sur le canvas. Widget : panes SVG, donc une seconde polyligne rouge en tirets
+par-dessus (classes `kta-osm-arc` / `kta-osm-arc-rayures`, tirets recalculés avec
+l'épaisseur). `checkup-largeur-osm-home.js` le vérifie sur les deux cartes.
+
+- **Modale** (`osmView.js > _majLargeurFrontsOsm`) : renderer canvas. On **mute
+  `options.weight` en place** (relu à chaque frame), puis une repeinture **non
+  clippée** (`_redrawBounds = null` avant `_redraw()`, cf. `gotchas.md`).
+- **Widget de l'accueil** (`osmHomePreview.js > _majLargeurFrontsHome`) : chaque
+  plan est dessiné par le renderer **SVG** de son pane (`_panePour`). 🩸 Le SVG ne
+  relit le style qu'à `setStyle` : un `weight` muté en place n'y change rien (la
+  loi est restée inerte ainsi, fronts figés à 4 px, plan illisible de haut). D'où
+  `setStyle`, seulement quand la valeur change. 🩸 Elle vise les sous-groupes
+  (`_structSubLayer`, `_roadsSubLayer`, `g.struct`, `g.roads`), pas
+  `_dataLayer` / `g.data`, qui ne contiennent que des groupes.
+
+Reposée au `zoomend` et après **chaque re-rendu** (recréer les layers remet le
+`weight` du gabarit) — dans le widget, après le rendu de TOUS les plans de la
+pile, principal **et empilés**. Garde-fou : `scripts/smoke/checkup-largeur-osm-home.js`.
+
+Les deux cartes multiplient fronts, tracés, murs en ligne et arcs par le réglage
+d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits.ecran`, `ui.md`), contours
+des piliers exclus, et se repeignent à `kta:epaisseurTraitsChange` ; la Vue OSM y soumet aussi
+son itinéraire (5 px × facteur, hors loi du zoom, `_majLargeurItiOsm`).
 
 🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
 comparait les deux chemins qu'à **une seule densité**, si bien qu'une copie ayant

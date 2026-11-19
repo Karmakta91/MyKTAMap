@@ -13267,8 +13267,10 @@
         });
       });
     }
+    // Zones : celles qui bouchent, la masse au sol, et l'eau (pas un obstacle, mais un repère qu'on voit en 3D et qui
+    // aide à s'orienter ; dessinée en aplat sous les structures et les tracés).
     d.zones.forEach(function (z) {
-      if (!B[z.type] && z.type !== "masse-sol") return;
+      if (!B[z.type] && z.type !== "masse-sol" && z.type !== "eau") return;
       const fo = forme(z, "zones", true);
       if (!fo) return;
       if (z.type === "masse-sol") masseDe(fo, z);

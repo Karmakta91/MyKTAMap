@@ -567,9 +567,13 @@ réelle n'est calculable, et les paliers de zoom du repli écran donneraient un
 trait **plus épais** qu'avant dans l'aperçu. L'écran, lui, garde ses paliers : il
 n'a pas de résolution native à laquelle se référer.
 
-**Portée** : fronts (structures polylignes) partout ; tracés **embarqués**
-seulement — à l'écran `majLargeurFronts` n'ajuste que `_ktaDataPolylines`, et un
-export doit montrer ce que montre la carte.
+**Portée** : fronts (structures polylignes) et tracés — de **session** comme de
+**calque**, jonctions comprises (`_largeurTraceExp`) —, comme à l'écran
+(`majLargeurFronts`, `road.js > ktaMajLargeurTracesSession`) : un tracé de
+session et un tracé de calque ont la même épaisseur dans un même export.
+L'itinéraire n'est pas exporté. `checkup-epaisseur-traits.js`.
+Le réglage d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits`, `ui.md`) ne s'applique qu'à l'écran : les
+lois appelées ici n'ont pas de facteur, un export ne change pas avec lui.
 
 **Contour des surfaces (piliers, murs, structures perso fermées), à l'écran** :
 `majLargeurFronts` le pose au quart de la largeur d'un front, plafonné à

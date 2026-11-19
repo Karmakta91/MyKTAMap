@@ -309,6 +309,7 @@ Carte `.kta-nord-ctrl` > `button.kta-nord-btn` (`mapBearing.js > _creerBoutonNor
 **Variable CSS partagée** `--kta-statusbar-h` :
 - Initialisée à `calc(52px + env(safe-area-inset-bottom, 0px))` (fallback CSS au boot).
 - Mise à jour par JS via `ResizeObserver` sur le status bar — lit `offsetHeight` à chaque resize, écrit dans `document.documentElement.style.setProperty("--kta-statusbar-h", h + "px")`.
+- 🩸 Aucune lecture immédiate au démarrage (`refonteInterface.js > _setupStatusBarResizeObserver`) : le premier rappel du `ResizeObserver`, après la première mise en page, fait la synchro. Lire `offsetHeight` juste après `observe()` forçait une mise en page synchrone (~140 ms en iPhone émulé, processeur ×4). Sans `ResizeObserver` : lecture immédiate.
 - Notifie Leaflet via `map.invalidateSize({ animate: false })` (debounce via rAF).
 
 **Tout suit la variable** :
@@ -1896,6 +1897,22 @@ Tuile de l'accueil de l'Éditeur, avant les Raccords, **plan affiché seulement*
 
 Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native, aucune surface réseau, rien d'écrit dans les données.
 
+
+#### 91.7 Détecter piliers et fronts (`js/detectionStructures.js`)
+
+Tuile de l'accueil de l'Éditeur juste après Vérifier le plan, **plan affiché seulement**, et bouton du groupe 🏛️
+Structures (icône `search`, avant ✅ Fermer) : les deux ouvrent `window.KtaDetectionUI.ouvrir()`, un seul parcours
+(décision produit). Bandeau `#kta-detect-bandeau` (`.kta-racc-bandeau`) en trois étapes (exemples à la pipette,
+zone, aperçu) ; aperçu dans le pane `ktaDetection` (renderer SVG propre, classes `.kta-detect-*` en jetons de la
+charte ; la pastille d'exemple prend la couleur lue sur le plan), trois curseurs (tolérance, tailles minimale et
+maximale). Pendant la pipette et le cadre, réticule rouge de précision (`body.kta-detect-pick-mode`, ajoutée au
+sélecteur du « Curseur de précision » de `css/style.css` : une classe propre, `kta-precision-mode` étant recalculée
+par `interface.js > _initPrecisionCursor`) ; pendant la visée, toucher un objet déjà posé n'ouvre pas sa fiche (mode
+« clic carte », `utils.js > _modeClicCarteActif`), retour normal à la fermeture. Échap ferme, sauf fenêtre affichée au-dessus.
+Calcul, lecture de l'image, doublons et couleurs par plan : `plans-loader.md` § Détecter les structures. Parcours :
+`scripts/smoke/checkup-detection.js` (Chromium et WebKit). Dans le Générateur (`js/detectionGenerateur.js`) : bouton
+de l'étape Calques de données, fenêtre plein écran `.kta-detect-gen` (z-index 100001, sous-modale au-dessus du
+Générateur) à mini-carte, bandeau posé dans la fenêtre ; `scripts/smoke/checkup-detection-generateur.js`. i18n `detect.*` (fr/en/es). Aucune popup native.
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)
@@ -2699,6 +2716,33 @@ Tracker (l'app floutée derrière), au lieu de la bulle Leaflet (trop grande pou
   `fichePleinEcran.js`, `window.KtaFichePleinEcran`, clé `myktamap_fiche_plein_ecran_v1`, clés `config.fichePe.*`.
 
 Garde-fou : `scripts/smoke/checkup-fiche-plein-ecran.js` (Chromium + WebKit, téléphone et PC).
+
+## Épaisseur des traits (`js/structures.js > KtaEpaisseurTraits`)
+
+Réglage d'accessibilité, décisions KARMA du 18/11/2026 (1b 2a 3a) :
+
+- **Réglage d'appareil** : ⚙️ Configuration de l'accueil › Affichage › curseur « Épaisseur des traits »
+  (`#loaderEpaisseurTraits`, ×0,75 à ×2 par crans de 0,25, ×1 au départ ; `homeConfig.js > _initEpaisseurTraitsHome`).
+  Gardé dans `localStorage["myktamap_epaisseur_traits_v1"]` (copie en mémoire si le stockage est refusé), jamais
+  dans la session, un export ou l'export du profil (hors `profileExportImport.js > PREF_KEYS`).
+- **Un facteur par-dessus la loi au zoom**, à l'écran seulement : `KtaEpaisseurTraits.ecran(w)` multiplie la largeur
+  que donne la loi (arrondi au dixième, ×1 rend `w` tel quel). Appliqué aux tracés (session et calques), fronts,
+  murs en ligne et arcs : `structures.js > majLargeurFronts`, `road.js > _largeurTraceSession`,
+  `osmView.js > _majLargeurFrontsOsm`, `osmHomePreview.js > _majLargeurFrontsHome`. Le contour des piliers et murs
+  reste calculé sur la largeur de front brute (`ktaBordSurfacePourLargeur`).
+- **Exports intacts** : les lois (`ktaLargeur*PourRatio`, `ktaLargeurFrontPourPxParMetre`) n'ont pas de facteur ;
+  `exporter.js` les appelle telles quelles (`exports.md` §69.1). Les ronds de jonction (leur propre loi) ne sont pas
+  concernés.
+- **Itinéraire** : hors loi du zoom (trait fixe : 7 px sur la carte du plan, 5 px dans la Vue OSM), multiplié par
+  le seul facteur, raccords en pointillé compris (`road.js > _largeurFixeEcran`, `osmView.js > _largeurItiOsm`) ;
+  renderer SVG, donc repeint par `setStyle` (`road.js > _poserLargeursFixes`, `osmView.js > _majLargeurItiOsm`).
+  Pas de zone tactile ni de flèche sur son trait ; ses marqueurs d'étape sont des icônes, inchangés. La carte OSM de
+  l'accueil ne le dessine pas ; il n'est jamais exporté.
+- **Changement à chaud** : `poser()` émet `kta:epaisseurTraitsChange`, la carte du plan et les deux cartes OSM
+  ouvertes se repeignent.
+
+Garde-fous : `scripts/check-api-surface.js` (facteur borné, lois sans facteur),
+`scripts/smoke/checkup-epaisseur-traits.js` (×2 sur les trois cartes, exports inchangés).
 
 ## 🎨 Icônes de l'interface
 

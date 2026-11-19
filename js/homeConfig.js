@@ -1198,6 +1198,39 @@
         cb.addEventListener("change", function () { fp.poser(!!cb.checked); });
       })();
 
+      // Épaisseur des traits : source de vérité KtaEpaisseurTraits (structures.js), gardée sur l'appareil ; chaque cran
+      // repeint les cartes ouvertes (événement kta:epaisseurTraitsChange).
+      (function _initEpaisseurTraitsHome() {
+        const curseur = document.getElementById("loaderEpaisseurTraits");
+        const val = document.getElementById("loaderEpaisseurTraitsVal");
+        if (!curseur) return;
+        const et = window.KtaEpaisseurTraits;
+        if (!et) {
+          const row = curseur.closest(".kta-epaisseur-row");
+          if (row) row.style.display = "none";
+          return;
+        }
+        const afficher = function (f) {
+          if (!window.I18n) return;
+          const txt = window.I18n.t("config.epaisseurTraits.valeur", {
+            v: f.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR")
+          });
+          if (val) val.textContent = txt;
+          curseur.setAttribute("aria-valuetext", txt);
+        };
+        const peindre = function () { curseur.value = String(et.facteur()); afficher(et.facteur()); };
+        curseur.value = String(et.facteur());
+        curseur.addEventListener("input", function () { afficher(et.poser(curseur.value)); });
+        // 🩸 Texte après I18n.init() (sinon la clé s'afficherait), puis à chaque changement de langue (séparateur
+        // décimal compris).
+        if (window.I18n && typeof window.I18n.init === "function") {
+          window.I18n.init().then(peindre).catch(function () {});
+        } else {
+          peindre();
+        }
+        if (window.I18n && typeof window.I18n.onChange === "function") window.I18n.onChange(peindre);
+      })();
+
       // Niveau des notifications (Toutes / Essentielles / Silence) : source de vérité OOMGuard (le goulot). Pas de
       // toast de confirmation.
       (function _initNotifsHome() {

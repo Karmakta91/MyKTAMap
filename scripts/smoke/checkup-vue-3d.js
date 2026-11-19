@@ -1090,8 +1090,11 @@ async function sectionDonnees(page, MX) {
     const groupe = L.layerGroup().addTo(window.map);
     window.dataLayerGroups[CAL] = groupe;
     window.ajouterPointsDepuisJSON(url, groupe);
+    // 🩸 Le point du calque arrive APRÈS ses structures (marqueurs posés par lots, utils.js > ajouterPointsDepuisJSON) :
+    // attendre aussi lui, sinon la scène « avant » le rate et « après » le compte (23 → 24 points, WebKit lent).
     const charge = function () {
-      return window.getAllEmbeddedStructures().some(function (o) { return o && o.uid === "st_dn_cal1"; });
+      return window.getAllEmbeddedStructures().some(function (o) { return o && o.uid === "st_dn_cal1"; }) &&
+        window.getAllEmbeddedPoints().some(function (o) { return o && o.uid === "pt_dn_cal"; });
     };
     for (let i = 0; i < 60 && !charge(); i++) await pause(50);
     r.calqueCharge = charge();
@@ -15481,7 +15484,8 @@ async function sectionMiniCarte(nav) {
         { uid: "zn_mc_t", type: "masse-sol", level: 0, comble: 0.75, points: carre(0, 8, 2) },
         { uid: "zn_mc_b", type: "masse-sol", level: 0, comble: 0.9, points: carre(6, 8, 2) },
         { uid: "zn_mc_n", type: "masse-sol", level: 0, comble: -0.5, points: carre(12, 8, 2) },
-        { uid: "zn_mc_c", type: "remblais", level: 0, points: [P(-20, -3), P(-14, -3), P(-14, 3), P(-20, 3)] }
+        { uid: "zn_mc_c", type: "remblais", level: 0, points: [P(-20, -3), P(-14, -3), P(-14, 3), P(-20, 3)] },
+        { uid: "zn_mc_e", type: "eau", level: 0, points: carre(-4, -6, 2) }
       ]);
       await window.__fxOuvrir(-8, 0, 90, 0, "structures");
       await window.__fxImages(20);
@@ -15520,6 +15524,8 @@ async function sectionMiniCarte(nav) {
       "jamais un obstacle", qn);
     verifier(q2 && q2.chevrons > 0 && q1 && q1.chevrons === 0, nom + "rampe de la ½ en chevrons (" +
       (q2 && q2.chevrons) + "), aucune sur une masse sans rampe", { q1: q1, q2: q2 });
+    verifier((zm.zones || []).some(function (q) { return q.cle === "eau"; }),
+      nom + "zone d'eau dessinée (un repère, pas un obstacle)", zm.zones);
     verifier(cb && cb.couloir > 0, nom + "Comblé traversé par le tracé : couloir creusé laissé ouvert (" +
       (cb && cb.couloir) + " pièce(s) du modèle galerie)", cb);
     verifier(t.erreurs.length === 0, nom + "aucune erreur de page", t.erreurs.slice(0, 3));
@@ -20407,6 +20413,7 @@ async function sectionCaseBoutonsZoom(nav) {
               (function lire() {
                 const e = K.etat();
                 ech.push({ t: Math.round(performance.now() - t0), y: e.cameraY, f: e.fondu, n: e.niveau, g: !!e.geste,
+                  gt: e.geste ? e.geste.t : null,
                   voile: e.fonduPresent, bandeau: e.bandeauNiveau, im: e.images, aretes: e.compte.aretes });
                 // Au moins 1,5 s (le repos qui suit attend la fin du bandeau), et jusqu'à la fin du geste : sous
                 // charge (images lentes), il dure plus que GESTE.ms en temps réel. Plafond 6 s.
@@ -20422,13 +20429,20 @@ async function sectionCaseBoutonsZoom(nav) {
         const yMin0 = Math.min.apply(null, avant.map(function (q) { return q.y; }));
         const yMax1 = Math.max.apply(null, apres.map(function (q) { return q.y; }));
         const fMax = Math.max.apply(null, ge.ech.map(function (q) { return q.f; }));
-        const bascule = apres.length ? apres[0].t : null;
+        // 🩸 Instants lus en temps DU GESTE (etat().geste.t : somme des dt d'image, plafonnés à 0,1 s), pas en temps
+        // réel : sous charge, les images s'espacent et le geste dure plus que GESTE.ms à l'horloge — les fourchettes en
+        // millisecondes réelles (bascule 350-750, fin 800-1 300) tombaient au hasard de la charge (WebKit). Bascule à
+        // M = 500 ms de geste (vue3d.js > _majGeste), relevée à l'image suivante au plus tard ; fin à T = 1 000 ms.
+        const premierApres = apres.filter(function (q) { return q.gt !== null; })[0] || apres[0] || {};
+        const bascule = premierApres.gt !== undefined ? premierApres.gt : null;
+        const gtMax = Math.max.apply(null, ge.ech.filter(function (q) { return q.gt !== null; }).map(function (q) { return q.gt; }));
         verifier(ge.lance && avant.length > 3 && apres.length > 3 && yMin0 < 0 && yMax1 > PJ.h && fMax >= 0.9 &&
-          fin.f === 0 && fin.voile === false && Math.abs(fin.y - ge.oeil) < 0.01 && fin.t > 800 && fin.t < 1300 &&
-          bascule > 350 && bascule < 750,
+          fin.f === 0 && fin.voile === false && Math.abs(fin.y - ge.oeil) < 0.01 && fin.t < 6000 &&
+          bascule !== null && bascule >= 500 && bascule <= 600 && gtMax > 850 && gtMax < 1000,
           "descente animée : caméra de " + ge.oeil + " m à " + yMin0.toFixed(2) + " m, noir (" + fMax + ") à la bascule (" +
-          bascule + " ms), arrivée par le plafond (" + yMax1.toFixed(2) + " m), fin à " + fin.t + " ms, voile retiré",
-          { yMin0: yMin0, yMax1: yMax1, fMax: fMax, bascule: bascule, fin: fin });
+          bascule + " ms de geste), arrivée par le plafond (" + yMax1.toFixed(2) + " m), geste mené à son terme (" + gtMax +
+          " ms de geste ; fin à " + fin.t + " ms d'horloge), voile retiré",
+          { yMin0: yMin0, yMax1: yMax1, fMax: fMax, bascule: bascule, gtMax: gtMax, fin: fin });
         const auNoir = apres[0] || {};
         verifier(auNoir.f >= 0.9 && auNoir.aretes > 0 && apres.some(function (q) { return q.bandeau; }),
           "scène du niveau −1 construite pendant le noir ; bandeau « " + (apres.filter(function (q) { return q.bandeau; })[0] || {}).bandeau + " »",

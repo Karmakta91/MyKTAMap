@@ -448,6 +448,13 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.verifHint")}</span>
               </span>
             </button>` : ""}
+            ${planAffiche && window.KtaDetectionUI ? `<button class="kta-tbl-source-card" id="kta-tbl-src-detect">
+              <span class="kta-tbl-source-ico">${window.ktaIcone("search")}</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("detect.bouton")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("detect.boutonAide")}</span>
+              </span>
+            </button>` : ""}
             ${planAffiche && window.KtaRaccords ? `<button class="kta-tbl-source-card" id="kta-tbl-src-raccords">
               <span class="kta-tbl-source-ico">${window.ktaIcone("link")}</span>
               <span class="kta-tbl-source-txt">
@@ -485,6 +492,9 @@
     // Vérifier le plan : outil à part (js/verifierPlan.js), sur le plan affiché seulement.
     var btnVerif = document.getElementById("kta-tbl-src-verif");
     if (btnVerif) btnVerif.addEventListener("click", function() { fermer(); window.KtaVerifierPlan.ouvrir(); });
+    // Détecter les piliers : même parcours que l'outil Structures (js/detectionStructures.js).
+    var btnDetect = document.getElementById("kta-tbl-src-detect");
+    if (btnDetect) btnDetect.addEventListener("click", function() { fermer(); window.KtaDetectionUI.ouvrir(); });
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();

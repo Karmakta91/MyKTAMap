@@ -6,9 +6,10 @@
  */
 /* eslint-disable no-console */
 // =====================================================================
-// check-entete-licence.js — garde-fou pre-commit BLOQUANT : en-tête de licence des scripts servis
+// check-entete-licence.js — garde-fou pre-commit BLOQUANT : en-tête de licence des fichiers servis
 // =====================================================================
-// Tout script SERVI (js/*.js + sw.js) porte auteur + CC BY-NC-SA 4.0 ; le `/*!` survit à une minification.
+// Tout script et toute feuille de style SERVIS (js/*.js, sw.js, css/*.css, add-ons .js et .css) portent auteur +
+// CC BY-NC-SA 4.0 ; le `/*!` survit à une minification (JS comme CSS).
 // Sans ce contrôle, chaque nouveau module naît sans en-tête.
 // Règle : dans les 15 premières lignes, « Flavien VIDAL » ET « CC BY-NC-SA » (formes courte et longue).
 // En-tête à copier pour un nouveau fichier :
@@ -47,9 +48,9 @@ if (autoTest) {
 
 let fichiers;
 try {
-  // Add-ons (addons/<nom>/**) : mêmes règles que js/ (docs/architecture/addons.md).
+  // Add-ons (addons/<nom>/**) : mêmes règles que js/ et css/ (docs/architecture/addons.md).
   fichiers = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "js/*.js", "sw.js",
-    "addons/*.js"], { encoding: "utf8" }).split("\n").filter(Boolean);
+    "css/*.css", "addons/*.js", "addons/*.css"], { encoding: "utf8" }).split("\n").filter(Boolean);
 } catch (e) {
   console.error("❌ [check-entete-licence] git ls-files impossible : " + e.message);
   process.exit(1);

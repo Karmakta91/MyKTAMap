@@ -2019,7 +2019,8 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
 
   // UNION, pas remplacement (cf. ci-dessus).
   if (!Array.isArray(APP_CONFIG.visibleLevels)) APP_CONFIG.visibleLevels = [];
-  if (APP_CONFIG.visibleLevels.indexOf(newLevel) === -1) {
+  const visiblesInchanges = APP_CONFIG.visibleLevels.indexOf(newLevel) !== -1;
+  if (!visiblesInchanges) {
     APP_CONFIG.visibleLevels = APP_CONFIG.visibleLevels.concat([newLevel]);
   }
   window.APP_CONFIG = APP_CONFIG;
@@ -2028,7 +2029,13 @@ window.ktaSetActiveLevel = function(newLevel, opts) {
   if (pill) pill.textContent = String(newLevel);
 
   // Propage à tous les modules level-aware ; resynchronise aussi la modale ≡ ouverte (FilterPanel.onLevelChange).
-  if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+  // ⚠️ Niveau déjà visible : tracés, zones et structures de session ne dépendent que des niveaux VISIBLES et des
+  // filtres (road.js > _tracePasseFiltres et ses pareils), pas du niveau actif ; leur re-rendu complet (des
+  // secondes sur un gros relevé) est sauté, le reste est refiltré. Un module qui fait dépendre son rendu du
+  // niveau actif doit l'être par un appel explicite à son rendu, pas compter sur celui-ci.
+  if (typeof window.appliquerFiltreNiveau === "function") {
+    window.appliquerFiltreNiveau(visiblesInchanges ? { sessionRendue: true } : undefined);
+  }
   // Niveau mémorisé aussitôt dans la vue du plan (vuePlan.js, ~150 octets hors session) : retrouvé même si l'onglet
   // est tué avant pagehide. Pas pendant l'application de la vue retrouvée (le cadrage n'est pas encore posé).
   if (opts.source !== "vue-retrouvee" && window.KtaVuePlan && typeof window.KtaVuePlan.memoriser === "function") {

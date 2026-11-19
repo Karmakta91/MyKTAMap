@@ -30,7 +30,7 @@
 // =========================
 
 // ⚠️ Bumpé avec version.json > version et js/copyright.js > __MKM__.build (skill `release`).
-const CACHE_NAME = "myktamap-cache-v2.28.1";
+const CACHE_NAME = "myktamap-cache-v2.29.0";
 
 // CACHES DE PLAN HORS-LIGNE (un par plan serveur pré-téléchargé).
 // 🩸 POURQUOI UN CACHE À PART, et pas le cache principal :
@@ -443,6 +443,11 @@ const ASSETS_TO_CACHE = [
   "./js/recalageScan.js",
   "./js/raccordsTraces.js",
   "./js/verifierPlan.js",
+  "./js/ktaDetection.js",
+  // Worker de la détection (importScripts ktaDetection.js) : absent du cache, le calcul se fait dans la page
+  "./js/ktaDetectionWorker.js",
+  "./js/detectionStructures.js",
+  "./js/detectionGenerateur.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
   "./js/vuePlan.js",

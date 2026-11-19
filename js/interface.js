@@ -3130,6 +3130,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Arc de soutènement : trait bleu rayé de rouge, posé de paroi à paroi ; on passe dessous (aucun obstacle).
       { icone: "🟦", dynamicIcon: function() { return _iconeType("structures", "arc", "🟦"); }, titre: window.I18n.t("ui.struct.arc"), dynamicTitre: function() { return _titreType("structures", "arc", window.I18n.t("ui.struct.arc")); }, isTypeAction: true, typeKey: "arc",
         onClick: function(btn) { _activerStructure("arc", btn, _iconeType("structures", "arc", "🟦")); } },
+      // Détecter les piliers sur l'image du plan (js/detectionStructures.js) ; même parcours que l'📊 Éditeur de données.
+      { icone: window.ktaIcone("search"), titre: window.I18n.t("detect.bouton"),
+        onClick: function() { if (window.KtaDetectionUI) window.KtaDetectionUI.ouvrir(); } },
       { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {

@@ -10,7 +10,9 @@
 //   2. nouvelle génération : l'ancienne copie reste tant que la nouvelle n'est pas complète et relue, puis ses
 //      morceaux partent ; une copie refusée par `verifier` ou abandonnée ne laisse rien et ne touche pas l'ancienne ;
 //   3. saveBlob(id, Blob composé) = rien à réécrire ; saveBlob d'un seul tenant remplace les morceaux ;
-//      removeBlob efface tout ; zipLisible refuse un ZIP tronqué.
+//      removeBlob efface tout ; zipLisible refuse un ZIP tronqué ;
+//   4. connexion partagée : après des opérations de handles, effacer la base n'est pas bloqué, puis le registre
+//      rouvre une connexion neuve.
 // Usage : node scripts/smoke/checkup-plan-morceaux.js (SMOKE_PORT pour une autre copie, KTA_MOTEURS=chromium|webkit)
 // Doc : docs/architecture/plans-loader.md (copie en morceaux) · contrat : community-server-line.md §3
 // =====================================================================
@@ -172,6 +174,29 @@ async function jouer(ctx) {
   }, ID);
   const e7 = await etat(p, ID), e8 = await etat(p, ID + "_bis");
   t("removeBlob : copie et morceaux effacés", e7.nbCles === 0 && e7.taille === null && e8.nbCles === 0, [e7, e8]);
+
+  // 4. Connexion partagée : des opérations de handles (qui ne refermaient jamais leur connexion) ne bloquent pas
+  //    l'effacement de la base (« tout effacer »), et le registre en rouvre une neuve ensuite.
+  const efface = await p.evaluate(async function (id) {
+    const PR = window.PlanRegistry;
+    for (let i = 0; i < 3; i++) { await PR.saveHandle(id + "_h" + i, { essai: i }); await PR.getHandle(id + "_h" + i); }
+    await PR.removeHandle(id + "_h0");
+    const suppr = await new Promise(function (ok) {
+      const r = indexedDB.deleteDatabase("myktamap_handles");
+      let bloque = false;
+      r.onblocked = function () { bloque = true; };
+      r.onsuccess = function () { ok(bloque ? "bloquée puis faite" : "faite"); };
+      r.onerror = function () { ok("erreur"); };
+      setTimeout(function () { ok(bloque ? "bloquée" : "sans réponse"); }, 4000);
+    });
+    const apres = await PR.saveBlob(id + "_neuf", new Blob([new Uint8Array([1, 2, 3])]));
+    const relu = await PR.getBlob(id + "_neuf");
+    await PR.removeBlob(id + "_neuf");
+    return { suppr: suppr, rouverte: !!(apres && apres.ok && relu && relu.size === 3) };
+  }, ID);
+  t("connexion partagée : effacement de la base jamais bloqué après des handles (" + efface.suppr + ")",
+    efface.suppr === "faite", efface);
+  t("connexion partagée : rouverte après l'effacement (copie rangée et relue)", efface.rouverte, efface);
 }
 
 (async function () {

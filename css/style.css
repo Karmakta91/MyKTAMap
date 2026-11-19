@@ -1,3 +1,8 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
 /* ── Jetons de couleur de la charte (communs aux deux thèmes) ──
    ⚠️ Contrat : une couleur de la charte s'écrit var(--kta-…), en CSS comme dans un style="…" posé par le JS.
    Le thème clair REDÉFINIT ces jetons (bloc « Thème clair » plus bas) au lieu de surcharger chaque règle.
@@ -1633,10 +1638,12 @@ html.kta-theme-light .kta-lost-warn-overflow strong {
 }
 
 /* Curseur de précision : réticule or + contour sombre, visible sur plan blanc comme sombre. Posé dès qu'un
-   mode « clic sur la carte » est actif (body.kta-precision-mode, interface.js) et en mode « perdu ».
+   mode « clic sur la carte » est actif (body.kta-precision-mode, interface.js), en mode « perdu » et pendant la
+   pipette et le cadre de la détection (body.kta-detect-pick-mode, detectionStructures.js).
    Hotspot (14,14) = le point cliqué ; repli `crosshair`. */
 body.kta-precision-mode .leaflet-container,
-body.kta-lost-click-mode .leaflet-container {
+body.kta-lost-click-mode .leaflet-container,
+body.kta-detect-pick-mode .leaflet-container {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23000' stroke-width='4.5' opacity='0.85'/%3E%3Cpath d='M14 3V11M14 17V25M3 14H11M17 14H25' stroke='%23ff1e1e' stroke-width='2'/%3E%3C/g%3E%3Ccircle cx='14' cy='14' r='2.2' fill='%23000' opacity='0.85'/%3E%3Ccircle cx='14' cy='14' r='1.2' fill='%23ff1e1e'/%3E%3C/svg%3E") 14 14, crosshair !important;
 }
 
@@ -18609,6 +18616,12 @@ body.kta-theme-light #planLoaderBox.kta-has-wall .loader-section-head * {
   .kta-notifs-row .kta-perf-ultra-text { flex: 1 1 100%; }
   .kta-notifs-select { flex: 1 1 100%; max-width: none; margin-left: 0; }
 }
+/* Curseur « Épaisseur des traits » (Configuration de l'accueil) : texte au-dessus, curseur et valeur dessous. */
+.kta-epaisseur-row { flex-wrap: wrap; margin-top: 10px; }
+.kta-epaisseur-row .kta-perf-ultra-text { flex: 1 1 100%; }
+.kta-epaisseur-curseur { display: flex; align-items: center; gap: 10px; flex: 1 1 100%; }
+.kta-epaisseur-curseur input[type="range"] { flex: 1; min-width: 0; accent-color: var(--kta-interaction); cursor: pointer; }
+.kta-epaisseur-valeur { font-size: 12px; color: var(--kta-texte-3); min-width: 40px; text-align: right; }
 /* rangé par règle : contour DANS la pastille (ombre inset), rien ne déborde du titre en overflow:hidden */
 .kta-plan-row-folder-dot-rule { background: transparent; box-shadow: inset 0 0 0 2px var(--kta-dot, #8cb4ff); }
 .kta-plans-chip-folder { font-weight: 700; }
@@ -20249,6 +20262,30 @@ button.kta-cfg-ligne-action {
   border: 1px solid var(--kta-bordure); border-radius: 8px;
 }
 .kta-verif-vu-txt { color: var(--kta-texte-2); font-size: 12px; overflow-wrap: anywhere; }
+/* Détecter les piliers (js/detectionStructures.js) : bandeau = celui des raccords ; aperçu dans le pane ktaDetection. */
+.kta-detect-pastille {
+  display: inline-block; width: 12px; height: 12px; margin-left: 3px; vertical-align: middle;
+  border: 1px solid var(--kta-bordure); border-radius: 3px;
+}
+.kta-detect-type { display: inline-flex; align-items: center; gap: 4px; color: var(--kta-texte-2); font-size: 12px; }
+.kta-detect-type select { font-size: 12px; }
+.kta-detect-curseur { display: inline-flex; align-items: center; gap: 6px; color: var(--kta-texte-2); font-size: 12px; }
+.kta-detect-curseur input { width: 110px; }
+.kta-detect-valeur { min-width: 22px; color: var(--kta-texte); font-variant-numeric: tabular-nums; }
+.kta-detect-apercu { stroke: var(--kta-interaction); stroke-width: 2; fill: var(--kta-interaction); fill-opacity: 0.25; }
+.kta-detect-apercu.kta-detect-classe-b { stroke: var(--kta-accent); fill: var(--kta-accent); }
+.kta-detect-apercu.kta-detect-retire { stroke: var(--kta-texte-3); fill: var(--kta-texte-3); fill-opacity: 0.08;
+  stroke-dasharray: 4 3; }
+.kta-detect-coin { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.6; }
+.kta-detect-apercu.kta-detect-trait { fill: none; stroke: var(--kta-interaction); stroke-width: 5; stroke-linecap: round; }
+/* Détection dans le Générateur (detectionGenerateur.js) : fenêtre plein écran au-dessus du Générateur (99999),
+   sous-modale ; le bandeau du parcours y est posé (z-index propre, au-dessus de la mini-carte). */
+.kta-detect-gen {
+  position: fixed; inset: 0; z-index: 100001; display: flex; flex-direction: column;
+  background: var(--kta-fond); color: var(--kta-texte);
+}
+.kta-detect-gen .kta-readme-modal-header { flex: 0 0 auto; }
+.kta-detect-gen-carte { flex: 1 1 auto; min-height: 0; background: var(--kta-surface); }
 .kta-verif-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-verif-info { flex: 1 1 160px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
 .kta-verif-objet { stroke: var(--kta-accent); fill: none; }

@@ -2830,7 +2830,8 @@ Contrat dans le code : `vue3d.js` § « Niveaux entremêlés et zones jonction �
   `KtaGalerie.dansCouloir`) et **masses au sol** (`_masseMiniCarte`, décision produit : sable du canon, opacité
   `MINI_CARTE.masse` selon |cran|, contour tireté ; sol abaissé presque transparent, `MINI_CARTE.creux` ; hachure de
   l'inaccessible seulement si le cran laisse moins de `MASSE.ramper` sous le plafond ; rampes en chevrons,
-  `KtaMasseSol.chevrons`, illisibles au-delà de quelques mètres de rayon : jamais un obstacle sinon), structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
+  `KtaMasseSol.chevrons`, illisibles au-delà de quelques mètres de rayon : jamais un obstacle sinon), **eau** (aplat du
+  canon, un repère et non un obstacle : on la voit en 3D, elle aide à s'orienter), structures (polygones remplis, murs en ligne et fronts en trait), tracés (sans les `jonction`, jamais dessinés),
   **tous les POI** montrés par les filtres, en pastille avec leur icône (`getIconUrlForPoint`, liseré
   `--kta-texte-3`) ; par-dessus eux, liseré propre : **passage** vers un autre niveau (`_estPassage`, liseré du tracé
   jonction et ↕ au coin, la marque du panneau), **danger** (`_estDanger`, liseré `--kta-erreur`), **sortie**

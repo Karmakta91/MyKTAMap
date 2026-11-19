@@ -56,8 +56,8 @@
   let _fsEscapeHandler = null; // pour le nettoyage
   let _lastFitGeoref = null;  // géoréf du plan courant, pour recadrer au resize
   let _miniFitDone   = false; // cadré avec une taille de conteneur réelle (> 0)
-  // Cache RAM planId → { config, dataLayers, tilesOverview? } : pas de ré-extraction du ZIP pendant la
-  // session HOME (rien en localStorage).
+  // Cache RAM planId → { config, dataLayers, tilesOverview?, zip?, zipSource? } : pas de ré-extraction du ZIP pendant
+  // la session HOME (rien en localStorage). Le JSZip des tuiles détaillées se lit par _zipDe, jamais data.zip en direct.
   const _planDataCache = {};
   let _tilesLayer     = null;   // tuiles du plan projetées
   // Rotation manuelle (mapBearing.js > creerRotationManuelle) : une instance pour la page, rattachée à chaque
@@ -261,6 +261,18 @@
   // 🩸 Pas de `STRUCT_STYLES_HOME[s.type] || …["mur"]` seul : un `cust-…` n'y est pas et toutes les
   // structures personnalisées tomberaient sur « mur » (une couleur pour tous les niveaux, un POLYGONE même
   // pour un front). La forme vient de `entry.geometry`, le champ lu par structures.js > _isPolylineType.
+  // Couleur des rayures d'un type (arc : canon styleResolver.js > `rayures`), null pour un trait uni.
+  function _couleurRayuresHome(type) {
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const cs = window.ktaResolveStyle("structures", type, { flat: true });
+    return (cs && cs.rayures && cs.rayures.color) || null;
+  }
+  // Tirets proportionnels à l'épaisseur, au moins 3 px pleins / 3 px vides (structures.js > ktaPeindreRayures).
+  function _tiretsRayures(w) {
+    const n = Number(w) || 2;
+    return Math.max(3, n * 0.8).toFixed(1) + "," + Math.max(3, n * 1.4).toFixed(1);
+  }
+
   function _styleStructHome(s, planId) {
     const base = STRUCT_STYLES_HOME[s.type];
     if (base) return Object.assign({}, base);
@@ -888,6 +900,43 @@
     return null;
   }
 
+  // ZIP du plan OUVERT (window._lazyZipRef), marqué de son planId à `mktm:plan-pret`. 🩸 Marque posée SUR le JSZip, pas
+  // retenue ici : entre deux plans, _lazyZipRef porte déjà le ZIP suivant (pas encore marqué, donc jamais pris pour
+  // l'ancien), et l'ancien part avec resetRuntimeAssets au lieu de rester tenu par l'aperçu.
+  function _zipOuvertDe(planId) {
+    const z = window._lazyZipRef;
+    return z && planId && z._ktaPlanId === planId ? z : null;
+  }
+
+  // JSZip des tuiles détaillées d'un plan ZIP → Promise<JSZip|null>. JSZip lit TOUT le fichier en mémoire (loadAsync
+  // d'un Blob) : le plan ouvert prête le sien, sinon copie de l'aperçu, relue à la demande si elle a été lâchée.
+  function _zipDe(planId) {
+    const ouvert = _zipOuvertDe(planId);
+    if (ouvert) return Promise.resolve(ouvert);
+    const data = _planDataCache[planId];
+    if (!data || !data.zipSource || typeof window.JSZip === "undefined") return Promise.resolve(null);
+    if (data.zip) return Promise.resolve(data.zip);
+    if (!data._zipLecture) {
+      data._zipLecture = _getPlanZipFile(planId)
+        .then(function (f) { return f ? window.JSZip.loadAsync(f) : null; })
+        .then(function (z) { if (!_zipOuvertDe(planId)) data.zip = z; return z; }, function (e) {   // ouvert entre-temps : pas gardé
+          console.warn("[OsmHomePreview] relecture du ZIP échouée :", e);
+          return null;
+        })
+        .finally(function () { data._zipLecture = null; });
+    }
+    return data._zipLecture;
+  }
+
+  // Plan ouvert : son ZIP est marqué et la copie de l'aperçu lâchée (même fichier, deux tampons de sa taille sinon).
+  window.addEventListener("mktm:plan-pret", function (e) {
+    const planId = e && e.detail && e.detail.planId;
+    const z = window._lazyZipRef;
+    if (!z || !planId) return;
+    z._ktaPlanId = planId;
+    if (_planDataCache[planId]) _planDataCache[planId].zip = null;
+  });
+
   // Plan SERVEUR pour l'aperçu : même sortie `{ config, dataLayers, tilesOverview, iconUrls }` que la branche
   // ZIP, mais en HTTP (un plan serveur n'a ni handle ni blob). Chemins via `resolveServerPaths`, comme au
   // chargement réel, sinon aperçu et mode plan divergent sur les mêmes fichiers.
@@ -977,7 +1026,19 @@
     return { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls };
   }
 
-  async function _loadPlanDataForPreview(planId) {
+  // 🩸 Une seule lecture en cours par plan : deux appels rapprochés (sélection, widget, multi-plans) lisaient le ZIP
+  // deux fois, et le résultat perdu, tenu par son appelant, gardait un second tampon de la taille du fichier.
+  const _lecturesEnCours = {};
+  function _loadPlanDataForPreview(planId) {
+    if (_planDataCache[planId]) return Promise.resolve(_planDataCache[planId]);
+    if (!_lecturesEnCours[planId]) {
+      _lecturesEnCours[planId] = _lirePlanDataForPreview(planId)
+        .finally(function () { delete _lecturesEnCours[planId]; });
+    }
+    return _lecturesEnCours[planId];
+  }
+
+  async function _lirePlanDataForPreview(planId) {
     if (_planDataCache[planId]) return _planDataCache[planId];
 
     // Plan SERVEUR : lecture HTTP (ce module n'a pas d'autre chemin pour lui).
@@ -993,14 +1054,15 @@
       console.warn("[OsmHomePreview] JSZip indisponible, abandon data extraction");
       return null;
     }
-    const file = await _getPlanZipFile(planId);
-    if (!file) {
+    const ouvert = _zipOuvertDe(planId);   // plan ouvert : son ZIP déjà lu, pas une seconde lecture du fichier
+    const file = ouvert ? null : await _getPlanZipFile(planId);
+    if (!ouvert && !file) {
       console.log("[OsmHomePreview] ZIP non récupérable pour planId=" + planId + " (FS handle absent + IDB blob purgé)");
       return null;
     }
     try {
       const tDebut = Date.now();
-      const zip = await window.JSZip.loadAsync(file);
+      const zip = ouvert || await window.JSZip.loadAsync(file);
       // 1. plan-config.json
       const cfgEntry = zip.file("plan-config.json");
       if (!cfgEntry) { console.warn("[OsmHomePreview] plan-config.json absent"); return null; }
@@ -1055,9 +1117,10 @@
       } catch(e) {
         console.warn("[OsmHomePreview] icons extraction échec :", e);
       }
-      // handle JSZip GARDÉ en cache pour les tuiles hi-res : loadAsync est paresseux (répertoire central seul,
-      // le File reste une référence), coût RAM négligeable, pas de re-parse à chaque niveau.
-      const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls, zip: zip };
+      // JSZip gardé pour les tuiles hi-res (pas de re-parse à chaque niveau). 🩸 Il tient le fichier ENTIER en mémoire
+      // (loadAsync d'un Blob n'est pas paresseux) : celui du plan ouvert n'est pas recopié ici (_zipDe le prête).
+      const result = { config: config, dataLayers: dataLayers, tilesOverview: tilesOverview, iconUrls: iconUrls,
+                       zip: (ouvert || _zipOuvertDe(planId)) ? null : zip, zipSource: true };   // ouvert pendant la lecture
       _planDataCache[planId] = result;
       console.log("[OsmHomePreview] Plan data extrait (" + (Date.now() - tDebut) + " ms) — " +
         dataLayers.length + " dataLayer(s) parsés" +
@@ -1179,35 +1242,48 @@
 
   // 🩸 Même loi de largeur des fronts qu'en mode plan et que la modale OSM, en pixels par mètre
   // (structures.js) : le widget empile plusieurs plans et s'ouvre très dézoomé, une largeur fixe fusionne
-  // tout. Résolution Web Mercator (latitude + zoom) ; `options.weight` muté en place puis une repeinture
-  // NON CLIPPÉE. Pas de setStyle (plusieurs relevés de milliers d'objets).
+  // tout. Résolution Web Mercator (latitude + zoom). Contours des piliers et murs affinés comme en mode plan
+  // (structures.js > ktaBordSurfacePourLargeur) ; les zones gardent leur trait.
+  // 🩸 Les tracés d'un plan sont dans le renderer SVG de SON pane (_panePour) : un `options.weight` muté en
+  // place n'y change rien (le SVG ne relit le style qu'à setStyle), d'où setStyle, seulement si la valeur change.
+  // 🩸 Les sous-groupes (_structSubLayer, _roadsSubLayer, g.struct, g.roads), pas _dataLayer / g.data : ceux-là
+  // ne contiennent que des groupes, qui n'ont pas de trait.
   function _majLargeurFrontsHome() {
     if (!_mapInstance || typeof window.ktaPxParMetreOsm !== "function") return;
     const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
       ? window.ktaLargeurFrontPourPxParMetre(window.ktaPxParMetreOsm(_mapInstance))
       : null;
     if (!w) return;
-    const wTrace = Math.max(1, Math.round(w * 0.6 * 10) / 10);
+    // Traits au réglage d'épaisseur de l'appareil (structures.js > KtaEpaisseurTraits) ; contours sur `w` brut.
+    const ep = window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran : function (v) { return v; };
+    const wLigne = ep(w);
+    const wTrace = ep(Math.max(1, Math.round(w * 0.6 * 10) / 10));
+    // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
+    const wRaye = ep(Math.max(2, Math.round(w * 0.6 * 10) / 10));
     const appliquer = function (grp, largeur) {
       if (!grp || typeof grp.eachLayer !== "function") return;
       grp.eachLayer(function (lay) {
-        // les surfaces gardent leur trait : un pilier se lit à son remplissage
-        if (!lay || !lay.options || lay.options.fill === true) return;
-        lay.options.weight = largeur;
+        if (!lay || !lay.options || typeof lay.setStyle !== "function") return;
+        let cible = largeur;
+        if (lay.options.fill === true) {
+          if (lay._ktaWOrig === undefined) lay._ktaWOrig = lay.options.weight;
+          cible = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
+        } else if (lay.options.ktaRaye) {
+          cible = wRaye;
+        }
+        if (lay.options.weight === cible) return;
+        lay.setStyle(lay.options.ktaRayeDessus ? { weight: cible, dashArray: _tiretsRayures(cible) } : { weight: cible });
       });
     };
     // le principal ET chaque plan empilé (sinon les autres restent en aplat)
-    appliquer(_dataLayer, w);
+    appliquer(_structSubLayer, wLigne);
+    appliquer(_roadsSubLayer, wTrace);
     Object.keys(_extraLayers || {}).forEach(function (id) {
       const g = _extraLayers[id];
       if (!g) return;
-      appliquer(g.struct, w);
+      appliquer(g.struct, wLigne);
       appliquer(g.roads, wTrace);
     });
-    try {
-      const r = _mapInstance._renderer;
-      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
-    } catch (e) {}
   }
 
   // Réglage 📐 (map.js > ktaEchelleMarqueurs, même loi qu'en mode plan) relu à chaque zoom. Une échelle PAR
@@ -1230,6 +1306,8 @@
   window.addEventListener("kta:tailleIconesChange", function () {
     if (_mapInstance) _reRenderDataTous();
   });
+  // Réglage d'épaisseur changé à l'accueil : traits de la carte repeints tout de suite.
+  window.addEventListener("kta:epaisseurTraitsChange", function () { _majLargeurFrontsHome(); });
 
   function _renderDataLayersOnMiniMap(data, georef, cible, planIdPourPane) {
     // Sans `cible` : groupes du MODULE (plan principal, clear inclus). Avec `cible` ({data, poi, roads, zones,
@@ -1400,9 +1478,20 @@
       const lls = _projectPoints(s.points, proj);
       if (lls.length < minPts) continue;
       if (polyline) {
+        const raye = _couleurRayuresHome(s.type);
         L.polyline(lls, Object.assign({
-          color: style.color, weight: style.weight, opacity: style.opacity, interactive: false
+          color: style.color, weight: style.weight, opacity: style.opacity, interactive: false, ktaRaye: !!raye,
+          className: raye ? "kta-osm-arc" : undefined
         }, optsRendu)).addTo(structL);
+        // Arc : rayé de rouge comme en mode plan, sinon on le confond avec le mur en ligne. Les panes de ce widget
+        // sont en SVG (pas de rayures peintes par structures.js) : une seconde polyligne en tirets par-dessus.
+        if (raye) {
+          L.polyline(lls, Object.assign({
+            color: raye, weight: style.weight, opacity: style.opacity, interactive: false,
+            dashArray: _tiretsRayures(style.weight), lineCap: "butt", ktaRaye: true, ktaRayeDessus: true,
+            className: "kta-osm-arc kta-osm-arc-rayures"
+          }, optsRendu)).addTo(structL);
+        }
       } else {
         L.polygon(lls, Object.assign({
           color: style.color, fillColor: style.fillColor,
@@ -2007,7 +2096,7 @@
   async function _majHiResPlan(planId, georef) {
     const data = _planDataCache[planId];
     const tv   = data && data.tilesOverview;
-    if (!tv || !data.zip || !data.config || !data.config.tiling || !georef) { _retirerHiRes(planId); return; }
+    if (!tv || !data.zipSource || !data.config || !data.config.tiling || !georef) { _retirerHiRes(planId); return; }
     if (!(_showTiles && _visDe(planId).tiles)) { _retirerHiRes(planId); return; }
     const proj = _buildProjection(georef);
     if (!proj) { _retirerHiRes(planId); return; }
@@ -2042,6 +2131,10 @@
       if (t.length <= HIRES_BUDGET_TUILES) { choix = { z: z, scale: scale, tuiles: t }; break; }
     }
     if (!choix) { _retirerHiRes(planId); return; }
+    const carteAvant = _mapInstance;
+    const zip = await _zipDe(planId);
+    if (!zip) { _retirerHiRes(planId); return; }
+    if (_mapInstance !== carteAvant) return;          // carte recréée pendant la relecture : le prochain passage refait
 
     // delta : même niveau → tuiles communes réutilisées
     const h        = _hiRes[planId];
@@ -2065,7 +2158,7 @@
       if (_mapInstance !== carte) break;
       const cle = t.col + "_" + t.k;
       if (ancien[cle]) { nouvelles[cle] = ancien[cle]; delete ancien[cle]; continue; }
-      const entry = data.zip.file("data/tiles/z" + choix.z + "/x" + t.col + "_y" + (-t.k) + "." + ext);
+      const entry = zip.file("data/tiles/z" + choix.z + "/x" + t.col + "_y" + (-t.k) + "." + ext);
       if (!entry) continue;
       let url = null;
       try { url = URL.createObjectURL(await entry.async("blob")); } catch(e) { continue; }
@@ -2653,12 +2746,13 @@
     const principal = plans.find(function(p) { return p.id === _selectedPlanId; });
     const dataP = _selectedPlanId ? _planDataCache[_selectedPlanId] : null;
     if (principal && dataP) _renderDataLayersOnMiniMap(dataP, principal.georef);
-    _majLargeurFrontsHome();
     _chaqueExtra(function(g, id) {
       const p = plans.find(function(x) { return x.id === id; });
       const data = _planDataCache[id];
       if (p && data) _renderDataLayersOnMiniMap(data, p.georef, g, id);
     });
+    // après TOUS les rendus : un plan empilé re-rendu repart des largeurs de son style
+    _majLargeurFrontsHome();
     _appliquerVisibilites();
   }
 

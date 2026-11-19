@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.28.1` (16/11/2026)
+## 📦 Version courante — `v2.29.0` (19/11/2026)
 
-> 📱 **v2.28.1 — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site** : au téléphone, la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une **fenêtre au centre de l'écran**, comme celle du Tracker (l'app floutée derrière), qui défile ; case « Ouvrir les fiches dans une fenêtre » dans ⚙️ Configuration › Affichage. Le **Générateur** fixe le **rendu 3D par défaut** d'un plan (Mixte, Structures ou Galerie). myktamap.fr se présente mieux aux moteurs de recherche et dans les aperçus de lien (titre, description, image, robots.txt, sitemap.xml, données structurées) ; le crédit « Conçu avec Claude » quitte le splash. Harnais : aucun navigateur de test laissé derrière soi. Détail : journal ci-dessous.
+> 🔎 **v2.29.0 — Détecter piliers et fronts sur l'image du plan, épaisseur des traits réglable, Générateur qui garde les calques en place** : dans l'outil 🏛️ Structures, l'📊 Éditeur de données et le **Générateur**, toucher un pilier de chaque couleur et un trait de front suffit : l'app trouve les autres sur l'image, montre un aperçu réglable (tolérance, taille minimale et maximale), puis les ajoute d'un coup, sans doublon (un seul Annuler). Le Générateur demande quoi faire des calques, du calage GPS et des calages des calques image quand il rogne les marges d'un nouveau plan, et garde le cadrage d'un plan modifié. **Épaisseur des traits** de ×0,75 à ×2 dans ⚙️ Configuration › Affichage ; tracés dessinés au même trait que ceux d'un calque ; carte OSM de l'accueil lisible de haut, arc de soutènement rayé de rouge. Détail : journal ci-dessous.
 
 ---
 
@@ -88,7 +88,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 |---|---|
 | Session JSON Full / Avancé + conversion session → calque de données | `sessionExporter.js`, `sessionPersist.js` |
 | **Export anonymisé** (ids remappés, photos ré-encodées sans EXIF, fail-closed) | `sessionExporter.js` |
-| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge) | `createConf.js` |
+| **Générateur de plan ZIP** (Nouveau / Modifier, mode Simple / Avancé, tuiles V2, canvas vierge ; marges blanches retirées en V2 : un plan modifié garde son repère, un nouveau plan aux calques, calage GPS ou calages d’images saisis demande s’il faut les décaler, tous ensemble) | `createConf.js` |
 | Import unifié ZIP / KMZ / GPX (drop zone home + générateur) | `homeLoader.js`, `kmzImport.js`, `gpxImport.js` |
 | 🌍 **KMZ géolocalisé** export / import round-trip (Google Earth, OsmAnd, Avenza, Locus) | `kmzExport.js`, `kmzImport.js` |
 | 📤 **GPX 1.1** export / import (TopoDroid, OsmAnd, Strava, Garmin) | `gpxIO.js`, `gpxImport.js` |
@@ -218,7 +218,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (154 modules)
+## 🟢 L'application : modules JS (158 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -326,6 +326,9 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `recalageScan.js` | Recaler des données sur un autre scan (calcul pur `KtaRecalageScan` + modale) |
 | `raccordsTraces.js` | Raccords à vérifier : écarts entre morceaux séparés du réseau, revue sur la carte, Raccorder / Ignorer |
 | `verifierPlan.js` | Vérifier le plan : contrôles C1 à C3 sur les tests du pathfinder, liste par gravité, revue sur la carte, « Vu, normal », avertissement à la saisie |
+| `ktaDetection.js` | Détection des piliers et des fronts sur l'image du plan : calcul pur (couleurs, ouverture, contours, squelette, blocs avec marge), worker ou page |
+| `detectionStructures.js` | « Détecter piliers et fronts » : pipette par plan, cadre ou tout le plan, aperçu superposé, « Valider » en une étape ⏪ (outil Structures et Éditeur de données) ; tout passe par un contexte (`contextePlan` par défaut) |
+| `detectionGenerateur.js` | Le même parcours dans le Générateur : fenêtre à mini-carte sur l'image source, calque « Structures détectées » |
 | `searchPoints.js` | Recherche dans le plan ouvert (Ctrl+K) : points, tracés, zones, structures, saisie lat/lng |
 | `sessionExporter.js` | Export de session : complet, avancé, conversion, fusion de calques, externe (KMZ / GPX / GeoJSON), anonymisé |
 | `sessionReport.js` | Rapport de sortie (texte, JSON, PDF) |
@@ -461,6 +464,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
+| `ktaDetectionWorker.js` | Worker de la détection des structures : calcule un bloc d'image (importe `ktaDetection.js`) — lancé par `ktaDetection.js` |
 | `vue3d.js` | Vue 3D autour de la position du tracker — chargé par `js/interface.js` au toucher du bouton cube de la barre de droite ; three.js importé à la première ouverture ; précaché par `sw.js` |
 
 ---
@@ -541,7 +545,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-icone-texte.js` | Balisage SVG de `ktaIcone` posé en `textContent` (direct, ou via une fonction du fichier qui pose son argument en texte) : il s'afficherait en clair | pre-commit |
 | `check-icones-ui.js` | Icône de contrôle revenue à l'emoji (barre de la carte, Tracker, export, accueil, Configuration de l'accueil, fenêtres d'outils de la carte, vue 3D, Mode Secours, barres du haut et du bas, fiches, confirmations, Vue OSM, Générateur, Tableur, inspecteurs, tutoriel, Profil et son export, sélection multiple, portes d'entrée, pied de page de l'accueil, ConfAdmin), nom inconnu de `ktaIcones.js`, emoji de la doc ou du tutoriel ni substitué ni listé « autre sens », texte hors doc qui cite l'emoji d'un bouton migré (cliquet) | pre-commit |
 | `check-lexique-icones.js` | Lexique des icônes en tête d'`AI_CONTEXT.md` absent, périmé ou modifié à la main, emoji de bouton cité sans nom ni dessin (`--ecrire` le régénère depuis `js/ktaIcones.js`) | pre-commit |
-| `check-entete-licence.js` | Script servi (`js/*.js`, `sw.js`) sans en-tête de licence | pre-commit |
+| `check-entete-licence.js` | Script ou feuille de style servis (`js/*.js`, `sw.js`, `css/*.css`, add-ons) sans en-tête de licence | pre-commit |
 | `check-esc.js` | Copie locale d'un échappeur HTML au lieu de `window.ktaEsc` | pre-commit |
 | `check-etat-visible.js` | État actif invisible depuis la carte (pastille de filtres, toast de restauration, étapes d'itinéraire) | pre-commit |
 | `check-export-anonyme.js` | Texte identifiant qui survit à l'export anonymisé (session piégée à marqueurs) | pre-commit |
@@ -593,6 +597,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-masse-sol.js` | Zone « Masse au sol » : grains qui ne suivent plus la part comblée, `comble` perdu par une copie ou à l'aller-retour KMZ / GeoJSON / SIG, fiche ou Tableur qui acceptent ≥ 1, défaut SIG d'un polygone non reconnu repassé en Comblé | pre-commit |
 | `check-zones-niveaux.js` | Zone reliée à plusieurs niveaux (`niveaux`) affichée hors de ses niveaux, qui ne bloque plus l'itinéraire sur chacun, ou champ perdu à l'aller-retour session / KMZ / GeoJSON | pre-commit |
 | `check-verifier-plan.js` | « Vérifier le plan » qui ne dit plus la même chose que l'itinéraire (segments coupés), contrôles C1 à C3 ou « vu, normal » cassés, test de zone dure écrit hors de la table unique, C12 cassé | pre-commit |
+| `check-detection.js` | Moteur de détection des structures qui ne retrouve plus les formes (aire exacte, couleurs, bruit), laisse passer moucheté ou contours creux, coupe ou double une masse entre deux blocs, perd un front (couleur d'un pilier, ergots, raccord entre blocs) ; worker | pre-commit |
 | `check-zones-cout.js` | Zone Comblé ou effondrée devenue bloquante, plus évitée quand un autre chemin existe, traversée sans le dire, distance gonflée par son coût, ou `inaccessible` plus dure | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
@@ -658,6 +663,8 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
 | `smoke/checkup-recoller-piliers.js` | Lignes qui forment ensemble une boucle (carré en 2 lignes, rectangle en 3) recollées en un pilier depuis la sélection multiple : case et compte, ktaConfirm, jonctions fusionnées, uid neufs, paire à 8 px et T intacts, ⏪ unique |
 | `smoke/checkup-bord-piliers.js` | Contour des piliers et murs (session et calque) entre 0,5 et 1 px au zoom minimal, remplissage inchangé, épaisseur d'origine au zoom maximal ; le front garde sa loi |
+| `smoke/checkup-largeur-traces-session.js` | Tracés et jonctions de session à l'épaisseur des mêmes types de calque à tout zoom (re-rendu, culling et décimation PerfUltra, plan sans échelle), zone tactile qui suit, itinéraire à trait fixe |
+| `smoke/checkup-epaisseur-traits.js` | Réglage « Épaisseur des traits » : curseur de la Configuration, ×2 double aussitôt tracés (session et calque), fronts, murs en ligne et arcs sur la carte du plan, contour des piliers inchangé, exports image et KML identiques, tracé de session aussi épais qu'un tracé de calque dans l'export, itinéraire (trait fixe) doublé à ×2 hors loi du zoom, bornes, rechargement |
 | `smoke/checkup-contour-ferme.js` | Ligne fermée (carré à 3 côtés, premier point répété) convertie en zone ou pilier : fiche, lot filtré avec compte, ⏪ unique, calque passé en « Modifier » puis converti en lot |
 | `smoke/checkup-suppr-zone.js` | Sélection par zone dessinée et suppression en lot (sélection multiple) : dedans, à cheval, autre niveau, calque ignoré et compté, photo gardée, re-clic, cases de famille, traces de suppression, ⏪ unique |
 | `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
@@ -677,6 +684,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-calque-niveau.js` | Jonction d'un calque de données affichée sur chaque niveau qu'elle relie |
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
+| `smoke/checkup-rognage.js` | Rognage automatique du Générateur : calques décalés ou laissés en nouveau plan, repère gardé en mise à jour et en régénération V1 → V2 |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-georef-reglages.js` | Calage modifié dans les Réglages : gagne sur le calage embarqué (mémoire, registre, fond OSM sans rallumer, Secours, plan rouvert, « Mettre à jour le plan »), calage périmé écarté |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
@@ -712,6 +720,10 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-estimation-comblement.js` | Estimation de comblement de ⛏️ : valeurs calculées à la main (matériau, forages, durée, total, toupies, CO₂), blocs repliés par défaut et état retenu, prix saisi retrouvé à la réouverture, prix propre à chaque matériau, « Valeurs par défaut », rendu sans stockage ; captures avec `EC_SHOTS=<dossier>` |
 | `smoke/checkup-secteur-volume.js` | Secteur propre au ⛏️ Volume exploité : dessin au geste de ♦️ (fenêtre cachée, barre Valider / Annuler, mesure rendue intacte), retrouvé après rechargement, repris d'un autre niveau, deux niveaux à hauteurs différentes additionnés avec détail, niveaux cochés retenus, « Tous », Échap et secteur trop court sans effet ; capture avec `SV_SHOTS=<dossier>` |
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
+| `smoke/checkup-zip-partage.js` | Plan ZIP tuilé rouvert depuis l'accueil : archive gardée une seule fois (aperçu et plan), tuiles détaillées de l'aperçu intactes |
+| `smoke/checkup-detection-generateur.js` | Détecter dans le Générateur : fenêtre à mini-carte, calque « Structures détectées », repère rogné, doublons en mode Modifier |
+| `smoke/checkup-detection.js` | Détecter piliers et fronts : pipette, cadre, aperçu, Valider en une étape ⏪, doublons, multi-niveau, deux entrées, sur une scène fabriquée |
+| `smoke/checkup-largeur-osm-home.js` | Fronts, tracés et contours des piliers et murs à la loi de largeur sur la carte OSM de l'accueil (plan principal et plan empilé, très dézoomé, de près, après re-rendu) et dans la Vue OSM, sur un relevé fictif dense fabriqué ; réglage « Épaisseur des traits » à ×2 sur les deux cartes, itinéraire de la Vue OSM compris |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |
 | `smoke/checkup-dessin-sans-fiche.js` | Outil armé (dessin, mesure, ajout de point, pickers) : tout toucher pose au point touché, aucune fiche, un seul outil à la fois (2D et 3D, doigt et souris) |
 | `smoke/checkup-raccords.js` | Règle stricte des jonctions (galeries parallèles : pas de traversée du mur) et « 🔗 Raccords à vérifier » : Raccorder, Ctrl+Z, Ignorer retenu au rechargement |
@@ -842,6 +854,22 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.29.0 (19/11/2026) — Détecter piliers et fronts, épaisseur des traits réglable, rognage du Générateur (branche `Karma_dev`)
+
+> Écart avec la prod v2.28.1.
+
+- **✏️ Épaisseur des traits réglable** (`js/structures.js`, `js/road.js`, `js/osmView.js`, `js/osmHomePreview.js`, `js/homeConfig.js`, `ui.md` § Épaisseur des traits, `checkup-epaisseur-traits.js`) : nouveau curseur dans ⚙️ Configuration › Affichage, de ×0,75 à ×2, pour épaissir ou affiner les tracés, fronts, murs en ligne, arcs et l'itinéraire (son trait fixe, hors affinage au zoom) sur le plan et les cartes OSM (accessibilité). Réglage de l'appareil, jamais exporté ; les contours des piliers et les exports ne changent pas.
+- **〰️ Tracés de session au même trait que ceux d'un calque** (`js/road.js`, `js/structures.js`, `exports.md` §69.1, `checkup-largeur-traces-session.js`) : au dézoom, un tracé dessiné gardait ses 5 px quand le même tracé venu d'un calque s'affinait jusqu'à 1 px. Les tracés et jonctions de session suivent désormais la même loi au zoom, zone tactile comprise ; l'itinéraire garde son trait fixe. À l'export PNG/PDF aussi, un tracé de session a désormais l'épaisseur d'un tracé de calque (`exporter.js > _largeurTraceExp`) ; avant, il sortait à 5 px × la résolution, bien plus épais.
+- **🧪 Stabilisation des tests et du démarrage** (`js/homeProfile.js`, `scripts/smoke/checkup-vue-3d.js`) : le bandeau du profil à l'accueil attend que le dictionnaire de langue soit chargé avant d'écrire ses textes (sous Safari lent, il affichait un instant la clé brute au lieu du libellé). Le contrôle de la descente animée de la vue 3D mesure le temps du geste et non l'horloge (rouge par intermittence sur un poste chargé), et l'essai du calque rapatrié attend aussi son point. 5 passages WebKit verts de suite.
+- **🧠 Plan ZIP : plus rien en double en mémoire** (`js/osmHomePreview.js`, `js/config.js`, `js/galerieEmprise.js`, `plans-loader.md` §59.7, `checkup-zip-partage.js`) : un plan ZIP tuilé rouvert depuis l'accueil gardait son archive deux fois, celle du plan et celle de l'aperçu de la carte d'accueil (lue elle-même deux fois). L'aperçu emprunte désormais le ZIP du plan ouvert et relit le sien à la demande ; le JSON des calques n'est plus gardé à côté de leur fichier ; la vue 3D ne refait plus un second index des structures par niveau. Mesuré sur un relevé lourd : 2 archives en mémoire → 1.
+- **🗺️ Carte OSM de l'accueil lisible de haut** (`js/osmHomePreview.js`, `js/osmView.js`, `js/structures.js`, `vue-osm.md` §10, `checkup-largeur-osm-home.js`) : très dézoomé, les fronts gardaient 4 px et recouvraient tout le plan d'un aplat. La loi de largeur du mode plan s'y applique enfin (fronts, tracés, plan principal et plans empilés), et le contour noir des piliers et des murs s'affine au dézoom comme en mode plan, sur la carte de l'accueil comme dans la Vue OSM.
+- **🔎 Détecter piliers et fronts sur l'image du plan** (`js/ktaDetection.js`, `js/detectionStructures.js`, `tiling.js > ktaDessinerRegionPlan`, `plans-loader.md` § Détecter les structures, `checkup-detection.js`) : dans l'outil Structures et dans l'📊 Éditeur de données, toucher un pilier de chaque couleur et un trait de front (pipette), tracer un cadre ou choisir tout le plan, puis retirer d'un toucher ce qui n'en est pas avant « Ajouter ». Chaque toucher mesure la taille du pilier et les variations de sa couleur, d'où des réglages adaptés au plan ; deux curseurs (tolérance de couleur, taille minimale) ajustent l'aperçu sans relancer l'analyse. Une taille maximale écarte les grandes masses (piliers blancs ou clairs, de la couleur du fond). Pendant la pipette, un réticule rouge montre le point lu, et un trait fin ou un coin de pilier se prend du premier coup. Un seul « Annuler » retire tout ; ce qui est déjà dessiné n'est pas doublé. Pendant la pipette et le cadre, toucher un objet déjà dessiné prend l'exemple sans ouvrir sa fiche (`utils.js > _modeClicCarteActif`). Le même parcours existe dans le Générateur (étape Calques de données, `js/detectionGenerateur.js`, le parcours ne touche au plan que par un contexte : `detectionStructures.js > contextePlan`) : il lit l'image source en pleine définition et range ce qu'il trouve dans un calque « Structures détectées » du plan généré, aligné sur le rognage réel ; mesuré sur une image fabriquée de 20 000 × 12 000 px en téléphone émulé (processeur ×4) : 1 344 piliers sur 1 344, « Tout le plan » en 3 min 22, pic mémoire 1,7 Go (`checkup-detection-generateur.js`).
+- **✂️ Générateur : calques gardés en place quand les marges sont rognées** (`js/createConf.js`, `plans-loader.md`, `checkup-rognage.js`) : le tuilage V2 retire les marges blanches et déplaçait l'origine du plan, d'où des calques décalés. En mode Modifier (« Mettre à jour le plan » compris), le repère du plan rouvert est gardé (`plan.rognage { x, y }` dans `plan-config`). Pour un nouveau plan rogné, une seule question « Les décaler » / « Les laisser » couvre les calques fournis, le calage GPS (points A et B) et les calages des calques image. Corrigé au passage : un plan à calque image refusait de se régénérer en mode Modifier (« introuvable dans le ZIP source », libellé de fichier non nettoyé).
+- **🗺️ Arc de soutènement rayé de rouge sur les cartes OSM** (`js/osmView.js`, `js/osmHomePreview.js`, `checkup-largeur-osm-home.js`) : la Vue OSM et la carte de l'accueil dessinaient l'arc en bleu uni, confondu avec le mur en ligne ; il porte désormais ses rayures rouges, à la loi des arcs.
+- **💧 Mini-carte 3D : la zone d'eau est dessinée** (`js/vue3d.js`, `checkup-vue-3d.js`) : en aplat, sous les structures et les tracés, comme dans la vue 3D.
+- **⚡ Changer de niveau actif plus vite** (`js/interfaceConfig.js > ktaSetActiveLevel`) : quand le niveau choisi est déjà visible, les couches de session ne sont plus recréées (2,2 s → 0,45 s mesurées sur une grosse session, processeur ×4).
+- **🧹 Dette technique, un lot** (`js/osmView.js`, `js/planRegistry.js`, `js/mapBearing.js`, `js/refonteInterface.js`, `css/style.css`, `scripts/check-entete-licence.js`) : la Vue OSM fermée juste après un zoom ne laisse plus partir un redessin sur une carte démontée ; le registre des plans garde une seule connexion IndexedDB (« tout effacer » n'est plus bloqué par des connexions oubliées) ; le retour au nord ne vide et ne redessine plus les canvas quand rien n'a changé (écran large) ; le chargement ne force plus une mise en page pour la hauteur de la barre du bas (~140 ms de moins en iPhone émulé, processeur ×4) ; l'en-tête de licence est exigé aussi sur les feuilles de style.
 
 #### v2.28.1 (16/11/2026) — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site (branche `Karma_dev`)
 
@@ -10221,6 +10249,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 📱 **v2.28.1 — Fiches dans une fenêtre au téléphone, rendu 3D par défaut d'un plan, référencement du site** : au téléphone, la fiche d'un point, d'un tracé, d'une zone ou d'une structure s'ouvre dans une **fenêtre au centre de l'écran**, comme celle du Tracker (l'app floutée derrière), qui défile ; case « Ouvrir les fiches dans une fenêtre » dans ⚙️ Configuration › Affichage. Le **Générateur** fixe le **rendu 3D par défaut** d'un plan (Mixte, Structures ou Galerie). myktamap.fr se présente mieux aux moteurs de recherche et dans les aperçus de lien (titre, description, image, robots.txt, sitemap.xml, données structurées) ; le crédit « Conçu avec Claude » quitte le splash. Harnais : aucun navigateur de test laissé derrière soi. Détail : journal ci-dessous.
 
 > ⛰️ **v2.28.0 — Masse au sol (remblai ou masse non exploitée), marcher dessus en 3D, Comblé jamais bloquant, volume sur son secteur et estimation de comblement, plus rapide** : nouveau type de zone **Masse au sol** (remblai partiel, ou **masse non exploitée** au motif de blocs), à sa part de la hauteur (¼, ½, ¾, négative pour un sol abaissé) et avec des **pentes** posées à la main ; l'itinéraire compte le vide restant (courbé, à plat ventre, coupé sous 0,5 m). En 3D, on marche dessus : on monte par un bord droit ou une pente, on chute d'un front ; chatière, tracés et mini-carte suivent le sol. Le **Comblé** (ancien Remblais) monte jusqu'au plafond sauf le long d'un tracé, et l'itinéraire l'évite sans jamais s'y bloquer. **⛏️ Volume exploité** sur son propre secteur, par plan et par niveau (plusieurs niveaux additionnés), avec l'**estimation de comblement** (matériau, forages, durée) et « Pour le fun ». Plus rapide : changement de niveau en 2D et en 3D, ouverture des fiches, sauvegarde ; plus de boucle des conditions quand le navigateur refuse le stockage. Détail : journal ci-dessous.
 

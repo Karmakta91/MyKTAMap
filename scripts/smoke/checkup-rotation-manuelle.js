@@ -6,7 +6,8 @@
 // Vérifie la rotation manuelle de la carte 2D (js/mapBearing.js) dans l'app réelle, sur le relevé fictif, sous
 // chaque moteur de KTA_MOTEURS (Chromium, WebKit = Safari) :
 // R1 pincement sous le seuil d'angle : zoom seul · R2 deux doigts au-delà : la vue suit, sans saut, contenu sous les
-// doigts · R3 bouton nord · R4 outil armé : vue droite, geste refusé, droite au désarmement · R5 toucher d'un POI et
+// doigts · R3 bouton nord (écran large : aucun canvas vidé ni redessiné quand le padding ne change pas) ·
+// R4 outil armé : vue droite, geste refusé, droite au désarmement · R5 toucher d'un POI et
 // d'une structure sous rotation : la bonne fiche · R6 popup droite · R7 Maj + molette · R8 exports PNG/PDF droits
 // (même canvas qu'à plat) · R9 mode plein écran redresse · R10 vue 3D aller-retour · R11 plan orienté qui reprend la
 // main · R12 changement de plan · R13 bouton nord en bas à gauche, hors de la barre de droite, sans chevauchement
@@ -269,6 +270,32 @@ async function suite(nav, nomMoteur) {
     });
     await page.emulateMedia({ reducedMotion: "no-preference" });
     verifier(r3b === 0, "mouvement réduit : la carte se redresse sans animation", r3b);
+    // 🩸 Écran large : le padding requis par la rotation reste sous celui d'origine, rien n'est élargi ; le retour au
+    // nord ne doit donc ni vider ni redessiner les canvas des vecteurs (mapBearing.js > _majPaddingUnRenderer).
+    const r3c = await page.evaluate(async function () {
+      const m = window.map, vus = [], n = { reset: 0 };
+      if (m._renderer) vus.push(m._renderer);
+      m.eachLayer(function (l) { if (l instanceof L.Renderer && vus.indexOf(l) < 0) vus.push(l); });
+      const origines = vus.map(function (r) {
+        const f = r._reset;
+        r._reset = function () { n.reset++; return f.apply(this, arguments); };
+        return f;
+      });
+      const pad0 = vus.map(function (r) { return r.options.padding; }).join("/");
+      window.MapBearing.setManuel(40);
+      await window.__rm.attente(500);
+      const padTourne = vus.map(function (r) { return r.options.padding; }).join("/");
+      window.MapBearing.remettreNord();
+      await window.__rm.attente(900);
+      vus.forEach(function (r, i) { r._reset = origines[i]; });
+      return { reset: n.reset, pad0: pad0, padTourne: padTourne, renderers: vus.length };
+    });
+    if (r3c.pad0 === r3c.padTourne) {
+      verifier(r3c.reset === 0, "écran large, padding inchangé (" + r3c.pad0 + ") : aucun canvas vidé ni redessiné " +
+        "par la rotation et le retour au nord", r3c);
+    } else {
+      console.log("  •  padding élargi à cette taille (" + r3c.pad0 + " → " + r3c.padTourne + ") : contrôle sans objet");
+    }
 
     // ── R4 — outil armé ──
     console.log("— R4 : outil armé —");

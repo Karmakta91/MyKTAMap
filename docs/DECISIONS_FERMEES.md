@@ -31,6 +31,8 @@
 
 | Sujet | Raison |
 |---|---|
+| **« Mettre à jour le plan » : chatière qui ne garde que son départ** | Fermé (KARMA, 18/11/2026) : non reproduit (vu une fois le 12/11 sur un plan d'organisation). Rouvrir s'il revient, avec la ligne tags / clés / nombre de points envoyée (`poiPrecis.js > lire`) |
+| **Désactiver un type par défaut (tracé, zone, structure)** | Fermé (KARMA, 18/11/2026) : la légende masque déjà un type (`hidden`). Rouvrir sur une demande d'utilisateur |
 | **Doublon 📐 Mesure / 📐 Distance** (barre de droite) | Accepté le 14/10/2026 : c'est l'accordéon groupe + sous-action |
 | **D3 — « Mes annotations » ne masque pas les tracés** | Fermé le 14/10/2026 : mécanisme réfuté (12/12 cas au harnais). Ce qui reste visible par design : l'itinéraire et les tracés d'un autre calque de données. Ne rouvrir qu'avec un tracé récalcitrant sous la main (`window.layerEditor.hasLayer(<layer>)`) |
 | **Fiche d'un point « trop chargée » au PC** (sections repliées, « Plus ▾ ») | Abandonné (KARMA, 16/11/2026) : la bulle au PC convient telle quelle ; le téléphone est réglé par la fenêtre (case Configuration › Affichage). Rouvrir sur un retour d'utilisateur ou une fiche plus haute que l'écran |

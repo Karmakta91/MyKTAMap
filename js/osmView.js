@@ -116,7 +116,8 @@
     "mur-ligne": { color: "#1e3a8a", weight: 6, opacity: 1, isPolyline: true },
     "front-1":  { color: "#f4c542", weight: 6, opacity: 1, isPolyline: true },
     "front-2":  { color: "#ff9933", weight: 6, opacity: 1, isPolyline: true },
-    // Arc : trait bleu seul, plus fin que le mur en ligne (pas de rayures sur fond OSM).
+    // Arc : trait bleu plus fin que le mur en ligne, rayé de rouge (rayures du canon, peintes par
+    // structures.js > ktaPolylineStructure) : sans elles on le confond avec le mur en ligne.
     "arc":      { color: "#1e3a8a", weight: 3, opacity: 1, isPolyline: true }
   };
 
@@ -287,28 +288,48 @@
     const w = (typeof window.ktaLargeurFrontPourPxParMetre === "function")
       ? window.ktaLargeurFrontPourPxParMetre(pxm) : null;
     if (!w) return;
-    const wTrace = (typeof window.ktaLargeurTracePourRatio === "function")
-      ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w;
+    // Traits au réglage d'épaisseur de l'appareil (structures.js > KtaEpaisseurTraits) ; contours sur `w` brut.
+    const ep = window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran : function (v) { return v; };
+    const wTrace = ep((typeof window.ktaLargeurTracePourRatio === "function")
+      ? Math.max(1, Math.round(w * 0.6 * 10) / 10) : w);
+    // arc rayé : même loi qu'en mode plan (structures.js > ktaLargeurRayePourRatio : 0,6 × front, plancher 2 px)
+    const wLigne = ep(w), wRaye = ep(Math.max(2, Math.round(w * 0.6 * 10) / 10));
     try {
       _structLayer.eachLayer(function (lay) {
-        // les surfaces gardent leur trait : un pilier se lit à son remplissage
-        if (!lay || !lay.options || lay.options.fill === true) return;
-        lay.options.weight = w;
+        if (!lay?.options) return;
+        // contour d'un pilier ou d'un mur affiné comme en mode plan (structures.js > ktaBordSurfacePourLargeur)
+        if (lay.options.fill === true) {
+          if (lay._ktaWOrig === undefined) lay._ktaWOrig = lay.options.weight;
+          lay.options.weight = window.ktaBordSurfacePourLargeur(lay._ktaWOrig, w);
+          return;
+        }
+        lay.options.weight = lay.options.ktaRayures ? wRaye : wLigne;
       });
-      if (_roadLayer && typeof _roadLayer.eachLayer === "function") {
+      if (typeof _roadLayer?.eachLayer === "function") {
         _roadLayer.eachLayer(function (lay) {
-          if (!lay || !lay.options || lay.options.fill === true) return;
+          if (!lay?.options || lay.options.fill === true) return;
           lay.options.weight = wTrace;
         });
       }
     } catch (e) { return; }
-    // ⚠️ `_redrawBounds` d'abord, sinon `_draw` clippe sur une demande en attente et ne repeint qu'un
-    // rectangle (gotchas.md).
+    // Même repeinture que structures.js > majLargeurFronts.
     try {
       const r = _osmMap._renderer;
-      if (r && typeof r._redraw === "function") { r._redrawBounds = null; r._redraw(); }
+      // 🩸 Renderer pas encore (ou plus) sur la carte : pas de canvas à repeindre.
+      if (r && r._map && r._ctx && typeof r._redraw === "function") {
+        // 🩸 Redessin en attente ANNULÉ d'abord : `_redraw` remet `_redrawRequest` à null sans annuler l'image
+        // programmée, qui partirait ensuite sur un renderer démonté (modale fermée juste après un zoom).
+        if (r._redrawRequest) { L.Util.cancelAnimFrame(r._redrawRequest); r._redrawRequest = null; }
+        // ⚠️ `_redrawBounds` à null, sinon `_draw` clippe sur une demande en attente et ne repeint qu'un
+        // rectangle (gotchas.md).
+        r._redrawBounds = null;
+        r._redraw();
+      }
     } catch (e) {}
   }
+
+  // Réglage d'épaisseur changé : la Vue OSM ouverte se repeint (sans carte, rien à faire).
+  window.addEventListener("kta:epaisseurTraitsChange", function () { _majLargeurFrontsOsm(); _majLargeurItiOsm(); });
 
   function _isLevelAllowed(p) {
     const cfg = window.APP_CONFIG || {};
@@ -923,6 +944,17 @@
     console.log("[OsmView] Roads : " + added + " polyline(s) rendue(s) (" + skipped + " skip <2 pts)");
   }
 
+  // Trait fixe de l'itinéraire (hors loi du zoom), au réglage d'épaisseur de l'appareil (structures.js >
+  // KtaEpaisseurTraits).
+  function _largeurItiOsm() {
+    return window.KtaEpaisseurTraits ? window.KtaEpaisseurTraits.ecran(ITI_WEIGHT) : ITI_WEIGHT;
+  }
+  function _majLargeurItiOsm() {
+    if (!_itiLayer) return;
+    const w = _largeurItiOsm();
+    _itiLayer.eachLayer(function (l) { if (l.options && l.options.weight !== w) l.setStyle({ weight: w }); });
+  }
+
   // Itinéraire actif : une polyline cyan pointillée plus épaisse ; aucun → couche vide.
   function _renderItinerary() {
     if (!_proj || !_osmMap) return;
@@ -943,7 +975,7 @@
     try {
       L.polyline(latlngs, {
         color:     ITI_COLOR,
-        weight:    ITI_WEIGHT,
+        weight:    _largeurItiOsm(),
         opacity:   0.95,
         dashArray: ITI_DASHARRAY,
         interactive: false
@@ -1129,18 +1161,16 @@
         if (cs) {
           if (cs.color) style.color = cs.color;
           if (cs.fillColor && !style.isPolyline) style.fillColor = cs.fillColor;
+          if (cs.rayures) style.rayures = cs.rayures;
         }
       }
       try {
         if (polyline) {
-          L.polyline(latlngs, {
-            color:   style.color,
-            weight:  style.weight,
-            opacity: style.opacity || 1,
-            interactive: false,
-            // 🩸 même classe qu'en mode plan : sans elle la largeur des fronts n'est pas recalculée au zoom et des
-            // milliers de fronts deviennent un aplat de loin
-          }).addTo(_structLayer);
+          const opts = { color: style.color, weight: style.weight, opacity: style.opacity || 1, interactive: false };
+          // Arc : rayé de rouge comme en mode plan (la carte est en canvas), sinon on le confond avec le mur en ligne.
+          (typeof window.ktaPolylineStructure === "function"
+            ? window.ktaPolylineStructure(latlngs, style, opts)
+            : L.polyline(latlngs, opts)).addTo(_structLayer);
         } else {
           L.polygon(latlngs, {
             color:       style.color,

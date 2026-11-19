@@ -31,23 +31,10 @@
 
 ## Maintenant
 
-- **`_currentLoadedPlanId` à l'accueil : scénario pro** — community fait : id remis à null au retour à l'accueil, plan
-  quitté dans `_ktaDernierPlanId` (carte OSM), prouvé par `smoke.js` sous Chromium et WebKit. Reste à prouver côté pro :
-  plus de présence ni d'itinéraire du plan quitté, « Rejoindre » qui rouvre le plan.
-  `qui: Claude · action: scénario pro de retour à l'accueil, après le lot tests-fiables du pro
-  · fini: scénario vert · depuis: 26/10/2026 · taille: S`
-- **Test WebKit « fondu −1 » instable** — `checkup-vue-3d.js` : 1 KO par intermittence sous charge, vu aussi sur la
-  base `f62ec4d1` ; 🔬 test instable plutôt que régression. Bloquerait la porte de release.
-  `qui: Claude · action: trouver ce qui dépend du temps dans le contrôle du fondu et le rendre déterministe
-  · fini: 5 passages WebKit verts de suite · depuis: 03/11/2026 · taille: S`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
-- **Comblé et effondré évités, jamais bloquants (remblais, lot 1)** — révision KARMA du 14/11, seul Inaccessible bloque ;
-  itinéraire qui l'évite s'il y a un autre chemin, sinon passe et le dit (urgence comprise) ; 3D jusqu'au ciel sauf le
-  long d'un tracé qui le traverse ; Vérifier le plan signale ces tracés. Après la masse au sol. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lot 1 révisé, après les lots 2-4 · fini: checkups verts · depuis: 11/11/2026 · taille: M`
 
 ## Ensuite
 
@@ -60,11 +47,6 @@
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
-- **Course i18n au démarrage sous WebKit** — ✅ vu 04/11 : sous WebKit, `checkup-guidage.js` tombe parfois sur
-  `[I18n] Clé manquante : "home.profile.stats.storageTitle"`, alors que la clé existe ; l'appel vient de
-  `homeProfile.js`, lancé avant que le dico soit prêt. Rend la porte de release aléatoire.
-  `qui: Claude · action: rendre l'appel de homeProfile.js déterministe (attendre I18n prêt) · fini: checkup-guidage
-  vert sous WebKit sur plusieurs passages, sans clé manquante · depuis: 04/11/2026 · taille: S`
 - **Vérifier le plan, lot 2 : contrôles C4 à C10** — doublons d'objets, contours dégénérés, hors image, niveau
   inconnu, type absent de la légende ; Raccords (C5) et Dédoublonnage (C10) branchés, renvoi des liaisons (C11).
   `docs/ETUDE_VERIFIER_PLAN.md`.
@@ -86,21 +68,32 @@
   sol séparé de la distance, temps du guidage. `docs/ETUDE_REMBLAIS.md`.
   `qui: Claude · action: lots 5 puis 6 de ETUDE_REMBLAIS.md · fini: volume et itinéraire conformes à l'étude
   · depuis: 11/11/2026 · taille: M`
-- **Mémoire d'un plan en double** — 3e mesure sur un plan réel (15/11) : 🔬 le ZIP gardé deux fois (`_lazyZipRef` et
-  `_planDataCache[plan].zip`, ~35 Mo), la liste des structures deux fois (`RUNTIME_ASSETS` et `dataLayers`, ~5 Mo),
-  l'index des structures de `galerieEmprise.js` peut-être deux fois (~13 Mo). Borné, pas une fuite.
-  `qui: Claude · action: vérifier les 3 doublons et retirer ceux qui sont sûrs, après le merge v2.28.0
-  · fini: tas mesuré avant/après sur un relevé lourd, ouverture et tuiles vertes · depuis: 15/11/2026 · taille: S`
 
-- **Changement de niveau 2D : ne plus recréer les couches** — mesure sur un plan réel (15/11, CPU ×4) : 2,3 s par
-  changement, dont ~2,1 s dans `renderStructures` (addLayer 0,75 s, removeLayer 0,3 s, ordre des murs, styles).
-  Piste : un groupe de couches par niveau, basculé au lieu d'être détruit puis recréé (filtres, édition, ordre des murs).
-  `qui: Claude · action: topo puis lot, après le merge v2.28.0 · fini: changement de niveau 2D mesuré sous 1 s à CPU ×4
-  sur un relevé lourd, checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+- **Niveaux visibles 2D : décocher un niveau, « Tout afficher »** — ✅ mesuré 17/11 (CPU ×4, 4 000 structures, 2 500
+  tracés, 1 510 zones, 5 niveaux) : décocher 1 niveau sur 5 = 2,2 s, « Tout afficher » = 2,1 s (couches de session
+  recréées). Pistes : ne traiter que l'écart, puis garder les couches des niveaux masqués (~1 Mo pour 10 000).
+  `qui: KARMA · action: dire s'il faut reprendre (piste 1, ou 1 + 2) · fini: les deux gestes mesurés sous 1 s à CPU ×4,
+  checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
 - **Référencement de doc.myktamap.fr** — un sitemap ne liste que son propre domaine : la doc doit publier son
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
+- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
+  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
+  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône). Recos validées par KARMA le 12/11/2026.
+  `qui: Claude · action: coder les 4 recos (export avancé et PDF) · fini: point précis dessiné à l'export, checkup
+  · depuis: 06/11/2026 · taille: S`
+- **Jonctions qui traversent un mur, mode strict par plan** — les liens de jonction imparfaite
+  (`pathfinder.js > _enrichirGrapheAvecCroisements`) ignorent murs en ligne et zones inaccessibles ; idée KARMA d'un
+  mode strict par plan (tolérance 0). ⚠️ D'abord rejouer l'itinéraire réel : suit-il un VRAI tracé à travers le mur ?
+  `qui: Claude · action: rejouer le trajet, refuser un lien qui croise un obstacle dur, topo du mode strict · fini: lien
+  coupé par un mur ligne fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
+- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
+  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
+  des niveaux, et correction du message faux `prof.incoherent.suite`. Validé par KARMA le 18/11/2026.
+  `qui: Claude · action: avertissement dans la table des niveaux + message corrigé · fini: écart négatif signalé,
+  checkup · depuis: 12/11/2026 · taille: S`
+
 ## Plus tard
 
 - **AI_CONTEXT : remplacer les ~540 emoji de bouton par le nom du bouton dans tout le fichier** — le lexique en tête
@@ -163,71 +156,7 @@
 
 ## Entrant
 
-- **`refonteInterface.js > _syncH` coûte 150-200 ms par chargement** — mesuré en iPhone émulé ×4 (enquête perf du
-  15/11), déjà présent avant la masse au sol.
-  `qui: Claude · action: mesurer sur appareil, alléger ou différer · depuis: 15/11/2026 · taille: S`
-- **`checkup-exports-structures` rouge depuis le nouveau relevé fictif** — il attend 10 structures de calque et en voit
-  217 depuis `a1340f74` (14/11) ; hérité, sans lien avec un lot.
-  `qui: Claude · action: adapter le test au relevé enrichi sans l'affaiblir · depuis: 14/11/2026 · taille: XS`
-- **`_redraw()` direct du renderer en Vue OSM** — `osmView.js` et `osmHomePreview.js` appellent `r._redraw()` sans
-  annuler le redessin en attente : même motif que le bug corrigé dans `structures.js > majLargeurFronts` (14/11).
-  `qui: Claude · action: annuler la requête en attente, garde renderer monté, checkup · depuis: 14/11/2026 · taille: XS`
-- **Pile de test Docker sur le port de Sonar** — une pile de test a pris le 9000 (13/11) : la porte Sonar de
-  `merge-main.ps1` échoue tant qu'elle tourne. Refuser ce port aux piles de test, ou les sortir de sa plage.
-  `qui: Claude · action: trouver la pile en cause, plage de ports réservée · depuis: 13/11/2026 · taille: XS`
-- **Scan Sonar impossible depuis une copie séparée** — le scanner (Docker) ne lit pas le `.git` d'un worktree
-  (chemin Windows absolu) : `RepositoryNotFoundException`. Les lots ne peuvent pas prouver la porte avant intégration.
-  `qui: Claude · action: monter le dépôt principal dans le conteneur, ou scan sans SCM sur un projet Sonar à part
-  · depuis: 13/11/2026 · taille: XS`
-- **En-tête de licence : étendre le garde-fou** — `check-entete-licence.js` ne lit que `js/` et `sw.js` ; `addons/`
-  et `css/` portent l'en-tête aujourd'hui sans que rien ne l'impose.
-  `qui: Claude · action: ajouter addons/**/*.js et css/*.css au périmètre · depuis: 13/11/2026 · taille: XS`
-
-- **« Mettre à jour le plan » : la chatière ne garde que son départ** — vu par KARMA (12/11) sur un plan
-  d'organisation, chatière dans un calque en modification, carte 2D. Non reproduit (local, pro non chiffré) ; seul
-  `poiPrecis.js > lire` produit ce rendu : tag `chatiere` plus en tête, ou `precis` réduit.
-  `qui: KARMA · action: coller en console la ligne tags / clés / nombre de points envoyée le 12/11 · fini: cause
-  identifiée, test rouge puis vert · depuis: 12/11/2026 · taille: S`
-- **Sonar : porte en échec sur une fausse alerte** — scan de rattrapage de la v2.25.0 : une seule anomalie de
-  fiabilité, `js/verifierPlan.js > _identite`, S7758 (`codePointAt`). Ne pas suivre : l'empreinte FNV se calcule sur
-  les unités UTF-16, `codePointAt` changerait l'identité des objets ignorés (types avec emoji). Sécurité : 0.
-  `qui: Claude · action: NOSONAR commenté sur la ligne (décision KARMA du 12/11), session Dev · fini: porte verte au
-  prochain scan · depuis: 12/11/2026 · taille: XS`
-- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
-  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
-  des niveaux, et correction du message faux `prof.incoherent.suite`. Après la mise en prod de la v2.25.0 (gel).
-  `qui: KARMA · action: valider la proposition · depuis: 12/11/2026 · taille: S`
-- **Connexions IndexedDB jamais fermées** — audit pro
-  `MyKTAMap-pro/docs/audits/2026-11-06_audit-accueil-chiffre-v1.md` : `planRegistry.js > _openIDB` ouvre une
-  connexion à chaque appel, jamais fermée. (Le splash, lui, reste bloquant : décision du 12/11/2026.)
-  `qui: Claude · action: une connexion partagée, rouverte si fermée · depuis: 06/11/2026 · taille: S`
-- **Rotation 2D : redessin inutile et geste lourd** — enquête du 06/11 (plantage non reproduit) : `mapBearing.js >
-  _majPaddingUnRenderer` vide et redessine le canvas des vecteurs 2 fois par rotation sans changement (mémoire qui monte
-  sous WebKit) ; au téléphone, ~1 500 couches de POI + `--kta-bearing` sur toute la carte figent le geste (jusqu'à 1,7 s).
-  `qui: Claude · action: a) supprimer le redessin inutile (risque faible) ; b) et c) en QCM · depuis: 06/11/2026
-  · taille: S`
-- **Mode « strict » des jonctions, par plan** — la règle stricte du 05/11 n'a pas réglé l'itinéraire de KARMA qui
-  traverse un mur. Idée KARMA : tolérance 0, deux tracés qui ne se touchent pas = réseau coupé (seuls sommets partagés
-  et croisements exacts). ⚠️ D'abord vérifier si le trajet suit un VRAI tracé à travers le mur (le strict n'y peut rien).
-  `qui: Claude · action: rejouer l'itinéraire réel, puis topo (réglage Générateur + par plan, Raccords à vérifier)
-  · depuis: 06/11/2026 · taille: S`
-- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
-  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
-  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône). Recos validées par KARMA le 12/11/2026.
-  `qui: Claude · action: coder les 4 recos (export avancé et PDF) · fini: point précis dessiné à l'export, checkup
-  · depuis: 06/11/2026 · taille: S`
-- **Jonctions qui traversent un mur dessiné** — ✅ vu 05/11 (code) : les liens de jonction imparfaite
-  (pathfinder.js > _enrichirGrapheAvecCroisements) ne testent ni les murs en ligne ni les zones inaccessibles, qui
-  ne bloquent que le long des tracés.
-  `qui: Claude · action: refuser un lien qui croise un obstacle dur, checkup · fini: lien coupé par un mur ligne
-  fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
-
-- **Générateur : rendu 3D par défaut du plan** — demande KARMA 04/11 : choisir à la génération le rendu de la vue 3D
-  par défaut (Mixte / Structures / Galerie), au lieu de Mixte pour tous ; le choix de l'utilisateur, retenu par plan
-  (`setPlanRenduVue3D`), reste prioritaire. À faire après les lots du 04/11.
-  `qui: Claude · action: champ du Générateur (createConf.js) + lecture par vue3d.js > _renduVoulu · fini: plan généré en
-  Galerie qui s'ouvre en Galerie, checkup · depuis: 04/11/2026 · taille: S`
-- **Désactiver un type par défaut (tracé, zone, structure)** — un utilisateur qui ne veut pas voir « Route
-  principale » ou la zone « Remblais » dans sa légende et ses choix de dessin. ⚠️ La légende sait déjà masquer un type
-  (`hidden`, `LegendCustomization.setSessionVisibility`) : vérifier ce que ça retire vraiment avant de proposer.
-  `qui: Claude · action: topo (ce que masque hidden aujourd'hui, ce qui manque) · depuis: 01/11/2026 · taille: S`
+- **Préférences « jamais exportées » emportées par l'export du profil** — vu au topo du détecteur (18/11) : `verifVus`
+  (« Vu, normal » de Vérifier le plan) et les raccords ignorés vivent dans `myktamap_plan_prefs_<plan>`, préfixe copié
+  par `profileExportImport.js > PER_PLAN_PREFIXES`, alors que leur commentaire dit « jamais exporté ».
+  `qui: KARMA · action: trancher : les exclure de l'export, ou corriger le commentaire · depuis: 18/11/2026 · taille: XS`

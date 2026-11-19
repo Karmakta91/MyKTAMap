@@ -111,6 +111,11 @@ let _plannerPlanLegend = null;
 // garde tel quel (aucun objet ne bouge) ; tout autre calage part au modèle "local".
 let _plannerGeorefCharge = null;
 
+// Repère du plan ouvert en « Modifier » { w, h, rognage: {x, y} | null } (null : nouveau plan). ⚠️ Contrat : un plan
+// régénéré garde ce repère (même rognage, ou aucun), sinon ses calques, sa géoréf et ses calibrations, saisis dans
+// l'ancien repère, se décalent. Lu par _genererTuilesV2 (option `repere`), cf. _rognagePourRepere.
+let _plannerRepere = null;
+
 // Légende propre à l'écran « Convertir depuis SIG ». Séparée de `_plannerPlanLegend` : mélanger les deux
 // ferait fuiter les entrées d'un écran dans le plan de l'autre.
 let _sigPlanLegend = null;
@@ -501,6 +506,15 @@ function afficherPlanner() {
             <!-- Feedback de l'import ZIP (succès / erreur) -->
             <div id="pl_importDataZip_status" style="display:none; margin-top:8px; font-size:12px;"></div>
           </div>
+          <div class="kta-planner-import-zip-box">
+            <div class="kta-planner-import-zip-titre">
+              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.boxTitre")}
+            </div>
+            <button class="kta-btn kta-btn-ghost kta-planner-import-zip-btn" id="pl_detectStructures" type="button">
+              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.btn")}
+            </button>
+            <div id="pl_detect_status" class="kta-tx-ok" style="display:none; margin-top:8px; font-size:12px;"></div>
+          </div>
 
           <div id="pl_dataLayers_list" class="kta-planner-layers-list">
             <p class="kta-planner-empty">${window.I18n.t("gen.dataLayers.vide")}</p>
@@ -764,6 +778,7 @@ function afficherPlanner() {
   _plannerSourceZip  = null;
   _plannerPlanLegend = null;   // reset état légende plan-level
   _plannerGeorefCharge = null;
+  _plannerRepere = null;
 
   // Mode Simple/Avancé mémorisé (« simple » au premier lancement).
   _appliquerPlannerMode(_lirePlannerMode());
@@ -1028,6 +1043,10 @@ function afficherPlanner() {
 
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
+
+  // Détecter piliers et fronts sur l'image source (js/detectionGenerateur.js).
+  const detectBtn = document.getElementById("pl_detectStructures");
+  if (detectBtn) detectBtn.addEventListener("click", function() { _detecterStructuresGenerateur(); });
 
   // Importer un calque de données ZIP (données + photos) exporté par la conversion session→data.
   const importZipBtn = document.getElementById("pl_importDataZip");
@@ -1677,6 +1696,7 @@ async function _chargerZipModifier(file) {
     if (!planConfigFile) throw new Error(window.I18n.t("gen.zipModif.noPlanConfig"));
     const config = JSON.parse(await planConfigFile.text());
     _plannerSourceZip = { sha256: shaZip, taille: file.size, nom: (config.plan && config.plan.name) || "" };
+    _plannerRepere = _repereDuPlan(config.plan);
     if (_plannerMaj) _plannerMaj.georefReglages = _georefReglagesPourMaj(_plannerMaj.planId, config);
     _preRemplirFormulaire(config);
     _plannerZipStatus(window.I18n.t("gen.zipModif.charge", { name: file.name }), false);
@@ -2480,6 +2500,123 @@ function _ajouterDataLayer(prefill) {
     if (!list.querySelector(".kta-planner-layer-item"))
       list.innerHTML = '<p class="kta-planner-empty">' + window.I18n.t("gen.dataLayers.vide") + '</p>';
   });
+  return item;
+}
+
+// ── Détecter piliers et fronts sur l'image source (js/detectionGenerateur.js) ──────────
+// Le parcours de la carte, dans une fenêtre au-dessus du Générateur ; les structures validées vont dans le calque
+// « Structures détectées » (DETECT_CALQUE, format de structure.json ; une relance y ajoute).
+// ⚠️ contrat (repère) : mode Modifier, le repère du plan est connu (_plannerRepere > _rognagePourRepere) : les
+//   structures y sont mises tout de suite. Nouveau plan : le rognage n'est connu qu'au tuilage ; elles restent en px
+//   de l'image SOURCE sur une ligne marquée (item._ktaDetecte), et _genererZip les décale du rognage réel, hors de la
+//   question du rognage (elles ne sont pas « saisies » par l'utilisateur).
+// Doublons : contre les structures de TOUS les calques de la page, ramenées en px source par le rognage prévu.
+const DETECT_CALQUE = "structures-detectees";
+
+// Fichier qu'une ligne de calque de données écrira (même ordre que _genererZip).
+function _fichierLigneCalque(item) {
+  const lid = item.dataset.layerId;
+  const dlId = (document.getElementById(lid + "_id") || {}).value || "";
+  return _getFile(lid + "_file", null) || item._ktaFichierMaj ||
+    (item.dataset.ktaFichier ? _getFile(null, item.dataset.ktaFichier) : null) ||
+    (dlId ? _getFile(null, dlId.trim() + ".json") : null);
+}
+// Rognage que la génération appliquera à cette image (prévu : la case V2 peut encore changer en nouveau plan).
+function _rognagePrevu(img, fichier) {
+  if (_plannerMode === "modifier" && _plannerRepere) return _rognagePourRepere(_plannerRepere, img, _detectContentBBox);
+  if (!document.getElementById("pl_tilingV2")?.checked) return null;
+  const alpha = typeof window.ktaDetecterAlpha === "function" && window.ktaDetecterAlpha(img, fichier && fichier.type);
+  return alpha ? null : _detectContentBBox(img);
+}
+async function _structuresDesCalques(rog) {
+  const out = [];
+  for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
+    const f = _fichierLigneCalque(item);
+    if (!f) continue;
+    let d;
+    try { d = JSON.parse(await f.text()); } catch (e) { continue; }   // calque non JSON : rien à comparer
+    const dx = (item._ktaDetecte || !rog) ? 0 : rog.x, dy = (item._ktaDetecte || !rog) ? 0 : rog.y;
+    (Array.isArray(d.structures) ? d.structures : []).forEach(function(s) {
+      if (!s || !Array.isArray(s.points)) return;
+      out.push({ type: s.type, level: s.level,
+                 points: s.points.map(function(p) { return { x: p.x + dx, y: p.y + dy }; }) });
+    });
+  }
+  return out;
+}
+// Verse les structures validées (px source) dans le calque « Structures détectées », créé au besoin.
+async function _verserDetectees(poses, rog) {
+  const nouveau = _plannerMode !== "modifier";
+  const list = document.getElementById("pl_dataLayers_list");
+  const idDe = function(it) {
+    return ((document.getElementById(it.dataset.layerId + "_id") || {}).value || "").trim();
+  };
+  const lignes = list ? Array.prototype.slice.call(list.querySelectorAll(".kta-planner-layer-item")) : [];
+  let item = lignes.find(function(it) { return nouveau ? !!it._ktaDetecte : idDe(it) === DETECT_CALQUE; });
+  if (!item) {
+    const pris = new Set(lignes.map(idDe));
+    let id = DETECT_CALQUE, n = 2;
+    while (pris.has(id)) id = DETECT_CALQUE + "-" + (n++);
+    item = _ajouterDataLayer({ id: id, label: window.I18n.t("gen.detect.calque"), visible: true,
+                               file: "data/" + id + ".json" });
+    if (!item) return;   // 10 calques au plus : _ajouterDataLayer l'a dit
+    if (nouveau) item._ktaDetecte = true;
+  }
+  const dx = (!nouveau && rog) ? rog.x : 0, dy = (!nouveau && rog) ? rog.y : 0;
+  const neuves = poses.map(function(s) {
+    return Object.assign({}, s, { points: s.points.map(function(p) { return { x: p.x - dx, y: p.y - dy }; }) });
+  });
+  let contenu = { type: "structures", version: 1, data: [], structures: [] };
+  const f = _fichierLigneCalque(item);
+  if (f) {
+    try {
+      const d = JSON.parse(await f.text());
+      if (d && typeof d === "object") {
+        contenu = Object.assign(contenu, d, { structures: Array.isArray(d.structures) ? d.structures : [] });
+      }
+    } catch (e) { /* fichier illisible : remplacé par le calque détecté */ }
+  }
+  contenu.structures = contenu.structures.concat(neuves);
+  const lid = item.dataset.layerId, nom = idDe(item) + ".json";
+  _plannerOrigAssets[nom] = _fichierJsonMaj(nom, contenu);
+  item.dataset.ktaFichier = nom;
+  item._ktaFichierMaj = null;
+  const champ = document.getElementById(lid + "_file");
+  if (champ) champ.value = "";   // un fichier choisi à la main gagnerait sur le calque détecté
+  const etiquette = document.getElementById(lid + "_file_nom");
+  if (etiquette) etiquette.textContent = "📄 " + nom;
+  const st = document.getElementById("pl_detect_status");
+  if (st) {
+    st.textContent = window.I18n.t("gen.detect.statut",
+      { n: neuves.length, total: contenu.structures.length, calque: idDe(item) });
+    st.style.display = "";
+  }
+}
+async function _detecterStructuresGenerateur() {
+  _plannerErreur("");
+  if (!window.KtaDetectionGenerateur) return;
+  const vierge = document.querySelector('input[name="pl_image_mode"][value="vierge"]');
+  let image = (vierge && vierge.checked) ? null : _getFile("pl_baseImage", null);
+  if (!image && _plannerMode === "modifier") {
+    const k = _nomImageBaseOrigine();
+    image = k ? _plannerOrigAssets[k] : null;
+  }
+  if (!image) { _plannerErreur(window.I18n.t("gen.detect.sansImage")); return; }
+  // Plan ouvert (« Mettre à jour le plan ») : fermé d'abord, l'image source décodée pèse comme au tuilage.
+  if ((await _fermerPlanAvantTuilage()) === null) return;
+  let rog = null;
+  const ok = await window.KtaDetectionGenerateur.ouvrir({
+    image: image,
+    multi: !!document.getElementById("pl_multiLevel")?.checked,
+    pxParM: Number.parseFloat(document.getElementById("pl_scale")?.value) || null,
+    cle: (_plannerMaj && _plannerMaj.planId) || "generateur",
+    hote: document.getElementById("kta-planner-modal"),
+    existantes: function(img) { rog = _rognagePrevu(img, image); return _structuresDesCalques(rog); },
+    poser: function(poses) {
+      _verserDetectees(poses, rog).catch(function(err) { console.warn("[Planner] calque détecté :", err); });
+    }
+  });
+  if (!ok) _plannerErreur(window.I18n.t("gen.detect.echec"));
 }
 
 // ── Import d'un calque de données ZIP ──────────
@@ -3237,7 +3374,55 @@ function _detectContentBBox(img) {
 // coûte du temps à la génération du ZIP.
 const TUILE_ZIP_OPTS = { compression: "STORE" };
 
-async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
+// Repère d'un plan-config rouvert : dimensions et rognage écrits (`plan.rognage`), null si illisible.
+function _repereDuPlan(plan) {
+  const w = plan && Number(plan.imageWidth), h = plan && Number(plan.imageHeight);
+  if (!(w > 0 && h > 0)) return null;
+  const r = plan.rognage;
+  const rognage = (r && Number.isFinite(Number(r.x)) && Number.isFinite(Number(r.y)))
+    ? { x: Math.round(Number(r.x)), y: Math.round(Number(r.y)) } : null;
+  return { w: w, h: h, rognage: rognage };
+}
+
+// Rognage qui garde le repère d'un plan rouvert : { x, y, w, h } ou null (image entière). Ordre : le rognage
+// écrit s'il tient dans l'image ; image de mêmes dimensions que le plan → aucun ; plan rogné avant que le rognage
+// soit écrit → la détection des marges, retenue seulement si elle redonne les mêmes dimensions (même image).
+// 🩸 Un plan V1 n'était jamais rogné : régénéré en V2 avec le rognage automatique, tout se décalait.
+function _rognagePourRepere(repere, img, detecter) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const r = repere.rognage;
+  if (r && r.x >= 0 && r.y >= 0 && r.x + repere.w <= W && r.y + repere.h <= H) {
+    return (r.x || r.y || repere.w !== W || repere.h !== H) ? { x: r.x, y: r.y, w: repere.w, h: repere.h } : null;
+  }
+  if (repere.w === W && repere.h === H) return null;
+  const b = detecter(img);
+  if (b && b.w === repere.w && b.h === repere.h) return b;
+  console.warn("[Planner] Repère du plan introuvable dans l'image (" + repere.w + "×" + repere.h + " dans " +
+               W + "×" + H + ") : image entière, sans rognage");
+  return null;
+}
+
+// Décale de (-dx, -dy) toute paire de coordonnées pixel d'un calque (`x`/`y`, `x2`/`y2` de l'ancienne forme
+// du point précis) : points, sommets des tracés et des zones, point précis, raccords. Rend le texte, ou null si le
+// calque n'est pas du JSON (laissé tel quel).
+function _decalerCalque(contenu, dx, dy) {
+  let d;
+  try {
+    d = JSON.parse((typeof contenu === "string") ? contenu : new TextDecoder("utf-8").decode(contenu));
+  } catch (e) { return null; }
+  const vus = new Set();
+  (function parcourir(o) {
+    if (!o || typeof o !== "object" || vus.has(o)) return;
+    vus.add(o);
+    if (typeof o.x === "number" && typeof o.y === "number") { o.x -= dx; o.y -= dy; }
+    if (typeof o.x2 === "number" && typeof o.y2 === "number") { o.x2 -= dx; o.y2 -= dy; }
+    (Array.isArray(o) ? o : Object.values(o)).forEach(parcourir);
+  })(d);
+  return JSON.stringify(d, null, 2);
+}
+
+// `opts.repere` (plan rouvert, cf. _plannerRepere) : rognage imposé par ce repère au lieu du rognage automatique.
+async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource, opts) {
   // Octets de la tuile pleine, encodés au plus une fois.
   let _tuileUnieBuf = null;
   const imgUrl = URL.createObjectURL(imageFile);
@@ -3275,8 +3460,13 @@ async function _genererTuilesV2(imageFile, zip, onProgress, uniformSource) {
   // que calques, géoréf et calibrations restent en coordonnées d'origine → tout se décale (deux fois en Y
   // via imageHeight - y). Les marges transparentes sont invisibles et ne pèsent rien en WebP/PNG.
   // Pas non plus sur une source UNIE : un aplat n'a pas de marge, l'analyse serait toujours jetée.
-  const bbox = (hasAlpha || uniformSource) ? null : _detectContentBBox(img);
-  if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
+  const repere = opts && opts.repere;
+  const bbox = repere ? _rognagePourRepere(repere, img, _detectContentBBox)
+             : (hasAlpha || uniformSource) ? null : _detectContentBBox(img);
+  if (repere) {
+    console.log("[Planner] Repère du plan gardé : " +
+                (bbox ? "rognage (" + bbox.x + "," + bbox.y + ")" : "image entière"));
+  } else if (hasAlpha) console.log("[Planner] Auto-crop : skip (source transparente — coords préservées)");
   const cropX = bbox ? bbox.x : 0;
   const cropY = bbox ? bbox.y : 0;
   const srcW  = bbox ? bbox.w : img.naturalWidth;
@@ -3511,7 +3701,10 @@ async function _genererZip() {
                           ? document.getElementById(lid + "_level").value : "";
       const ilLevel = (ilLevelStr === "" || isNaN(parseInt(ilLevelStr, 10)))
                        ? 0 : parseInt(ilLevelStr, 10);
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
+      // 🩸 trim AVANT le préfixe : le gabarit de la ligne entoure le nom d'espaces et de retours, et « 📄 nom »
+      // restait tel quel, cherché ainsi dans le ZIP (calque image d'un plan rouvert « introuvable »).
+      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").trim()
+                        .replace(/^[✅📄]\s/u, "").trim();
       const ilFile  = _getFile(lid + "_file", nomTxt);
 
       if (!ilId) { _plannerErreur(window.I18n.t("gen.gen.idManquantImg")); throw new Error("abort"); }
@@ -3582,6 +3775,12 @@ async function _genererZip() {
     const dataLayers = [];
     // Points des calques écrits : l'index des photos désigne chaque point par son uid.
     const _pointsGeneres = [];
+    // Calques venus d'un fichier { fichier, contenu } : décalés après le tuilage si le rognage s'applique.
+    const _calquesFournis = [];
+    // Calques détectés en nouveau plan (px source, _verserDetectees) : décalés du rognage réel, sans question.
+    const _calquesDetectes = [];
+    // Décalage du rognage accepté par l'utilisateur ({ x, y }, sinon null) : appliqué aussi au calage GPS saisi.
+    let _decalage = null;
     for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
       const lid     = item.dataset.layerId;
       const dlId    = document.getElementById(lid + "_id").value.trim();
@@ -3601,6 +3800,8 @@ async function _genererZip() {
         const _marque = _marquerUidCalque(await _lireFichier(dlFile));
         dataFolder.file(fileName, _marque);
         _collecterPointsCalque(_marque, _pointsGeneres);
+        const _detecte = !!item._ktaDetecte && !_getFile(lid + "_file", null);
+        (_detecte ? _calquesDetectes : _calquesFournis).push({ fichier: fileName, contenu: _marque });
       } else {
         dataFolder.file(fileName, JSON.stringify({ type: dlId, version: 1, data: [] }, null, 2));
       }
@@ -3799,7 +4000,7 @@ async function _genererZip() {
           const bar = document.getElementById("kta-tiling-progress-bar");
           if (txt) txt.textContent = window.I18n.t("gen.v2prog.niveau", { z: currentZ, done: done, total: total, pct: pct });
           if (bar) bar.style.width = pct + "%";
-        });
+        }, false, _plannerMode === "modifier" && _plannerRepere ? { repere: _plannerRepere } : null);
       } catch(err) {
         v2Error = err;
       } finally {
@@ -3820,8 +4021,58 @@ async function _genererZip() {
 
       tilingManifest = v2Result.manifest;
       v2Dims = v2Result.dims;
+      // Nouveau plan rogné avec des pixels saisis (calques fournis, calage GPS, calages des calques image) : saisis
+      // sur l'image d'origine, ils seraient décalés du rognage. Seul l'utilisateur sait dans quel repère ils ont été
+      // saisis : UNE question, qui décale tout ensemble ou rien.
+      const _rog = v2Dims.cropOffset;
+      const _geoSaisi = ["A", "B", "C"].some(function(k) {
+        return ["x", "y"].some(function(c) {
+          const el = document.getElementById("pl_geo_" + k + "_" + c);
+          return !!(el && String(el.value).trim() !== "");
+        });
+      });
+      const _calages = imageLayers.filter(function(l) { return !!l.calibration; });
+      const _quoi = [];
+      if (_calquesFournis.length) _quoi.push(window.I18n.t("gen.rognage.quoi.calques"));
+      if (_geoSaisi) _quoi.push(window.I18n.t("gen.rognage.quoi.georef"));
+      if (_calages.length) _quoi.push(window.I18n.t("gen.rognage.quoi.calages"));
+      if (_rog && _plannerMode === "nouveau" && _quoi.length && typeof window.ktaConfirm === "function") {
+        const decaler = await window.ktaConfirm(window.I18n.t("gen.rognage.question", { x: _rog.x, y: _rog.y }) +
+          "\n\n" + window.I18n.t("gen.rognage.deplace", { liste: _quoi.join(", ") }), {
+          titre:       window.I18n.t("gen.rognage.titre"),
+          okLabel:     window.I18n.t("gen.rognage.decaler"),
+          cancelLabel: window.I18n.t("gen.rognage.laisser")
+        });
+        if (decaler) {
+          for (const c of _calquesFournis) {
+            const neuf = _decalerCalque(c.contenu, _rog.x, _rog.y);
+            if (neuf != null) dataFolder.file(c.fichier, neuf);
+          }
+          // Cibles des calages = pixels du plan principal (les sources, pixels du calque image, ne bougent pas).
+          // Copie : item._calibration reste dans le repère saisi (une seconde génération ne décale pas deux fois).
+          _calages.forEach(function(l) {
+            const c = l.calibration;
+            l.calibration = Object.assign({}, c, {
+              targetA: { x: c.targetA.x - _rog.x, y: c.targetA.y - _rog.y },
+              targetB: { x: c.targetB.x - _rog.x, y: c.targetB.y - _rog.y }
+            });
+          });
+          _decalage = { x: _rog.x, y: _rog.y };
+          console.log("[Planner] Décalés du rognage (" + _rog.x + "," + _rog.y + ") : " + _calquesFournis.length +
+                      " calque(s), " + _calages.length + " calage(s)" + (_geoSaisi ? ", calage GPS" : ""));
+        }
+      }
       console.log("[Planner] Tiling V2 généré : " + v2Result.tilesCount + " tuiles" +
                   (v2Dims.cropOffset ? " | auto-crop offset (" + v2Dims.cropOffset.x + "," + v2Dims.cropOffset.y + ")" : ""));
+    }
+
+    // Calques détectés (px de l'image source) : mis dans le repère du plan par le rognage réel.
+    const _rogDetect = v2Dims && v2Dims.cropOffset;
+    if (_rogDetect) {
+      for (const c of _calquesDetectes) {
+        const neuf = _decalerCalque(c.contenu, _rogDetect.x, _rogDetect.y);
+        if (neuf != null) dataFolder.file(c.fichier, neuf);
+      }
     }
 
     // ── plan-config.json ──
@@ -3851,6 +4102,8 @@ async function _genererZip() {
       planObj.niveauxHauteur = { "0": _niv.hauteurs["0"] };
     }
     if (tilingManifest) planObj.tiledV2    = true;
+    // Décalage du rognage dans l'image source : relu par le mode Modifier pour garder le repère (_repereDuPlan).
+    if (v2Dims && v2Dims.cropOffset) planObj.rognage = { x: v2Dims.cropOffset.x, y: v2Dims.cropOffset.y };
 
     // Nord écrit seulement si ≠ 0, normalisé dans [0, 360[ (NaN → ignoré).
     const _northRaw = parseFloat(document.getElementById("pl_northOffset")?.value || "0");
@@ -3921,16 +4174,21 @@ async function _genererZip() {
     const _coordsA = _readGeoCoords("pl_geo_A_coords", "pl_geo_A_err", window.I18n.t("gen.geo.labelA"));
     const _coordsB = _readGeoCoords("pl_geo_B_coords", "pl_geo_B_err", window.I18n.t("gen.geo.labelB"));
     const _coordsC = _readGeoCoords("pl_geo_C_coords", "pl_geo_C_err", window.I18n.t("gen.geo.labelC"));
-    const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
+    // Pixel saisi dans le repère du plan généré (rognage accepté : _decalage).
+    function _readGeoPx(id, axe) {
+      const v = _readGeo(id);
+      return (v != null && _decalage) ? v - _decalage[axe] : v;
+    }
+    const _geoA = { x: _readGeoPx("pl_geo_A_x", "x"), y: _readGeoPx("pl_geo_A_y", "y"),
                     lat: _coordsA.lat, lng: _coordsA.lng };
-    const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
+    const _geoB = { x: _readGeoPx("pl_geo_B_x", "x"), y: _readGeoPx("pl_geo_B_y", "y"),
                     lat: _coordsB.lat, lng: _coordsB.lng };
     const _allGeoFilled =
       _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
       _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;
     if (_allGeoFilled) {
       // Point C optionnel mais tout ou rien (C partiel = oubli).
-      const _geoC = { x: _readGeo("pl_geo_C_x"), y: _readGeo("pl_geo_C_y"),
+      const _geoC = { x: _readGeoPx("pl_geo_C_x", "x"), y: _readGeoPx("pl_geo_C_y", "y"),
                       lat: _coordsC.lat, lng: _coordsC.lng };
       const _cRempli = _geoC.x != null || _geoC.y != null || _geoC.lat != null;
       const _cComplet = _geoC.x != null && _geoC.y != null && _geoC.lat != null && _geoC.lng != null;

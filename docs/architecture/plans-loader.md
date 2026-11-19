@@ -10,6 +10,8 @@
 - **`planRegistry.js`** gère la liste des plans connus.
 - **localStorage** : `myktamap_plans` (registre + lastPlanId)
 - **IndexedDB** : `myktamap_handles` (v2, 2 stores : `handles` pour FS Access API, `blobs` pour ZIPs mémorisés).
+  Une seule connexion par page (`planRegistry.js > _openIDB`, jamais fermée par un appelant), oubliée à `onclose` et
+  fermée d'elle-même à `onversionchange` : « tout effacer » ou une montée de version n'est jamais bloqué par elle.
   Dans `blobs`, la clé `id` porte soit le ZIP d'un seul tenant (`saveBlob` : ZIP local, Générateur, import), soit la
   fiche d'une **copie en morceaux** (`rangerEnMorceaux`, prise d'une extension qui range un plan tranche par tranche) dont
   les morceaux vivent sous les clés `[id, gen, i]` ; `getBlob` recompose, `removeBlob` efface tout. Les lecteurs bruts du
@@ -381,6 +383,24 @@ Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `a
 
 ⚠️ **Pas exposé via API publique** : `_plannerPlanLegend` reste un état module-local. Si on a besoin d'y accéder depuis un autre module (ex: pour debug ou pour un futur "Export/Import légende plan-level seul"), il faudra exposer un getter `window.PlannerLegend = { get, set, reset, isEmpty }` au top du module.
 
+🩸 **Rognage automatique et repère du plan** : en tuilage V2, `_genererTuilesV2` retire les marges blanches
+(`_detectContentBBox`, jamais sur une source transparente ou unie) ; `imageWidth`/`imageHeight` deviennent ceux de la
+zone gardée et l'origine se déplace de `plan.rognage { x, y }` (écrit dans plan-config, absent sans rognage). Tout
+ce qui est en pixels (calques, géoréf, calibrations) doit être dans ce repère. Règles :
+- **Mode Modifier** (« Mettre à jour le plan » compris) : le repère du plan rouvert est GARDÉ (`_plannerRepere`,
+  `_rognagePourRepere`) — même rognage s'il l'était (`plan.rognage`, ou à défaut une détection des marges qui
+  redonne les mêmes dimensions), aucun sinon. 🩸 Un plan V1 (jamais rogné) régénéré en V2 était rogné : tous ses
+  calques se décalaient.
+- **Nouveau plan** rogné avec des pixels saisis (calques de données fournis, calage GPS `pl_geo_A|B|C_x|y`, calages
+  des calques image) : UNE `ktaConfirm` « L'image est rognée de X × Y px. Vos calques ont-ils été saisis sur l'image
+  d'origine ? », suivie de ce qu'elle déplace → [Les décaler] décale TOUT ensemble : calques réécrits dans le ZIP
+  (`_decalerCalque` : toute paire `x`/`y` et `x2`/`y2`, donc points, sommets, point précis, raccords), points du
+  calage GPS (`_readGeoPx`, lat/lng inchangées : un point du plan retombe à la même position), cibles `targetA`/
+  `targetB` des calages (pixels du plan ; les sources `sourceA`/`sourceB` sont des pixels du calque et ne bougent
+  pas ; copie, `item._calibration` reste dans le repère saisi). [Les laisser] ne décale rien. Seul l'utilisateur
+  sait dans quel repère il a saisi.
+Checkup : `scripts/smoke/checkup-rognage.js` (pixel lu dans les tuiles du ZIP, Chromium et WebKit).
+
 #### 58.5 bis Niveaux en hauteur (sol, hauteur, écart)
 
 Sous la case multi-niveau, la table de `profondeurNiveaux.js` (la même que ⚙️ Réglages) : `_plannerRendreNiveaux`
@@ -513,6 +533,26 @@ AVANT le sweep, puis ré-injecter APRÈS. Moins propre car couplage temporel.
   décompressés, la ref ZIP reste vivante pour pouvoir re-fetch. Surcoût RAM de la ref
   ZIP brute : ~10-20 MB typiquement (taille du fichier ZIP), négligeable devant les
   60-80 MB économisés sur les tuiles décompressées.
+
+#### 59.7 Rien en double : une copie du ZIP, du JSON, de l'index des structures
+
+🩸 `JSZip.loadAsync` d'un Blob **lit tout le fichier en mémoire** (il n'est pas paresseux) : chaque JSZip vivant
+tient un tampon de la taille de l'archive. Trois règles évitent qu'un plan ouvert soit gardé deux fois :
+
+- **ZIP** — l'aperçu de l'accueil (`osmHomePreview.js`) lit le ZIP d'un plan gardé pour ses tuiles détaillées. Il
+  passe toujours par `_zipDe(planId)` : à `mktm:plan-pret`, le ZIP du plan ouvert (`_lazyZipRef`) reçoit la marque
+  `_ktaPlanId` et l'aperçu lâche sa copie ; le ZIP marqué lui est prêté tant que le plan est ouvert ; une copie
+  lâchée est relue à la demande (retour à l'accueil : le plan libéré emporte son ZIP). La marque est posée **sur**
+  le JSZip, jamais retenue par l'aperçu : entre deux plans, `_lazyZipRef` porte déjà le ZIP suivant, pas encore
+  marqué. Une seule lecture en cours par plan (`_loadPlanDataForPreview` partage la promesse) : deux appels
+  rapprochés lisaient le ZIP deux fois.
+- **JSON des calques** — `config.js > registerAsset` valide le JSON mais garde `json: null` : les calques sont
+  relus par leur URL (`utils.js`), aucun lecteur du champ.
+- **Index des structures de la 3D** — `galerieEmprise.js` : le modèle du rendu mixte prend l'index du niveau dans
+  `_cacheStructures` (`_structuresDe`), celui que lit `comblementPorte`, au lieu d'en refaire un.
+
+Mesuré sur un relevé lourd (ZIP tuilé gardé, page rechargée, plan rouvert) : 2 JSZip vivants → 1, le stockage
+hors tas passe de deux fois la taille de l'archive à une fois. Garde-fou : `scripts/smoke/checkup-zip-partage.js`.
 
 #### 59.6 À NE PAS faire
 
@@ -764,3 +804,130 @@ scale: (transform && transform.metresParPixel > 0)
 ⚠️ **Un plan généré AVANT la v1.82.0 garde son échelle fausse** : elle est écrite dans son ZIP. Il faut le **régénérer** depuis le fichier source — l'app ne peut pas la corriger après coup, elle ne sait pas quelle emprise a servi.
 
 🩸 **Le repli à 50 est conservé** et c'est volontaire : sans transform utilisable, une valeur arbitraire assumée vaut mieux qu'un `NaN` qui se propagerait silencieusement dans toutes les distances.
+
+## 🔎 Détecter les structures — moteur de calcul
+
+Détection des piliers (masses pleines) et des fronts (traits) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
+calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
+l'interface : outil Structures et carte de l'📊 Éditeur de données, un même parcours (`js/detectionStructures.js`).
+
+- ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
+  de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
+  règle de niveau, écriture (`poser`). Sans argument, `contextePlan()` : le plan ouvert, la session, une étape ⏪.
+  Le Générateur fournit le sien (ci-dessous). Règle de niveau commune :
+  `structures.js > ktaNiveauNouvelleStructure(type, { multiLevel, niveau })` (absent = le plan ouvert).
+- **Dans le Générateur** (`js/detectionGenerateur.js`, `createConf.js > _detecterStructuresGenerateur`) : bouton
+  « Détecter piliers et fronts » de l'étape Calques de données (mode Avancé), en Nouveau, en Modifier et dans
+  « Mettre à jour le plan ». Le même parcours, dans une fenêtre plein écran (`.kta-detect-gen`, z-index 100001, au-dessus
+  du Générateur) à mini-carte CRS.Simple sur un aperçu réduit (≤ 4 096 px de côté) ; la pipette et le calcul lisent
+  l'image SOURCE en pleine résolution (un élément Image décodé une fois, `drawImage` bloc par bloc, rectangle source
+  ramené dans l'image). Plan ouvert : fermé d'abord (`_fermerPlanAvantTuilage`). Couleurs retenues sous l'id du plan
+  en « Mettre à jour le plan » (les mêmes qu'en mode plan), sinon sous `generateur`. Niveau, si la case multi-niveau
+  du Générateur est cochée : niveau 0 (image de base), 2e masse au −1 ; sinon aucun champ `level`.
+  - Sortie : calque « Structures détectées » (`structures-detectees`, format de `structure.json`) ; une relance y
+    ajoute. ⚠️ **Repère** : en mode Modifier, les structures sont mises tout de suite dans le repère gardé du plan
+    (`_rognagePourRepere`) ; en nouveau plan, le rognage n'est connu qu'au tuilage : elles restent en px source sur
+    une ligne marquée (`item._ktaDetecte`) et `_genererZip` les décale du rognage réel, hors de la question du
+    rognage (rien n'y a été saisi à la main ; un fichier choisi ensuite sur la ligne redevient un calque fourni).
+  - Doublons : contre les structures de TOUS les calques de la page (fichiers du ZIP, calques de l'assistant),
+    ramenées en px source par le rognage prévu (`_rognagePrevu`), même règle qu'en mode plan.
+  - Échap ferme la fenêtre : le contexte déclare le Générateur dans `ctx.hotes` (sinon, fenêtre affichée, il
+    garderait l'Échap) ; message après « Valider » propre au contexte (`ctx.messagePoses` : pas d'« Annuler » ici).
+  - Mesure (19/11/2026, Chromium, iPhone émulé, processeur ×4, image fabriquée 20 000 × 12 000 px, 1 344 piliers) :
+    fenêtre prête en 5 s, pipette en 6 s, « Tout le plan » (mi-résolution, confirmé) en 3 min 22, 1 344 trouvés sur
+    1 344 ; pic mémoire du navigateur 1,7 Go, dont l'image décodée (~960 Mo, comme au tuilage). 🩸 Un vrai iPhone
+    plafonne bien plus bas : au-delà de ce que le tuilage du même appareil supporte, la détection échoue aussi
+    (non mesuré sur appareil réel).
+  - Checkup : `scripts/smoke/checkup-detection-generateur.js` (Chromium et WebKit).
+
+- **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
+  par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
+  `{ masses: [{ classe, points, aire, boite }], tropGrands, ignorees, blocs }`, coordonnées en **pixels du plan**.
+- **Méthode, par bloc** : classe de couleur de chaque pixel (écart ΔE en Lab à l'exemple le plus proche, table sur
+  6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
+  (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
+  des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
+  250 px², 1,5 px, trou 700 px²), utilisés seulement sans exemple mesuré ; `depuisMetres(r, pxParM)`.
+- ⚠️ **Réglages déduits des exemples** (décision produit, après un essai sur deux vrais plans : 3 piliers sur une
+  soixantaine). `mesurerExemple(bloc, x, y)` mesure la composante touchée à la pipette : couleur médiane, aire,
+  épaisseur (2 × la distance au bord maximale, chanfrein 3-4), étalement (90e centile des ΔE sur l'INTÉRIEUR, à 2 px
+  du bord : les pixels de bord, mêlés au contour noir par le flou, soudaient des piliers voisins), écart au fond
+  (médiane du bord de la fenêtre lue) ; `coupe` si elle dépasse la fenêtre. `reglagesDepuisExemples` : tolérance =
+  étalement + 6, plancher 22, plafond 60 % de l'écart au fond (un bleu clair est à ΔE 26 du blanc) ; l'écart ENTRE
+  exemples n'y entre pas (chaque pixel est comparé à l'exemple le plus proche) ; taille = plus petite épaisseur des
+  exemples de masse non coupés. `reglagesPourTaille(t, pxParM?)` : ouverture t/2, aire t²/2, trou 0,6 t² ; plan
+  calibré : aire jamais sous 10 × 10 cm, ouverture jamais au-delà de 60 cm (bornes, pas la règle).
+- **Recalcul sans relecture** : `detecter({ executeur, garder: true })` fait garder les blocs lus par le worker
+  (`executeurWorker`, sinon `executeurLocal` dans la page), au plus 200 Mo d'image ; `recalculer(executeur,
+  { classes, reglages })` refait le calcul sur eux (curseurs de l'aperçu). Au-delà du budget, `recalculable` est
+  faux et l'appelant relit.
+- 🩸 **Pastille au centre d'un pilier étroit** : sans le comblement des petits trous, l'ouverture efface les bandes
+  de part et d'autre et coupe le pilier en deux. Un contour creux plus grand que `trouMax` reste vide.
+- 🩸 **Blocs avec marge** (`bloc` 2048, `marge` 256 px) : une masse est rendue par le bloc qui contient le coin
+  haut-gauche de sa boîte ; celle qui touche le bord de la marge (pas le bord du plan) est signalée dans
+  `tropGrands`, jamais coupée. La marge est lue au-delà du cadre demandé : une masse coupée par le cadre reste entière.
+- **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
+  la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
+- **Fronts** (classe `nature: "trait"`) : 🩸 un trait a souvent la couleur d'un pilier, il ne concourt donc pas
+  avec les masses pour un pixel : couleur du trait MOINS les masses (après ouverture, dilatées de `ecartMasse` 2 px),
+  fermeture de 3 px, squelette Zhang-Suen, chemins entre bouts et carrefours (ergots < `ergot` 15 px et bruit <
+  `longueurMin` 20 px retirés), Douglas-Peucker. 🩸 Chaque bloc découpe ses traits à son cœur (Liang-Barsky : un
+  segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
+  les morceaux bout à bout (même classe, bouts à moins de 2 px).
+- **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
+  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
+  d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par
+  une bande peut sortir en deux morceaux.
+- ⚠️ **Bandes** (décision produit) : une bande de galerie (ou un mur levé en trait) de la couleur des piliers, plus
+  épaisse que l'ouverture, se soudait aux piliers qu'elle touche. Après l'ouverture, `_retirerBandes` examine les
+  composantes ALLONGÉES ou PEU REMPLIES (les piliers compacts sont sautés : sur tout le bloc, le coût montait jusqu'à
+  +146 %), chacune dans son cadre : distance au bord (chanfrein 3-4), squelette, branches découpées en TRONÇONS où
+  l'épaisseur reste à 30 % de sa moyenne courante (une bande qui traverse un pilier donne une seule branche).
+  Un tronçon d'écart-type < 20 % de sa moyenne et plus long que 4 × son épaisseur est un trait : effacé (disque de
+  rayon = distance au bord). Un bout qui entre dans un pilier ou sort par le bord du bloc rend une épaisseur à la
+  longueur (la transition est hors du tronçon) ; un bout libre ne rend rien. Option `bandes: false` : sans le
+  critère (contre-épreuve). Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
+  Surcoût mesuré (iPhone émulé ×4) : +11 à +21 % sans bande, +50 à +76 % quand des bandes sont soudées.
+- **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
+  rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
+  2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms
+  en blocs de 1 024 (+30 % de temps). Sans worker : la page fige plusieurs secondes par bloc. Recalcul au curseur
+  (blocs gardés, 19/11/2026) : ≈ 0,5 s pour 2 048², ≈ 1,7 s pour 4 096², ≈ 1,5 s pour tout le plan à mi-résolution.
+- **Parcours** (`window.KtaDetectionUI`) : bandeau en bas d'écran (style des raccords). Exemples à la pipette
+  (Masse A, Masse B, Front : chaque toucher MESURE la composante, fenêtre de 192 px autour du doigt, 640 si elle la
+  dépasse ou la remplit ; 6 exemples au plus par classe ; réticule rouge de précision sur la carte pendant la
+  pipette et le cadre, `body.kta-detect-pick-mode`, centre de la croix = pixel lu ; cette classe est un mode « clic
+  carte » (`utils.js > _modeClicCarteActif`) : un toucher sur une structure, un tracé ou un POI déjà posés est un
+  exemple ou un coin, jamais sa fiche ni un ajustement de sommets) → cadre par deux coins ou « Tout
+  le plan » (au-delà de 4 096² px : mi-résolution, confirmé) → aperçu dans le pane `ktaDetection` (renderer SVG
+  propre : la carte est en canvas, où l'aperçu ne serait ni touchable ni stylé) avec trois curseurs, **Tolérance de
+  couleur**, **Taille minimale** et **Taille maximale**, partis des réglages déduits : un curseur relâché recalcule
+  sur les blocs gardés (200 ms sans mouvement), sans relire l'image ; les valeurs sont gardées avec les couleurs du
+  plan (même clé) jusqu'au prochain exemple → « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+- 🩸 **Pipette** : la couleur de l'exemple est celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le
+  plus loin du fond) et de ses semblables, et la composante part de ce pixel. La médiane du carré entier valait le
+  fond sur un trait fin ou un coin de pilier touché un peu à côté : la pipette disait « aucune image » (trait de
+  2 px : 2 touchers sur 2 ; pilier de 10 px : 12 sur 100). Carré entièrement de la couleur du fond : « c'est le fond »
+  (avant : un exemple blanc ajouté en silence), SAUF si la zone touchée est enfermée par un trait (pilier blanc cerné
+  sur plan blanc) : c'est alors un objet. « Aucune image » seulement si rien n'a été dessiné à cet endroit (plan V1 :
+  zone jamais affichée).
+- **Taille maximale** : déduite du plus grand exemple de masse (× 4 en aire), plafonnée à la marge des blocs ; une
+  masse plus grande est écartée et comptée à part (« écartés par la taille maximale », distinct de « trop grands pour
+  un bloc »). Cas des plans aux piliers blancs ou clairs cernés d'un trait : fond et galeries de la couleur des
+  piliers forment des masses géantes, écartées ; les piliers, séparés par le trait, restent. 🩸 Seuls les trous
+  COMPACTS sont comblés (plus du tiers de leur boîte) : le trait qui cerne un pilier est un « trou » en anneau dans le
+  masque du fond, le combler soudait le pilier au fond (scène fabriquée : 26 piliers sur 45 au lieu de 45).
+- **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
+  carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
+  Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.
+- ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
+  pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
+  pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout.
+- **Doublons** : une masse qui recouvre une structure du même niveau (session ou calque), un front dont tous les
+  sommets et milieux sont à moins de 3 px d'un front existant du même niveau : écartés et comptés « déjà présents ».
+  Relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
+- **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>`, jamais dans la session ni dans
+  l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
+- Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
+  parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
+- Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours).
