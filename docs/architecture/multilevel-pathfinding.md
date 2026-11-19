@@ -902,20 +902,24 @@ après les questions (une synchro a pu passer) ; un objet disparu = rien n'est �
 
 **Qui est corrigé** (`_origine`, `_plan`) : objet de session ; objet d'un calque **rapatriable** (calque du plan
 avec un fichier, pas `editor`) après son passage en session (`FilterPanel.rapatrierCalque`, la question de
-« 🔄 Modifier » ; refus = rien), retrouvé par uid sinon par géométrie (`_srcCalque`). Jamais corrigés, mais
-affichés avec la raison dans le bandeau : plan en lecture seule (`ktaEditionRefusee`), calque sans fichier,
-exemplaires **mêlés** (dessinés ici et venus d'un calque, même rapatrié) — décision à prendre. 🩸 Les morceaux d'un
-✂️ partagent un sommet mais ni leur géométrie ni un sommet consécutif répété : jamais en double, jamais en C10.
+« 🔄 Modifier » ; refus = rien), retrouvé par uid sinon par géométrie (`_srcCalque`). Exemplaires **mêlés** d'un
+C4 (dessinés ici et venus d'un calque, même déjà passé en session) : ceux de la session partent, ceux du calque
+restent, quel que soit leur âge ; le calque n'est ni passé en session ni modifié (`_plan` → `mixte`, décision
+produit) ; même chemin (confirmation, prise, une entrée ⏪), une note du bandeau le dit (`verif.corr.mixte`). Jamais
+corrigés, mais affichés avec la raison dans le bandeau : plan en lecture seule (`ktaEditionRefusee`), calque sans
+fichier (même mêlé à un exemplaire de session). 🩸 Les morceaux d'un ✂️ partagent un sommet mais ni leur géométrie ni
+un sommet consécutif répété : jamais en double, jamais en C10.
 
 **Galerie condamnée** : champ neutre `condamne: true` sur la zone ou le mur en ligne (décision 6c : une galerie
 condamnée est une donnée du plan ; « Vu, normal » reste un avis sur l'appareil). Il suit la session, la synchro et la
 fusion par uid tels quels ; là où les objets sont recopiés champ par champ, il est transporté : registres des
 calques et `getAllEmbeddedZones` / `getAllEmbeddedStructures` (`utils.js`), KMZ (`mkm:condamne`, `kmzExport.js` /
-`kmzImport.js`), GeoJSON (propriété `condamne`) et import SIG (`sigImport.js > condamneDe`). Pas d'entrée de
-légende, rien dans le pathfinder : il ne fait que taire C1 (C12 l'ignore).
+`kmzImport.js`), GeoJSON (propriété `condamne`) et import SIG (`sigImport.js > condamneDe`). 🔒 Jamais dans l'export
+anonymisé (`sessionExporter.js > _anonymiserSession` recopie une liste fermée de champs ; `check-export-anonyme.js`,
+avec falsification). Pas d'entrée de légende, rien dans le pathfinder : il ne fait que taire C1 (C12 l'ignore).
 
 Garde-fous : `check-verifier-plan.js` (Node : une falsification par contrôle C4 à C10, doublons d'un calque, galerie
-condamnée contre le graphe, corrections et leurs 8 falsifications), `check-filets-donnees.js` (ordre instantané →
+condamnée contre le graphe, corrections, dont session ↔ calque, et leurs 10 falsifications), `check-filets-donnees.js` (ordre instantané →
 mutation → entrée ⏪ unique, confirmation → prise → écriture), `checkup-verifier-plan.js`.
 
 **Passe légère** (`js/verifierPlanAuto.js`, décisions 3c et 4a de l'étude) : les **bloquants seuls**, comptés par
@@ -926,9 +930,10 @@ mutation → entrée ⏪ unique, confirmation → prise → écriture), `checkup
   images et 1,5 s (tuiles et calques), puis au repos (`requestIdleCallback`, 2 s au plus). Par **tranches** : unités
   = galeries (C1), passages entre niveaux (C2), tracés jonction (C3) ; une tranche reçoit les données entières sauf
   la liste découpée, et pour C2 / C3 seulement les galeries des niveaux qu'elle lit (même résultat : `_segmentsNiveau`
-  filtre par niveau) ; taille doublée ou divisée pour viser 8 ms, tranches enchaînées dans 12 ms de repos. 🩸 Pendant
-  une tranche C2, `KtaPoiJonction.proposerRaccords` est neutralisé (rendu dans `finally`) : il ne sert qu'au texte
-  de la liste et parcourt tout le réseau par passage signalé (~17 ms chacun sur 10 000 tracés). 🩸 Une tranche ne
+  filtre par niveau) ; taille doublée ou divisée pour viser 8 ms, tranches enchaînées dans 12 ms de repos. 🩸 C2 est
+  appelé avec `{ sansPropositions: true }` : `KtaPoiJonction.proposerRaccords`, qui ne sert qu'au texte de la liste
+  et parcourt tout le réseau par passage signalé (~17 ms chacun sur 10 000 tracés), n'est pas appelé ; la liste
+  complète (`analyser`) le calcule toujours. 🩸 Une tranche ne
   descend pas sous un objet : un tracé ou un passage démesuré reste d'un bloc. Après une modification
   (`kta:donneesPlanChange`, 2 s de calme), recompte silencieux : la pastille suit, aucun toast (celui de la saisie
   dit déjà une coupure nouvelle).
@@ -945,7 +950,10 @@ mutation → entrée ⏪ unique, confirmation → prise → écriture), `checkup
 - **Fin du Générateur** (`createConf.js > _genererZip`, après `generateAsync`) : `verifierZip(zip, cfg)` relit les
   calques écrits dans le ZIP (`data/*.json`, après le décalage du rognage : `roads`, `zones` par `ktaZoneLue`,
   `structures`, `data` / `editorPoints` / `points`), même passe sans « Vu, normal », toast `warn` s'il y a des
-  bloquants ; le téléchargement et la publication ne l'attendent pas. 🩸 Le graphe et `estJonction` lisent le
+  bloquants ; le téléchargement et la publication ne l'attendent pas. `cfg.planId` (plan mis à jour, « Mettre à
+  jour le plan », qui le rouvre ; `null` pour un plan neuf) : le toast est retenu pour ce plan, en mémoire seulement
+  (`_avertisGenerateur`) ; la première passe d'ouverture de ce plan le consomme et ne répète pas le toast (nombre
+  retenu comme annoncé, pastille affichée). 🩸 Le graphe et `estJonction` lisent le
   multi-niveau sur `APP_CONFIG` : il prend celui du plan généré le temps du découpage et de chaque tranche
   (synchrone, rendu dans `finally`).
 - **Abandon** : exception du moteur, ou plus de 60 s / 20 000 tranches (moteur qui ne rend plus la main entre deux
@@ -956,9 +964,10 @@ mutation → entrée ⏪ unique, confirmation → prise → écriture), `checkup
   300 passages) en Node : 581 tranches, la plus longue 33 à 35 ms, ~6,4 s au total (C1 à C3 d'un bloc : ~13 s, dont
   ~10 s de `proposerRaccords`).
 - Garde-fous : `check-verifier-plan-auto.js` (pre-commit : mêmes clés qu'`analyser()`, C1 à C3 seulement, jamais
-  pendant le splash, abandon, fin du Générateur ; `--cout` : les 20 034 objets, hors pre-commit) ;
-  `checkup-verifier-plan-auto.js` (pastilles, un toast, réouverture, urgence, lecture seule, moteur qui lève,
-  tâches longues pendant la passe).
+  pendant le splash, abandon, fin du Générateur, C2 sans propositions ni réaffectation de `proposerRaccords`, un
+  seul toast Générateur → ouverture, lecture seule ; falsifications ; `--cout` : les 20 034 objets, hors
+  pre-commit) ; `checkup-verifier-plan-auto.js` (pastilles, un toast, réouverture, urgence, lecture seule, moteur
+  qui lève, tâches longues pendant la passe, fin du Générateur puis ouverture).
 
 ---
 

@@ -94,12 +94,10 @@ fichier et plan en lecture seule : affichés, jamais corrigés. Rien n'est corri
 galerie volontairement condamnée (question 6, partie b) est le champ `condamne: true` sur la zone ou le mur en ligne.
 État et détails : `multilevel-pathfinding.md` § Vérifier le plan.
 
-**À trancher — C4 entre un objet dessiné ici et un objet d'un calque** (identiques en tout) : aujourd'hui montré, pas
-corrigé. Options : a) retirer l'exemplaire de la session, garder celui du calque (aucun rapatriement, le fichier du
-calque reste la référence ; sur un plan partagé, c'est un objet du compte qui part) ; b) passer le calque en session
-et garder le plus ancien (une trace de copie si c'est la copie du calque qui part, l'original revient à la
-restitution) ; c) ne jamais corriger ce cas. **Reco : a** — le geste le plus petit, rien ne touche au calque, et le
-doublon vient presque toujours d'un objet redessiné ou réimporté par-dessus un calque.
+**Tranché (a) — C4 entre un objet dessiné ici et un objet d'un calque** (identiques en tout, revérifié au geste) :
+la correction retire l'exemplaire de la session et garde celui du calque, quel que soit leur âge ; le calque n'est ni
+passé en session ni modifié. Même chemin que les autres corrections (confirmation, prise de la suppression en lot,
+une entrée ⏪) ; sur un plan partagé, traces de suppression et droit « gérer » par les chemins existants.
 
 ## Coût sur un gros plan [Probable, à mesurer]
 
