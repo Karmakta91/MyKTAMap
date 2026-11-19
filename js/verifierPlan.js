@@ -24,7 +24,8 @@
 // entrée ⏪, calque passé en session d'abord, suppression par la prise KtaExtensions.suppressionLot.
 // Expose : window.KtaVerifierPlan = { analyser, collecter, ouvrir, fermer, marquerVu, retablir, retablirTout,
 //   seuilBordPx, liaisonsAbsentes, liste, etat, montrer, corrigible, corriger, corrigerTout, condamner, condamnes,
-//   decondamner, bloquants } ; bloquants = { C1, C2, C3 } (d) → constats, lus par la passe légère (verifierPlanAuto.js).
+//   decondamner, bloquants } ; bloquants = { C1, C2, C3 } (d[, opts]) → constats, lus par la passe légère
+//   (verifierPlanAuto.js, C2 avec { sansPropositions: true }).
 // Doc : docs/architecture/multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6 · Étude : ETUDE_VERIFIER_PLAN.md
 
 window.KtaVerifierPlan = (function () {
@@ -249,9 +250,12 @@ window.KtaVerifierPlan = (function () {
   // L'itinéraire n'emprunte que les raccords validés (pathfinder.js > _injecterJonctionsPoi) ; un raccord qui ne
   // retombe plus sur une galerie de son niveau à PROXIMITY_TOLERANCE près est ignoré (« perdu »). Un tag sans moyen de
   // passage (puits d'aération) n'est jamais emprunté : rien à signaler.
-  function _c2(d) {
+  // opts.sansPropositions : `proposes` reste à 0, KtaPoiJonction.proposerRaccords n'est pas appelé (un parcours du
+  // réseau par passage signalé, ~17 ms sur 10 000 tracés) ; la passe légère ne lit que le compte des constats.
+  function _c2(d, opts) {
     const C = _ctl(), PJ = window.KtaPoiJonction;
     if (!C || !PJ || !d.multiLevel) return [];
+    const proposer = !(opts && opts.sansPropositions === true);
     const cache = {}, out = [];
     (d.points || []).forEach(function (p) {
       if (!p || typeof p.x !== "number" || typeof p.y !== "number" || !PJ.estJonction(p)) return;
@@ -268,10 +272,12 @@ window.KtaVerifierPlan = (function () {
         }
         if (!motif) return;
         let proposes = 0;
-        try {
-          const pr = PJ.proposerRaccords(p.x, p.y, [n]);
-          proposes = (pr && pr.parNiveau && pr.parNiveau[String(n)] || []).length;
-        } catch (e) { proposes = 0; }
+        if (proposer) {
+          try {
+            const pr = PJ.proposerRaccords(p.x, p.y, [n]);
+            proposes = (pr && pr.parNiveau && pr.parNiveau[String(n)] || []).length;
+          } catch (e) { proposes = 0; }
+        }
         const traverse = motif === "aucun" && n > bas && n < haut;
         out.push({ controle: "C2", gravite: traverse ? GRAVITE_C2_TRAVERSE : CONTROLES.C2, cle: "C2|" + _identite(p) + "|" + n, motif: motif,
           niveau: n, objet: p, famille: "editorPoints", intermediaire: n > bas && n < haut, proposes: proposes,

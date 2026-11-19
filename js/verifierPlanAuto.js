@@ -113,17 +113,6 @@ window.KtaVerifierPlanAuto = (function () {
     try { return fn(); } finally { C.multiLevel = avant; }
   }
 
-  // 🩸 C2 compte aussi, pour l'affichage, les galeries que proposerait KtaPoiJonction.proposerRaccords : un parcours de
-  // tout le réseau par passage signalé (~17 ms chacun sur 10 000 tracés). La passe ne lit que le compte des constats :
-  // proposerRaccords est neutralisé le temps de la tranche (synchrone, rendu dans finally).
-  function _sansPropositions(fn) {
-    const PJ = window.KtaPoiJonction;
-    if (!PJ || typeof PJ.proposerRaccords !== "function") return fn();
-    const avant = PJ.proposerRaccords;
-    PJ.proposerRaccords = function () { return null; };
-    try { return fn(); } finally { PJ.proposerRaccords = avant; }
-  }
-
   // Une tranche de la passe p : le lot suivant du contrôle en cours, taille ajustée sur sa durée. → false : fini.
   function _tranche(p) {
     const ordre = ["C1", "C2", "C3"];
@@ -142,9 +131,11 @@ window.KtaVerifierPlanAuto = (function () {
     else if (dt > TRANCHE_MS * 2) p.taille[ctl] = Math.max(1, Math.floor(p.taille[ctl] / 2));
     return true;
   }
+  // 🩸 C2 compte aussi, pour l'affichage, les galeries que proposerait KtaPoiJonction.proposerRaccords (un parcours du
+  // réseau par passage signalé) : la passe ne lit que le compte des constats, d'où l'option de _c2.
   function _controler(V, ctl, td) {
     if (ctl !== "C2") return V.bloquants[ctl](td);
-    return _sansPropositions(function () { return V.bloquants.C2(td); });
+    return V.bloquants.C2(td, { sansPropositions: true });
   }
   // Un créneau de repos : collecte au premier, puis tranches tant que le budget le permet.
   // → "suite" (replanifier), "fini", ou "abandon".
