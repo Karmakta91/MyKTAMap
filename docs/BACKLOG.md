@@ -155,8 +155,3 @@
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
-
-- **Préférences « jamais exportées » emportées par l'export du profil** — vu au topo du détecteur (18/11) : `verifVus`
-  (« Vu, normal » de Vérifier le plan) et les raccords ignorés vivent dans `myktamap_plan_prefs_<plan>`, préfixe copié
-  par `profileExportImport.js > PER_PLAN_PREFIXES`, alors que leur commentaire dit « jamais exporté ».
-  `qui: KARMA · action: trancher : les exclure de l'export, ou corriger le commentaire · depuis: 18/11/2026 · taille: XS`

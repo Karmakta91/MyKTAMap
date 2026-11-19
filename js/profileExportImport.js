@@ -13,7 +13,8 @@
 // Expose : window.ProfileExportImport (buildProfile, computeSectionSizes, exportToFile, buildProfileArchive,
 //   exportArchiveToFile, parseProfile, computeImportStats, applyProfile(profile, {mode: merge|replace}),
 //   isLegacyFormat, ouvrirExportModale, ouvrirImportModale).
-// 🔒 Jamais exportés : PIN / Face ID et UnlockGate (fuite si le fichier circule ; décision produit).
+// 🔒 Jamais exportés : PIN / Face ID et UnlockGate (fuite si le fichier circule ; décision produit). Les « Vu,
+// normal » de Vérifier le plan non plus (avis de l'appareil, _sansChampsAppareil).
 // ZIP des plans hors archives cochées : non exportés (trop lourds), le registre suffit à la liste.
 // ☁️ Plans d'organisation (registre `type: "ext"`) : écartés par les modales (`exclureExtensions`).
 // Garde-fou : scripts/check-profile-histpdf.js, scripts/check-kiosque-serveur.js
@@ -59,6 +60,21 @@
     "myktamap_fond_osm_v1_",      // transparence du fond OSM sous le plan (fondOsmPlan.js)
     "myktamap_perf_toggles_v2_"   // toggles Perf ULTRA PER-PLAN (ex-clé globale)
   ];
+
+  // Champs de `myktamap_plan_prefs_<plan>` propres à l'appareil (décision produit) : retirés à l'export, ignorés
+  // dans un vieux fichier, et gardés de l'appareil cible quand l'import remplace la clé. `verifVus` = « Vu,
+  // normal » de Vérifier le plan (config.js > getPlanVerifVus : avis personnel).
+  const PLAN_PREFS_PREFIX = "myktamap_plan_prefs_";
+  const PLAN_PREFS_APPAREIL = ["verifVus"];
+  function _sansChampsAppareil(key, val, garderDe) {
+    if (key.indexOf(PLAN_PREFS_PREFIX) !== 0 || !val || typeof val !== "object" || Array.isArray(val)) return val;
+    const c = Object.assign({}, val);
+    PLAN_PREFS_APPAREIL.forEach(function(ch) {
+      delete c[ch];
+      if (garderDe && garderDe[ch] !== undefined) c[ch] = garderDe[ch];
+    });
+    return c;
+  }
 
   // ───────── HELPERS ─────────
 
@@ -257,7 +273,7 @@
         const raw = localStorage.getItem(key);
         if (raw == null) continue;
         const parsed = _safeJsonParse(raw);   // la note libre est du texte brut
-        out[key] = (parsed != null) ? parsed : raw;
+        out[key] = (parsed != null) ? _sansChampsAppareil(key, parsed) : raw;
       }
     } catch(e) {
       console.warn("[ProfileExportImport] perPlanLs collect échec :", e);
@@ -976,8 +992,13 @@ photos: false, histoirePdfs: false, crashes: false
           const allowed = PER_PLAN_PREFIXES.some(function(prefix) { return key.startsWith(prefix); });
           if (!allowed) return;
           if (mode === "merge" && localStorage.getItem(key) != null) return;
-          const val = s.perPlanLs[key];
+          let val = s.perPlanLs[key];
           if (val == null) return;
+          if (key.indexOf(PLAN_PREFS_PREFIX) === 0) {
+            let local = null;
+            try { local = JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { local = null; }
+            val = _sansChampsAppareil(key, val, local);
+          }
           localStorage.setItem(key,
             typeof val === "string" ? val : JSON.stringify(val));
           n++;
