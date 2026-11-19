@@ -59,7 +59,7 @@ window.KtaVerifierPlanAuto = (function () {
   // C3 (multi-niveau seulement) mesurent la distance aux galeries d'un niveau : la tranche ne reçoit que les galeries
   // des niveaux qu'elle lit (même résultat, _segmentsNiveau filtre par niveau), unités triées par niveaux pour que
   // les tranches en partagent.
-  function _niv(o) { return Number.isInteger(o && o.level) ? o.level : 0; }
+  function _niv(o) { return Number.isInteger(o?.level) ? o.level : 0; }
   function _niveauxDe(ctl, o) {
     if (ctl === "C3") {
       return [Number.isInteger(o.fromLevel) ? o.fromLevel : 0, Number.isInteger(o.toLevel) ? o.toLevel : 0];
@@ -197,7 +197,9 @@ window.KtaVerifierPlanAuto = (function () {
     try {
       const v = JSON.parse(localStorage.getItem(CLE_LS) || "{}");
       return v && typeof v === "object" && !Array.isArray(v) ? v : {};
-    } catch (e) { return {}; }   // illisible ou stockage refusé : rien de retenu, le toast reviendra
+    } catch (e) {
+      return {};   // illisible ou stockage refusé : rien de retenu, le toast reviendra
+    }
   }
   function _ecrireLs(planId, n) {
     try {
