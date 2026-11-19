@@ -10,6 +10,8 @@
 // `_anonymiserSession` est EXTRAITE de js/sessionExporter.js et exécutée dans un `vm` sur une session piégée
 // (chaque texte identifiant contient un marqueur). Le marqueur est cherché dans TOUT le JSON produit : une
 // clé nouvelle oubliée fait échouer le script, même si personne n'a pensé à la lister ici.
+// Galerie condamnée (`condamne` sur une zone ou un mur en ligne, verifierPlan.js) : jamais dans l'export anonymisé ;
+// 🔒 falsification : une copie de l'anonymiseur qui le recopie doit faire tomber ce contrôle.
 // =====================================================================
 "use strict";
 
@@ -49,8 +51,10 @@ const session = {
       date_update: "2026-10-02", source: "editor", photos: ["p1"] }
   ],
   roads: [{ type: "principal", points: [[1, 2], [3, 4]], label: M + " galerie", description: M + " note", uid: "rd_UIDMARK2", updatedAt: 1759572000000 }],
-  zones: [{ type: "eau", points: [[1, 1], [2, 2], [3, 1]], description: M + " zone", uid: "zn_UIDMARK3", updatedAt: 1759572000000 }],
-  structures: [{ type: "pilier-1", points: [[5, 5], [6, 6], [7, 5]], description: M + " pilier", uid: "st_UIDMARK4", updatedAt: 1759572000000 }],
+  zones: [{ type: "eau", points: [[1, 1], [2, 2], [3, 1]], description: M + " zone", uid: "zn_UIDMARK3", updatedAt: 1759572000000 },
+    { type: "inaccessible", points: [[8, 8], [9, 9], [10, 8]], condamne: true }],
+  structures: [{ type: "pilier-1", points: [[5, 5], [6, 6], [7, 5]], description: M + " pilier", uid: "st_UIDMARK4", updatedAt: 1759572000000 },
+    { type: "mur-ligne", points: [[1, 9], [3, 9]], condamne: true }],
   measure: { points: [] },
   measureSurface: { points: [] },
   tombstones: [{ uid: "pt_UIDMARK5", deletedAt: 1759572000000 }],
@@ -69,12 +73,18 @@ const photos = [{ id: "ph1", pointId: "pt_UIDMARK1", mime: "image/jpeg", size: 1
   fiche: { nom: M + " Salle", x: 10, y: 20, niveau: null, type: "salle", maj: 1 } }];
 const enrichir = extraireFonction(SRC, "_enrichirPointsAvecPhotos");
 t("_enrichirPointsAvecPhotos est extractible de js/sessionExporter.js", !!enrichir);
-const ctx = vm.createContext({ console: { log() {}, warn() {}, error() {} } });
+// Copie profonde de la session piégée : l'anonymiseur réécrit ce qu'il reçoit (rejoué pour la falsification).
+const sessionCopie = () => JSON.parse(JSON.stringify(session));
+function anonymiser(src, s, ph) {
+  const ctx = vm.createContext({ console: { log() {}, warn() {}, error() {} } });
+  vm.runInContext(src + ";" + (enrichir || "") + "; this.__out = _anonymiserSession(__s, __p);",
+    Object.assign(ctx, { __s: s, __p: ph }));
+  return ctx.__out;
+}
+const sansCondamne = o => !!o && JSON.stringify(o).indexOf("condamne") < 0;
 let out = null;
 try {
-  vm.runInContext(code + ";" + (enrichir || "") + "; this.__out = _anonymiserSession(__s, __p);",
-    Object.assign(ctx, { __s: session, __p: photos }));
-  out = ctx.__out;
+  out = anonymiser(code, sessionCopie(), photos);
 } catch (e) {
   t("_anonymiserSession s'exécute — " + e.message, false);
 }
@@ -95,6 +105,17 @@ if (out) {
   const i = json.indexOf(M);
   t("🔒 AUCUN texte identifiant ne survit, quelle que soit la clé" +
     (i >= 0 ? " — trouvé : …" + json.slice(Math.max(0, i - 60), i + 30) + "…" : ""), i < 0);
+  t("galerie condamnée : `condamne` (zone, mur en ligne) absent de l'export anonymisé, les obstacles restent",
+    sansCondamne(out) && out.zones.length === 2 && out.structures.length === 2);
+  const motif = "if (typeof z.level === \"number\") out.level = z.level;";
+  let casse = null;
+  if (code.indexOf(motif) >= 0) {
+    try {
+      casse = anonymiser(code.split(motif).join(motif + " if (z.condamne) out.condamne = true;"), sessionCopie(), []);
+    } catch (e) { casse = null; }
+  }
+  t("🔒 falsification : anonymiseur qui recopie `condamne` → le contrôle tombe (motif trouvé)",
+    !!casse && !sansCondamne(casse));
 }
 
 console.log("");
