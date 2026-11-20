@@ -126,7 +126,7 @@ volontaire : ça reste auditable, ça tient en main, ça résiste au temps.
 | OS | Debian 12 / Ubuntu 22.04 / Rocky 9 / RHEL 9 | Tout Linux récent fait l'affaire |
 | RAM | 512 Mo | C'est du statique, Nginx tient très bien |
 | Disque | 200 Mo libre | L'app pèse < 20 Mo, le reste = logs / plans embarqués |
-| Nginx | ≥ 1.20 | Pour `http2` natif et la syntaxe SSL moderne |
+| Nginx | ≥ 1.30.7 ou ≥ 1.31.9, ou paquet de distribution corrigé (Debian 13 : `1.26.3-3+deb13u11`) | `http2` natif, syntaxe SSL moderne. 🔒 En dessous, HTTP/2 expose aux CVE-2026-123007 et CVE-2026-123633 (exécution de code à distance) : mettre à jour, ou retirer `http2` en attendant |
 | OpenSSL | ≥ 1.1.1 (3.x recommandé) | Pour TLS 1.2/1.3 et la génération de certifs |
 
 ### 1.2 Côté décision

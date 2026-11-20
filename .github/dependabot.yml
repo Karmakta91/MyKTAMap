@@ -21,6 +21,13 @@ updates:
     open-pull-requests-limit: 3
     target-branch: Karma_dev
 
+  # Image de base nginx du Dockerfile (version figée) : une PR par nouvelle version, correctifs de sécurité compris.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: Karma_dev
+
   # Actions GitHub des workflows (checkout, setup-node, docker…).
   - package-ecosystem: github-actions
     directory: /
