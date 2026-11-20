@@ -45,14 +45,14 @@ Gravité : **Bloquant** = l'itinéraire ou la sortie d'urgence se trompent ; **�
 | C1 | **Tracé coupé par une zone bloquante** (inaccessible, murs en ligne ; Comblé ne bloque plus : C12) | Le test **du pathfinder** (`_segmentTraversePolygon`, `_segmentCoupeParMur`, à exposer), niveau compris (zone multi-niveau : chacun de ses niveaux), par paire (tracé, obstacle), avec la longueur dans la zone ; marqué « au bord » sous ~0,5 m (souvent une erreur de dessin) | Bloquant | Non : changer le type de la zone (Comblé → Masse au sol, en lot), ajuster les sommets, ou « vu, normal » (galerie condamnée) | **Oui** |
 | C2 | **POI jonction : un de ses niveaux sans raccord validé** | `niveaux` sans `accroches` à ce niveau (`KtaPoiJonction.niveaux`, `accroches`) | Bloquant (le passage est ignoré) | Proposer les raccords (`proposerRaccords`), l'utilisateur valide | **Oui** |
 | C3 | **Tracé jonction mal posé** : `fromLevel` = `toLevel`, ou un bout à plus de la tolérance du pathfinder (`PROXIMITY_TOLERANCE`, 15 px) de toute galerie de son niveau | Lecture des bouts, mêmes seuils que le graphe | Bloquant | Non (où accrocher ?) | **Oui** |
-| C4 | **Objets en double** : même famille, même type, même niveau, même géométrie au cm près ; points : même position, même tag **et** même nom | Empreinte arrondie, table de hachage | À revoir | **Oui si identiques en tout** (hors `uid` / `updatedAt`) : garder un exemplaire ; sinon montrer les deux | **Oui** |
-| C5 | **Écarts du réseau** (Raccords à vérifier existant) | `KtaRaccords.detecter` tel quel | À revoir | Raccorder (existant) | **Oui, intégré** |
-| C6 | **Zone ou structure fermée dégénérée** (moins de 3 sommets distincts, aire nulle) ou **qui se recoupe** | Sommets distincts ; croisement d'arêtes non voisines | À revoir (volume en pair-impair, itinéraire, 3D) | Dégénérée : supprimer ; qui se recoupe : non | **Oui** |
-| C7 | **Objet hors de l'image du plan** | Coordonnées hors `[0, imageWidth] × [0, imageHeight]` | Info (souvent un import mal calé) | Non | **Oui** |
-| C8 | **Niveau inconnu** (plan multi-niveau) : objet sur un niveau absent de `availableLevels` | Comparaison | À revoir **[Probable]** : il n'apparaît dans aucun choix du sélecteur | Non | **Oui** |
-| C9 | **Type absent de la légende** (import, faute de frappe) | `ktaResolveStyle` sans entrée | Info (couleur de repli, exclu des filtres) | Non | **Oui** |
-| C10 | **Sommets en double** (dédoublonnage existant) | `_dedupliquerFichier` sur une copie, compte seul | Info | Oui (existant) | **Oui, intégré** |
-| C11 | Liaison vers un plan absent | Déjà dans le gestionnaire des liaisons | Info | — | **Renvoi** vers le gestionnaire, pas de doublon |
+| C4 | **Objets en double** : même famille, même type, même niveau, même géométrie au cm près ; points : même position, même tag **et** même nom | Empreinte arrondie, table de hachage | À revoir | **Oui si identiques en tout** (hors `uid` / `updatedAt`) : garder un exemplaire (livré, lot 3 ; le plus ancien reste) ; sinon montrer les deux. Exemplaires mêlés session / calque : pas de correction, à trancher (§ Corrections) | **Livré** |
+| C5 | **Écarts du réseau** (Raccords à vérifier existant) | `KtaRaccords.detecter` tel quel | À revoir | Raccorder (existant) | **Livré** |
+| C6 | **Zone ou structure fermée dégénérée** (moins de 3 sommets distincts, aire nulle) ou **qui se recoupe** | Sommets distincts ; croisement d'arêtes non voisines | À revoir (volume en pair-impair, itinéraire, 3D) | Dégénérée : supprimer (livré, lot 3) ; qui se recoupe : non | **Livré** |
+| C7 | **Objet hors de l'image du plan** | Coordonnées hors `[0, imageWidth] × [0, imageHeight]` | Info (souvent un import mal calé) | Non | **Livré** |
+| C8 | **Niveau inconnu** (plan multi-niveau) : objet sur un niveau absent de `availableLevels` | Comparaison | À revoir **[Probable]** : il n'apparaît dans aucun choix du sélecteur | Non | **Livré** |
+| C9 | **Type absent de la légende** (import, faute de frappe) | `ktaResolveStyle` sans entrée | Info (couleur de repli, exclu des filtres) | Non | **Livré** |
+| C10 | **Sommets en double** (dédoublonnage existant) | `_dedupliquerFichier` sur une copie, compte seul | Info | Oui : la même fonction sur l'objet de session (livré, lot 3) | **Livré** |
+| C11 | Liaison vers un plan absent | Déjà dans le gestionnaire des liaisons | Info | — | **Livré** : renvoi vers le gestionnaire, pas de doublon |
 | C12 | **Tracé qui traverse une zone Comblé ou effondrée** (ajouté par la révision du 14/11/2026 de `ETUDE_REMBLAIS.md` : ces zones ne bloquent plus, l'itinéraire les évite et dit quand il y passe) | Même parcours que C1, sur les zones à coût du graphe (`Pathfinder.controle.zonesCoutDuPlan`) | À revoir (pas une erreur) | Non : confirmer la galerie (« vu, normal ») ou corriger la zone | **Livré** |
 | — | Écartés | Noms en double (légitime), tracés très courts, POI superposés de tags différents (légitime), angle aigu, sommet très proche d'un autre sur le même tracé | — | — | Non : bruit |
 
@@ -85,11 +85,19 @@ allumée.
 
 ## Corrections
 
-Seulement quand elle est sûre (C4 identiques, C6 dégénérée, C10), toujours par les chemins existants :
-`captureState` → mutation → `KtaUid.touch` → rendu → historique (Ctrl+Z), comme `raccordsTraces.js` et
-`ajusterSommets.js > _ecrire`. Une suppression passe par le filet des actions destructives (`check-filets-donnees.js`
-le vérifiera). Objets d'un **calque** : en lecture seule, la correction propose d'abord de le passer en session
-(`FilterPanel.rapatrierCalque`, la question de « 🔄 Modifier »). Rien n'est corrigé sans un geste de l'utilisateur.
+**Livré (lot 3).** Seulement quand elle est sûre (C4 identiques, C6 dégénérée, C10), toujours par les chemins
+existants : `captureState` → mutation → `KtaUid.touch` → rendu → historique, **une entrée ⏪ par geste**, comme
+`raccordsTraces.js` et `ajusterSommets.js > _ecrire`. Une suppression passe par une confirmation chiffrée puis la
+prise de la suppression en lot (`KtaExtensions.suppressionLot`) ; `check-filets-donnees.js` le vérifie. Objets d'un
+**calque** : passage en session d'abord (`FilterPanel.rapatrierCalque`, la question de « 🔄 Modifier ») ; calque sans
+fichier et plan en lecture seule : affichés, jamais corrigés. Rien n'est corrigé sans un geste de l'utilisateur. La
+galerie volontairement condamnée (question 6, partie b) est le champ `condamne: true` sur la zone ou le mur en ligne.
+État et détails : `multilevel-pathfinding.md` § Vérifier le plan.
+
+**Tranché (a) — C4 entre un objet dessiné ici et un objet d'un calque** (identiques en tout, revérifié au geste) :
+la correction retire l'exemplaire de la session et garde celui du calque, quel que soit leur âge ; le calque n'est ni
+passé en session ni modifié. Même chemin que les autres corrections (confirmation, prise de la suppression en lot,
+une entrée ⏪) ; sur un plan partagé, traces de suppression et droit « gérer » par les chemins existants.
 
 ## Coût sur un gros plan [Probable, à mesurer]
 
@@ -141,7 +149,7 @@ Toutes les recos sont prises.
 |---|---|---|
 | 1 | Moteur de contrôles (fonctions pures, testables en Node comme `check-api-surface.js`), fonctions du pathfinder exposées, table unique des types durs, grille des zones bloquantes ; fenêtre (liste groupée, centrer, fiche, Précédent / Suivant, « vu, normal ») ; **C1, C2, C3** ; avertissement à la saisie pour C1 ; garde-fou Node sur données fictives ; textes fr / en / es, aide, guides, `ui.md`, `multilevel-pathfinding.md`. **À livrer avant que Comblé bloque** (`ETUDE_REMBLAIS.md`, lot 0) | M |
 | 2 | C4, C6, C7, C8, C9 ; C5 et C10 branchés ; renvoi C11 | M |
-| 3 | Corrections sûres (doublon identique, contour dégénéré), filets et historique, calque → session, plan partagé (traces, droits) ; `check-filets-donnees.js` étendu ; **galerie volontairement condamnée écrite sur l'objet** (question 6, partie b : voyage avec le plan, la synchro et les exports ; le lot 1 ne retient « vu, normal » que sur l'appareil) | M |
+| 3 | **Livré.** Corrections sûres (doublon identique, contour dégénéré, sommets en double), filets et historique, calque → session, plan partagé (traces, droits) ; `check-filets-donnees.js` étendu ; **galerie volontairement condamnée écrite sur l'objet** (`condamne`, question 6, partie b) ; reste à trancher : C4 session ↔ calque (§ Corrections) | M |
 | 4 | Passe légère au chargement (pastille, toast une fois) et fin du Générateur, après mesure du coût | S |
 
 ## Inconnues qu'on ne lèvera que sur des relevés réels

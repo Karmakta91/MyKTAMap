@@ -1,8 +1,8 @@
 {
-  "version": "v2.29.0",
-  "released": "2026-11-19",
+  "version": "v2.29.1",
+  "released": "2026-11-20",
   "notes": [
-    "🔎 Détecter piliers et fronts : touche un pilier de chaque couleur et un trait de front sur l'image du plan, l'app dessine les autres ; tu vérifies l'aperçu avant d'ajouter. Dans l'outil Structures, l'Éditeur de données et le Générateur.",
-    "✏️ Épaisseur des traits réglable dans Configuration › Affichage ; la carte OpenStreetMap de l'accueil reste lisible vue de haut."
+    "🔒 Sécurité : l'image Docker pour héberger l'app chez soi embarque un nginx corrigé (failles HTTP/2 CVE-2026-123007 et CVE-2026-123633). Tu l'héberges sur ton propre nginx ? Mets-le à jour. myktamap.fr est déjà corrigé.",
+    "🩺 Vérifier le plan corrige en un geste les objets en double et les contours vides, et signale les problèmes bloquants dès l'ouverture du plan ; ⛏️ Volume exploité s'ouvre tout de suite, calcule bien plus vite et s'étale sur deux colonnes sur ordinateur ; ✂️ les fronts se coupent en deux comme les tracés."
   ]
 }

@@ -1373,7 +1373,7 @@ window.renderRoads          = renderRoads;
 
 // ── Ajustement des sommets (js/ajusterSommets.js) ──────────────────────
 // ⚠️ contrat : ktaFormesAjustables.<famille> = { cat, objets(), ferme(o), minimum(o), libelle(o), rendre(),
-// aimanter?(x, y, o, exclus, tol?), coupable?(o), ajouterApres?(o, neuf) } (en-tête d'ajusterSommets.js). Tracés de
+// aimanter?(x, y, o, exclus, tol?), coupable?(o), ajouterApres?(o, neuf), uidType? } (en-tête d'ajusterSommets.js). Tracés de
 // session visibles hors tracé en cours et
 // itinéraire ; les tracés d'un calque ne sont pas ici (lecture seule tant que le calque n'est pas en « 🔄 Modifier »).
 // 🩸 RoadGraph ne voit pas un sommet déplacé (sa signature compte les sommets) : invalidé au rendu.
@@ -1395,6 +1395,7 @@ window.ktaFormesAjustables.roads = {
   // ✂️ Couper (ajusterSommets.js > _couper) : jamais une jonction (ses deux bouts portent fromLevel / toLevel) ni
   // l'itinéraire calculé. Le second morceau entre juste après le premier dans la liste.
   coupable: function(r) { return !!r && r.type !== "jonction" && r.type !== "itinerary"; },
+  uidType: "rd",
   ajouterApres: function(r, neuf) {
     const i = roadsData.indexOf(r);
     if (i < 0 || !neuf) return false;

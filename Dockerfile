@@ -65,8 +65,10 @@ RUN mkdir -p /www && \
 # réels du poste) ; l'index vient de docker/index-fictif.json, copie suivie de l'index fictif.
 
 # --- Stage 2 : runtime image -----------------------------------------
-# nginx:alpine — image officielle, ~40 MB, Nginx 1.27+ stable.
-FROM nginx:alpine
+# Image officielle nginx (Alpine, ~40 MB), version FIGÉE : un correctif de sécurité nginx = monter ce numéro
+# (Dependabot ouvre la PR, .github/dependabot.yml) puis publier l'image. 🔒 Plancher 1.31.9 / 1.30.7 :
+# CVE-2026-123007 et CVE-2026-123633 (HTTP/2, actif dans docker/nginx-docker.conf).
+FROM nginx:1.31.9-alpine
 
 # Métadonnées OCI (s'affichent sur GHCR/Docker Hub)
 LABEL org.opencontainers.image.title="MyKTAMap"

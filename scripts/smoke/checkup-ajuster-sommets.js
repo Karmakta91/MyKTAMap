@@ -147,7 +147,8 @@ function semer(page) {
     ]);
     window.setStructures([
       { uid: "st_as_p", type: "pilier-1", level: 0, points: [P(-450, 0), P(-300, 0), P(-300, 150), P(-450, 150)] },
-      { uid: "st_as_l", type: "mur-ligne", level: 0, points: [P(-150, 0), P(0, 0)] }
+      { uid: "st_as_l", type: "mur-ligne", level: 0, points: [P(-150, 0), P(0, 0)] },
+      { uid: "st_as_f", type: "front-1", level: 0, note: "Front de test", points: [P(-450, 300), P(-300, 300), P(-150, 300)] }
     ]);
     window.setMeasurePoints([P(100, 0), P(250, 0), P(400, 0)]);
     window.setMeasurePointsSurface([P(100, 150), P(250, 150), P(250, 300)]);
@@ -498,6 +499,49 @@ async function couper(page, ptr) {
   const nU = await page.evaluate(function () { return window.getRoads().length; });
   verifier(nU === nR && xy((await lireObjet(page, "rd_as_r1")).points) === xy(o0.points),
     "✂️ : un seul ⏪ rend le tracé entier", { n: [nR, nU] });
+}
+
+// ✂️ Couper une structure en ligne (front) : pas sur un bout ; au sommet intérieur, deux structures qui partagent le
+// sommet, la seconde à uid « st_ » (jamais « rd_ »), même type, niveau et note ; une entrée ⏪ qui défait tout.
+async function couperFront(page, ptr) {
+  const ciseaux = function () { return page.evaluate(function () { return !!document.querySelector(".kta-ajuster-couper"); }); };
+  await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });
+  await page.waitForTimeout(300);
+  const o0 = await lireObjet(page, "st_as_f");
+  await geste(page, ptr, o0.points[2], null);
+  verifier(!(await ciseaux()), "✂️ : pas proposé sur le bout d'un front");
+  await page.evaluate(function () { window.KtaAjusterSommets.annuler(); });
+  const nS = await page.evaluate(function () { return window.getStructures().length; });
+  const g = await geste(page, ptr, o0.points[1], null);
+  verifier(await ciseaux() && g.apres.menu && !g.apres.fiche,
+    "✂️ : appui long sur un sommet intérieur d'un front → ✂️ proposé, sans fiche", g.apres);
+  const e0 = await etat(page);
+  const c = await page.evaluate(function () {
+    const b = document.querySelector(".kta-ajuster-couper");
+    if (!b) return null;
+    const q = b.getBoundingClientRect();
+    return [q.left + q.width / 2, q.top + q.height / 2];
+  });
+  if (c) { await ptr.tap(c); await page.waitForTimeout(400); }
+  const r = await page.evaluate(function () {
+    const S = window.getStructures(), i = S.findIndex(function (x) { return x.uid === "st_as_f"; });
+    return { n: S.length, a: JSON.parse(JSON.stringify(S[i])), b: JSON.parse(JSON.stringify(S[i + 1] || null)),
+      histo: (window.HistoryManager._peek().undo.slice(-1)[0] || {}).label,
+      voulu: window.I18n.t("ajuster.histo.couper", { type: window.I18n.t("struct.label.front-1") }) };
+  });
+  const e1 = await etat(page);
+  const xy = function (l) { return JSON.stringify((l || []).map(function (p) { return [p.x, p.y]; })); };
+  verifier(r.n === nS + 1 && r.b && xy(r.a.points) === xy(o0.points.slice(0, 2)) &&
+    xy(r.b.points) === xy(o0.points.slice(1)) && /^st[-_]/.test(r.b.uid) && r.b.uid !== r.a.uid &&
+    r.b.type === "front-1" && r.b.level === 0 && r.b.note === "Front de test" &&
+    e1.annulables === e0.annulables + 1 && !e1.fiche,
+  "✂️ : deux fronts qui partagent le sommet coupé, uid du second en « st_ », même type, niveau et note, une entrée ⏪",
+  { n: [nS, r.n], uid: r.b && r.b.uid, histo: [r.histo, r.voulu], a: r.a && r.a.points.length, b: r.b && r.b.points.length });
+  await page.evaluate(function () { window.HistoryManager.undo(); });
+  await page.waitForTimeout(300);
+  const nU = await page.evaluate(function () { return window.getStructures().length; });
+  verifier(nU === nS && xy((await lireObjet(page, "st_as_f")).points) === xy(o0.points),
+    "✂️ : un seul ⏪ rend le front entier", { n: [nS, nU] });
 }
 
 async function refus(page, ptr, nom, ref) {
@@ -961,6 +1005,7 @@ async function jouer(nav, moteur, mode) {
     await refus(page, ptr, "tracé de 2 points", "rd_as_r2");
     await refus(page, ptr, "zone de 3 sommets", "zn_as_t");
     await couper(page, ptr);
+    await couperFront(page, ptr);
 
     // ── Menu ouvert, puis appui long sur le sommet : il s'ajuste ──
     await page.evaluate(function () { window.map.setView(window.__as.vue[0], window.__as.vue[1], { animate: false }); });

@@ -623,6 +623,14 @@
     return v === "non-exploitee";
   }
 
+  // Galerie volontairement condamnée (colonne « condamne » de l'export GeoJSON) : vrai, 1, oui, true.
+  function condamneDe(props) {
+    const k = props ? _trouverCle(props, "condamne") : null;
+    if (!k || props[k] == null) return false;
+    const v = String(props[k]).trim().toLowerCase();
+    return v === "true" || v === "1" || v === "oui" || v === "yes" || v === "si";
+  }
+
   function combleDe(props, cle) {
     if (!cle || !props) return null;
     const k = _trouverCle(props, cle);
@@ -900,6 +908,7 @@
       const rL = _router((v && mapTraces[v]) || typeDefaut, "roads");
       const o = { type: rL.type, points: pts };
       if (l.nom) o.note = l.nom;
+      if (rL.famille !== "roads" && condamneDe(l.props)) o.condamne = true;
       const lvl = _niveauDe(l.props);
       if (lvl !== null) o.level = lvl;
       o.type = _typeNiveau(o.type,
@@ -924,6 +933,7 @@
       const rZ = _router((v && mapZones[v]) || zoneDefaut, "zones");
       const o = { type: rZ.type, points: pts };
       if (z.nom) o.note = z.nom;
+      if (rZ.famille !== "roads" && condamneDe(z.props)) o.condamne = true;
       if (rZ.type === "masse-sol") {
         const c = combleDe(z.props, cleComble);
         if (c !== null) o.comble = c;
@@ -1239,6 +1249,7 @@
     proposerMapping:    proposerMapping,
     combleDe:           combleDe,   // part comblée lue dans la colonne de hauteur (masse au sol)
     natureDe:           natureDe,   // masse non exploitée lue dans la colonne « nature »
+    condamneDe:         condamneDe, // galerie volontairement condamnée (colonne « condamne »)
     rampesDe:           rampesDe,   // rampes lues dans la colonne `rampes` (masse au sol, export GeoJSON de l'app)
     compterPolygonesDefaut: compterPolygonesDefaut,   // polygones rangés dans le type par défaut
     previsualiserEntreesNiveaux: previsualiserEntreesNiveaux,

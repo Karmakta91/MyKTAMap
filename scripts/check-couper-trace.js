@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 // =====================================================================
-// check-couper-trace.js — BLOQUANT (pré-commit) : ✂️ Couper un tracé à un sommet (js/ajusterSommets.js > _couper,
-// prise road.js > ktaFormesAjustables.roads), chargés dans un `vm` sans Leaflet.
+// check-couper-trace.js — BLOQUANT (pré-commit) : ✂️ Couper un tracé ou une structure en ligne à un sommet
+// (js/ajusterSommets.js > _couper, prises road.js et structures.js > ktaFormesAjustables), dans un `vm` sans Leaflet.
 // 🩸 Ce qui régresse sans bruit :
 //   1. Deux morceaux qui partagent le sommet coupé (dupliqué) : sans lui, l'itinéraire ne passe plus par là.
 //   2. Le premier morceau GARDE l'objet (uid, champs) ; le second a un uid NEUF (deux uid égaux = un objet perdu à la
 //      synchro) et reprend type, niveau, note.
 //   3. Une écriture, UN instantané, UNE entrée ⏪ ; KtaUid.touch sur le premier (la synchro voit partir).
 //   4. Refus : sommet de bout, milieu de segment, jonction, itinéraire ; menu sans ✂️ dans ces cas.
-// La prise est le bloc RÉEL de road.js (extrait du fichier), pas une copie.
+//   5. Structures : seules les lignes (fronts, mur en ligne, arc, perso en ligne) se coupent ; le second morceau a un
+//      uid « st_ » (jamais « rd_ » : préfixe de la prise, `uidType`), entrée ⏪ des structures.
+// Les prises sont les blocs RÉELS de road.js et structures.js (extraits des fichiers), pas des copies.
 // =====================================================================
 "use strict";
 
@@ -135,5 +137,54 @@ const pts = (l) => l.map(function (p) { return { x: p[0], y: p[1] }; });
   });
 }
 
-console.log(ko === 0 ? "\n🎉 ✂️ couper un tracé : tout passe" : "\n⚠️ " + ko + " echec(s)");
+// ── 4. Structures en ligne ──────
+{
+  const h = contexte();
+  const ST = fs.readFileSync("js/structures.js", "utf8").replace(/\r\n/g, "\n");
+  const m = ST.match(/window\.ktaFormesAjustables\.structures = \{[\s\S]*?\n\};/);
+  const lp = ST.match(/const STRUCTURE_TYPES_POLYLINE = [^\n]*\n/);
+  const fp = ST.match(/function _isPolylineType\(type\) \{[\s\S]*?\n\}/);
+  t("prise : bloc ktaFormesAjustables.structures et _isPolylineType trouvés dans structures.js", !!(m && lp && fp));
+  h.ctx.structuresData = [];
+  h.ctx.renderStructures = () => { h.journal.rendus++; };
+  h.ctx._structurePasseFiltres = () => true;
+  h.ctx._labelTypeStruct = (ty) => ty;
+  h.ctx.LegendCustomization = { findCustomEntry: (k) => {
+    if (k === "cust-ligne") return { category: "structures", geometry: "polyline" };
+    return k === "cust-poly" ? { category: "structures", geometry: "polygon" } : null;
+  } };
+  vm.runInContext("var structuresData = window.structuresData, currentStructure = null;" + (lp ? lp[0] : "") +
+    (fp ? fp[0] : "") + (m ? m[0] : ""), h.ctx, { filename: "structures.js" });
+  const P = h.ctx.ktaFormesAjustables.structures;
+  const front = { uid: "st_front", updatedAt: 0, type: "front-1", level: -1, note: "n", multiLevel: [0, -1],
+    points: pts([[0, 200], [10, 200], [20, 200]]) };
+  const pilier = { uid: "st_pil", type: "pilier-1", level: 0, points: pts([[0, 300], [10, 300], [10, 310], [0, 310]]) };
+  h.ctx.structuresData.push(front, pilier);
+  const c = A(h).plan.saisir(10, 200, 1);
+  t("structures : ✂️ proposé sur un sommet intérieur d'un front",
+    !!c && c.f === "structures" && A(h).plan.coupable(c) === true);
+  const ok = A(h).plan.couper(c);
+  const S = h.ctx.structuresData, neuf = S[1];
+  t("structures : deux fronts, le second juste après le premier",
+    ok === true && S.length === 3 && S[0] === front && S[2] === pilier);
+  t("🩸 structures : le second morceau a un uid « st_ » neuf, jamais « rd_ »",
+    !!neuf && typeof neuf.uid === "string" && /^st_/.test(neuf.uid) && neuf.uid !== front.uid);
+  t("structures : sommet partagé, même type, niveau, note et champs multi-niveaux",
+    !!neuf && JSON.stringify(front.points) === JSON.stringify(pts([[0, 200], [10, 200]])) &&
+    JSON.stringify(neuf.points) === JSON.stringify(pts([[10, 200], [20, 200]])) && neuf.type === "front-1" &&
+    neuf.level === -1 && neuf.note === "n" && JSON.stringify(neuf.multiLevel) === "[0,-1]");
+  t("🩸 structures : UN instantané et UNE entrée ⏪ des structures",
+    h.journal.snap === 1 && h.journal.record.length === 1 && h.journal.record[0].cat === "structures");
+  const cp = A(h).plan.saisir(10, 300, 1);
+  t("🩸 structures : un pilier ne se coupe pas", !!cp && !A(h).plan.coupable(cp) && !A(h).plan.couper(cp));
+  const cb = A(h).plan.saisir(20, 200, 1);
+  t("structures : pas sur le bout d'un front", !!cb && !A(h).plan.coupable(cb));
+  t("structures : mur en ligne, arc, 2e masse et type perso en ligne coupables ; mur, pilier et perso fermés non",
+    P.coupable({ type: "mur-ligne" }) && P.coupable({ type: "arc" }) && P.coupable({ type: "front-2" }) &&
+    P.coupable({ type: "cust-ligne" }) && !P.coupable({ type: "mur" }) && !P.coupable({ type: "cust-poly" }) &&
+    !P.coupable({ type: "pilier-2" }));
+  t("tracés : la prise des tracés garde le préfixe « rd »", h.ctx.ktaFormesAjustables.roads.uidType === "rd");
+}
+
+console.log(ko === 0 ? "\n🎉 ✂️ couper un tracé ou une structure en ligne : tout passe" : "\n⚠️ " + ko + " echec(s)");
 process.exit(ko === 0 ? 0 : 1);

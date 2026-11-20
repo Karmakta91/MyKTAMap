@@ -31,6 +31,7 @@ node scripts/check-modal-lifecycle.js
 
 # Chaque methode exportee par un module IIFE existe au chargement (node -c ne resout pas les identifiants).
 node scripts/check-api-surface.js || exit $?
+node scripts/check-volume-calcul.js || exit $?
 
 # Une pref globale sauvegardee est bien relue quand APP_CONFIG est reconstruit au chargement d'un plan.
 node scripts/check-prefs-survival.js || exit $?
@@ -289,6 +290,10 @@ node scripts/check-masse-sol.js || exit $?
 
 # Verifier le plan : C1 (troncons coupes) = graphe de l'itineraire, C1 a C3 sur donnees fictives, "vu, normal".
 node scripts/check-verifier-plan.js || exit $?
+
+# Passe legere de Verifier le plan : C1 a C3 seulement, memes bloquants que la liste, jamais pendant le splash,
+# abandon propre si le moteur leve ou ne rend plus la main.
+node scripts/check-verifier-plan-auto.js || exit $?
 
 # Detection des structures (moteur pur) : formes, aire exacte, couleurs, ouverture, blocs avec marge, worker ;
 # images fabriquees, contre-epreuves (sans marge, sans ouverture, sans coeur de bloc).

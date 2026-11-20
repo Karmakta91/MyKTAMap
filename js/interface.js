@@ -1087,6 +1087,11 @@ function _creerTuileTracker(sub) {
                     : titreFixe;
   tile.appendChild(ic);
   tile.appendChild(lbl);
+  // Pastille facultative (balisage fixe du module qui la fournit, relu à chaque ouverture du menu).
+  if (typeof sub.dynamicPastille === "function") {
+    const html = sub.dynamicPastille();
+    if (html) { lbl.setAttribute("data-kta-verif-hote", ""); lbl.insertAdjacentHTML("beforeend", html); }
+  }
   // Ligne d'aide facultative sous le libellé (texte brut, relu à chaque ouverture du menu).
   if (typeof sub.dynamicAide === "function") {
     const aide = sub.dynamicAide();
@@ -2150,7 +2155,12 @@ function initInterface() {
       { icone: window.ktaIcone("sliders-horizontal"), titreCle: "export.lanceur.avance", section: "session", onClick: function() {
           _ouvrirExportSession("advanced");
         } },
-      { icone: window.ktaIcone("table"), titreCle: "export.lanceur.editeur", section: "session", onClick: function() {
+      // Pastille : bloquants de la passe légère de Vérifier le plan (js/verifierPlanAuto.js).
+      { icone: window.ktaIcone("table"), titreCle: "export.lanceur.editeur", section: "session",
+        dynamicPastille: function() {
+          return window.KtaVerifierPlanAuto ? window.KtaVerifierPlanAuto.pastilleHtml() : "";
+        },
+        onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
           else window.ktaAlerte(window.I18n.t("ui.alert.tableEditorIndispo"), { type: "erreur" });
         } },

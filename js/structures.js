@@ -938,5 +938,15 @@ window.ktaFormesAjustables.structures = {
   ferme: function(s) { return !_isPolylineType(s.type); },
   minimum: function(s) { return _isPolylineType(s.type) ? 2 : 3; },
   libelle: function(s) { return _labelTypeStruct(s.type); },
-  rendre: function() { renderStructures(); }
+  rendre: function() { renderStructures(); },
+  // ✂️ Couper (ajusterSommets.js > _couper) : les structures en ligne seulement (fronts, mur en ligne, arc, types
+  // personnalisés en ligne), jamais un pilier ni un mur fermé. Second morceau juste après, uid en « st- ».
+  coupable: function(s) { return !!s && _isPolylineType(s.type); },
+  uidType: "st",
+  ajouterApres: function(s, neuf) {
+    const i = structuresData.indexOf(s);
+    if (i < 0 || !neuf) return false;
+    structuresData.splice(i + 1, 0, neuf);
+    return true;
+  }
 };

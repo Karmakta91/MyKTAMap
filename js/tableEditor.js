@@ -6,7 +6,7 @@
 
 // tableEditor.js — édite en tableau un JSON (calque ou session), le plan en cours ou un ZIP importé ;
 //   héberge aussi le dédoublonnage de sommets (le recalage sur un autre scan vit dans js/recalageScan.js).
-// Expose : window.ouvrirTableEditor.
+// Expose : window.ouvrirTableEditor, window.ktaDedupliquerFichier (dédoublonnage pur, Vérifier le plan C10).
 // ⚠️ Calques de données : export seulement. Un fichier de SESSION s'applique en direct par « Appliquer à la session »
 //   (points, tracés, zones, structures : KtaConvertir.appliquerTableau, un seul chemin) : seules les cellules
 //   modifiées s'appliquent, mêmes chemins que la fiche, une entrée ⏪, type inconnu refusé.
@@ -444,7 +444,9 @@
             ${planAffiche && window.KtaVerifierPlan ? `<button class="kta-tbl-source-card" id="kta-tbl-src-verif">
               <span class="kta-tbl-source-ico">${window.ktaIcone("clipboard-list")}</span>
               <span class="kta-tbl-source-txt">
-                <span class="kta-tbl-source-titre">${_sansIcone(window.I18n.t("tabledit.source.verif"))}</span>
+                <span class="kta-tbl-source-titre" data-kta-verif-hote>${
+                  _sansIcone(window.I18n.t("tabledit.source.verif"))}${
+                  window.KtaVerifierPlanAuto ? window.KtaVerifierPlanAuto.pastilleHtml() : ""}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.verifHint")}</span>
               </span>
             </button>` : ""}
@@ -1863,6 +1865,9 @@
     });
     return bilan;
   }
+  // Lu aussi par « Vérifier le plan » : compte seul sur une enveloppe de chaque objet (verifierPlan.js > _c10),
+  // puis appliqué à l'objet de session par sa correction (verifierPlan.js > _ecrire).
+  window.ktaDedupliquerFichier = _dedupliquerFichier;
 
   function _ouvrirDedup() {
     const t = function(k, p) { return window.I18n.t(k, p); };

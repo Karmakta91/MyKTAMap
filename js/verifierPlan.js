@@ -5,20 +5,27 @@
  */
 
 // verifierPlan.js — « Vérifier le plan » (Éditeur de données) : contrôles des données du plan ouvert (session et
-// calques), liste groupée par gravité, revue sur la carte (bandeau Précédent / Suivant), fiche de l'objet, « Vu,
-// normal ». Contrôles : C1 tracé coupé par un obstacle dur (zone d'un type dur, mur en ligne), C2 passage entre
-// niveaux (POI) sans raccord validé à un de ses niveaux (niveau intermédiaire traversé : info), C3 tracé jonction mal
-// posé, C12 tracé qui traverse une zone à coût (Comblé, effondrement : à revoir). Avertit aussi à la saisie (C1).
-// ⚠️ contrat : C1, C3, C12 lisent les tests du graphe (Pathfinder.controle, PROXIMITY_TOLERANCE), jamais une copie :
-// sinon l'outil annonce un problème que l'itinéraire n'a pas, ou en tait un. C2 lit KtaPoiJonction.
-// Moteur PUR : analyser(donnees?) → { liste, vus } ; sans argument, il lit le plan ouvert (collecter()). Éprouvé en
-// Node par scripts/check-verifier-plan.js, en navigateur par scripts/smoke/checkup-verifier-plan.js.
+// calques), liste groupée par gravité, revue sur la carte (bandeau Précédent / Suivant), fiche, « Vu, normal ».
+// Contrôles : C1 tracé coupé par un obstacle dur, C2 passage entre niveaux sans raccord validé, C3 tracé jonction mal
+// posé, C4 objets en double, C5 écarts du réseau (KtaRaccords), C6 contour fermé dégénéré ou qui se recoupe, C7 hors
+// de l'image, C8 niveau inconnu, C9 type absent de la légende, C10 sommets en double (dédoublonnage, compte seul),
+// C12 tracé qui traverse une zone à coût ; renvoi C11 (liaisons vers un plan absent) au gestionnaire des liaisons.
+// ⚠️ contrat : C1, C3, C12 lisent les tests du graphe (Pathfinder.controle), C5 KtaRaccords.detecter, C9
+// ktaResolveStyle, C10 ktaDedupliquerFichier (tableEditor.js) : jamais une copie, sinon deux vérités.
+// Moteur PUR : analyser(donnees?) → { liste, vus } ; sans argument, le plan ouvert (collecter()). C4, C6 à C10 sont
+// linéaires (hachage, bornes ; C6 balaie les arêtes d'un contour triées en x). Éprouvé par
+// scripts/check-verifier-plan.js (Node) et scripts/smoke/checkup-verifier-plan.js. C5 est gardé en cache tant que
+// ce qu'il lit ne change pas (_c5 : signature des tracés et des points ; C10, linéaire, n'en a pas besoin).
 // « Vu, normal » : clé « contrôle|identité[|identité|détail] » (identité = uid, sinon empreinte de la géométrie)
-// retenue par plan sur l'appareil (config.js > get/setPlanVerifVus) ; modifier l'objet ne le fait pas revenir.
-// 🩸 Un objet de calque sans uid (plan ancien) a pour identité sa géométrie : le redessiner fait revenir le constat.
-// Lecture seule : aucun contrôle n'écrit dans les données.
+// retenue par plan sur l'appareil (config.js > get/setPlanVerifVus). C5 : c'est « Ignorer » des Raccords (une seule
+// mémoire, celle de la carte Raccords). 🩸 Un objet sans uid revient s'il est redessiné.
+// Écritures, toujours sur un geste : « Raccorder » (C5, raccordsTraces.js), corrections sûres (C4 identiques en
+// tout, C6 dégénéré, C10) et galerie condamnée (`condamne` sur l'obstacle de C1) — § Corrections, un geste = une
+// entrée ⏪, calque passé en session d'abord, suppression par la prise KtaExtensions.suppressionLot.
 // Expose : window.KtaVerifierPlan = { analyser, collecter, ouvrir, fermer, marquerVu, retablir, retablirTout,
-//   seuilBordPx, liste, etat, montrer }.
+//   seuilBordPx, liaisonsAbsentes, liste, etat, montrer, corrigible, corriger, corrigerTout, condamner, condamnes,
+//   decondamner, bloquants } ; bloquants = { C1, C2, C3 } (d[, opts]) → constats, lus par la passe légère
+//   (verifierPlanAuto.js, C2 avec { sansPropositions: true }).
 // Doc : docs/architecture/multilevel-pathfinding.md § Vérifier le plan, ui.md §91.6 · Étude : ETUDE_VERIFIER_PLAN.md
 
 window.KtaVerifierPlan = (function () {
@@ -28,11 +35,16 @@ window.KtaVerifierPlan = (function () {
   const GRAVITES = ["bloquant", "revoir", "info"];
   // C12 n'est pas une erreur : un tracé posé exprès à travers un Comblé dit que ça passe (l'itinéraire l'évite
   // seulement) ; il est à confirmer (décision produit).
-  const CONTROLES = { C1: "bloquant", C2: "bloquant", C3: "bloquant", C12: "revoir" };
+  const CONTROLES = { C1: "bloquant", C2: "bloquant", C3: "bloquant", C4: "revoir", C5: "revoir", C6: "revoir",
+    C7: "info", C8: "revoir", C9: "info", C10: "info", C12: "revoir" };
   // C2 sur un niveau INTERMÉDIAIRE sans raccord : le pathfinder traverse ce niveau sans y déboucher (puits de 0 à 2
   // sans sortie au 1), l'itinéraire n'est pas trompé (décision produit).
   const GRAVITE_C2_TRAVERSE = "info";
-  const ORDRE_CONTROLES = ["C1", "C2", "C3", "C12"];
+  const ORDRE_CONTROLES = ["C1", "C2", "C3", "C12", "C4", "C5", "C6", "C8", "C7", "C9", "C10"];
+  // C4 : champs hors comparaison « identiques en tout » (identité, date, provenance) ; un champ `_…` est interne.
+  // polygon, origOpacity, origFillOpacity : affichage des registres de calque (utils.js, _ktaDataPolygons et
+  // _ktaDataStructurePolygons), pas des données.
+  const HORS_COMPARAISON = { uid: 1, updatedAt: 1, id: 1, layerId: 1, polygon: 1, origOpacity: 1, origFillOpacity: 1 };
   const SAISIE_MS = 700;               // rafale de rendus (dessin, annulation) : une vérification à la fin
 
   let _liste = [];
@@ -90,7 +102,7 @@ window.KtaVerifierPlan = (function () {
   // Plan ouvert : ce que lisent l'itinéraire et la carte (session + calques, sans les calques en modification, dont
   // la copie de session est déjà dans getRoads / getZones / getStructures).
   function collecter() {
-    const PF = window.Pathfinder;
+    const PF = window.Pathfinder, C = window.APP_CONFIG || {};
     return {
       roads: PF && typeof PF.collecterTraces === "function" ? PF.collecterTraces() : _appel("getRoads"),
       zones: _appel("getZones").concat(_registre(window._ktaDataPolygons)),
@@ -98,6 +110,8 @@ window.KtaVerifierPlan = (function () {
       points: _appel("getEditorPoints").concat(_appel("getAllEmbeddedPoints")),
       multiLevel: _multi(),
       echelle: _echelle(),
+      image: { w: Number(C.imageWidth) || 0, h: Number(C.imageHeight) || 0 },
+      niveaux: Array.isArray(C.availableLevels) ? C.availableLevels.slice() : null,
       planOuvert: true
     };
   }
@@ -123,7 +137,10 @@ window.KtaVerifierPlan = (function () {
     const C = _ctl();
     if (!C) return [];
     // Plan ouvert : la collecte même de l'itinéraire ; données fournies : le même filtre sur elles.
-    return _traversees(d, seulement, "C1", d.planOuvert ? C.obstaclesDuPlan() : C.obstaclesDe(d.zones, d.structures));
+    // ⚠️ Obstacle « galerie volontairement condamnée » (`condamne: true`, écrit sur l'objet) : il bloque toujours
+    // l'itinéraire, il ne fait que taire C1 (décision produit).
+    return _traversees(d, seulement, "C1", d.planOuvert ? C.obstaclesDuPlan() : C.obstaclesDe(d.zones, d.structures))
+      .filter(function (e) { return !(e.autre && e.autre.condamne === true); });
   }
 
   // ── C12 : tracé qui traverse une zone à coût (Comblé, effondrement) ──────────
@@ -233,9 +250,12 @@ window.KtaVerifierPlan = (function () {
   // L'itinéraire n'emprunte que les raccords validés (pathfinder.js > _injecterJonctionsPoi) ; un raccord qui ne
   // retombe plus sur une galerie de son niveau à PROXIMITY_TOLERANCE près est ignoré (« perdu »). Un tag sans moyen de
   // passage (puits d'aération) n'est jamais emprunté : rien à signaler.
-  function _c2(d) {
+  // opts.sansPropositions : `proposes` reste à 0, KtaPoiJonction.proposerRaccords n'est pas appelé (un parcours du
+  // réseau par passage signalé, ~17 ms sur 10 000 tracés) ; la passe légère ne lit que le compte des constats.
+  function _c2(d, opts) {
     const C = _ctl(), PJ = window.KtaPoiJonction;
     if (!C || !PJ || !d.multiLevel) return [];
+    const proposer = !(opts && opts.sansPropositions === true);
     const cache = {}, out = [];
     (d.points || []).forEach(function (p) {
       if (!p || typeof p.x !== "number" || typeof p.y !== "number" || !PJ.estJonction(p)) return;
@@ -252,10 +272,12 @@ window.KtaVerifierPlan = (function () {
         }
         if (!motif) return;
         let proposes = 0;
-        try {
-          const pr = PJ.proposerRaccords(p.x, p.y, [n]);
-          proposes = (pr && pr.parNiveau && pr.parNiveau[String(n)] || []).length;
-        } catch (e) { proposes = 0; }
+        if (proposer) {
+          try {
+            const pr = PJ.proposerRaccords(p.x, p.y, [n]);
+            proposes = (pr && pr.parNiveau && pr.parNiveau[String(n)] || []).length;
+          } catch (e) { proposes = 0; }
+        }
         const traverse = motif === "aucun" && n > bas && n < haut;
         out.push({ controle: "C2", gravite: traverse ? GRAVITE_C2_TRAVERSE : CONTROLES.C2, cle: "C2|" + _identite(p) + "|" + n, motif: motif,
           niveau: n, objet: p, famille: "editorPoints", intermediaire: n > bas && n < haut, proposes: proposes,
@@ -295,6 +317,394 @@ window.KtaVerifierPlan = (function () {
     return out;
   }
 
+  // ── Objets du plan (C4, C6 à C10) ──────────
+  // [{ o, f }] : tracés (sauf itinéraire et aperçu), zones, structures, points. f = famille de la fiche.
+  function _objets(d) {
+    const out = [];
+    const geo = function (o) { return o && Array.isArray(o.points) && !o._preview; };
+    (d.roads || []).forEach(function (o) { if (geo(o) && o.type !== "itinerary") out.push({ o: o, f: "roads" }); });
+    (d.zones || []).forEach(function (o) { if (geo(o)) out.push({ o: o, f: "zones" }); });
+    (d.structures || []).forEach(function (o) { if (geo(o)) out.push({ o: o, f: "structures" }); });
+    (d.points || []).forEach(function (o) {
+      if (o && typeof o.x === "number" && typeof o.y === "number") out.push({ o: o, f: "editorPoints" });
+    });
+    return out;
+  }
+  function _sommets(e) { return e.f === "editorPoints" ? [e.o] : e.o.points; }
+  function _boiteDe(e) {
+    const pts = _sommets(e);
+    if (e.f === "editorPoints" || !pts.length) return _boite(pts[0] || { x: 0, y: 0 }, 30);
+    const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    pts.forEach(function (p) { _etendre(b, p); });
+    return b;
+  }
+  function _ancre(p) { return p ? { x: p.x, y: p.y } : null; }
+  // Contour fermé : zone, ou structure d'un type non linéaire (structures.js > isStructurePolylineType).
+  function _ferme(e) {
+    if (e.f === "zones") return true;
+    if (e.f !== "structures") return false;
+    return !(typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(e.o.type));
+  }
+  function _constat(controle, e, motif, extra) {
+    return Object.assign({ controle: controle, gravite: CONTROLES[controle], cle: controle + "|" + _identite(e.o),
+      motif: motif, niveau: _niv(e.o), objet: e.o, famille: e.f, ancre: _ancre(_sommets(e)[0]), boite: _boiteDe(e) },
+    extra || {});
+  }
+
+  // ── C4 : objets en double ──────────
+  // Même famille, même type, même niveau, même géométrie au cm près (contour fermé : même départ et même sens
+  // quelconques) ; points : même position, même tag et même nom. Un constat par groupe ; `identiques` = égaux en tout
+  // hors identité et date (la seule copie qu'on pourra retirer sans perte, décision 7a).
+  // 🩸 Arrondi au cm : deux copies de part et d'autre d'une frontière d'arrondi (écart < 1 cm) ne sont pas vues.
+  // ✂️ (ajusterSommets.js > _couper) partage le sommet de coupe entre deux morceaux : géométries différentes, rien.
+  function _niveauxCle(o) {
+    const nv = Array.isArray(o.niveaux) ? o.niveaux.slice().sort(function (a, b) { return a - b; }).join(",") : "";
+    return _niv(o) + "/" + (o.fromLevel == null ? "" : o.fromLevel) + "/" + (o.toLevel == null ? "" : o.toLevel) +
+      "/" + nv;
+  }
+  function _forme(pts, q, ferme) {
+    const l = [];
+    pts.forEach(function (p) {
+      const k = Math.round(p.x / q) + "," + Math.round(p.y / q);
+      if (l[l.length - 1] !== k) l.push(k);
+    });
+    if (!ferme) return l.join(";");
+    if (l.length > 1 && l[0] === l[l.length - 1]) l.pop();
+    const n = l.length;
+    if (!n) return "";
+    let i0 = 0;
+    for (let i = 1; i < n; i++) if (l[i] < l[i0]) i0 = i;
+    const av = [], ar = [];
+    for (let k = 0; k < n; k++) { av.push(l[(i0 + k) % n]); ar.push(l[(i0 - k + n) % n]); }
+    const a = av.join(";"), b = ar.join(";");
+    return a < b ? a : b;
+  }
+  // 🩸 Ne descend que dans les tableaux et les objets simples (prototype Object ou null) : une couche Leaflet (ou
+  // tout champ d'affichage ajouté plus tard à un registre) compte comme un jeton fixe, et un cycle aussi — sans
+  // cette garde, deux doublons d'un calque faisaient déborder la pile et toute l'analyse tombait.
+  // Objet simple de n'importe quel contexte (JSON.parse, autre fenêtre) : son prototype est un Object.prototype,
+  // qui n'a lui-même aucun prototype ; une instance de classe en a toujours un de plus.
+  function _simple(v) {
+    const pr = Object.getPrototypeOf(v);
+    return pr === null || Object.getPrototypeOf(pr) === null;
+  }
+  function _stable(v, chemin) {
+    if (v && typeof v === "object") {
+      const vus = chemin || new WeakSet();
+      if (vus.has(v)) return '"~cycle"';
+      if (!Array.isArray(v) && !_simple(v)) return '"~objet"';
+      vus.add(v);
+      const txt = Array.isArray(v)
+        ? "[" + v.map(function (x) { return _stable(x, vus); }).join(",") + "]"
+        : "{" + Object.keys(v).sort(function (x, y) { return x.localeCompare(y); }).map(function (k) {
+          return JSON.stringify(k) + ":" + _stable(v[k], vus);
+        }).join(",") + "}";
+      vus.delete(v);
+      return txt;
+    }
+    return v === undefined ? "null" : JSON.stringify(v);
+  }
+  function _contenu(o) {
+    const c = {};
+    Object.keys(o).forEach(function (k) { if (!HORS_COMPARAISON[k] && k.charAt(0) !== "_") c[k] = o[k]; });
+    return _stable(c);
+  }
+  function _c4(d, objs) {
+    const C = _ctl();
+    const q = (d.echelle > 0 ? d.echelle : (C ? C.ECHELLE_SANS_CALAGE : 10)) / 100;
+    const groupes = new Map();
+    objs.forEach(function (e) {
+      const o = e.o;
+      let k;
+      if (e.f === "editorPoints") {
+        k = "pt|" + String((Array.isArray(o.tags) && o.tags[0]) || "") + "|" + String(o.nom || o.name || "") + "|" +
+          _niveauxCle(o) + "|" + _forme([o], q, false);
+      } else {
+        if (o.points.length < 2) return;
+        k = e.f + "|" + String(o.type || "") + "|" + _niveauxCle(o) + "|" + _forme(o.points, q, _ferme(e));
+      }
+      const g = groupes.get(k);
+      if (g) g.push(e); else groupes.set(k, [e]);
+    });
+    const out = [];
+    groupes.forEach(function (g) {
+      if (g.length < 2) return;
+      const ref = _contenu(g[0].o);
+      const identiques = g.every(function (e) { return _contenu(e.o) === ref; });
+      const ids = g.map(function (e) { return _identite(e.o); }).sort();
+      out.push(_constat("C4", g[0], identiques ? "identiques" : "differents", {
+        cle: "C4|" + ids.join("|"), copies: g.length, identiques: identiques,
+        autre: g[1].o, autreFamille: g[1].f }));
+    });
+    return out;
+  }
+
+  // ── C6 : contour fermé dégénéré ou qui se recoupe ──────────
+  // Dégénéré : moins de 3 sommets distincts, ou aire nulle (sommets alignés). Se recoupe : deux arêtes non voisines
+  // qui se croisent ou se touchent (pair-impair du volume, 3D, itinéraire faussés). Arêtes triées par x et balayées :
+  // presque linéaire sur un grand contour.
+  function _orient(a, b, c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
+  function _surSeg(a, b, p) {
+    return p.x >= Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x) &&
+      p.y >= Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y);
+  }
+  function _croise(p1, p2, p3, p4) {
+    const d1 = _orient(p3, p4, p1), d2 = _orient(p3, p4, p2), d3 = _orient(p1, p2, p3), d4 = _orient(p1, p2, p4);
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+      const t = d1 / (d1 - d2);
+      return { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+    }
+    if (d1 === 0 && _surSeg(p3, p4, p1)) return _ancre(p1);
+    if (d2 === 0 && _surSeg(p3, p4, p2)) return _ancre(p2);
+    if (d3 === 0 && _surSeg(p1, p2, p3)) return _ancre(p3);
+    if (d4 === 0 && _surSeg(p1, p2, p4)) return _ancre(p4);
+    return null;
+  }
+  function _recoupe(pts) {
+    const k = pts.length;
+    if (k < 4) return null;
+    const x0 = [], x1 = [], idx = [];
+    for (let i = 0; i < k; i++) {
+      const a = pts[i], b = pts[(i + 1) % k];
+      x0.push(Math.min(a.x, b.x)); x1.push(Math.max(a.x, b.x)); idx.push(i);
+    }
+    idx.sort(function (u, v) { return x0[u] - x0[v]; });
+    for (let a = 0; a < k; a++) {
+      const i = idx[a];
+      for (let b = a + 1; b < k; b++) {
+        const j = idx[b];
+        if (x0[j] > x1[i]) break;
+        const ecart = Math.abs(i - j);
+        if (ecart === 1 || ecart === k - 1) continue;
+        const ip = _croise(pts[i], pts[(i + 1) % k], pts[j], pts[(j + 1) % k]);
+        if (ip) return ip;
+      }
+    }
+    return null;
+  }
+  // Moins de 3 sommets distincts, ou tous alignés (aire de l'enveloppe nulle). 🩸 Pas l'aire signée : un nœud papillon
+  // symétrique a une aire signée nulle, c'est un contour qui se recoupe.
+  function _degenere(pts) {
+    if (new Set(pts.map(function (p) { return p.x + "," + p.y; })).size < 3) return true;
+    const a = pts[0];
+    let b = a, d2 = 0;
+    pts.forEach(function (p) {
+      const d = (p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y);
+      if (d > d2) { d2 = d; b = p; }
+    });
+    return pts.every(function (p) { return Math.abs(_orient(a, b, p)) <= 1e-9 * d2; });
+  }
+  function _c6(objs) {
+    const out = [];
+    objs.forEach(function (e) {
+      if (!_ferme(e)) return;
+      const pts = [];
+      e.o.points.forEach(function (p) {
+        const der = pts[pts.length - 1];
+        if (p && typeof p.x === "number" && typeof p.y === "number" && !(der && der.x === p.x && der.y === p.y)) {
+          pts.push(p);
+        }
+      });
+      if (pts.length > 1 && pts[0].x === pts[pts.length - 1].x && pts[0].y === pts[pts.length - 1].y) pts.pop();
+      if (_degenere(pts)) {
+        out.push(_constat("C6", e, "degenere"));
+        return;
+      }
+      const ip = _recoupe(pts);
+      if (ip) out.push(_constat("C6", e, "recoupe", { ancre: ip }));
+    });
+    return out;
+  }
+
+  // ── C7 : objet hors de l'image du plan ──────────
+  // Un sommet (ou le point) au-delà de [0, largeur] × [0, hauteur] de plus de BORD_M : souvent un import mal calé.
+  function _c7(d, objs) {
+    const w = d.image && d.image.w, h = d.image && d.image.h;
+    if (!(w > 0 && h > 0)) return [];
+    const tol = seuilBordPx(d.echelle), out = [];
+    objs.forEach(function (e) {
+      const pts = _sommets(e);
+      let hors = 0, premier = null;
+      pts.forEach(function (p) {
+        if (p.x < -tol || p.y < -tol || p.x > w + tol || p.y > h + tol) { hors++; if (!premier) premier = p; }
+      });
+      if (hors) out.push(_constat("C7", e, hors === pts.length ? "dehors" : "deborde", { ancre: _ancre(premier) }));
+    });
+    return out;
+  }
+
+  // ── C8 : niveau inconnu (plan multi-niveau) ──────────
+  // Niveaux d'un objet : `level` (absent = 0), bouts d'un tracé jonction, `niveaux` d'une zone (chacun compte, comme
+  // pour l'itinéraire) ou d'un point qui relie des niveaux. Valeur non entière (import) ou absente de availableLevels :
+  // l'objet n'apparaît dans aucun choix du sélecteur. Un constat par (objet, valeur).
+  function _c8(d, objs) {
+    if (!d.multiLevel || !Array.isArray(d.niveaux)) return [];
+    const PJ = window.KtaPoiJonction, out = [];
+    objs.forEach(function (e) {
+      const o = e.o, vals = [o.level == null ? 0 : o.level];
+      if (e.f === "roads" && o.type === "jonction") {
+        if (o.fromLevel != null) vals.push(o.fromLevel);
+        if (o.toLevel != null) vals.push(o.toLevel);
+      }
+      const tag = Array.isArray(o.tags) ? String(o.tags[0] || "") : "";
+      const porte = e.f === "zones" || (e.f === "editorPoints" && !!(PJ && PJ.porteNiveaux && PJ.porteNiveaux(tag)));
+      if (porte && Array.isArray(o.niveaux)) o.niveaux.forEach(function (n) { vals.push(n); });
+      const vus = new Set();
+      vals.forEach(function (v) {
+        const k = String(v);
+        if (vus.has(k)) return;
+        vus.add(k);
+        const entier = Number.isInteger(v);
+        if (entier && d.niveaux.indexOf(v) >= 0) return;
+        out.push(_constat("C8", e, entier ? "inconnu" : "invalide", { cle: "C8|" + _identite(o) + "|" + k,
+          valeur: v, niveau: null }));
+      });
+    });
+    return out;
+  }
+
+  // ── C9 : type absent de la légende ──────────
+  // Tracé, zone, structure : ktaResolveStyle (aplat) sans entrée, ni built-in ni type personnalisé de la catégorie ;
+  // point : tag absent de window._iconMap (plan ouvert seulement). Rendu en couleur ou icône de repli, hors filtres.
+  function _c9(d, objs) {
+    const R = window.ktaResolveStyle, memo = new Map(), out = [];
+    const cat = { roads: "traces", zones: "zones", structures: "structures" };
+    const icones = d.planOuvert && window._iconMap && typeof window._iconMap === "object" ? window._iconMap : null;
+    objs.forEach(function (e) {
+      if (e.f === "editorPoints") {
+        const tag = Array.isArray(e.o.tags) ? e.o.tags[0] : null;
+        if (icones && typeof tag === "string" && tag && !icones[tag]) {
+          out.push(_constat("C9", e, "absent", { type: tag }));
+        }
+        return;
+      }
+      if (typeof R !== "function") return;
+      const type = e.o.type;
+      if (typeof type !== "string" || !type) { out.push(_constat("C9", e, "sansType")); return; }
+      const k = cat[e.f] + "|" + type;
+      if (!memo.has(k)) {
+        let s = null;
+        try { s = R(cat[e.f], type, { flat: true }); } catch (err) { s = null; }
+        memo.set(k, !!s);
+      }
+      if (!memo.get(k)) out.push(_constat("C9", e, "absent", { type: type }));
+    });
+    return out;
+  }
+
+  // ── C10 : sommets en double (compte seul) ──────────
+  // Le dédoublonnage de l'Éditeur (tableEditor.js > ktaDedupliquerFichier) sur une enveloppe de l'objet : rien n'est
+  // modifié. `disparait` : le nettoyage le ferait passer sous son minimum (il serait retiré).
+  function _c10(objs) {
+    const D = window.ktaDedupliquerFichier, out = [];
+    if (typeof D !== "function") return out;
+    objs.forEach(function (e) {
+      if (e.f === "editorPoints") return;
+      const env = {};
+      env[e.f] = [{ type: e.o.type, points: e.o.points }];
+      let b = null;
+      try { b = D(env); } catch (err) { b = null; }
+      if (!b || !b.sommets) return;
+      const pts = e.o.points;
+      let ancre = pts[0];
+      for (let i = 1; i < pts.length; i++) {
+        if (pts[i].x === pts[i - 1].x && pts[i].y === pts[i - 1].y) { ancre = pts[i]; break; }
+      }
+      out.push(_constat("C10", e, "sommets", { n: b.sommets, disparait: b.objets > 0, ancre: _ancre(ancre) }));
+    });
+    return out;
+  }
+
+  // ── C5 : écarts du réseau (Raccords à vérifier) ──────────
+  // KtaRaccords.detecter tel quel, plan ouvert seulement (il lit la carte). « Raccorder » est son écriture.
+  // ⚠️ Il coûte (graphe + grille : plus d'une seconde sur ~20 000 objets) : son résultat est gardé tant que la
+  // signature de ce qu'il lit ne change pas — tracés (session et calques, `d.roads` = Pathfinder.collecterTraces,
+  // sa source), points (jonctions du graphe), échelle, multi-niveau, plan. Relue à chaque analyse (quelques ms)
+  // plutôt que `kta:donneesPlanChange` : un indice, pas une preuve (utils.js > ktaSignalerDonneesPlan).
+  // Ignorés : un écart AJOUTÉ (« Vu, normal », Ignorer) est retiré du résultat gardé ; une liste qui perd une
+  // clé (Réafficher les ignorés) fait recalculer. Seulement pour le plan ouvert (`cache`) : des données passées
+  // à analyser() ne sont pas celles que detecter lit.
+  let _c5Cache = null;   // { sig, ign: Set, liste }
+  function _sigC5(d) {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    const entier = function (q) { h1 = Math.imul(h1 ^ q, 2654435761); h2 = Math.imul(h2 ^ q, 1597334677); };
+    const texte = function (v) {
+      const t = typeof v === "string" ? v : (v === undefined ? "\u0000" : JSON.stringify(v));
+      for (let i = 0; i < t.length; i++) entier(t.codePointAt(i));
+      entier(0x7c7c);   // séparateur : « 1|23 » ≠ « 12|3 »
+    };
+    // Coordonnée au millième de px : deux entiers (partie haute, partie basse), sans passer par une chaîne.
+    const nombre = function (x) {
+      if (typeof x !== "number" || !Number.isFinite(x)) { texte(String(x)); return; }
+      const q = Math.round(x * 1000);
+      // `h ^ q` dans entier() ramène déjà q sur 32 bits (ToInt32) : pas de `| 0` à faire ici.
+      entier(q); entier(Math.floor(q / 4294967296));
+    };
+    const C = window.APP_CONFIG || {};
+    texte(window._currentLoadedPlanId || ""); texte(C.scale); texte(C.multiLevel === true);
+    // Objet : chaque champ sauf la géométrie (clé puis valeur), puis les sommets nombre par nombre.
+    const objet = function (o) {
+      if (!o || typeof o !== "object") { texte(o); return; }
+      const cles = Object.keys(o).sort(function (x, y) { return x.localeCompare(y); });
+      for (let i = 0; i < cles.length; i++) {
+        const k = cles[i], v = o[k];
+        if (k === "points" || typeof v === "function") continue;
+        texte(k); texte(v);
+      }
+      const pts = Array.isArray(o.points) ? o.points : [];
+      entier(pts.length);
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (p && typeof p === "object") { nombre(p.x); nombre(p.y); } else texte(p);
+      }
+    };
+    (d.roads || []).forEach(objet);
+    entier(0x2d2d);
+    (d.points || []).forEach(objet);
+    return (h1 >>> 0).toString(36) + "." + (h2 >>> 0).toString(36) + "." + (d.roads || []).length + "." +
+      (d.points || []).length;
+  }
+  function _detecterC5(d, cache) {
+    const K = window.KtaRaccords;
+    const ign = new Set(typeof window.getPlanRaccordsIgnores === "function" ? window.getPlanRaccordsIgnores() : []);
+    let sig = null;
+    if (cache) { try { sig = _sigC5(d); } catch (err) { sig = null; } }   // cycle, valeur exotique : pas de cache
+    if (sig && _c5Cache && _c5Cache.sig === sig) {
+      let garde = true;
+      _c5Cache.ign.forEach(function (k) { if (!ign.has(k)) garde = false; });
+      if (garde) return _c5Cache.liste.filter(function (e) { return !ign.has(e.cle); });
+    }
+    let r = null;
+    try { r = K.detecter(); } catch (err) { console.warn("[VerifierPlan] raccords :", err); r = null; }
+    const liste = (r && r.liste) || [];
+    _c5Cache = sig && r ? { sig: sig, ign: ign, liste: liste } : null;
+    return liste;
+  }
+  function _c5(d, cache) {
+    const K = window.KtaRaccords;
+    if (!d.planOuvert || !K || typeof K.detecter !== "function") return [];
+    return _detecterC5(d, cache).map(function (e) {
+      const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      _etendre(b, e.a); _etendre(b, e.b);
+      return { controle: "C5", gravite: CONTROLES.C5, cle: "C5|" + e.cle, motif: "ecart", niveau: e.niveau || 0,
+        objet: e.mobile.road, famille: "roads", autreTrace: e.cible.road, ecartPx: e.ecartPx, raccord: e,
+        segment: [e.a, e.b], ancre: _ancre(e.a),
+        boite: { x0: b.x0 - 20, y0: b.y0 - 20, x1: b.x1 + 20, y1: b.y1 + 20 } };
+    });
+  }
+
+  // ── C11 : liaisons vers un plan absent (renvoi au gestionnaire des liaisons, pas de doublon) ──────────
+  function liaisonsAbsentes() {
+    const IPL = window.InterPlanLinks, PR = window.PlanRegistry, pid = window._currentLoadedPlanId;
+    if (!pid || !IPL || typeof IPL.getLinksForPlan !== "function" || !PR || typeof PR.findById !== "function") return 0;
+    try {
+      return IPL.getLinksForPlan(pid).filter(function (l) {
+        const autre = l && l.a && l.a.planId === pid ? l.b : (l && l.a);
+        return !!(autre && autre.planId) && !PR.findById(autre.planId);
+      }).length;
+    } catch (err) { return 0; }
+  }
+
   // ── Analyse ──────────
   function _vusDuPlan() {
     return typeof window.getPlanVerifVus === "function" ? window.getPlanVerifVus() : [];
@@ -303,16 +713,19 @@ window.KtaVerifierPlan = (function () {
     return l.sort(function (u, v) {
       return (GRAVITES.indexOf(u.gravite) - GRAVITES.indexOf(v.gravite)) ||
         (ORDRE_CONTROLES.indexOf(u.controle) - ORDRE_CONTROLES.indexOf(v.controle)) ||
-        (u.niveau - v.niveau) || (u.cle < v.cle ? -1 : u.cle > v.cle ? 1 : 0);
+        ((u.niveau || 0) - (v.niveau || 0)) || (u.cle < v.cle ? -1 : u.cle > v.cle ? 1 : 0);
     });
   }
 
   // → { liste: constats à revoir, vus: constats déclarés « vu, normal » } ; triés par gravité, contrôle, niveau.
   // `opts.vus` : clés vues (sinon celles du plan ouvert).
   function analyser(donnees, opts) {
+    if (!donnees) _idx = null;   // lecture neuve du plan ouvert : corrigible() ne lit pas un index d'avant
     const d = donnees || collecter();
     const vus = new Set((opts && Array.isArray(opts.vus)) ? opts.vus : _vusDuPlan());
-    const tous = _c1(d).concat(_c2(d), _c3(d), _c12(d));
+    const objs = _objets(d);
+    const tous = _c1(d).concat(_c2(d), _c3(d), _c12(d), _c4(d, objs), _c5(d, !donnees), _c6(objs), _c7(d, objs), _c8(d, objs),
+      _c9(d, objs), _c10(objs));
     return {
       liste: _trier(tous.filter(function (c) { return !vus.has(c.cle); })),
       vus: _trier(tous.filter(function (c) { return vus.has(c.cle); }))
@@ -329,6 +742,7 @@ window.KtaVerifierPlan = (function () {
 
   // ── « Vu, normal » ──────────
   function marquerVu(c) {
+    if (c && c.controle === "C5" && c.raccord && window.KtaRaccords) return window.KtaRaccords.ignorer(c.raccord);
     if (!c || !c.cle || typeof window.setPlanVerifVus !== "function") return false;
     const l = _vusDuPlan();
     if (l.indexOf(c.cle) < 0) l.push(c.cle);
@@ -344,6 +758,290 @@ window.KtaVerifierPlan = (function () {
     const n = _vusDuPlan().length;
     if (typeof window.setPlanVerifVus === "function") window.setPlanVerifVus(null, []);
     return n;
+  }
+
+  // ── Corrections sûres (C4 identiques en tout, C6 dégénéré, C10) et galerie condamnée (C1) ──────────
+  // ⚠️ contrat : un geste = une écriture = UNE entrée ⏪ : captureState (toutes familles) → mutation → KtaUid.touch →
+  // rendu (setRoads / setZones / setStructures / setEditorPoints) → HistoryManager.record (qui pose les traces de
+  // suppression, ordinaires ou de copie de calque) → SessionPersist.save. Rien n'est corrigé sans geste.
+  // 🔒 Plan en lecture seule (ktaEditionRefusee) : aucune correction proposée ni écrite. Objet d'un calque : passage
+  // en session d'abord (FilterPanel.rapatrierCalque, la question de « 🔄 Modifier ») ; calque sans fichier ou calque
+  // « editor » hors session : affiché, jamais corrigé. Suppression : confirmation chiffrée, puis la prise
+  // KtaExtensions.suppressionLot (plan partagé : droit « gérer » au-delà du seuil de l'installation) ; un refus ne
+  // supprime rien.
+  // C4 : seulement si tous les exemplaires sont identiques en tout (_contenu) ; le plus ancien (updatedAt) reste.
+  // Exemplaires mêlés (dessinés ici et venus d'un calque, même passé en session) : ceux de la session partent, ceux
+  // du calque restent, quel que soit leur âge ; le calque n'est ni passé en session ni modifié (décision produit).
+  // C10 : ktaDedupliquerFichier (tableEditor.js) appliqué à l'objet de session, jamais une copie de sa règle.
+  const GET_F = { editorPoints: "getEditorPoints", roads: "getRoads", zones: "getZones", structures: "getStructures" };
+  const SET_F = { editorPoints: "setEditorPoints", roads: "setRoads", zones: "setZones", structures: "setStructures" };
+  const CORRIGIBLES = { C4: 1, C6: 1, C10: 1 };
+
+  function _lectureSeule() {
+    return typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true) === true;
+  }
+  function _sessionDe(f) { return GET_F[f] ? _appel(GET_F[f]) : []; }
+  function _calqueDe(o) { return o.layerId === undefined ? o._ktaLayerId : o.layerId; }
+
+  // { session: true, main } (objet de session ; main = pas une copie de calque), { session: false, calque } (calque
+  // qu'on peut passer en session), null (lecture seule : rien ne le corrigera).
+  function _origine(o, f) {
+    if (!o || !GET_F[f]) return null;
+    if (_sessionDe(f).indexOf(o) >= 0) return { session: true, main: o._srcCalque === undefined };
+    const id = _calqueDe(o);
+    if (id == null || id === "editor") return null;
+    const pc = window.PLAN_CONFIG;
+    const lc = pc && Array.isArray(pc.dataLayers) ? pc.dataLayers.find(function (x) { return x && x.id === id; }) : null;
+    const FP = window.FilterPanel;
+    if (!lc || !lc.file || !window.CalqueSession || !FP || typeof FP.rapatrierCalque !== "function") return null;
+    return { session: false, calque: id };
+  }
+
+  // Objets du plan ouvert par identité, bâti une fois par lecture (liste, bandeau, geste) : une liste de milliers de
+  // doublons ne relit pas le plan pour chacun. Oublié à chaque recalcul et au début de chaque geste.
+  let _idx = null;
+  function _parIdentite() {
+    if (_idx) return _idx;
+    _idx = new Map();
+    _objets(collecter()).forEach(function (e) {
+      const k = _identite(e.o), l = _idx.get(k);
+      if (l) l.push(e); else _idx.set(k, [e]);
+    });
+    return _idx;
+  }
+
+  // Exemplaires d'un constat C4 (identités lues dans sa clé, même famille), identiques en tout, au moins deux.
+  function _membresC4(c) {
+    const idx = _parIdentite(), m = [];
+    new Set(String(c.cle).split("|").slice(1)).forEach(function (k) {
+      (idx.get(k) || []).forEach(function (e) { if (e.f === c.famille) m.push(e); });
+    });
+    if (m.length < 2) return null;
+    const ref = _contenu(m[0].o);
+    return m.every(function (e) { return _contenu(e.o) === ref; }) ? m : null;
+  }
+
+  // Ce que corrigerait un constat : { objets: [{ o, f }], calques: [ids à passer en session], mixte }, ou { refus }
+  // (« lectureSeule », « change ») ; null : ce contrôle n'a pas de correction sûre. mixte (C4) : objets = les seuls
+  // exemplaires dessinés ici, tous à supprimer ; calques vide.
+  function _plan(c) {
+    if (!c || !CORRIGIBLES[c.controle]) return null;
+    if (c.controle === "C6" && c.motif !== "degenere") return null;
+    if (c.controle === "C4" && !c.identiques) return null;
+    if (_lectureSeule()) return { refus: "lectureSeule" };
+    const objets = c.controle === "C4" ? _membresC4(c) : [{ o: c.objet, f: c.famille }];
+    if (!objets) return { refus: "change" };
+    const calques = [], mains = [];
+    let copie = 0;
+    for (let i = 0; i < objets.length; i++) {
+      const og = _origine(objets[i].o, objets[i].f);
+      if (!og) return { refus: "lectureSeule" };
+      if (og.session && og.main) mains.push(objets[i]); else copie++;
+      if (!og.session && calques.indexOf(og.calque) < 0) calques.push(og.calque);
+    }
+    if (mains.length && copie) return { objets: mains, calques: [], mixte: true };
+    return { objets: objets, calques: calques, mixte: false };
+  }
+  function corrigible(c) {
+    const p = _plan(c);
+    return !!(p && !p.refus);
+  }
+
+  // Copie de session d'un objet de calque passé en session (même uid, sinon même géométrie, même calque).
+  function _geo(o) {
+    return JSON.stringify((Array.isArray(o.points) ? o.points : [o]).map(function (p) { return [p.x, p.y]; }));
+  }
+  function _enSession(o, f) {
+    const ses = _sessionDe(f);
+    if (ses.indexOf(o) >= 0) return o;
+    const id = _calqueDe(o), geo = o.uid ? null : _geo(o);
+    for (let i = 0; i < ses.length; i++) {
+      const s = ses[i];
+      if (s && s._srcCalque === id && (o.uid ? s.uid === o.uid : _geo(s) === geo)) return s;
+    }
+    return null;
+  }
+
+  async function _rapatrier(calques) {
+    for (let i = 0; i < calques.length; i++) {
+      if (!(await window.FilterPanel.rapatrierCalque(calques[i]))) return false;
+    }
+    return true;
+  }
+
+  // Constats → { suppr: [{ o, f }], sommets: [{ o, f }] } sur les objets de session (calques déjà passés en
+  // session) ; null : un objet a disparu ou changé entre-temps.
+  function _operations(cs) {
+    _idx = null;
+    const suppr = [], sommets = [], vus = new Set();
+    const D = window.ktaDedupliquerFichier;
+    const prendre = function (l, e) { if (!vus.has(e.o)) { vus.add(e.o); l.push(e); } };
+    for (let i = 0; i < cs.length; i++) {
+      const c = cs[i], p = _plan(c);
+      if (!p || p.refus) return null;
+      const objs = p.objets.map(function (e) { return { o: _enSession(e.o, e.f), f: e.f }; });
+      if (objs.some(function (e) { return !e.o; })) return null;
+      if (c.controle === "C4" && p.mixte) {
+        objs.forEach(function (e) { prendre(suppr, e); });
+      } else if (c.controle === "C4") {
+        objs.sort(function (a, b) { return (Number(a.o.updatedAt) || 0) - (Number(b.o.updatedAt) || 0); });
+        objs.slice(1).forEach(function (e) { prendre(suppr, e); });
+      } else if (c.controle === "C6") {
+        prendre(suppr, objs[0]);
+      } else if (typeof D === "function") {
+        // Sur une copie d'abord : un objet que le nettoyage ferait passer sous son minimum est une SUPPRESSION.
+        const env = {};
+        env[objs[0].f] = [JSON.parse(JSON.stringify(objs[0].o))];
+        const b = D(env);
+        if (b && b.objets) prendre(suppr, objs[0]);
+        else if (b && b.sommets) prendre(sommets, objs[0]);
+      }
+    }
+    return { suppr: suppr, sommets: sommets };
+  }
+
+  // Plan partagé : la prise de la suppression en lot (KtaExtensions.suppressionLot). → Promise<bool>.
+  function _permisSuppression(suppr) {
+    const K = window.KtaExtensions;
+    const objets = suppr.map(function (e) { return { famille: e.f, uid: typeof e.o.uid === "string" ? e.o.uid : null }; });
+    const v = K && typeof K.suppressionLot === "function" ? K.suppressionLot(window._currentLoadedPlanId, objets) : null;
+    if (!v) return Promise.resolve(true);
+    return Promise.resolve(v).then(function (r) {
+      if (r && r.permis === true) return true;
+      window.ktaAlerte((r && r.message) || _t("verif.corr.refus"), { type: "erreur" });
+      return false;
+    });
+  }
+
+  function _sauver() {
+    if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
+      try { window.SessionPersist.save({ force: true }); } catch (err) { /* le poll de SessionPersist rattrape */ }
+    }
+  }
+
+  // L'écriture unique des corrections. → { supprimes, sommets } ou null (rien écrit).
+  function _ecrire(ops, libelle) {
+    const H = window.HistoryManager, D = window.ktaDedupliquerFichier;
+    const listes = {}, touchees = {}, retiresPts = [];
+    Object.keys(GET_F).forEach(function (f) { listes[f] = _sessionDe(f).slice(); });
+    if (ops.suppr.some(function (e) { return listes[e.f].indexOf(e.o) < 0; })) return null;
+    const avant = H && typeof H.captureState === "function" ? H.captureState() : null;
+    let n = 0, s = 0;
+    ops.suppr.forEach(function (e) {
+      listes[e.f].splice(listes[e.f].indexOf(e.o), 1);
+      if (e.f === "editorPoints") retiresPts.push(e.o);
+      touchees[e.f] = true;
+      n++;
+    });
+    ops.sommets.forEach(function (e) {
+      const env = {};
+      env[e.f] = [e.o];
+      const b = D(env);
+      if (!b || !b.sommets) return;
+      s += b.sommets;
+      if (e.o.uid && window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(e.o);
+      touchees[e.f] = true;
+    });
+    if (!n && !s) return null;
+    if (retiresPts.length && window._currentLoadedPlanId && window.MyKTAMapPhotos &&
+        typeof window.MyKTAMapPhotos.majFichesPoints === "function") {
+      window.MyKTAMapPhotos.majFichesPoints(window._currentLoadedPlanId, retiresPts);
+    }
+    Object.keys(touchees).forEach(function (f) {
+      try { window[SET_F[f]](listes[f]); } catch (err) { console.warn("[VerifierPlan] rendu :", err); }
+    });
+    if (touchees.roads && window.RoadGraph && typeof window.RoadGraph.invalidate === "function") {
+      window.RoadGraph.invalidate();
+    }
+    if (avant) H.record(libelle, avant);
+    _sauver();
+    return { supprimes: n, sommets: s };
+  }
+
+  // Corrige des constats en UN geste (un constat, ou tout un contrôle). → Promise<bilan | null>.
+  async function _corriger(cs) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return null;   // le dit
+    _idx = null;
+    const plans = cs.map(_plan);
+    if (!cs.length || plans.some(function (p) { return !p || p.refus; })) {
+      window.ktaAlerte(_t("verif.corr.change"));
+      return null;
+    }
+    const calques = [];
+    plans.forEach(function (p) { p.calques.forEach(function (id) { if (calques.indexOf(id) < 0) calques.push(id); }); });
+    if (calques.length && !(await _rapatrier(calques))) return null;
+    let ops = _operations(cs);
+    if (ops && ops.suppr.length) {
+      const n = ops.suppr.length;
+      const ok = await window.ktaConfirm(_esc(_t("verif.corr.confirm", { n: n })), {
+        titre: _esc(_t("verif.corr.titre")),
+        okLabel: window.ktaIcone("trash-2") + " " + _esc(_t("verif.corr.ok", { n: n }))
+      });
+      if (!ok) return null;
+      if (!(await _permisSuppression(ops.suppr))) return null;
+      ops = _operations(cs);   // une synchro a pu passer pendant les questions
+    }
+    const b = ops && (ops.suppr.length || ops.sommets.length)
+      ? _ecrire(ops, _t("verif.corr.histo", { n: ops.suppr.length + ops.sommets.length })) : null;
+    if (!b) {
+      window.ktaAlerte(_t("verif.corr.change"));
+      return null;
+    }
+    _toast(_t("verif.corr.fait", { n: b.supprimes, s: b.sommets }), "success");
+    return b;
+  }
+  function corriger(c) { return _corriger([typeof c === "number" ? _liste[c] : c]); }
+  // Tous les constats corrigibles d'un contrôle (relus sur le plan tel qu'il est), en un geste.
+  function _corrigiblesDe(controle) {
+    _recalculer();
+    return _liste.filter(function (c) { return c.controle === controle && corrigible(c); });
+  }
+  function corrigerTout(controle) {
+    const cs = _corrigiblesDe(controle);
+    return cs.length ? _corriger(cs) : Promise.resolve(null);
+  }
+
+  // ── Galerie volontairement condamnée (C1) ──
+  // `condamne: true` sur l'obstacle (zone ou mur en ligne) : voyage avec le plan, la synchro et les exports ; C1 se
+  // tait, l'itinéraire ne passe toujours pas. Posé ou retiré par le même chemin d'écriture, une entrée ⏪.
+  async function _marquerCondamne(o, f, valeur) {
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return false;
+    const og = _origine(o, f);
+    if (!og) {
+      window.ktaAlerte(_t("verif.corr.figee"));
+      return false;
+    }
+    if (!og.session && !(await _rapatrier([og.calque]))) return false;
+    const cible = _enSession(o, f);
+    if (!cible) {
+      window.ktaAlerte(_t("verif.corr.change"));
+      return false;
+    }
+    const H = window.HistoryManager;
+    const avant = H && typeof H.captureState === "function" ? H.captureState(f) : null;
+    if (valeur) cible.condamne = true; else delete cible.condamne;
+    if (window.KtaUid && typeof window.KtaUid.touch === "function") window.KtaUid.touch(cible);
+    try { window[SET_F[f]](_sessionDe(f).slice()); } catch (err) { console.warn("[VerifierPlan] rendu :", err); }
+    if (avant) H.record(_t(valeur ? "verif.condamne.histo" : "verif.decondamne.histo"), avant, f);
+    _sauver();
+    _toast(_t(valeur ? "verif.toast.condamne" : "verif.toast.decondamne"), "success");
+    return true;
+  }
+  function condamner(c) {
+    const x = typeof c === "number" ? _liste[c] : c;
+    if (!x || x.controle !== "C1" || !x.autre || _lectureSeule()) return Promise.resolve(false);
+    return _marquerCondamne(x.autre, x.autreFamille, true);
+  }
+  // Obstacles marqués condamnés du plan ouvert : [{ o, f }] (zones, murs en ligne ; session et calques).
+  function condamnes() {
+    const d = collecter(), out = [];
+    (d.zones || []).forEach(function (o) { if (o && o.condamne === true) out.push({ o: o, f: "zones" }); });
+    (d.structures || []).forEach(function (o) { if (o && o.condamne === true) out.push({ o: o, f: "structures" }); });
+    return out;
+  }
+  function decondamner(i) {
+    const e = condamnes()[i];
+    return e ? _marquerCondamne(e.o, e.f, false) : Promise.resolve(false);
   }
 
   // ── Textes ──────────
@@ -392,9 +1090,23 @@ window.KtaVerifierPlan = (function () {
       detail = c.motif === "meme"
         ? _t("verif.c3.meme", { n: _fmtNiv(c.niveau) })
         : _t("verif.c3.bout", { n: _fmtNiv(c.niveau), d: _distTexte(c.distPx) });
+    } else if (c.controle === "C4") {
+      detail = _t("verif.c4." + c.motif, { n: c.copies });
+    } else if (c.controle === "C5") {
+      detail = _t("verif.c5.ecart", { d: _distTexte(c.ecartPx), autre: _nomObjet("roads", c.autreTrace || {}) });
+    } else if (c.controle === "C8") {
+      detail = c.motif === "invalide"
+        ? _t("verif.c8.invalide", { v: String(c.valeur).slice(0, 20) })
+        : _t("verif.c8.inconnu", { n: _fmtNiv(c.valeur) });
+    } else if (c.controle === "C9") {
+      detail = _t("verif.c9." + c.motif, { type: String(c.type || "").slice(0, 40) });
+    } else if (c.controle === "C10") {
+      detail = _t("verif.c10.sommets", { n: c.n }) + (c.disparait ? " · " + _t("verif.c10.disparait") : "");
+    } else {
+      detail = _t("verif." + c.controle.toLowerCase() + "." + c.motif);
     }
-    const traverse = c.controle === "C1" || c.controle === "C12";
-    const niveau = _multi() && traverse ? " · " + _t("verif.niveau", { n: _fmtNiv(c.niveau) }) : "";
+    const sansNiveau = c.controle === "C2" || c.controle === "C3" || c.controle === "C8";
+    const niveau = _multi() && !sansNiveau ? " · " + _t("verif.niveau", { n: _fmtNiv(c.niveau) }) : "";
     return { objet: objet + niveau, detail: detail };
   }
 
@@ -414,7 +1126,8 @@ window.KtaVerifierPlan = (function () {
   function montrer(c) {
     const m = _map();
     if (!m || !c) return;
-    if (_multi() && window.APP_CONFIG.activeLevel !== c.niveau && typeof window.ktaSetActiveLevel === "function") {
+    if (_multi() && Number.isInteger(c.niveau) && window.APP_CONFIG.activeLevel !== c.niveau &&
+        typeof window.ktaSetActiveLevel === "function") {
       try { window.ktaSetActiveLevel(c.niveau, { source: "verifierPlan" }); } catch (err) { /* niveau absent */ }
     }
     _effacerMarque();
@@ -427,9 +1140,15 @@ window.KtaVerifierPlan = (function () {
         ? L.polygon(ll, Object.assign({ weight: 3, dashArray: "6 4", className: "kta-verif-obstacle" }, base))
         : L.polyline(ll, Object.assign({ weight: 4, dashArray: "6 4", className: "kta-verif-obstacle" }, base)));
     }
+    if (Array.isArray(c.segment)) {
+      couches.push(L.polyline(_latlngs(c.segment),
+        Object.assign({ weight: 4, dashArray: "6 4", className: "kta-verif-obstacle" }, base)));
+    }
     if (Array.isArray(c.objet.points)) {
-      couches.push(L.polyline(_latlngs(c.objet.points),
-        Object.assign({ weight: 6, opacity: 0.55, className: "kta-verif-objet" }, base)));
+      const style = Object.assign({ weight: 6, opacity: 0.55, className: "kta-verif-objet" }, base);
+      couches.push(c.famille === "zones" || (c.famille === "structures" && _ferme({ f: c.famille, o: c.objet }))
+        ? L.polygon(_latlngs(c.objet.points), Object.assign({ fill: false }, style))
+        : L.polyline(_latlngs(c.objet.points), style));
     }
     if (c.ancre) {
       couches.push(L.circleMarker(window.convertCoord(c.ancre.x, c.ancre.y),
@@ -519,7 +1238,23 @@ window.KtaVerifierPlan = (function () {
     _bandeau.querySelector('[data-verif="prec"]').disabled = _liste.length < 2;
     _bandeau.querySelector('[data-verif="suiv"]').disabled = _liste.length < 2;
     // style et non `hidden` : l'affichage de .kta-btn l'emporterait sur l'attribut.
-    _bandeau.querySelector('[data-verif="fiche-autre"]').style.display = c.autre ? "" : "none";
+    // C4 : l'autre exemplaire (un point en double est au même endroit : une seule fiche à toucher).
+    const autre = _bandeau.querySelector('[data-verif="fiche-autre"]');
+    autre.style.display = c.autre && !(c.controle === "C4" && c.famille === "editorPoints") ? "" : "none";
+    autre.textContent = _t(c.controle === "C4" ? "verif.ficheCopie" : "verif.ficheObstacle");
+    _bandeau.querySelector('[data-verif="raccorder"]').style.display = c.controle === "C5" ? "" : "none";
+    // Correction sûre (C4, C6, C10) ou galerie condamnée (C1) : seulement quand on peut l'écrire ; sinon la raison.
+    const p = _plan(c), corr = _bandeau.querySelector('[data-verif="corriger"]');
+    corr.style.display = p && !p.refus ? "" : "none";
+    corr.textContent = _t("verif.corr." + c.controle);
+    const condamnable = c.controle === "C1" && !!c.autre && !_lectureSeule() && !!_origine(c.autre, c.autreFamille);
+    _bandeau.querySelector('[data-verif="condamner"]').style.display = condamnable ? "" : "none";
+    // Note : la raison d'une correction absente, ou ce que fait la correction d'exemplaires mêlés (C4).
+    const note = _bandeau.querySelector(".kta-verif-note-corr");
+    const figee = (p && p.refus && p.refus !== "change") || (c.controle === "C1" && c.autre && !condamnable);
+    const cleNote = figee ? "verif.corr.figee" : (p && p.mixte ? "verif.corr.mixte" : null);
+    note.textContent = cleNote ? _t(cleNote) : "";
+    note.style.display = cleNote ? "" : "none";
     montrer(c);
     if (fiche) _ficheDiffere(c.objet, c.famille, c.ancre);
   }
@@ -541,8 +1276,11 @@ window.KtaVerifierPlan = (function () {
       '<div class="kta-racc-nav">' + btn("prec", "verif.prec") + '<span class="kta-verif-pos"></span>' +
         btn("suiv", "verif.suiv") + '</div>' +
       '<span class="kta-verif-info"></span>' +
+      '<span class="kta-verif-note-corr"></span>' +
       '<div class="kta-racc-actions">' + btn("fiche", "verif.fiche", "kta-btn-primary") +
-        btn("fiche-autre", "verif.ficheObstacle") + btn("vu", "verif.vu") + btn("fermer", "verif.fermer") + '</div>';
+        btn("fiche-autre", "verif.ficheObstacle") + btn("raccorder", "verif.raccorder") +
+        btn("corriger", "verif.corr.C4") + btn("condamner", "verif.condamner") + btn("vu", "verif.vu") +
+        btn("fermer", "verif.fermer") + '</div>';
     document.body.appendChild(b);
     _bandeau = b;
     b.addEventListener("click", function (ev) {
@@ -555,6 +1293,20 @@ window.KtaVerifierPlan = (function () {
       if (!c) return;
       if (act === "fiche") { _ficheDiffere(c.objet, c.famille, c.ancre); return; }
       if (act === "fiche-autre" && c.autre) { _ficheDiffere(c.autre, c.autreFamille, c.ancre); return; }
+      if (act === "raccorder" && c.raccord && window.KtaRaccords) {
+        Promise.resolve(window.KtaRaccords.raccorder(c.raccord)).then(function (ok) {
+          if (!ok) return;
+          _toast(_t("verif.toast.raccorde"), "success");
+          _rafraichir();
+        });
+        return;
+      }
+      if (act === "corriger" || act === "condamner") {
+        Promise.resolve(act === "corriger" ? corriger(c) : condamner(c)).then(function (fait) {
+          if (fait) _rafraichir();
+        });
+        return;
+      }
       if (act === "vu") {
         marquerVu(c);
         _toast(_t("verif.toast.vu"), "success");
@@ -593,12 +1345,31 @@ window.KtaVerifierPlan = (function () {
       ORDRE_CONTROLES.forEach(function (id) {
         const lc = lg.filter(function (c) { return c.controle === id; });
         if (!lc.length) return;
-        h += '<div class="kta-verif-controle">' + _esc(_titreControle(id)) + ' (' + lc.length + ')</div>' +
+        const nc = CORRIGIBLES[id] ? lc.filter(corrigible).length : 0;
+        h += '<div class="kta-verif-controle">' + _esc(_titreControle(id)) + ' (' + lc.length + ')' +
+          (nc > 1 ? ' <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-verif-tout="' + id + '">' +
+            _esc(_t("verif.corr.tout" + id, { n: nc })) + '</button>' : '') + '</div>' +
           '<ul class="kta-racc-liste">' + lc.map(function (c) {
             return '<li>' + _ligneHtml(c, 'data-verif-i="' + _liste.indexOf(c) + '"') + '</li>';
           }).join("") + '</ul>';
       });
     });
+    const absentes = liaisonsAbsentes();
+    if (absentes) {
+      h += '<div class="kta-racc-pied kta-verif-c11"><span>' + _esc(_t("verif.c11.texte", { n: absentes })) +
+        '</span> <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" data-verif="liaisons">' +
+        _esc(_t("verif.c11.bouton")) + '</button></div>';
+    }
+    const cond = condamnes();
+    if (cond.length) {
+      const fige = _lectureSeule();
+      h += '<div class="kta-verif-controle">' + _esc(_t("verif.condamnes", { n: cond.length })) + '</div>' +
+        '<ul class="kta-racc-liste kta-verif-vus kta-verif-condamnes">' + cond.map(function (e, i) {
+          return '<li class="kta-verif-vu"><span class="kta-verif-vu-txt">' + _esc(_nomObjet(e.f, e.o)) + '</span>' +
+            (fige || !_origine(e.o, e.f) ? '' : '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+              'data-verif-decondamner="' + i + '">' + _esc(_t("verif.decondamner")) + '</button>') + '</li>';
+        }).join("") + '</ul>';
+    }
     if (_vus.length) {
       h += '<div class="kta-racc-pied"><button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
         'data-verif="voir-vus" aria-expanded="' + (_voirVus ? "true" : "false") + '">' +
@@ -654,6 +1425,7 @@ window.KtaVerifierPlan = (function () {
       if (!el) return;
       const act = el.getAttribute("data-verif");
       if (act === "fermer-liste") _fermerListe();
+      if (act === "liaisons" && window.InterPlanLinks) { _fermerListe(); window.InterPlanLinks.ouvrirGestionnaire(); }
       if (act === "voir-vus") { _voirVus = !_voirVus; ouvrir(); }
       if (act === "retablir-tout") {
         const n = retablirTout();
@@ -727,8 +1499,23 @@ window.KtaVerifierPlan = (function () {
     }, SAISIE_MS);
   });
 
+  // Gestes de la liste (corriger tout un contrôle, retirer une galerie condamnée) : délégation sur le document, la
+  // fenêtre est refaite à chaque ouverture. La liste est refaite après le geste, qu'il ait abouti ou non. (Garde : le
+  // module se charge aussi hors navigateur, dans les garde-fous Node.)
+  if (typeof document !== "undefined") document.addEventListener("click", function (ev) {
+    const el = ev.target && ev.target.closest && ev.target.closest("#kta-verif-modal [data-verif-tout], " +
+      "#kta-verif-modal [data-verif-decondamner]");
+    if (!el) return;
+    const tout = el.getAttribute("data-verif-tout");
+    el.disabled = true;
+    Promise.resolve(tout ? corrigerTout(tout)
+      : decondamner(Number.parseInt(el.getAttribute("data-verif-decondamner"), 10))).then(function () {
+      if (document.getElementById("kta-verif-modal")) ouvrir();
+    });
+  });
+
   // Plan quitté ou changé pendant la revue : le bandeau et sa marque partent avec lui, l'état de saisie aussi.
-  window.addEventListener("mktm:plan-ferme", function () { fermer(); _sigPlan = null; _sig = new Map(); });
+  window.addEventListener("mktm:plan-ferme", function () { fermer(); _sigPlan = null; _sig = new Map(); _c5Cache = null; });
 
   return {
     analyser: analyser,
@@ -740,16 +1527,26 @@ window.KtaVerifierPlan = (function () {
     retablir: retablir,
     retablirTout: retablirTout,
     seuilBordPx: seuilBordPx,
-    // Copie de la liste courante (harnais, diagnostic) : rang, contrôle, motif, niveau, clé, au bord.
+    liaisonsAbsentes: liaisonsAbsentes,
+    // Passe légère (verifierPlanAuto.js) : les contrôles bloquants eux-mêmes, jamais une copie.
+    bloquants: { C1: function (d) { return _c1(d); }, C2: _c2, C3: _c3 },
+    // Copie de la liste courante (harnais, diagnostic) : rang, contrôle, gravité, motif, niveau, clé, au bord.
     liste: function () {
       return _liste.map(function (c, i) {
-        return { i: i, controle: c.controle, motif: c.motif, niveau: c.niveau, cle: c.cle, auBord: !!c.auBord };
+        return { i: i, controle: c.controle, gravite: c.gravite, motif: c.motif, niveau: c.niveau, cle: c.cle,
+          auBord: !!c.auBord, corrigible: corrigible(c) };
       });
     },
     etat: function () {
       return { liste: _liste.length, vus: _vus.length, index: _index, bandeau: !!_bandeau,
         avertis: _avertis.size };
     },
+    corrigible: corrigible,
+    corriger: corriger,
+    corrigerTout: corrigerTout,
+    condamner: condamner,
+    condamnes: function () { return condamnes().map(function (e) { return { famille: e.f, uid: e.o.uid || null }; }); },
+    decondamner: decondamner,
     BORD_M: BORD_M,
     CONTROLES: Object.assign({}, CONTROLES)
   };

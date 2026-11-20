@@ -391,6 +391,16 @@ async function mesurerCalage(page, etat, decalage, lib) {
     const i3 = await page.evaluate(lireIconeInterrupteur);
     verifier(i2 && i2.rond === "gauche" && i3 && i3.rond === "droite", "bascule : rond à gauche puis à droite",
       { eteint: i2 && i2.rond, rallume: i3 && i3.rond });
+    // 🩸 Toucher l'icône ou le mot « Allumé » bascule aussi : la délégation prenait le span marqué le plus proche
+    // (interrupteur-ico, etat), sans action, et le toucher restait sans effet.
+    await page.click("[data-fond-osm='interrupteur-ico']");
+    await page.waitForTimeout(200);
+    const fIco = await page.evaluate(lireFond);
+    await page.click("[data-fond-osm='etat']");
+    await tuilesChargees(page);
+    const fEtat = await page.evaluate(lireFond);
+    verifier(!fIco.etat.allume && fEtat.etat.allume, "toucher l'icône éteint, toucher « Allumé / Éteint » rallume",
+      { apresIcone: fIco.etat.allume, apresEtat: fEtat.etat.allume });
     verifier(f1.zPane < f1.zTiles, "pane du fond sous l'image du plan", { zPane: f1.zPane, zTiles: f1.zTiles });
     verifier(s.etat.requetes.length > 0 && s.etat.requetes.every(function (u) { return RE_OSM.test(u); }),
       "requêtes vers tile.openstreetmap.org seulement", s.etat.requetes.length);

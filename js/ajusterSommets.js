@@ -6,12 +6,12 @@
 
 // ajusterSommets.js — ajuster la suite de points d'une forme déjà dessinée, sur la carte 2D. Appui long (APPUI_MS)
 // sur un sommet puis glisser : il se déplace ; au milieu d'un segment : un sommet naît là et se glisse aussitôt ;
-// sur un sommet sans bouger : ＋, ✂️ (sommet intérieur d'un tracé : _couper) et 🗑️ (refusé sous le minimum, un toast
+// sur un sommet sans bouger : ＋, ✂️ (sommet intérieur d'une ligne coupable : _couper) et 🗑️ (refusé sous le minimum, un toast
 // le dit) ; ＋ ouvre l'insertion (_debuterInsertion : un sommet par tap, jusqu'à ✓, Échap ou le sommet suivant).
 // Familles : prises `window.ktaFormesAjustables.<roads|zones|structures|mesure>` = { cat (HistoryManager, null =
 // hors historique, lu à chaque geste), objets() (modifiables ET visibles, hors objet en cours), ferme(o), minimum(o),
 // libelle(o), rendre(), aimanter?(x, y, o, exclus, tol?) → {x, y} | null, etiquette?(action, o), coupable?(o) +
-// ajouterApres?(o, neuf) (✂️) } (road.js, zones.js, structures.js, measure.js). Outil 📐 seul : la mesure seule.
+// ajouterApres?(o, neuf) + uidType? (✂️ ; préfixe d'uid du second morceau, "rd" si absent) } (road.js, zones.js, structures.js, measure.js). Outil 📐 seul : la mesure seule.
 // Expose : window.KtaAjusterSommets = { enCours(), etat(), annuler(), viser(), insertion*, plan (vue 3D), APPUI_MS… }.
 // ⚠️ contrat : un geste (un point inséré aussi) = une écriture : captureState → mutation → KtaUid.touch → rendre() (un
 // seul `kta:donneesPlanChange`) → record → SessionPersist.save. Pendant le glisser, rien n'est écrit : aperçu seul.
@@ -235,7 +235,8 @@ window.KtaAjusterSommets = (function () {
   // ⚠️ contrat (décision produit) : sommet existant seulement (au milieu d'un segment, on ajoute d'abord un sommet) ;
   // jamais un bout (chaque morceau garde au moins 2 points) ; la prise dit quels objets se coupent (`coupable` ;
   // objets de session seulement : un calque n'est pas dans `objets()`). Le premier morceau GARDE l'objet (uid, champs)
-  // et finit au sommet coupé ; le second, copie à uid neuf (KtaUid.cloneNeuf : type, niveau, note suivent), commence
+  // et finit au sommet coupé ; le second, copie à uid neuf (KtaUid.cloneNeuf au préfixe de la famille, `uidType` :
+  // "st" pour une structure ; type, niveau, note suivent), commence
   // à ce même sommet, dupliqué : l'itinéraire passe toujours par là. Une écriture, une entrée ⏪.
   function _coupable(c) {
     const a = c && c.a, o = c && c.o, n = o && o.points ? o.points.length : 0;
@@ -249,7 +250,7 @@ window.KtaAjusterSommets = (function () {
     const avant = (a.cat && H && typeof H.captureState === "function") ? H.captureState(a.cat) : null;
     let neuf;
     if (U && typeof U.cloneNeuf === "function") {
-      neuf = U.cloneNeuf(o, "rd");
+      neuf = U.cloneNeuf(o, a.uidType || "rd");
     } else {
       neuf = JSON.parse(JSON.stringify(o));
       delete neuf.uid;

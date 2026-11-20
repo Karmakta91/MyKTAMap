@@ -14,6 +14,8 @@
 //   D. `put` et non `add` : réimporter le même profil ne crée pas de doublons ;
 //   E. garde « base v1 » des deux côtés : un document v2 écrit dans une base v1
 //      (keyPath planId) écrase le PDF existant du plan.
+//   F. « Vu, normal » de Vérifier le plan (verifVus) : jamais exportés, ceux de
+//      l'appareil gardés à l'import (fonction réelle exécutée).
 // ⚠️ Contrôles statiques : le câblage, pas l'aller-retour réel d'un gros PDF.
 // =====================================================================
 
@@ -126,6 +128,27 @@ verif(
   "échouer en silence sur des documents que l'utilisateur croit restaurés est pire " +
   "que de ne rien faire."
 );
+
+// ── F. champs propres à l'appareil (« Vu, normal ») ───────────────────
+// Exécute la VRAIE fonction extraite du fichier : retirée à l'export, celle de l'appareil gardée à l'import.
+(function () {
+  const m = src.match(/const PLAN_PREFS_PREFIX[\s\S]*?\r?\n {2}function _sansChampsAppareil[\s\S]*?\r?\n {2}\}\r?\n/);
+  if (!m) { verif("_sansChampsAppareil présente", false, "profileExportImport.js > _sansChampsAppareil introuvable."); return; }
+  const f = new Function(m[0] + "return _sansChampsAppareil;")();
+  const k = "myktamap_plan_prefs_p1";
+  const exp = f(k, { nord: 12, verifVus: ["C1|a"] });
+  verif("export : verifVus retiré, le reste gardé", exp.nord === 12 && !("verifVus" in exp),
+    "Les « Vu, normal » (verifVus) sont un avis de l'appareil : jamais dans l'export du profil.");
+  const imp = f(k, { nord: 3, verifVus: ["C1|vieux"] }, { verifVus: ["C1|local"] });
+  verif("import : verifVus du fichier ignoré, celui de l'appareil gardé",
+    imp.nord === 3 && JSON.stringify(imp.verifVus) === '["C1|local"]',
+    "Un import qui remplace la clé ne doit ni importer ni effacer les « Vu, normal » de l'appareil.");
+  verif("autre préfixe intact", f("myktamap_route_avoid_p1", { verifVus: 1 }).verifVus === 1,
+    "Seule la clé myktamap_plan_prefs_ est filtrée.");
+  verif("collecte et import passent par le filtre",
+    /_sansChampsAppareil\(key, parsed\)/.test(src) && /_sansChampsAppareil\(key, val, local\)/.test(src),
+    "_collectPerPlanLsKeys et applyProfile doivent appeler _sansChampsAppareil.");
+})();
 
 if (!echecs.length) {
   console.log("\n🎉 PDF du Mode Histoire : transport de profil câblé, opt-in, idempotent");

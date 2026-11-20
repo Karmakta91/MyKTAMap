@@ -68,7 +68,7 @@ async function ouvrirPlan(page) {
 async function ouvrirFenetre(page) {
   await page.evaluate(function () {
     const x = document.querySelector("#kta-volume-modal .kta-panneau-close"); if (x) x.click();
-    window.KtaVolumeExploite.ouvrir();
+    return window.KtaVolumeExploite.ouvrir();   // promesse tenue quand le calcul est affiché
   });
   await page.waitForSelector("#kta-volume-modal");
   await page.waitForTimeout(200);

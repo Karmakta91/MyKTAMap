@@ -286,6 +286,21 @@ function charger(fichier, nomGlobal, prealables) {
     r.videM3 === r.videM2 * 2.5 && r.volumeM3 === r.exploiteM2 * 2.5 && r.remblaisM3 === r.remblaisM2 * 2.5 &&
     !r.masseSol && !r.abaisse && r.masseM2 === 0 && r.abaisseM2 === 0);
 
+  // Plan dense (amas de _aires) : grille 10 × 10 de piliers 4×4 px séparés (pas 10 px) = 100 amas de 16 px², plus
+  // une chaîne de trois piliers 10×10 qui se chevauchent de 5 px (x 200-220, union 20×10 = 200 px², un seul amas),
+  // un Comblé y 0-50 sur toute la largeur et une masse ½ y 50-60, secteur 0-300 × 0-100 (30 000 px²).
+  // Piliers : 1 600 + 200 = 1 800 px² = 450 m², 103 comptés. Comblé : 300 × 50 = 15 000 px² moins les piliers dessous
+  // (rangées y 0-50 : 5 × 10 × 16 = 800, chaîne y 0-10 : 200) = 14 000 px² = 3 500 m². Masse : 300 × 10 = 3 000 px²
+  // moins la rangée de piliers y 50-54 (10 × 16 = 160) = 2 840 px² = 710 m² → × ½ × 2 m = 710 m³.
+  const grille = [];
+  for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) grille.push(pil(R(i * 10, j * 10, i * 10 + 4, j * 10 + 4)));
+  const chaine = [pil(R(200, 0, 210, 10)), pil(R(205, 0, 215, 10)), pil(R(210, 0, 220, 10))];
+  r = calc({ secteur: R(0, 0, 300, 100), structures: grille.concat(chaine),
+    zones: [{ type: "remblais", points: R(0, 0, 300, 50) }, msol(R(0, 50, 300, 60), 0.5)] });
+  t("volume : plan dense en amas → piliers 450 m² (103), Comblé hors piliers 3 500 m², masse 710 m² / 710 m³",
+    proche(r.secteurM2, 7500) && proche(r.piliersM2, 450) && r.nbPiliers === 103 && proche(r.remblaisM2, 3500) &&
+    proche(r.masseM2, 710) && proche(r.masseM3, 710));
+
   // ── Estimation de comblement (pur) — exemple de KARMA : 75 ha de vide × 3 m = 2 250 000 m³ ──
   // Béton 130 €/m³ + 20 % de pertes : 2 700 000 m³ → 351 M€ ; toupies (8 m³, PERTES COMPRISES) 337 500 ;
   // piscines 1 080 ; masse × 2,4 = 6 480 000 t ; CO₂ × 0,25 = 675 000 t ; une toupie / 10 min = 3 375 000 min.

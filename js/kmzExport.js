@@ -847,6 +847,8 @@
       }
       // Masse non exploitée : `nature` (absente = remblai à la relecture).
       if (extra && extra.nature) parts.push('<Data name="mkm:nature"><value>' + extra.nature + '</value></Data>');
+      // Zone ou mur en ligne déclaré « galerie volontairement condamnée » (verifierPlan.js) : C1 se tait.
+      if (extra && extra.condamne) parts.push('<Data name="mkm:condamne"><value>1</value></Data>');
       // Masse au sol : rampes (bords bas, indices des sommets du contour : « 0,2 » ; fin en WGS84 : « 0:2.31;48.85 »).
       if (extra && Array.isArray(extra.rampes) && extra.rampes.length) {
         parts.push('<Data name="mkm:rampes"><value>' + extra.rampes.join(",") + '</value></Data>');
@@ -883,7 +885,8 @@
       const desc = road.description ? _emitDescriptionCdata(road.description) : '';
       const extData = (road.type === "jonction")
         ? _emitExtendedDataLevel(null, { fromLevel: road.fromLevel, toLevel: road.toLevel })
-        : _emitExtendedDataLevel(Number.isInteger(road.level) ? road.level : null);
+        : _emitExtendedDataLevel(Number.isInteger(road.level) ? road.level : null,
+          road.condamne === true ? { condamne: true } : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
@@ -915,6 +918,7 @@
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
       const extra = multi ? { niveaux: multi.niveaux, copie: multi.copie } : {};
       if (zone.type === "masse-sol" && Number.isFinite(zone.comble)) extra.comble = zone.comble;
+      if (zone.condamne === true) extra.condamne = true;
       if (typeof window.ktaMasseNonExploitee === "function" && window.ktaMasseNonExploitee(zone)) {
         extra.nature = "non-exploitee";
       }

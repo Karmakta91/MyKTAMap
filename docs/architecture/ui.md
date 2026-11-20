@@ -452,6 +452,17 @@ Paliers progressifs `≥ 1024 / 1440 / 1920px` → `1400 / 1700 / 2000px` pour :
 
 Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé dans le `<style>` injecté.
 
+**⛏️ Volume exploité** (`.kta-volume-boite`, 440 px) passe à **deux colonnes à partir de 900 px** quand un secteur existe
+(`.kta-volume-deux`, ~880 px, 85vh) : calcul à gauche, estimation et fun à droite (champs en grille de 2), chaque
+colonne défile seule ; sous 900 px et sans secteur, la fenêtre étroite d'une colonne, inchangée. Un rappel
+d'`ouvrir()` reconstruit tout et garde le défilement de chaque colonne. Preuve : `checkup-volume-exploite.js` § 5.
+Calcul à faire (rien en cache, `session-data.md` §49.3 bis) : la fenêtre s'ouvre tout de suite, étroite, sur
+`.kta-volume-attente` (roue `loader-circle` + « Calcul en cours… », jeton `--kta-accent-texte`) ; au rappel, la
+ligne « Recalcul… » s'insère sous le titre et `.kta-volume-recalcul` grise l'ancien contenu par la couleur
+`--kta-texte-3` (6,4:1 en sombre, 6,6:1 en clair ; 2e sélecteur (0,4,0) contre le filet clair), jamais par
+l'opacité, corps `inert`. La roue tourne, et pulse sous `prefers-reduced-motion` (`.kta-charge-tourne`). Preuve :
+§ 6 du même checkup.
+
 ⚠️ Les modales de confirmation courtes avec inline `style="max-width:420-520px"` (Force update, plan switcher legacy fallback, etc.) gardent volontairement leur taille fixe.
 
 ##### 41.15.3 Toggle showRoadIntersections (fix6/fix7)
@@ -1890,12 +1901,12 @@ Parcours : `scripts/smoke/checkup-raccords.js` (Chromium et WebKit). i18n `racco
 
 Tuile de l'accueil de l'Éditeur, avant les Raccords, **plan affiché seulement** : ferme l'accueil et ouvre `window.KtaVerifierPlan.ouvrir()` (`tableEditor.js` ne porte que l'appel ; icône `clipboard-list`). Contrôles, seuils et clé « vu, normal » : `multilevel-pathfinding.md` § Vérifier le plan.
 
-- **Fenêtre** `#kta-verif-modal` (`kta-readme-modal-overlay`, boîte des raccords) : note, compte « À revoir : N · vus, normaux : V », puis la liste **groupée par gravité** (`kta-verif-g-bloquant` / `-revoir` / `-info`, titre avec l'icône `triangle-alert`) et, dans chaque gravité, par contrôle (titre + nombre) ; une ligne par constat (objet nommé par son type de légende et son nom, niveau en multi-niveau ; dessous, ce qui ne va pas). Un passage entre niveaux qui traverse un niveau intermédiaire sans raccord est rangé en « Pour info », pas en « Bloquant ». « Vus, normaux (V) » déplie la liste des vus, chacun avec **Rétablir**, et **Tout rétablir**. Liste vide : phrase « rien à signaler ».
-- **Clic sur une ligne** : la fenêtre part, la carte passe au niveau du constat (`ktaSetActiveLevel`) et le cadre (`fitBounds` sur les segments en cause, marge 10 m) ; l'objet est surligné (`kta-verif-objet`, `--kta-accent`), l'obstacle cerné en tireté (`kta-verif-obstacle`, `--kta-erreur`), l'endroit entouré (`kta-verif-cercle`) ; calque `L.svg` à part. La **fiche** de l'objet s'ouvre 150 ms après (couches rattachées au déplacement) : celle que la carte a attachée à l'objet (`utils.js > ktaFicheObjetDe`) pour un tracé, une zone, une structure ; le marqueur à sa position pour un point. Objet masqué (filtres, niveau) : toast `warn`, pas de fiche.
-- **Bandeau** `#kta-verif-bandeau` (allure de `.kta-racc-bandeau`, sans `.kta-iti-floater`, même raison) : « ◀ Précédent · i / N · Suivant ▶ » (circulaire, la fiche suit), l'objet et le constat, **Ouvrir la fiche**, **Fiche de l'obstacle** (C1 et C12), **Vu, normal**, **Fermer**. Vu, normal recalcule et passe au suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Échap et Fermer rendent la fenêtre ; `kta:donneesPlanChange` recalcule (300 ms) ; `mktm:plan-ferme` ferme tout.
+- **Fenêtre** `#kta-verif-modal` (`kta-readme-modal-overlay`, boîte des raccords) : note, compte « À revoir : N · vus, normaux : V », puis la liste **groupée par gravité** (`kta-verif-g-bloquant` / `-revoir` / `-info`, titre avec l'icône `triangle-alert`) et, dans chaque gravité, par contrôle (titre + nombre) ; une ligne par constat (objet nommé par son type de légende et son nom, niveau en multi-niveau ; dessous, ce qui ne va pas). Un passage entre niveaux qui traverse un niveau intermédiaire sans raccord est rangé en « Pour info », pas en « Bloquant ». « Vus, normaux (V) » déplie la liste des vus, chacun avec **Rétablir**, et **Tout rétablir**. Liste vide : phrase « rien à signaler ». Sous le titre d'un contrôle corrigible (C4, C6, C10), dès deux constats corrigibles : bouton « tout » (`data-verif-tout`, ex. **Garder un exemplaire de chacun (N)**) ; **Galeries condamnées (N)** liste les obstacles marqués, chacun avec **Retirer** (`data-verif-decondamner`, absent en lecture seule). Ces deux gestes sont écoutés par délégation sur le document (la fenêtre est refaite à chaque ouverture) et refont la liste après. **Pied C11** (`.kta-verif-c11`, seulement s'il y en a) : « Liaisons vers un plan absent de cet appareil : N » et **Voir les liaisons**, qui ferme la fenêtre et ouvre le gestionnaire des liaisons (`InterPlanLinks.ouvrirGestionnaire`).
+- **Clic sur une ligne** : la fenêtre part, la carte passe au niveau du constat (`ktaSetActiveLevel`) et le cadre (`fitBounds` sur les segments en cause, marge 10 m) ; l'objet est surligné (`kta-verif-objet`, `--kta-accent` ; contour fermé en polygone sans remplissage), l'obstacle — ou, pour C5, l'écart entre les deux galeries — en tireté (`kta-verif-obstacle`, `--kta-erreur`), l'endroit entouré (`kta-verif-cercle`) ; calque `L.svg` à part. La **fiche** de l'objet s'ouvre 150 ms après (couches rattachées au déplacement) : celle que la carte a attachée à l'objet (`utils.js > ktaFicheObjetDe`) pour un tracé, une zone, une structure ; le marqueur à sa position pour un point. Objet masqué (filtres, niveau) : toast `warn`, pas de fiche.
+- **Bandeau** `#kta-verif-bandeau` (allure de `.kta-racc-bandeau`, sans `.kta-iti-floater`, même raison) : « ◀ Précédent · i / N · Suivant ▶ » (circulaire, la fiche suit), l'objet et le constat, **Ouvrir la fiche**, **Fiche de l'obstacle** (C1 et C12) ou **Fiche de l'autre exemplaire** (C4, sauf deux points au même endroit : une seule fiche), **Raccorder** (C5 : `KtaRaccords.raccorder`, toast `success`, liste recalculée), la correction sûre du constat (**Garder un exemplaire** C4, **Supprimer le contour** C6 dégénéré, **Retirer les sommets en double** C10) ou **Galerie condamnée** (C1), seulement quand on peut l'écrire — sinon la raison en une ligne (`.kta-verif-note-corr` : calque en lecture seule, exemplaires mêlés session / calque), **Vu, normal** (C5 : **Ignorer** des Raccords), **Fermer** ; les boutons sans objet sont masqués par `style.display` (`.kta-btn` l'emporte sur `hidden`). Vu, normal recalcule et passe au suivant (même rang) ; liste vide → toast `success` et retour à la fenêtre. Échap et Fermer rendent la fenêtre ; `kta:donneesPlanChange` recalcule (300 ms) ; `mktm:plan-ferme` ferme tout.
 - **Saisie** : un tracé, une zone d'un type dur ou un mur en ligne saisi qui crée une coupure → toast `warn` (`verif.saisie.*`) qui renvoie à l'outil ; une fois par coupure et par plan ouvert.
 
-Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native, aucune surface réseau, rien d'écrit dans les données.
+Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `verif.*`, `tabledit.source.verif*` (fr/en/es). Aucune popup native (confirmation `ktaConfirm`, refus `ktaAlerte`), aucune surface réseau ; les écritures (corrections, galerie condamnée) passent par le chemin unique décrit dans `multilevel-pathfinding.md` § Vérifier le plan.
 
 
 #### 91.7 Détecter piliers et fronts (`js/detectionStructures.js`)
@@ -2547,14 +2558,18 @@ Sur la carte 2D, la suite de points d'un objet déjà dessiné se corrige sans l
 - **Rampes d'une masse au sol** : elles suivent leur segment quand un sommet est ajouté, inséré ou supprimé
   (`masseSol.js > suivreBords`, appelée avant chaque `splice` de `_ecrire` et `_poser`) ; une rampe dont le segment
   disparaît est retirée, dans la même entrée ⏪. Règle : `data-formats.md` § rampes.
-- **✂️ Couper un tracé** (décision du 08/11/2026) : même menu, troisième bouton `.kta-ajuster-couper`, seulement sur un
-  **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary`) et
-  `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
-  en place) ; le second, `KtaUid.cloneNeuf(o, "rd")` (uid neuf ; type, niveau, note suivent), commence à ce même sommet,
+- **✂️ Couper un tracé ou une structure en ligne** : même menu, troisième bouton `.kta-ajuster-couper`, seulement
+  sur un **sommet intérieur** d'une forme dont la prise déclare `coupable(o)` (tracés : ni `jonction` ni `itinerary` ;
+  structures : `_isPolylineType` — fronts, `mur-ligne`, `arc`, types perso en ligne ; jamais un pilier ni un mur
+  fermé) et `ajouterApres(o, neuf)`. Le premier morceau **garde l'objet** (uid, champs) et finit au sommet coupé (`points` tronqué
+  en place) ; le second, `KtaUid.cloneNeuf(o, a.uidType || "rd")` (uid neuf au préfixe de la famille : `rd` pour un tracé,
+  `st` pour une structure ; type, niveau, note et champs multi-niveaux suivent), commence à ce même sommet,
   **dupliqué** (copie) : les deux tracés se touchent, l'itinéraire passe toujours. Il entre juste après le premier dans
-  `roadsData`. Pas de coupe en milieu de segment (on ajoute d'abord un sommet), jamais un bout (chaque morceau garde
+  sa liste (`roadsData`, `structuresData`). En 3D, une ligne est bâtie pavé par pavé (`vue3d.js > _pavesLigne`) :
+  deux morceaux donnent les mêmes pavés que la ligne entière, sans trou au sommet partagé. Pas de coupe en milieu de segment (on ajoute d'abord un sommet), jamais un bout (chaque morceau garde
   2 points), objets de session seulement. Une écriture (contrat ci-dessous, étiquette `ajuster.histo.couper`), un
-  ⏪ recolle. Garde-fou : `scripts/check-couper-trace.js` (prise réelle de road.js extraite, dans un `vm`).
+  ⏪ recolle. Garde-fous : `scripts/check-couper-trace.js` (prises réelles de road.js et structures.js extraites, dans un `vm`),
+  `scripts/smoke/checkup-ajuster-sommets.js` (tracé et front, au doigt).
 - **Insérer à la suite** (＋, QCM du 05/11/2026) : à partir du sommet X, chaque tap sur la carte insère un sommet
   entre le dernier posé et X + 1 (le premier entre X et X + 1), la forme se redessine à chaque point. Forme fermée,
   X dernier : X + 1 = le premier (point ajouté en fin de liste). Ligne, X dernier : la ligne se prolonge. Bandeau

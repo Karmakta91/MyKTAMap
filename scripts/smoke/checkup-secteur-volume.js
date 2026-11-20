@@ -77,15 +77,22 @@ async function ouvrirPlan(page, premier) {
   }, !!premier);
 }
 
+// ouvrir() rend une promesse tenue quand la fenêtre est à jour (calcul fait après l'affichage).
 function ouvrir(page) {
-  return page.evaluate(function () { window.KtaVolumeExploite.ouvrir(); });
+  return page.evaluate(function () { return window.KtaVolumeExploite.ouvrir(); });
+}
+// Fenêtre plus en calcul : une case, « Reprendre » ou « Valider » relancent ouvrir() sans l'attendre.
+function calme(page) {
+  return attendre(page, function () {
+    return !document.querySelector('#kta-volume-modal[aria-busy="true"]');
+  }, 30000, 50);
 }
 function lire(page) {
   return page.evaluate(function () {
     const m = document.getElementById("kta-volume-modal");
     if (!m) return null;
     const lignes = {};
-    m.querySelectorAll(".kta-readme-modal-corps > .kta-volume-table tr").forEach(function (tr) {
+    m.querySelectorAll(".kta-volume-col:first-child > .kta-volume-table tr").forEach(function (tr) {
       lignes[tr.querySelector("th").textContent] = tr.querySelector("td").textContent;
     });
     const t = window.I18n.t.bind(window.I18n);
@@ -95,13 +102,15 @@ function lire(page) {
       champH: !!m.querySelector("#kta-volume-h"), sans: !!m.querySelector(".kta-volume-sans") };
   });
 }
-function cliquer(page, sel) {
-  return page.evaluate(function (sel) {
+async function cliquer(page, sel) {
+  const fait = await page.evaluate(function (sel) {
     const b = document.querySelector(sel);
     if (!b) return false;
     b.click();
     return true;
   }, sel);
+  await calme(page);
+  return fait;
 }
 // Touchers sur la carte (coordonnées plan relatives au coin du secteur), comme un clic de l'utilisateur.
 function toucher(page, pts) {

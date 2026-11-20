@@ -358,6 +358,7 @@ window.MajPlan = (function () {
         legende: legende,
         onZip: function (zipBlob, nomZip, infos) {
           etat.planFerme = !!(infos && infos.planFerme);
+          etat.nom = (infos && infos.nom) || "";
           _etape4(etat, zipBlob, nomZip);
         }
       });
@@ -468,11 +469,20 @@ window.MajPlan = (function () {
   // Plan local : la nouvelle archive prend la place de l'ancienne sous le MÊME id (session, calage, photos et
   // favoris restent attachés). Plan encore ouvert : le retrait se fait AVANT, la session rechargée avec le plan est
   // alors déjà propre. Plan fermé par le Générateur : APRÈS la réouverture, sur la session restaurée.
+  // 🩸 Plan fermé : la fenêtre « Session précédente restaurée » est retenue jusqu'après le retrait (sinon elle
+  // annonce les objets qu'il va enlever). Nouveau nom de la version déclaré à la session (sinon « une session est
+  // enregistrée sous un autre nom » à chaque ouverture). Contrat : sessionPersist.js > retenirModale.
   async function _remplacer(etat, blob, nomZip) {
     const entree = window.PlanRegistry.findById(etat.planId);
     if (!entree || typeof window.chargerZipFichier !== "function") throw new Error("plan introuvable");
     const avant = _planOuvert(etat);
     if (avant) await _proposerNettoyage(etat, false);
+    const SP = window.SessionPersist;
+    const contrat = !!SP && typeof SP.retenirModale === "function";
+    if (contrat) {
+      SP.renommerSession(etat.planId, etat.nom);
+      if (!avant) SP.retenirModale(etat.planId);
+    }
     const fichier = new File([blob], nomZip, { type: "application/zip" });
     try {
       await window.chargerZipFichier(fichier, entree.perfPreset || "auto",
@@ -484,6 +494,8 @@ window.MajPlan = (function () {
       // Le ZIP n'est pas perdu : il part en téléchargement.
       _telecharger(blob, nomZip);
       await window.ktaAlerte(t("maj.err.remplacement", { err: (er && er.message) || String(er) }), { type: "erreur" });
+    } finally {
+      if (contrat) SP.libererModale();
     }
   }
 

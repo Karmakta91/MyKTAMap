@@ -26,7 +26,7 @@ docker run -d -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
 ### Multi-stage build
 
 ```
-Stage 1 : alpine + rsync       Stage 2 : nginx:alpine
+Stage 1 : alpine + rsync       Stage 2 : nginx:<version>-alpine
 ─────────────────────         ─────────────────────────────
 COPY repo entier              Inherit Nginx + openssl + tini
 rsync exclusions ─────→       COPY /www depuis stage 1
@@ -200,8 +200,11 @@ GHCR free tier : illimité pour les repos publics. Pas de souci de coût.
 
 ## Maintenance
 
-- Les patches Nginx Alpine sont propagés au prochain build (les `RUN apk add`
-  rebuildent depuis le tag `nginx:alpine` qui est mis à jour upstream).
-- Pour forcer une rebase sans bump version : `workflow_dispatch` manuel.
+- La version nginx est **figée** dans le `Dockerfile` (`FROM nginx:<version>-alpine`) : Dependabot (écosystème
+  `docker`) ouvre une PR à chaque nouvelle version. Correctif de sécurité nginx = fusionner cette PR, puis
+  republier l'image. 🔒 Plancher : 1.31.9 / 1.30.7 (CVE-2026-123007, CVE-2026-123633 : HTTP/2, actif dans
+  `docker/nginx-docker.conf`).
+- Republier l'image d'un tag sans bump : `workflow_dispatch` manuel (champ `tag`). L'image est reconstruite avec
+  le `Dockerfile` **de ce tag**.
 - Le cache buildx s'invalide automatiquement quand la base image change ou
   que les fichiers sources changent.
