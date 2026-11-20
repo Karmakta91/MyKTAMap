@@ -670,6 +670,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-epaisseur-traits.js` | Réglage « Épaisseur des traits » : curseur de la Configuration, ×2 double aussitôt tracés (session et calque), fronts, murs en ligne et arcs sur la carte du plan, contour des piliers inchangé, exports image et KML identiques, tracé de session aussi épais qu'un tracé de calque dans l'export, itinéraire (trait fixe) doublé à ×2 hors loi du zoom, bornes, rechargement |
 | `smoke/checkup-contour-ferme.js` | Ligne fermée (carré à 3 côtés, premier point répété) convertie en zone ou pilier : fiche, lot filtré avec compte, ⏪ unique, calque passé en « Modifier » puis converti en lot |
 | `smoke/checkup-suppr-zone.js` | Sélection par zone dessinée et suppression en lot (sélection multiple) : dedans, à cheval, autre niveau, calque ignoré et compté, photo gardée, re-clic, cases de famille, traces de suppression, ⏪ unique |
+| `smoke/checkup-selection-zone.js` | Sélection par zone sur les niveaux visibles (Chromium et WebKit) : case de niveau de ≡ Filtres, objets d'un niveau visible autre que l'actif pris, niveau masqué non pris, zone sur plusieurs niveaux, plan à un niveau, Niveau → 0 et Supprimer limités à la sélection |
 | `smoke/checkup-effacer-session-partage.js` | « Effacer la session » sur plan local et plan partagé par une extension simulée |
 | `smoke/checkup-export-sig.js` | Exports GeoTIFF et GeoJSON par l'interface, calage tourné ou affine |
 | `smoke/checkup-exports-structures.js` | Ce que les exports emportent des structures intégrées et personnalisées |
@@ -858,6 +859,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.29.1, branche `Karma_dev`)
+
+- **🎯 La sélection par zone prend les objets des niveaux visibles** (`js/selectionZone.js`, `js/selectionMulti.js > ktaNiveauVisible`, `lang/*.json`, guides, aide intégrée, `session-data.md` § Sélection multiple, `check-selection-multi.js` § 8 bis, `checkup-selection-zone.js`) : « Sélectionner par zone » ne prenait que les objets du niveau actif, alors que le tap et « Tous du type » suivent les niveaux cochés dans ≡ Filtres ; entourer des murs du niveau +1 affichés pendant qu'on travaille au niveau 0 ne les sélectionnait pas. La zone prend désormais ce que la carte montre, par la même règle que le tap (une seule définition, relue par la zone) : une zone sur plusieurs niveaux est prise si l'un des siens est visible, un niveau masqué n'est jamais pris, un plan à un niveau ne change pas. Objets entièrement dedans seulement, itinéraire, jonctions et objets de calque toujours écartés. Libellés : « Tous les … des niveaux visibles », « Aucun objet entièrement dans la zone, sur les niveaux visibles », « Niveaux visibles seulement : 0, +1. » dans la fenêtre Supprimer, et la ligne « Effacer par zone ».
 
 #### v2.29.1 (20/11/2026) — nginx corrigé dans l'image Docker, Vérifier le plan qui corrige et prévient, Volume exploité immédiat (branche `Karma_dev`)
 

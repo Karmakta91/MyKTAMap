@@ -1137,7 +1137,7 @@ Seules les cibles de **même forme** sont proposées : une **ligne** (tracé, fr
 Dans la fenêtre de conversion, **🎯 Sélectionner plusieurs objets à convertir** affiche un bandeau :
 
 - **tape un objet** pour l'ajouter (bleu pointillé), re-tape-le pour le retirer ;
-- **➕ Tous les « type » du niveau affiché** ajoute tous les objets du même type que le dernier ajouté ;
+- **➕ Tous les « type » des niveaux visibles** ajoute tous les objets du même type que le dernier ajouté ;
 - **✅ Convertir (N)** ouvre le choix du type pour tout le lot ; **Annuler** abandonne.
 
 Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et explique pourquoi), mais il peut mélanger les familles : fronts de taille et chemins, tous des lignes, deviennent ensemble des galeries. Les objets déjà du bon type restent tels quels, et le message final les compte. Un seul `Ctrl+Z` annule tout le lot.
@@ -1153,7 +1153,7 @@ Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et expliqu
 Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur. On y arrive aussi sans passer par un objet : dans 🛣️ Tracés, ⬛ Zones ou 🏛️ Structures, **🧹 Effacer → ✏️ Effacer par zone** (ou **🎯 Sélectionner** puis **✏️ Par zone** dans le bandeau du bas) : le tracé de la zone démarre tout de suite, et la confirmation n'a d'avance que la famille du groupe cochée (les autres restent proposées, décochées).
 
 - **✏️ Sélectionner par zone** : tape les sommets de la zone sur la carte (comme une mesure ♦️ Surface ; **↩️ Dernier sommet** corrige un tap raté), puis **✅ Prendre la zone**. Ta mesure ♦️ en cours n'est pas perdue : elle revient telle quelle.
-- Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux du **niveau affiché**. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.
+- Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux des **niveaux visibles** (cochés dans ≡ Filtres), comme au tap : afficher un niveau suffit pour prendre ses objets, le masquer les laisse de côté. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.
 - Les **points** entrent aussi dans la sélection (cercle bleu pointillé). Re-tape un objet pour le retirer ; tu peux tracer plusieurs zones.
 - **🗑️ Supprimer (N)** ouvre une confirmation avec une case par famille (📍 Points, 〰️ Tracés, 🟦 Zones, 🧱 Structures) et leur nombre : décoche une famille pour la garder.
 - La fenêtre annonce aussi : les **photos** des points (elles ne sont pas effacées, elles passent « sans point » dans 🧰 Outils > 📸 Mes photos), les **objets d'un calque de données** vus dans la zone (jamais supprimés : passe le calque en **🔄 Modifier** d'abord), et les **points portails** (liaison vers un autre plan), toujours gardés.

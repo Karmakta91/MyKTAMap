@@ -1137,7 +1137,7 @@ Only targets of the **same shape** are offered: a **line** (path, quarry face) b
 In the conversion window, **🎯 Select several objects to convert** shows a banner:
 
 - **tap an object** to add it (blue dotted), tap it again to remove it;
-- **➕ All "type" on the displayed level** adds every object of the same type as the last one added;
+- **➕ All "type" on the visible levels** adds every object of the same type as the last one added;
 - **✅ Convert (N)** opens the type choice for the whole batch; **Cancel** gives up.
 
 The batch does not mix lines and closed surfaces (the banner refuses and explains why), but it can mix families: quarry faces and paths, all lines, become galleries together. Objects already of the right type are left as they are, and the final message counts them. A single `Ctrl+Z` undoes the whole batch.
@@ -1153,7 +1153,7 @@ The batch does not mix lines and closed surfaces (the banner refuses and explain
 The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector. You can also get there without going through an object: in 🛣️ Paths, ⬛ Zones or 🏛️ Structures, **🧹 Erase → ✏️ Erase by area** (or **🎯 Select** then **✏️ By area** in the bottom banner): drawing the area starts right away, and the confirmation only has the group's family ticked in advance (the others are still offered, unticked).
 
 - **✏️ Select by area**: tap the corners of the area on the map (like a ♦️ Surface measure; **↩️ Last corner** fixes a missed tap), then **✅ Use this area**. Your current ♦️ measure is not lost: it comes back as it was.
-- Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **displayed level**. An object straddling the edge is not taken, and nothing is ever cut.
+- Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **visible levels** (ticked in ≡ Filters), as with a tap: showing a level is enough to take its objects, hiding it leaves them out. An object straddling the edge is not taken, and nothing is ever cut.
 - **Points** join the selection too (blue dotted circle). Tap an object again to remove it; you can draw several areas.
 - **🗑️ Delete (N)** opens a confirmation with one checkbox per family (📍 Points, 〰️ Paths, 🟦 Areas, 🧱 Structures) and their count: untick a family to keep it.
 - The window also tells you about: the points' **photos** (they are not erased, they become “without a point” in 🧰 Tools > 📸 My photos), the **data layer objects** seen in the area (never deleted: switch the layer to **🔄 Edit** first), and **portal points** (link to another map), always kept.

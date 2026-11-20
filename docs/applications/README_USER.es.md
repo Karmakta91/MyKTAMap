@@ -1137,7 +1137,7 @@ Solo se proponen destinos de la **misma forma**: una **línea** (trazado, frente
 En la ventana de conversión, **🎯 Seleccionar varios objetos para convertir** muestra un aviso:
 
 - **toca un objeto** para añadirlo (azul punteado), vuelve a tocarlo para quitarlo;
-- **➕ Todos los «tipo» del nivel mostrado** añade todos los objetos del mismo tipo que el último añadido;
+- **➕ Todos los «tipo» de los niveles visibles** añade todos los objetos del mismo tipo que el último añadido;
 - **✅ Convertir (N)** abre la elección del tipo para todo el lote; **Cancelar** lo abandona.
 
 El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica por qué), pero puede mezclar familias: frentes de cantera y caminos, todos líneas, se convierten juntos en galerías. Los objetos que ya son del tipo correcto se quedan como están, y el mensaje final los cuenta. Un solo `Ctrl+Z` deshace todo el lote.
@@ -1153,7 +1153,7 @@ El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica 
 El mismo aviso sirve también para **eliminar** de golpe, por ejemplo todo lo que una importación colocó mal en un sector. También se llega sin pasar por un objeto: en 🛣️ Trazados, ⬛ Zonas o 🏛️ Estructuras, **🧹 Borrar → ✏️ Borrar por zona** (o **🎯 Seleccionar** y luego **✏️ Por zona** en el aviso de abajo): el trazado de la zona empieza enseguida, y la confirmación solo lleva marcada de antemano la familia del grupo (las demás siguen propuestas, sin marcar).
 
 - **✏️ Seleccionar por zona**: toca los vértices de la zona en el mapa (como una medida ♦️ Superficie; **↩️ Último vértice** corrige un toque fallido) y luego **✅ Usar la zona**. Tu medida ♦️ en curso no se pierde: vuelve tal cual.
-- Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los del **nivel mostrado**. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.
+- Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los de los **niveles visibles** (marcados en ≡ Filtros), como al tocar: mostrar un nivel basta para tomar sus objetos, ocultarlo los deja fuera. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.
 - Los **puntos** también entran en la selección (círculo azul punteado). Vuelve a tocar un objeto para quitarlo; puedes trazar varias zonas.
 - **🗑️ Eliminar (N)** abre una confirmación con una casilla por familia (📍 Puntos, 〰️ Trazados, 🟦 Zonas, 🧱 Estructuras) y su número: desmarca una familia para conservarla.
 - La ventana anuncia también: las **fotos** de los puntos (no se borran, pasan a «sin punto» en 🧰 Herramientas > 📸 Mis fotos), los **objetos de una capa de datos** vistos en la zona (nunca eliminados: pasa antes la capa a **🔄 Modificar**) y los **puntos portal** (enlace a otro plano), siempre conservados.
