@@ -25,7 +25,7 @@
 # --- Stage 1 : prepare assets ----------------------------------------
 # On utilise alpine intermédiaire juste pour avoir rsync/find disponibles
 # au moment d'exclure les fichiers non-runtime (.git, scripts dev, etc.).
-FROM alpine:3.20 AS assets
+FROM alpine:3.24 AS assets
 
 # Installe rsync (~5 MB) — utilisé pour copier proprement avec exclusions
 RUN apk add --no-cache rsync
