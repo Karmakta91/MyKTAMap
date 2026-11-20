@@ -18852,6 +18852,20 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
 }
 .kta-volume-champ input { text-align: right; }
 .kta-volume-bloc .kta-popup-actions { margin-top: 8px; }
+/* Calcul en attente (volumeExploite.js > _montrerAttente) : ligne d'état sous le titre (dans le corps à la première
+   ouverture). Au rappel, l'ancien contenu est grisé par la COULEUR (--kta-texte-3 : 6,4:1 sur --kta-surface en
+   sombre, 6,6:1 en clair), jamais par l'opacité (ui.md §53). Le 2e sélecteur (0,4,0) bat le filet clair
+   « .kta-readme-modal-overlay .kta-readme-modal-corps * » (0,3,1, !important). La roue suit prefers-reduced-motion
+   par .kta-charge-tourne (pulsation au lieu de la rotation). */
+.kta-volume-attente {
+  display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 28px 0;
+  font-size: 13px; font-weight: 600; color: var(--kta-accent-texte);
+}
+.kta-readme-modal-corps > .kta-volume-attente { padding: 0; }
+.kta-volume-roue { display: inline-flex; animation: kta-volume-tourne 0.9s linear infinite; }
+@keyframes kta-volume-tourne { to { transform: rotate(360deg); } }
+.kta-volume-recalcul .kta-readme-modal-corps *,
+:root .kta-readme-modal-overlay .kta-volume-recalcul .kta-readme-modal-corps * { color: var(--kta-texte-3) !important; }
 /* Grand écran (≥ 900 px), secteur présent (.kta-volume-deux, volumeExploite.js > ouvrir) : deux colonnes qui
    défilent chacune, le calcul à gauche, l'estimation et le fun à droite (le tableau reste visible pendant qu'on règle
    l'estimation). ⚠️ Sous 900 px, les colonnes sont des blocs sans marge ni bordure : rendu identique à une seule

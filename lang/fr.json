@@ -5848,6 +5848,8 @@
   "ui.subaction.mesureVolume": "Volume exploité (défruitement de la surface mesurée)",
   "volume.titre": "Volume exploité",
   "volume.fermer": "Fermer",
+  "volume.calcul": "Calcul en cours…",
+  "volume.recalcul": "Recalcul…",
   "volume.hauteur": "Hauteur moyenne de galerie (m)",
   "volume.hauteurReglages": "La hauteur de chaque niveau se règle dans Réglages › Profondeur et hauteur des niveaux : ici, elle sert seulement au calcul.",
   "volume.secteur": "Surface du secteur",

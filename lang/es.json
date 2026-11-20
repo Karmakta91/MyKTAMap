@@ -5848,6 +5848,8 @@
   "ui.subaction.mesureVolume": "Volumen explotado (extracción de la superficie medida)",
   "volume.titre": "Volumen explotado",
   "volume.fermer": "Cerrar",
+  "volume.calcul": "Calculando…",
+  "volume.recalcul": "Recalculando…",
   "volume.hauteur": "Altura media de galería (m)",
   "volume.hauteurReglages": "La altura de cada nivel se ajusta en Ajustes › Profundidad y altura de los niveles: aquí solo sirve para el cálculo.",
   "volume.secteur": "Superficie del sector",

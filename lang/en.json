@@ -5848,6 +5848,8 @@
   "ui.subaction.mesureVolume": "Mined volume (extraction of the measured area)",
   "volume.titre": "Mined volume",
   "volume.fermer": "Close",
+  "volume.calcul": "Calculating…",
+  "volume.recalcul": "Recalculating…",
   "volume.hauteur": "Average gallery height (m)",
   "volume.hauteurReglages": "Each level's height is set in Settings › Level depth and height: here it is only used for the calculation.",
   "volume.secteur": "Sector area",
