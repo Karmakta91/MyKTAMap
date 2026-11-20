@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.29.1 (nginx corrigé dans l'image Docker, Vérifier le plan, Volume exploité)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** L'application ne change rien à ses échanges réseau : Vérifier le plan et le Volume exploité calculent sur l'appareil. Côté serveur, l'image Docker auto-hébergée embarque nginx 1.31.9, qui corrige deux failles de HTTP/2 (CVE-2026-123007, CVE-2026-123633) ; qui héberge l'application sur son propre nginx doit le mettre à jour (prérequis dans le guide d'installation).
+
 ### v2.29.0 (détecter piliers et fronts, épaisseur des traits)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** La détection des piliers et des fronts lit l'image du plan déjà présente sur l'appareil et calcule sur place ; quatre fichiers de l'application s'ajoutent (`js/ktaDetection.js`, son travailleur `js/ktaDetectionWorker.js`, `js/detectionStructures.js`, `js/detectionGenerateur.js`), servis par le site lui-même et gardés hors ligne comme les autres. Les couleurs et réglages retenus restent dans le stockage local de l'appareil, jamais dans une session ni un export. L'épaisseur des traits est un réglage de l'appareil, jamais exporté. Le Générateur rogne et décale les calques sur l'appareil, sans rien envoyer.
