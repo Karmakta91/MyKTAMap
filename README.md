@@ -622,6 +622,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-timeline-restore.js` | Timeline du suivi qui perd `src` / `tp` / `estM` / `estSrc` au rechargement | pre-commit |
 | `check-tracking-defaults.js` | Réglage de podomètre recopié en dur avec une valeur différente de l'usine | pre-commit |
 | `check-uid.js` | `uid` en double ou écrasé, modification sans `touch`, identité perdue ou envoyée vers KMZ / GPX | pre-commit |
+| `check-volume-calcul.js` | Calcul du Volume exploité (`calculerAires`, `calculer`) qui s’écarte de l’oracle en bandes verticales gardé dans le script : 100 plans aléatoires à graine fixe (piliers qui se chevauchent, Comblé, masses), cas exacts, 2 falsifications | pre-commit |
 | `check-wakelock.js` | Écran allumé non repris (verrou fantôme iOS), vibration active par défaut | pre-commit |
 | `check-xss.js` | Gestionnaire inline dans la fiche d'un point, filtre d'entrée qui laisse passer une charge d'attaque | pre-commit |
 | `check-readme-modules.js` | Tables de ce README (modules `js/`, `css/`, `scripts/`, `docs/architecture/`) désaccordées des fichiers et d'`index.html` | pre-commit |

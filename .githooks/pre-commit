@@ -31,6 +31,7 @@ node scripts/check-modal-lifecycle.js
 
 # Chaque methode exportee par un module IIFE existe au chargement (node -c ne resout pas les identifiants).
 node scripts/check-api-surface.js || exit $?
+node scripts/check-volume-calcul.js || exit $?
 
 # Une pref globale sauvegardee est bien relue quand APP_CONFIG est reconstruit au chargement d'un plan.
 node scripts/check-prefs-survival.js || exit $?
