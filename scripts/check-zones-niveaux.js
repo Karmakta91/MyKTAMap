@@ -222,7 +222,9 @@ function charger(win, fichiers) {
       { uid: "zn_r", type: "remblais", level: 0, niveaux: [-1, 0], points: carre(300, 100, 10) }];
     w.getZones = () => zones;
     w.getRoads = () => []; w.getStructures = () => []; w.getEditorPoints = () => [];
-    charger(w, ["js/poiJonction.js", "js/galerieEmprise.js", "js/selectionZone.js", "js/volumeExploite.js"]);
+    // selectionMulti.js avant selectionZone.js (ordre d'index.html) : la zone relit sa règle de niveau (ktaNiveauVisible).
+    charger(w, ["js/poiJonction.js", "js/galerieEmprise.js", "js/selectionMulti.js", "js/selectionZone.js",
+      "js/volumeExploite.js"]);
     const G = w.KtaGalerie;
     t("3D (règle du pas) : la zone 0 / −1 bouche au 0 et au −1, pas au −2",
       G.dansZone(100, 100, 0, "structures") && G.dansZone(100, 100, -1, "structures") &&
@@ -236,7 +238,7 @@ function charger(win, fichiers) {
       /zones: (?:_filtrer\(|sz\.zones\.filter\()[\s\S]{0,200}_zoneSurNiveau\(z, niveau\)/.test(v3d) &&
       /function _zoneSurNiveau\(z, niveau\) \{[\s\S]{0,200}ktaNiveauxObjet\(z\)/.test(v3d));
     zones[0].niveaux = [-1, 0]; zones[1].niveaux = [-1, 0];
-    w.APP_CONFIG.activeLevel = -1;
+    w.APP_CONFIG.activeLevel = -1; w.APP_CONFIG.visibleLevels = [-1];
     w.ktaPointInPolygon = (q, poly) => {   // ray-casting, la règle de utils.js
       let d = false;
       for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -246,9 +248,9 @@ function charger(win, fichiers) {
       return d;
     };
     const sel = w.KtaSelectionZone.dansZone(carre(100, 100, 40));
-    w.APP_CONFIG.activeLevel = -2;
+    w.APP_CONFIG.activeLevel = -2; w.APP_CONFIG.visibleLevels = [-2];
     const sel2 = w.KtaSelectionZone.dansZone(carre(100, 100, 40));
-    t("sélection par zone : la zone 0 / −1 en fait partie au −1, pas au −2",
+    t("sélection par zone : la zone 0 / −1 en fait partie au −1 visible, pas au −2 seul visible",
       sel.items.some(i => i.obj === zones[0]) && !sel2.items.some(i => i.obj === zones[0]));
     const vol = (niveau) => w.KtaVolumeExploite.calculer({ secteur: carre(300, 100, 50), structures: [],
       zones: zones, niveau: niveau, scale: 2, hauteur: 2 });
