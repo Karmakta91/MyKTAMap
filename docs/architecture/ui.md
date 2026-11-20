@@ -452,6 +452,11 @@ Paliers progressifs `≥ 1024 / 1440 / 1920px` → `1400 / 1700 / 2000px` pour :
 
 Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé dans le `<style>` injecté.
 
+**⛏️ Volume exploité** (`.kta-volume-boite`, 440 px) passe à **deux colonnes à partir de 900 px** quand un secteur existe
+(`.kta-volume-deux`, ~880 px, 85vh) : calcul à gauche, estimation et fun à droite (champs en grille de 2), chaque
+colonne défile seule ; sous 900 px et sans secteur, la fenêtre étroite d'une colonne, inchangée. Un rappel
+d'`ouvrir()` reconstruit tout et garde le défilement de chaque colonne. Preuve : `checkup-volume-exploite.js` § 5.
+
 ⚠️ Les modales de confirmation courtes avec inline `style="max-width:420-520px"` (Force update, plan switcher legacy fallback, etc.) gardent volontairement leur taille fixe.
 
 ##### 41.15.3 Toggle showRoadIntersections (fix6/fix7)

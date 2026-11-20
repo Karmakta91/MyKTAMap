@@ -721,7 +721,7 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
   si l'une touche le vide du secteur ; plan sans masse : chiffres identiques au bit près. Une masse et un sol abaissé
   qui se chevauchent comptent chacun (cas non tranché).
 - **Estimation de comblement** (`estimerComblement`, pur, testé dans `check-api-surface.js`) : deux blocs
-  `<details>` sous le tableau, fermés par défaut. « Estimation » : volume de base (vide restant par défaut, exploité
+  `<details>` sous le tableau (colonne de droite dès 900 px : `ui.md` §41.15.2), fermés par défaut. « Estimation » : volume de base (vide restant par défaut, exploité
   total, part du vide en %, ou vide jusqu'à une hauteur bornée à celle du calcul, en proportion), matériau (béton
   130 €/m³ · 2,4 t/m³, coulis 80 · 1,6, remblai inerte 20 · 1,8), pertes 20 % → coût = volume × (1 + pertes) × prix ;
   forages = ⌈surface de base (vide restant, ou exploitée pour « exploité ») ÷ surface par forage (25 m²)⌉ × coût
