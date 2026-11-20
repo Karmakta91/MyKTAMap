@@ -465,7 +465,9 @@
         '<span class="kta-fond-osm-etat" data-fond-osm="hors-ligne-etat"></span>' +
       '</button>';
     p.addEventListener("click", function(e) {
-      const cible = e.target.closest("[data-fond-osm]");
+      // 🩸 button : l'icône et l'état sont des span marqués eux aussi (interrupteur-ico, etat, hors-ligne-etat) ;
+      // le plus proche marqué serait le span, sans action, et le toucher resterait sans effet.
+      const cible = e.target.closest("button[data-fond-osm]");
       if (!cible) return;
       const role = cible.getAttribute("data-fond-osm");
       if (role === "fermer") fermerPanneau();
