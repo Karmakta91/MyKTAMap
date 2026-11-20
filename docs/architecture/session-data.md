@@ -710,7 +710,8 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
   (`styleResolver.js > ktaCombleZone`, la même que la fiche et la 3D ; bornée à [−1 ; 1]) × la hauteur du calcul, à
   bords verticaux (talus négligé : une ligne de note le dit). **Paliers exacts** : parts distinctes triées
   p1 < p2 < … ; la tranche i est l'union des masses de part ≥ pi, d'épaisseur pi − pi−1, et son aire dans le vide hors
-  Comblé vaut |(S ∩ (R ∪ M)) − P| − |(S ∩ R) − P| (deux `calculerAires`) : chevauchements de hauteurs différentes
+  Comblé vaut |(S ∩ (R ∪ M)) − P| − |(S ∩ R) − P| (toutes les tranches, des masses et des non exploitées, en un seul
+  passage : `_aires`, groupes) : chevauchements de hauteurs différentes
   comptés une fois, **le Comblé l'emporte** sur une masse qui le chevauche, un pilier dans une masse en est retiré.
   **Sol abaissé** (part < 0) : même calcul sur |part|, ajouté au volume exploité ET au vide. **Sorte**
   (`ktaMasseNonExploitee`) : un **remblai** est retranché du vide seulement (il reste dans l'exploité) ; une masse
@@ -718,7 +719,8 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
   elle l'emporte). Volume exploité = exploité × h − non exploitées + sols abaissés ; vide (volume) = (exploité −
   Comblé) × h − toutes les masses positives + sols abaissés ; surfaces (secteur, exploitée, taux) inchangées. Lignes
   de la fenêtre (`volume.masse*` = remblai, `volume.nonExploitee*`, `volume.abaisse*`, `volume.noteMasse`) seulement
-  si l'une touche le vide du secteur ; plan sans masse : chiffres identiques au bit près. Une masse et un sol abaissé
+  si l'une touche le vide du secteur (aire au-dessus du seuil d'arrondi, comme le comptage des piliers) ; plan sans
+  masse : chiffres identiques au bit près. Une masse et un sol abaissé
   qui se chevauchent comptent chacun (cas non tranché).
 - **Estimation de comblement** (`estimerComblement`, pur, testé dans `check-api-surface.js`) : deux blocs
   `<details>` sous le tableau (colonne de droite dès 900 px : `ui.md` §41.15.2), fermés par défaut. « Estimation » : volume de base (vide restant par défaut, exploité
@@ -743,9 +745,25 @@ Sous-action du groupe 📐 Mesure (avant ❌), fenêtre `.kta-readme-modal-*` `#
   croisements d'arêtes. Dans une bande, la longueur de la coupe verticale de n'importe quelle combinaison booléenne
   (secteur ∩ ∪piliers, (secteur ∩ ∪remblais) − ∪piliers) est linéaire en x, donc aire = largeur × longueur au
   milieu, **exacte** aux arrondis du double près. Secteur concave, piliers qui se chevauchent (union, jamais comptés
-  deux fois), bords partagés : sans cas particulier. Remplissage pair-impair pour un contour qui se recoupe. Coût :
-  ~16 ms pour 900 piliers dans un secteur à 400 sommets. Garde-fou : `scripts/check-api-surface.js` (valeurs calculées
-  à la main) ; parcours navigateur : `scripts/smoke/checkup-volume-exploite.js`.
+  deux fois), bords partagés : sans cas particulier. Remplissage pair-impair pour un contour qui se recoupe.
+  **Plan dense** (`_aires`) : un passage unique coupait chaque bande sur tous les contours du plan (8 000 piliers
+  fictifs : ~8 s ; avec 3 paliers de masses, un passage par tranche : ~60 s). Les piliers sont rangés en **amas**
+  (boîtes qui se touchent, de proche en proche) : deux amas ne partagent aucune aire, donc un passage sans piliers
+  donne |S|, |S ∩ R|, |S ∩ (R ∪ G)| et un petit passage par amas, borné à sa boîte, ce que ses piliers retirent ;
+  dans chaque passage, seuls les contours « actifs » en x sont coupés. Même plan : ~0,2 s, ~0,35 s avec les masses ;
+  résultats identiques à 3e-12 près (comparaison aléatoire sur 300 plans). Garde-fou : `scripts/check-api-surface.js`
+  (valeurs calculées à la main) ; parcours navigateur : `scripts/smoke/checkup-volume-exploite.js`.
+- **Calcul et attente** (`ouvrir`, `_preparer`, `_entrees`, `_signature`) : résultats **en cache par niveau** (24 au
+  plus, en mémoire), clé = empreinte de tout ce que `calculer()` lit — niveau, secteur, échelle, hauteur, chaque
+  contour compté (part et sorte des masses comprises), coordonnées au millième de px, hachage double 32 bits de
+  `verifierPlan.js > _sigC5` — relue à chaque ouverture : un pilier modifié en place, une hauteur, un secteur, un
+  calque changent la clé (aucun événement n'est écouté). Tout en cache : fenêtre à jour au retour d'`ouvrir()`
+  (réouverture, case d'un niveau déjà calculé). Sinon la fenêtre s'affiche d'abord (« Calcul en cours… », roue
+  `loader-circle` en `.kta-charge-tourne`), le calcul part deux images plus tard ; au rappel, l'ancien contenu reste,
+  grisé par la couleur `--kta-texte-3` (jamais l'opacité), inerte, sous « Recalcul… », défilements gardés. ⚠️ Pendant
+  un calcul, `ouvrir()` rend la même promesse sans rien faire et tout clic dans la fenêtre est annulé (✕, Échap et le
+  fond ferment toujours) : pas de seconde fenêtre, pas de case recochée. `ouvrir()` appelle `calculer()` par l'objet
+  exposé (compté par les tests). Preuve : `checkup-volume-exploite.js` § 6 (Chromium et WebKit).
 
 #### 49.4 Persistance SessionPersist
 

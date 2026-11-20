@@ -456,6 +456,12 @@ Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé da
 (`.kta-volume-deux`, ~880 px, 85vh) : calcul à gauche, estimation et fun à droite (champs en grille de 2), chaque
 colonne défile seule ; sous 900 px et sans secteur, la fenêtre étroite d'une colonne, inchangée. Un rappel
 d'`ouvrir()` reconstruit tout et garde le défilement de chaque colonne. Preuve : `checkup-volume-exploite.js` § 5.
+Calcul à faire (rien en cache, `session-data.md` §49.3 bis) : la fenêtre s'ouvre tout de suite, étroite, sur
+`.kta-volume-attente` (roue `loader-circle` + « Calcul en cours… », jeton `--kta-accent-texte`) ; au rappel, la
+ligne « Recalcul… » s'insère sous le titre et `.kta-volume-recalcul` grise l'ancien contenu par la couleur
+`--kta-texte-3` (6,4:1 en sombre, 6,6:1 en clair ; 2e sélecteur (0,4,0) contre le filet clair), jamais par
+l'opacité, corps `inert`. La roue tourne, et pulse sous `prefers-reduced-motion` (`.kta-charge-tourne`). Preuve :
+§ 6 du même checkup.
 
 ⚠️ Les modales de confirmation courtes avec inline `style="max-width:420-520px"` (Force update, plan switcher legacy fallback, etc.) gardent volontairement leur taille fixe.
 
