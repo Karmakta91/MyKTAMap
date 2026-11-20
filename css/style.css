@@ -18852,6 +18852,26 @@ html.kta-theme-light .kta-unlock-lang-btn.kta-actif {
 }
 .kta-volume-champ input { text-align: right; }
 .kta-volume-bloc .kta-popup-actions { margin-top: 8px; }
+/* Grand écran (≥ 900 px), secteur présent (.kta-volume-deux, volumeExploite.js > ouvrir) : deux colonnes qui
+   défilent chacune, le calcul à gauche, l'estimation et le fun à droite (le tableau reste visible pendant qu'on règle
+   l'estimation). ⚠️ Sous 900 px, les colonnes sont des blocs sans marge ni bordure : rendu identique à une seule
+   colonne. 🩸 max-height et non height : le corps prend la hauteur de la plus longue colonne, plafonnée. */
+@media (min-width: 900px) {
+  .kta-volume-boite.kta-volume-deux { max-width: 880px; max-height: 85vh; max-height: 85dvh; }
+  .kta-volume-deux .kta-readme-modal-corps { display: flex; overflow: hidden; padding: 0; }
+  .kta-volume-deux .kta-volume-col {
+    flex: 1 1 0; min-width: 0; overflow-y: auto; padding: 22px 24px 24px;
+    scrollbar-width: thin; scrollbar-color: var(--kta-bordure) transparent;
+  }
+  .kta-volume-deux .kta-volume-col-estim { border-left: 1px solid var(--kta-bordure); }
+  .kta-volume-col-estim > .kta-volume-bloc:first-child { margin-top: 0; }
+  .kta-volume-col-estim .kta-volume-champs { grid-template-columns: 1fr 1fr; column-gap: 12px; row-gap: 8px; }
+  .kta-volume-col-estim .kta-volume-champ {
+    flex-direction: column; align-items: stretch; justify-content: space-between; gap: 3px;
+  }
+  .kta-volume-col-estim .kta-volume-champ input,
+  .kta-volume-col-estim .kta-volume-champ select { width: 100%; max-width: none; box-sizing: border-box; }
+}
 /* Le bouton de la popup de note : discret à côté de « Sauver la note ». */
 .kta-note-popup-convertir,
 .kta-note-popup-jct-appliquer,

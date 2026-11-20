@@ -85,7 +85,7 @@ function lire(page) {
     const m = document.getElementById("kta-volume-modal");
     if (!m) return null;
     const lignes = {};
-    m.querySelectorAll(".kta-readme-modal-corps > .kta-volume-table tr").forEach(function (tr) {
+    m.querySelectorAll(".kta-volume-col:first-child > .kta-volume-table tr").forEach(function (tr) {
       lignes[tr.querySelector("th").textContent] = tr.querySelector("td").textContent;
     });
     const t = window.I18n.t.bind(window.I18n);
