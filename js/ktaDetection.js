@@ -612,12 +612,18 @@
     return out;
   }
 
-  // Détection sur une région du plan, bloc par bloc. opts = { lireBloc, region {x,y,w,h}, limites {w,h} (image du
-  // plan), classes [{ id, couleurs: [[r,g,b]], tolerance }], reglages, echelle, executer?, onProgres?, signal? }.
+  // Détection sur une région du plan, bloc par bloc. opts = { lireBloc, region {x,y,w,h}, limites (emprise lisible :
+  // { x0, y0, x1, y1 }, bornes négatives possibles, ou { w, h } = [0, w] × [0, h]), classes [{ id, couleurs: [[r,g,b]],
+  // tolerance }], reglages, echelle, executer?, onProgres?, signal? }.
+  // ⚠️ contrat : la région est ramenée dans les limites ; les « bords du plan » (masse non signalée trop grande) sont
+  //   ceux des limites. 🩸 Des limites plus petites que l'image lue rognent net les masses à cheval sur leur bord.
   // `executer(bloc)` → Promise<résultat de detecterBloc> : un worker (executeurWorker), sinon le calcul ici.
   async function detecter(opts) {
     const rg = Object.assign({}, REGLAGES, opts.reglages || {}), e = opts.echelle || 1;
-    const reg = opts.region, lim = opts.limites || { w: reg.x + reg.w, h: reg.y + reg.h };
+    const lim = _limites(opts.limites, opts.region);
+    const rx0 = Math.max(lim.x0, opts.region.x), ry0 = Math.max(lim.y0, opts.region.y);
+    const reg = { x: rx0, y: ry0, w: Math.min(lim.x1, opts.region.x + opts.region.w) - rx0,
+                  h: Math.min(lim.y1, opts.region.y + opts.region.h) - ry0 };
     const pas = rg.bloc / e, marge = rg.marge;
     // `executeur` (objet : executeurWorker / executeurLocal) garde les blocs lus si `garder` ; `executer` (fonction)
     // calcule seulement ; à défaut, calcul dans la page, un bloc par tâche.
@@ -636,14 +642,14 @@
       const cx = blocs[i][0], cy = blocs[i][1];
       const cw = Math.min(pas, reg.x + reg.w - cx), ch = Math.min(pas, reg.y + reg.h - cy);
       // bloc lu = cœur + marge, borné à l'image du plan
-      const lx = Math.max(0, Math.floor(cx - marge)), ly = Math.max(0, Math.floor(cy - marge));
-      const rx = Math.min(lim.w, Math.ceil(cx + cw + marge)), ry = Math.min(lim.h, Math.ceil(cy + ch + marge));
+      const lx = Math.max(lim.x0, Math.floor(cx - marge)), ly = Math.max(lim.y0, Math.floor(cy - marge));
+      const rx = Math.min(lim.x1, Math.ceil(cx + cw + marge)), ry = Math.min(lim.y1, Math.ceil(cy + ch + marge));
       const lu = await opts.lireBloc(lx, ly, rx - lx, ry - ly, e);
       const r = await executer({
         data: lu.data, w: lu.w, h: lu.h, x0: lx, y0: ly, echelle: e, classes: opts.classes, reglages: rg,
         coeur: { x: Math.round((cx - lx) * e), y: Math.round((cy - ly) * e),
                  w: Math.round(cw * e), h: Math.round(ch * e) },
-        bords: { g: lx <= 0, h: ly <= 0, d: rx >= lim.w, b: ry >= lim.h }
+        bords: { g: lx <= lim.x0, h: ly <= lim.y0, d: rx >= lim.x1, b: ry >= lim.y1 }
       });
       res.masses.push.apply(res.masses, r.masses);
       res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
@@ -658,6 +664,15 @@
     // tous les blocs gardés : recalculer() peut refaire le calcul sans relire l'image
     res.recalculable = !!ex && !!opts.garder && gardes === blocs.length;
     return res;
+  }
+
+  // Limites de detecter → { x0, y0, x1, y1 } ; sans limites : [0, bout de la région] (bornes basses à 0).
+  function _limites(l, reg) {
+    if (l && Number.isFinite(l.x0) && Number.isFinite(l.y0) && Number.isFinite(l.x1) && Number.isFinite(l.y1)) {
+      return { x0: l.x0, y0: l.y0, x1: l.x1, y1: l.y1 };
+    }
+    if (l && Number.isFinite(l.w) && Number.isFinite(l.h)) return { x0: 0, y0: 0, x1: l.w, y1: l.h };
+    return { x0: 0, y0: 0, x1: reg.x + reg.w, y1: reg.y + reg.h };
   }
 
   // ── Blocs gardés : recalcul sans relire l'image (curseurs de l'aperçu) ──

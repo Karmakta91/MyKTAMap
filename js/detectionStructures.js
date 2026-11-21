@@ -22,7 +22,8 @@
 // Écarte ce qui recouvre déjà une structure du même niveau : relancer ne double rien. Réglages déduits des exemples ;
 // trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus.
 // Expose : window.KtaDetectionUI = { ouvrir(ctx?), fermer, etat, contextePlan, PREFIXE }.
-// Garde-fous : scripts/smoke/checkup-detection.js, scripts/check-detection.js · Doc : plans-loader.md (Détecter).
+// Garde-fous : scripts/smoke/checkup-detection.js, checkup-detection-emprise.js, scripts/check-detection.js
+//   · Doc : plans-loader.md (Détecter).
 
 window.KtaDetectionUI = (function () {
   "use strict";
@@ -61,13 +62,25 @@ window.KtaDetectionUI = (function () {
   //   clé detect.refus.<raison>), multi, niveau(type) →
   //   entier | null, existantes() → [{ type, points, level }], pxParM() → nombre | null, cle (couleurs retenues),
   //   poser(structures) → nombre de masquées, refuse() → bool, entrer(), sortir(), parent (reçoit le bandeau),
-  //   hotes? (fenêtres sous le parcours, ignorées par l'Échap), messagePoses?(n) (texte après « Valider ») }.
+  //   hotes? (fenêtres sous le parcours, ignorées par l'Échap), messagePoses?(n) (texte après « Valider »),
+  //   emprise?() → { x0, y0, x1, y1 } (px plan lus, bornes négatives possibles ; absent = [0, largeur] × [0, hauteur]) }.
+  // ⚠️ contrat : l'emprise borne Remplir, « Tout le plan » et detecter (limites, bords du plan) ; elle est relue à
+  //   chaque geste (niveau changé, calque masqué). 🩸 Niveau ≠ 0 : le calque peut déborder de l'image principale ;
+  //   borné à l'image, un pilier à cheval sur son bord sortait rogné net et le débord était refusé (« hors image »).
   function contextePlan() {
     const C = window.APP_CONFIG;
     if (!window.map || !C || typeof window.ktaDessinerRegionPlan !== "function") return null;
     const multi = C.multiLevel === true;
     return {
       carte: window.map, largeur: C.imageWidth, hauteur: C.imageHeight, multi: multi,
+      // niveau ≠ 0 : union des calques affichés du niveau actif ; niveau 0 : l'image (ses calques ne sont pas lus)
+      emprise: function () {
+        const n = multi ? (C.activeLevel || 0) : 0;
+        const c = n !== 0 && typeof window.ktaEmpriseCalques === "function"
+          ? window.ktaEmpriseCalques(n, { affiches: true }) : null;
+        if (!c) return { x0: 0, y0: 0, x1: C.imageWidth, y1: C.imageHeight };
+        return { x0: Math.floor(c.x0), y0: Math.floor(c.y0), x1: Math.ceil(c.x1), y1: Math.ceil(c.y1) };
+      },
       cle: window._currentLoadedPlanId || "default", parent: document.body,
       versCarte: function (x, y) { return window.convertCoord(x, y); },
       depuisCarte: function (ll) { return { x: ll.lng, y: C.imageHeight - ll.lat }; },
@@ -472,18 +485,28 @@ window.KtaDetectionUI = (function () {
     }
   }
 
+  // Emprise lue par le contexte (contextePlan > emprise), sinon l'image [0, largeur] × [0, hauteur].
+  function _emprise() {
+    const c = _e.ctx;
+    const r = typeof c.emprise === "function" ? c.emprise() : null;
+    return r && r.x1 > r.x0 && r.y1 > r.y0 ? r : { x0: 0, y0: 0, x1: c.largeur, y1: c.hauteur };
+  }
+
   async function _toutLePlan() {
-    const W = _e.ctx.largeur, H = _e.ctx.hauteur;
+    const E = _emprise(), W = E.x1 - E.x0, H = E.y1 - E.y0;
     const grand = W * H > SURFACE_PLEINE;
     if (grand) {
       const ok = await window.ktaConfirm(_t("detect.tout.confirm"), { titre: _t("detect.titre") });
       if (!ok || !_e) return;
     }
     _initCurseurs();
-    _lancer({ x: 0, y: 0, w: W, h: H }, grand ? 0.5 : 1);
+    _lancer({ x: E.x0, y: E.y0, w: W, h: H }, grand ? 0.5 : 1);
   }
 
-  async function _lancer(region, echelle) {
+  async function _lancer(cadre, echelle) {
+    // cadre ramené dans l'emprise : un cadre tiré au-delà ne lit que ce qui existe
+    const E = _emprise(), rx = Math.max(E.x0, cadre.x), ry = Math.max(E.y0, cadre.y);
+    const region = { x: rx, y: ry, w: Math.min(E.x1, cadre.x + cadre.w) - rx, h: Math.min(E.y1, cadre.y + cadre.h) - ry };
     if (region.w < 4 || region.h < 4) {
       _e.coins = []; _toast(_t("detect.toast.cadreVide"), "warn"); _majBandeau();
       return;
@@ -498,7 +521,7 @@ window.KtaDetectionUI = (function () {
     try {
       const res = await window.KtaDetection.detecter({
         lireBloc: _lireBloc, region: region, echelle: echelle,
-        limites: { w: e.ctx.largeur, h: e.ctx.hauteur },
+        limites: E,
         classes: _classes(), reglages: _reglages(), executeur: ex, garder: true,
         signal: e.ctrl.signal,
         onProgres: function (i, n) { if (_e === e) { e.progres = [i, n]; _majBandeau(); } }
@@ -648,8 +671,8 @@ window.KtaDetectionUI = (function () {
   }
   async function _remplirEn(x, y) {
     if (_e.remplissage) return;   // une lecture à la fois : un double toucher ne remplit pas deux fois
-    const e = _e, W = e.ctx.largeur, H = e.ctx.hauteur;
-    if (x < 0 || y < 0 || x >= W || y >= H) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
+    const e = _e, E = _emprise();
+    if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
     e.remplissage = true;
     try {
       let r = null;
@@ -657,16 +680,16 @@ window.KtaDetectionUI = (function () {
       const fenetres = [384, Math.min(FENETRE_REMPLIR_MAX, Math.max(4 * MARGE, 2 * pl.coteMax + 64))];
       for (let k = 0; k < fenetres.length; k++) {
         const n = fenetres[k];
-        const x0 = Math.max(0, Math.floor(x - n / 2)), y0 = Math.max(0, Math.floor(y - n / 2));
-        const x1 = Math.min(W, Math.ceil(x + n / 2)), y1 = Math.min(H, Math.ceil(y + n / 2));
+        const x0 = Math.max(E.x0, Math.floor(x - n / 2)), y0 = Math.max(E.y0, Math.floor(y - n / 2));
+        const x1 = Math.min(E.x1, Math.ceil(x + n / 2)), y1 = Math.min(E.y1, Math.ceil(y + n / 2));
         const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, 1);
         if (_e !== e) return;
         // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour un fond ouvert
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
         r = window.KtaDetection.remplir(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1, aireMax: pl.aireMax,
           coteMax: pl.coteMax });
-        // zone fermée, ou fenêtre déjà grande comme l'image : une fenêtre plus grande n'y changerait rien
-        if (r.refus !== "ouvert" || (x0 === 0 && y0 === 0 && x1 === W && y1 === H)) break;
+        // zone fermée, ou fenêtre déjà grande comme l'emprise : une fenêtre plus grande n'y changerait rien
+        if (r.refus !== "ouvert" || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
       }
       if (r.refus) { _toast(_t("detect.remplir.refus." + r.refus), "warn"); return; }
       const niv = e.ctx.niveau(e.typeRemplir);

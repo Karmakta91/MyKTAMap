@@ -911,6 +911,27 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     envoyes[2] && envoyes[2].resultat.garde === true && Array.isArray(envoyes[3] && envoyes[3].resultat) &&
     envoyes[3].resultat.length === 1 && envoyes[3].resultat[0].masses.length === 0, [envoyes[2], envoyes[3]]);
 
+  // ── Limites { x0, y0, x1, y1 } : emprise d'un calque qui déborde de l'image (bornes négatives) ──
+  {
+    const im = image(400, 300).rect(60, 230, 40, 40, ORANGE).rect(280, 50, 40, 40, ORANGE);
+    const lire = lecteur(im), OX = 100, OY = 100;   // px plan = px de l'image − 100
+    const decale = (x, y, w, h, e) => lire(x + OX, y + OY, w, h, e);
+    const lim = { x0: -OX, y0: -OY, x1: 400 - OX, y1: 300 - OY };
+    const rl = await D.detecter({ lireBloc: decale, region: { x: lim.x0, y: lim.y0, w: 400, h: 300 }, limites: lim,
+      classes: CLASSES, reglages: { aireMin: 100, ouverture: 7, bloc: 128, marge: 32 } });
+    const bx = rl.masses.map(boiteDe);
+    t("limites négatives : 2 masses, rien de « trop grand »", rl.masses.length === 2 && rl.tropGrands.length === 0,
+      { n: rl.masses.length, trop: rl.tropGrands.length });
+    t("limites négatives : masse en coordonnées négatives entière (-40,130)-(0,170)",
+      bx.some(b => proche(b, [-40, 130, 0, 170], 0.01)), bx);
+    t("limites négatives : masse à cheval sur x = 200 (bord d'une image plus petite) entière (180,-50)-(220,-10)",
+      bx.some(b => proche(b, [180, -50, 220, -10], 0.01)), bx);
+    const rc = await D.detecter({ lireBloc: decale, region: { x: -500, y: -500, w: 2000, h: 2000 }, limites: lim,
+      classes: CLASSES, reglages: { aireMin: 100, ouverture: 7, bloc: 128, marge: 32 } });
+    t("région plus grande que les limites : ramenée dedans, mêmes 2 masses", rc.masses.length === 2 &&
+      rc.blocs === rl.blocs, { n: rc.masses.length, blocs: [rc.blocs, rl.blocs] });
+  }
+
   // ── Pas de DOM dans le moteur ──
   const moteur = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");

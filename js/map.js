@@ -366,6 +366,29 @@ function _ktaLimitesCarte(imgW, imgH, registre) {
   return [[sud - marge, ouest - marge], [nord + marge, est + marge]];
 }
 
+// Emprise des calques image d'un niveau, en px plan (x vers la droite, y vers le bas : bornes négatives ou au-delà
+// de l'image possibles) → { x0, y0, x1, y1 } | null (aucun calque). Même union de getBounds() que _ktaLimitesCarte,
+// sans marge et pour ce seul niveau. `opts.affiches` : seulement les calques posés sur la carte (ceux que lit
+// tiling.js > ktaDessinerRegionPlan). Lu par detectionStructures.js (emprise de « Détecter ») et verifierPlan.js (C7).
+window.ktaEmpriseCalques = function(niveau, opts) {
+  const H = window.APP_CONFIG && Number(window.APP_CONFIG.imageHeight);
+  if (!(H > 0)) return null;
+  const affiches = !!(opts && opts.affiches);
+  let r = null;
+  (window._ktaImageOverlays || []).forEach(function(c) {
+    const ov = c && c.overlay;
+    if (!ov || c.level !== niveau || typeof ov.getBounds !== "function") return;
+    if (affiches && !(window.map && window.map.hasLayer(ov))) return;
+    const b = ov.getBounds();
+    if (!b || !b.isValid()) return;
+    const x0 = b.getWest(), x1 = b.getEast(), y0 = H - b.getNorth(), y1 = H - b.getSouth();
+    if (![x0, y0, x1, y1].every(Number.isFinite)) return;
+    r = r ? { x0: Math.min(r.x0, x0), y0: Math.min(r.y0, y0), x1: Math.max(r.x1, x1), y1: Math.max(r.y1, y1) }
+      : { x0: x0, y0: y0, x1: x1, y1: y1 };
+  });
+  return r;
+};
+
 // Repose les limites de la carte courante d'après son registre de calques (map.js > _registerOverlay, calque
 // déplacé en place). mapBearing.js relit map.options.maxBounds à chaque pas : il suit sans rien d'autre.
 window.ktaRecalculerLimitesCarte = function() {
