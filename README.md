@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.29.1` (20/11/2026)
+## 📦 Version courante — `v2.30.0` (21/11/2026)
 
-> 🔒 **v2.29.1 — nginx corrigé dans l'image Docker (CVE-2026-123007, CVE-2026-123633), Vérifier le plan qui corrige en un geste et prévient à l'ouverture, Volume exploité immédiat et sur deux colonnes** : l'image Docker auto-hébergée passe à nginx 1.31.9 (failles HTTP/2 permettant d'exécuter du code à distance), version désormais figée et suivie par Dependabot ; myktamap.fr était déjà corrigé côté serveur. **Vérifier le plan** gagne les objets en double, contours qui se recoupent, objets hors image ou sur un niveau inconnu, types absents de la légende ; il **corrige en un geste** ce qui est sûr (un seul Ctrl+Z), retient les **galeries condamnées**, et signale les problèmes **bloquants** dès l'ouverture du plan et à la fin du Générateur (pastille + un toast). **⛏️ Volume exploité** s'ouvre aussitôt (« Calcul en cours… »), calcule jusqu'à des dizaines de fois plus vite, et se range sur deux colonnes sur grand écran. Le ✂️ coupe aussi les structures en ligne ; « Mettre à jour le plan » ne montre plus la fenêtre de session après le retrait. Détail : journal ci-dessous.
+> 🏛️ **v2.30.0 — Pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés** : nouvelle structure **pilier à bras** posée d'un seul toucher (carré de 1 m barré d'une croix ; en 3D, une colonne de blocs en assises). Dans 🔎 Détecter, **🪣 Remplir au clic** dessine un pilier blanc cerné de noir d'un toucher ; la détection lit le niveau actif seulement (refus d'un niveau sans image) et tout son calque, même plus grand que l'image du plan ; les fronts fins ne disparaissent plus près des piliers clairs. Un curseur **Opacité** sous chaque calque image (filtres ≡). On **enchaîne les tracés** sans éteindre l'outil (⏪ et ⏩ le gardent allumé). Un niveau calé hors de l'image se zoome jusqu'à ses bords ; la sélection par zone prend les niveaux visibles. Détail : journal ci-dessous.
 
 ---
 
@@ -868,7 +868,9 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Pas encore publié (après v2.29.1, branche `Karma_dev`)
+#### v2.30.0 (21/11/2026) — pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés (branche `Karma_dev`)
+
+> Écart avec la prod v2.29.1.
 
 - **🔎 Détecter lit tout le calque du niveau, même plus grand que l'image du plan** (`js/detectionStructures.js > contextePlan` (emprise), `_remplirEn`, `_toutLePlan`, `_lancer`, `js/ktaDetection.js > detecter` (limites `{ x0, y0, x1, y1 }`), `js/map.js > ktaEmpriseCalques`, `js/verifierPlan.js > _c7`, `plans-loader.md` § Détecter les structures, `multilevel-pathfinding.md` § Vérifier le plan, `check-detection.js`, `check-verifier-plan.js`, `checkup-detection-emprise.js`) : sur un plan multi-niveau dont le calque image d'un niveau déborde de l'image principale, Remplir au clic refusait tout toucher hors du cadre de l'image (« Aucune image du plan à cet endroit »), « Tout le plan » ne cherchait que dans ce cadre et un pilier à cheval sur son bord sortait coupé net. La détection lit maintenant l'emprise des calques affichés du niveau actif (niveau 0 inchangé : l'image du plan). Vérifier le plan ne signale plus « hors de l'image » une structure posée sur le débord du calque de son niveau.
 - **🏛️ Vue 3D : le pilier à bras a son modèle, une colonne de blocs en assises** (`js/vue3d.js > _pilierBras`, `PILIER_BRAS`, `tracking.md` § Vue 3D, `checkup-pilier-bras-3d.js`) : avec 🧱 Textures, le pilier maçonné à la main ne ressemble plus au pilier tourné : 6 à 10 assises de blocs de pierre (un ou deux par assise), légèrement décalés, joints sombres et nets, l'assise du pied et celle du plafond plus larges ; chaque pilier a sa forme, la même à chaque ouverture, et suit ses sommets ajustés. Même roche, aucune texture ni appel de dessin de plus ; l'obstacle reste le carré de 1 m. 🧱 coupé : le bloc simple d'origine.
@@ -10296,6 +10298,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🔒 **v2.29.1 — nginx corrigé dans l'image Docker (CVE-2026-123007, CVE-2026-123633), Vérifier le plan qui corrige en un geste et prévient à l'ouverture, Volume exploité immédiat et sur deux colonnes** : l'image Docker auto-hébergée passe à nginx 1.31.9 (failles HTTP/2 permettant d'exécuter du code à distance), version désormais figée et suivie par Dependabot ; myktamap.fr était déjà corrigé côté serveur. **Vérifier le plan** gagne les objets en double, contours qui se recoupent, objets hors image ou sur un niveau inconnu, types absents de la légende ; il **corrige en un geste** ce qui est sûr (un seul Ctrl+Z), retient les **galeries condamnées**, et signale les problèmes **bloquants** dès l'ouverture du plan et à la fin du Générateur (pastille + un toast). **⛏️ Volume exploité** s'ouvre aussitôt (« Calcul en cours… »), calcule jusqu'à des dizaines de fois plus vite, et se range sur deux colonnes sur grand écran. Le ✂️ coupe aussi les structures en ligne ; « Mettre à jour le plan » ne montre plus la fenêtre de session après le retrait. Détail : journal ci-dessous.
 
 > 🔎 **v2.29.0 — Détecter piliers et fronts sur l'image du plan, épaisseur des traits réglable, Générateur qui garde les calques en place** : dans l'outil 🏛️ Structures, l'📊 Éditeur de données et le **Générateur**, toucher un pilier de chaque couleur et un trait de front suffit : l'app trouve les autres sur l'image, montre un aperçu réglable (tolérance, taille minimale et maximale), puis les ajoute d'un coup, sans doublon (un seul Annuler). Le Générateur demande quoi faire des calques, du calage GPS et des calages des calques image quand il rogne les marges d'un nouveau plan, et garde le cadrage d'un plan modifié. **Épaisseur des traits** de ×0,75 à ×2 dans ⚙️ Configuration › Affichage ; tracés dessinés au même trait que ceux d'un calque ; carte OSM de l'accueil lisible de haut, arc de soutènement rayé de rouge. Détail : journal ci-dessous.
 

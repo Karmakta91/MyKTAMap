@@ -1,8 +1,8 @@
 {
-  "version": "v2.29.1",
-  "released": "2026-11-20",
+  "version": "v2.30.0",
+  "released": "2026-11-21",
   "notes": [
-    "🔒 Sécurité : l'image Docker pour héberger l'app chez soi embarque un nginx corrigé (failles HTTP/2 CVE-2026-123007 et CVE-2026-123633). Tu l'héberges sur ton propre nginx ? Mets-le à jour. myktamap.fr est déjà corrigé.",
-    "🩺 Vérifier le plan corrige en un geste les objets en double et les contours vides, et signale les problèmes bloquants dès l'ouverture du plan ; ⛏️ Volume exploité s'ouvre tout de suite, calcule bien plus vite et s'étale sur deux colonnes sur ordinateur ; ✂️ les fronts se coupent en deux comme les tracés."
+    "🏛️ Nouvelle structure « pilier à bras » posée d'un seul toucher (carré de 1 m barré d'une croix, colonne de blocs en 3D) ; 🪣 Remplir au clic dans Détecter : un toucher dans un pilier cerné de noir le dessine.",
+    "🌫️ Opacité réglable pour chaque calque image dans les filtres ≡ ; on enchaîne les tracés sans éteindre l'outil ; un niveau calé plus grand que le plan se zoome et se détecte jusqu'au bord."
   ]
 }

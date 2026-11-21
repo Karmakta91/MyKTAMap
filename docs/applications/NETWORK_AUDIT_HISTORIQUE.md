@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.30.0 (pilier à bras, Remplir au clic, opacité des calques image)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Le pilier à bras, Remplir au clic, la détection sur un niveau, l'opacité des calques image et les tracés enchaînés travaillent sur l'appareil, à partir des images déjà affichées : rien n'est téléchargé de plus. L'opacité d'un calque est retenue sur l'appareil seulement.
+
 ### v2.29.1 (nginx corrigé dans l'image Docker, Vérifier le plan, Volume exploité)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** L'application ne change rien à ses échanges réseau : Vérifier le plan et le Volume exploité calculent sur l'appareil. Côté serveur, l'image Docker auto-hébergée embarque nginx 1.31.9, qui corrige deux failles de HTTP/2 (CVE-2026-123007, CVE-2026-123633) ; qui héberge l'application sur son propre nginx doit le mettre à jour (prérequis dans le guide d'installation).
