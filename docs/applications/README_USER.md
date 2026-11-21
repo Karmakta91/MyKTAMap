@@ -1181,7 +1181,7 @@ Un message en bas de l'écran dit ce qui a été annulé ou refait (« ↩ Annul
 
 **Ce qui s'annule** : ajout, modification, déplacement et suppression de points ; chaque point posé d'un tracé, d'une zone ou d'une structure, leur fermeture, leur suppression (y compris « Tous ») ; les conversions.
 
-⏪ sur le **premier point** d'un tracé, d'une zone ou d'une structure en cours le retire sans éteindre l'outil : rien ne reste sur la carte, et le toucher suivant commence un nouvel objet du même type.
+⏪ sur le **premier point** d'un tracé, d'une zone ou d'une structure en cours le retire sans éteindre l'outil : rien ne reste sur la carte, et le toucher suivant commence un nouvel objet du même type. De même, ⏩ après avoir annulé la fin d'un tracé, d'une zone ou d'une structure la refait sans éteindre l'outil.
 
 **Ce qui ne s'annule pas** : la suppression d'une photo, l'import d'une session, le suivi de position, et la mesure une fois l'outil 📐 éteint.
 

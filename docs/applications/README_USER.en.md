@@ -1181,7 +1181,7 @@ A message at the bottom of the screen says what was undone or redone ("↩ Undon
 
 **What can be undone**: adding, editing, moving and deleting points; each point placed on a path, zone or structure, closing them, deleting them (including "All"); conversions.
 
-⏪ on the **first point** of a path, zone or structure in progress removes it without switching the tool off: nothing is left on the map, and the next tap starts a new object of the same type.
+⏪ on the **first point** of a path, zone or structure in progress removes it without switching the tool off: nothing is left on the map, and the next tap starts a new object of the same type. Likewise, ⏩ after undoing the end of a path, zone or structure redoes it without switching the tool off.
 
 **What cannot be undone**: deleting a photo, importing a session, position tracking, and the measurement once the 📐 tool is off.
 

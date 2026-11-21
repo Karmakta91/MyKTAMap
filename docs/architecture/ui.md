@@ -101,18 +101,22 @@ du même type. Seul le re-toucher du type actif (ou un autre outil, Échap) éte
 - Terminer est une **étape de l'historique** : ⏪ rend l'index de l'objet en cours (`HistoryManager >
   currentRoadIndex / currentStructureIndex`) et garde l'outil armé ; le toucher suivant prolonge l'objet.
 - ⏪ du **premier** point d'un objet en cours (tracé, ligne, zone, polygone de Structures) : le point disparaît, rien
-  ne reste en données, l'outil reste armé sur le même type, le toucher suivant commence un nouvel objet
-  (`historyManager.js > _creationAnnulee` : l'objet en cours est absent de l'instantané rendu). Rien en cours
-  (annuler un objet terminé, une suppression, un POI posé) : inchangé, l'annulation sort du mode ; le pilier à bras
-  reste armé à chaque ⏪ (`ktaPoseUnClic`).
+  ne reste en données, l'outil reste armé sur le même type, le toucher suivant commence un nouvel objet.
+- ⏩ d'une **fin** (tracé, ligne terminés sur leur dernier sommet ou par ✅, zone ou polygone fermés) : l'objet est de
+  nouveau terminé, l'outil reste armé comme à la fin elle-même, le toucher suivant commence un nouvel objet.
+- Règle unique (`historyManager.js > _applyState`) : le mode est gardé s'il y a un objet en cours **après** (index de
+  l'instantané) ou **avant** (`_formeEnCours` : ⏪ du premier point, ⏩ de la fin). Rien en cours avant comme après
+  (annuler ou rétablir un objet terminé, une suppression, un POI posé) : inchangé, ⏪ / ⏩ sort du mode ; le pilier
+  à bras reste armé à chaque ⏪ (`ktaPoseUnClic`).
 - 🩸 Retoucher vite = double clic : `utils.js > ktaAvalerDoubleClic` coupe le zoom au double clic le temps de
   l'avaler (sinon la carte zoome à la fin de chaque tracé).
 - Les autres appelants de `_fermerModeRoad` (suppressions qui vident le tracé en cours, Effacer tout, §23) éteignent
   toujours l'outil.
 
 Preuve : `scripts/smoke/checkup-enchainer-traces.js` (vrais clics : 3 tracés puis 3 fronts et un mur en ligne
-enchaînés, boucle, double clic, ✅, ⏪, ⏪ du premier point d'un tracé, d'une ligne, d'une zone et d'un pilier ;
-zone, pilier, pilier à bras et jonction inchangés).
+enchaînés, boucle, double clic, ✅, ⏪, ⏪ du premier point et ⏩ de la fin d'un tracé, d'une ligne, d'une zone et
+d'un pilier, ⏩ sans rien en cours ; zone, pilier, pilier à bras et jonction inchangés) · `check-outils-dessin-sync.js`
+(règle de `_applyState` jouée dans un `vm`).
 
 ---
 
