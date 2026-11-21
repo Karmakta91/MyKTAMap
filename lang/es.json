@@ -332,7 +332,7 @@
   "detect.remplir.dejaListe": "Esta zona ya está en la vista previa.",
   "detect.remplir.refus.hors": "No hay imagen del mapa en este punto.",
   "detect.remplir.refus.ouvert": "Contorno abierto (o más grande que la zona leída): trázalo a mano.",
-  "detect.remplir.refus.trait": "Toca el interior del contorno, no su trazo.",
+  "detect.remplir.refus.trait": "Toca el centro claro del contorno, no su trazo.",
   "detect.remplir.refus.tropGrand": "Zona demasiado grande para una estructura: trázala a mano.",
   "detect.remplir.type": "Tipo",
   "detect.retour": "Volver",

@@ -332,7 +332,7 @@
   "detect.remplir.dejaListe": "Cette zone est déjà dans l'aperçu.",
   "detect.remplir.refus.hors": "Aucune image du plan à cet endroit.",
   "detect.remplir.refus.ouvert": "Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main.",
-  "detect.remplir.refus.trait": "Touchez l'intérieur du contour, pas son trait.",
+  "detect.remplir.refus.trait": "Touchez le centre clair du contour, pas son trait.",
   "detect.remplir.refus.tropGrand": "Zone trop grande pour une structure : tracez-la à la main.",
   "detect.remplir.type": "Type",
   "detect.retour": "Retour",

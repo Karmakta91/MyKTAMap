@@ -332,7 +332,7 @@
   "detect.remplir.dejaListe": "This area is already in the preview.",
   "detect.remplir.refus.hors": "No map image at this spot.",
   "detect.remplir.refus.ouvert": "Open outline (or larger than the area read): draw it by hand.",
-  "detect.remplir.refus.trait": "Tap inside the outline, not on its line.",
+  "detect.remplir.refus.trait": "Tap the light centre of the outline, not its line.",
   "detect.remplir.refus.tropGrand": "Area too large for a structure: draw it by hand.",
   "detect.remplir.type": "Type",
   "detect.retour": "Back",
