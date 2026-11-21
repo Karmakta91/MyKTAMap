@@ -1893,6 +1893,12 @@
       });
       for (const layerCfg of layers) {
         if (!opts.imageLayers[layerCfg.id]) continue;
+        // Opacité du curseur des filtres, comme à l'écran (config.js > getPlanOpaciteCalque) ; restaurée après le
+        // calque pour ne pas délaver ce qui suit (icônes, tracés).
+        const opacite = typeof window.getPlanOpaciteCalque === "function"
+          ? window.getPlanOpaciteCalque(null, layerCfg.id || layerCfg.label) : 1;
+        const alphaAvant = ctx.globalAlpha;
+        if (opacite < 1) ctx.globalAlpha = alphaAvant * opacite;
         try {
           const img = await loadImage(layerCfg.file);
           // Calque calibré (2 ancres) : dessiné avec la transformation affine équivalente (ctx.transform), comme
@@ -1905,6 +1911,7 @@
             ctx.drawImage(img, 0, 0, Wplan, Hplan);
           }
         } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
+        ctx.globalAlpha = alphaAvant;
       }
     }
 

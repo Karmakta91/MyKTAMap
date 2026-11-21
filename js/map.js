@@ -603,6 +603,11 @@ async function initMapFromConfig() {
         return;
       }
       overlay._ktaLevel = lvl;  // stocke pour le filtre runtime
+      // Opacité choisie au curseur des filtres (config.js > getPlanOpaciteCalque) ; sans réglage, l'overlay reste
+      // tel que Leaflet le crée (opaque, aucun style posé).
+      const opacite = typeof window.getPlanOpaciteCalque === "function"
+        ? window.getPlanOpaciteCalque(null, layerId) : 1;
+      if (opacite < 1) overlay.setOpacity(opacite);
       if (layerConfig.visible && niveauVisible) overlay.addTo(_carte);
       overlays[layerConfig.label] = overlay;
       _registre.push({

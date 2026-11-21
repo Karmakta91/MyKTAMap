@@ -250,6 +250,45 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Calque image : sa case, puis le curseur d opacite dessous (decale sous le nom). Curseur haut de 28px pour
+   le doigt ; la valeur garde la place de « 100 % » pour que le curseur ne saute pas en glissant. */
+.kta-fp-calque-image {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kta-fp-opacite {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 9px 4px 32px;
+  font-size: 12px;
+  color: var(--kta-texte-3);
+}
+.kta-fp-opacite-libelle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.kta-fp-opacite-libelle svg { flex: 0 0 auto; }
+.kta-fp-opacite input[type="range"] {
+  flex: 1 1 72px;
+  min-width: 0;
+  min-height: 28px;
+  margin: 0;
+  accent-color: var(--kta-accent);
+  cursor: pointer;
+}
+.kta-fp-opacite-valeur {
+  flex: 0 0 auto;
+  min-width: 5.5ch;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--kta-texte-2);
+}
 .kta-fp-calque-btn {
   flex: 0 0 auto;
   white-space: nowrap;

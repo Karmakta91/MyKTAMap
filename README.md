@@ -750,6 +750,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
 | `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
+| `smoke/checkup-transparence-calques.js` | Opacité d'un calque image réglée au curseur des filtres ≡ : sans réglage rien ne change, valeur retenue par calque et par plan et réappliquée au rechargement (calque standard et calé), export PNG composé comme à l'écran, détection qui lit l'image pleine, indépendante du fond OSM sous le plan ; Chromium et WebKit |
 | `smoke/checkup-tuiles-hors-ecran.js` | Le tuilage V2 ne pose que les tuiles proches de l'écran |
 | `smoke/checkup-plan-sol-portee.js` | Plan au sol de la vue 3D aussi net case 🛡️ cochée ou décochée, au même cadrage (fictif + V2 fictif) |
 | `smoke/checkup-ultra-traces-plan.js` | Les réglages ULTRA agissent aussi sur les tracés du plan |
