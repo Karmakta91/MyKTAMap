@@ -2261,8 +2261,8 @@ function initInterface() {
         if (_syncHistoryUiRef) _syncHistoryUiRef(state);
         // 🩸 Undo qui sort du mode (rien en cours avant comme après) : _applyState remet le mode à null
         // sans toucher au bouton, resté kta-actif (« allumé mais mort »). Bouton actif + mode éteint → on
-        // ferme. Exact car _applyState garde le mode tant qu'il reste une forme en cours, ou au ⏪ du
-        // premier point de celle en cours (historyManager.js > _creationAnnulee) ; et
+        // ferme. Exact car _applyState garde le mode s'il y a une forme en cours après, ou avant (⏪ de
+        // son premier point, ⏩ de sa fin : historyManager.js > _formeEnCours) ; et
         // desactiverFn ne bascule que `if (window.modeX)`, donc ne ré-arme pas l'outil.
         try {
           if (_modesActifs["road"]      && !window.modeRoad)      _fermerModeRoad();

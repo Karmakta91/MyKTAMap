@@ -97,21 +97,14 @@
   // dans certaines implémentations).
   // 🩸 SEULES les catégories PRÉSENTES sont touchées : resetRoads() inconditionnel viderait les roads sur un
   // undo ciblé « zones » (perte de données). Catégorie absente = inchangée.
-  // Vrai si l'instantané précède la création de la forme EN COURS (⏪ de son premier point) : elle n'y figure pas
-  // (uid ; sans uid, son index est au-delà de la liste, une création s'ajoutant en fin). L'outil reste alors armé et
-  // le toucher suivant commence une nouvelle forme du même type (décision produit). Rien en cours (forme terminée,
-  // suppression, objet posé) ou forme en cours présente dans l'instantané : faux, comportement inchangé.
-  function _creationAnnulee(listeSnap, getListe, getIndex) {
-    if (!Array.isArray(listeSnap) || typeof window[getListe] !== "function" || typeof window[getIndex] !== "function") {
-      return false;
-    }
+  // Vrai s'il y a une forme EN COURS avant l'application : ⏪ de son premier point (absente de l'instantané rendu)
+  // ou ⏩ de sa fin (présente, terminée). L'outil reste alors armé, comme à la fin elle-même ; le toucher suivant
+  // commence une nouvelle forme du même type (décision produit). Rien en cours (objet posé, suppression, objet
+  // terminé) : faux, l'outil ne reste armé que si l'instantané rouvre une forme.
+  function _formeEnCours(getListe, getIndex) {
+    if (typeof window[getListe] !== "function" || typeof window[getIndex] !== "function") return false;
     const i = window[getIndex]();
-    const f = (typeof i === "number" && i >= 0) ? (window[getListe]() || [])[i] : null;
-    if (!f) return false;
-    if (typeof f.uid === "string" && f.uid) {
-      return !listeSnap.some(function(o) { return o && o.uid === f.uid; });
-    }
-    return i >= listeSnap.length;
+    return typeof i === "number" && i >= 0 && !!(window[getListe]() || [])[i];
   }
 
   function _applyState(s) {
@@ -126,19 +119,19 @@
       }
       // 🩸 window.modeRoad préservé : resetRoads() le remet à null (road.js), et le mousedown suivant
       // (`if (!window.modeRoad) return`) serait avorté en silence — tracé restauré mais impossible à continuer.
-      // Sauvé AVANT le reset (qui efface aussi la forme en cours lue par _creationAnnulee), restauré s'il reste un
-      // tracé en cours ou si l'on annule le premier point de celui en cours. Sinon (rien en cours avant comme
-      // après) l'annulation sort du mode.
+      // Sauvé AVANT le reset (qui efface aussi la forme en cours lue par _formeEnCours), restauré s'il y a un
+      // tracé en cours après (index de l'instantané) ou avant (⏪ de son premier point, ⏩ de sa fin). Sinon (rien
+      // en cours avant comme après) ⏪ / ⏩ sort du mode.
       const _savedModeRoad = (Array.isArray(s.roads) &&
           ((typeof s.currentRoadIndex === "number" && s.currentRoadIndex >= 0) ||
-           _creationAnnulee(s.roads, "getRoads", "getCurrentRoadIndex")))
+           _formeEnCours("getRoads", "getCurrentRoadIndex")))
         ? window.modeRoad
         : null;
       // Idem modeZone / modeStructure : sans restauration, un Ctrl+Z en plein dessin tue l'outil et laisse la
       // pastille allumée.
       const _savedModeZone = (Array.isArray(s.zones) &&
           ((typeof s.currentZoneIndex === "number" && s.currentZoneIndex >= 0) ||
-           _creationAnnulee(s.zones, "getZones", "getCurrentZoneIndex")))
+           _formeEnCours("getZones", "getCurrentZoneIndex")))
         ? window.modeZone
         : null;
       // Outil posé d'un clic (pilier à bras, structures.js > ktaPoseUnClic) : jamais de forme en cours, chaque ⏪ annule
@@ -146,7 +139,7 @@
       const _unClic = typeof window.ktaPoseUnClic === "function" && window.ktaPoseUnClic(window.modeStructure);
       const _savedModeStructure = (Array.isArray(s.structures) &&
           (_unClic || (typeof s.currentStructureIndex === "number" && s.currentStructureIndex >= 0) ||
-           _creationAnnulee(s.structures, "getStructures", "getCurrentStructureIndex")))
+           _formeEnCours("getStructures", "getCurrentStructureIndex")))
         ? window.modeStructure
         : null;
       if (Array.isArray(s.roads)) {
@@ -177,7 +170,7 @@
         window.setCurrentStructureByIndex(s.currentStructureIndex);
       }
       // Mode road (puis zones / structures) restauré pour continuer le tracé, ou en commencer un autre après le ⏪
-      // de son premier point.
+      // de son premier point ou le ⏩ de sa fin.
       if (_savedModeRoad) {
         window.modeRoad = _savedModeRoad;
       }

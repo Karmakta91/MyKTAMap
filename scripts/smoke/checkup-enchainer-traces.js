@@ -14,6 +14,8 @@
 //   • Structures : 3 fronts puis un mur en ligne enchaînés, ⏪ rouvre un front ;
 //   • ⏪ du PREMIER point d'un tracé, d'une ligne, d'une zone, d'un pilier : rien en données, outil armé sur le même
 //     type, le toucher suivant commence un nouvel objet ; ⏩ rend le point ; un tracé terminé avant reste terminé ;
+//   • ⏩ de la fin d'un tracé, d'une ligne, d'une zone, d'un pilier : l'objet est de nouveau terminé, l'outil reste
+//     armé, le toucher suivant commence un nouvel objet ; ⏩ sans rien en cours sort du mode (inchangé) ;
 //   • inchangés : zone fermée sur son 1er sommet (outil armé), pilier (polygone) que le dernier point ne termine pas,
 //     pilier à bras d'un clic, jonction (multi-niveau) que le dernier point ne termine pas et que ✅ éteint.
 // Usage : node scripts/smoke/checkup-enchainer-traces.js (SMOKE_PORT pour une autre copie) · code :
@@ -332,7 +334,64 @@ async function section(nom, fn) {
     await desarmer();
     await vider();
 
-    // ── 9. Jonction (multi-niveau) inchangée ──
+    // ── 9. ⏩ d'une fin : l'objet est de nouveau terminé, l'outil reste armé (comme la fin elle-même) ──
+    const retablirFin = async function (nom, o) {
+      await section("⏩ " + nom, async function () {
+        verifier(await armer(o.groupe, o.armer), nom + " : outil armé par le panneau");
+        await o.tracer();
+        const a = await etat();
+        verifier(a[o.cat].length === 1 && a[o.idx] === -1 && a[o.cle] === o.mode, nom + " : objet terminé", a);
+        await page.evaluate(function () { window.HistoryManager.undo(); });
+        await page.waitForTimeout(200);
+        const e = await etat();
+        verifier(e[o.idx] === 0 && e[o.cle] === o.mode && e.arme, nom + " : ⏪ rouvre l'objet, outil armé", e);
+        await page.evaluate(function () { window.HistoryManager.redo(); });
+        await page.waitForTimeout(200);
+        const e2 = await etat();
+        verifier(e2[o.cat].length === 1 && e2[o.cat][0].n === a[o.cat][0].n && e2[o.idx] === -1 &&
+          e2[o.cle] === o.mode && e2.arme, nom + " : ⏩ le termine de nouveau, l'outil reste armé", e2);
+        await clic(pt(150, 120));
+        const e3 = await etat();
+        verifier(e3[o.cat].length === 2 && e3[o.cat][1].type === o.mode && e3[o.cat][1].n === 1 && e3[o.idx] === 1,
+          nom + " : le toucher suivant commence un nouvel objet du même type", e3);
+      });
+      await desarmer();
+      await vider();
+    };
+    const polygone = async function () {
+      await clic(pt(-200, -150)); await clic(pt(-100, -150)); await clic(pt(-100, -60));
+      await clic(pt(-200, -150));
+    };
+    await retablirFin("tracé", { cat: "roads", idx: "road", cle: "modeRoad", mode: "principal",
+      groupe: "traces", armer: "ui.trace.principal", tracer: function () { return ligne(-150, 3, true); } });
+    await retablirFin("ligne de structure", { cat: "structures", idx: "structure", cle: "modeStructure",
+      mode: "front-1", groupe: "structures", armer: "ui.struct.front1",
+      tracer: function () { return ligne(-150, 2, true); } });
+    await retablirFin("zone", { cat: "zones", idx: "zone", cle: "modeZone", mode: "eau",
+      groupe: "zones", armer: "ui.zone.eau", tracer: polygone });
+    await retablirFin("pilier (polygone)", { cat: "structures", idx: "structure", cle: "modeStructure",
+      mode: "pilier-1", groupe: "structures", armer: "ui.struct.pilier1", tracer: polygone });
+    // Inchangé : ⏩ sans rien en cours (la suppression d'un tracé terminé, rétablie outil réarmé) sort du mode.
+    await section("⏩ sans rien en cours", async function () {
+      verifier(await armer("traces", "ui.trace.principal"), "outil Route principale armé par le panneau");
+      await ligne(-150, 2, true);
+      await page.evaluate(function () { window.removeLastRoad(); window.HistoryManager.undo(); });
+      await page.waitForTimeout(200);
+      if (!(await etat()).arme) {
+        verifier(await armer("traces", "ui.trace.principal"), "outil réarmé après ⏪ de la suppression");
+      }
+      const a = await etat();
+      await page.evaluate(function () { window.HistoryManager.redo(); });
+      await page.waitForTimeout(200);
+      const e = await etat();
+      verifier(a.roads.length === 1 && a.road === -1 && a.arme && e.roads.length === 0 && e.road === -1 &&
+        e.modeRoad === null && !e.arme, "⏩ de la suppression, rien en cours : l'outil sort du mode (inchangé)",
+        { a: a, e: e });
+    });
+    await desarmer();
+    await vider();
+
+    // ── 10. Jonction (multi-niveau) inchangée ──
     await section("jonction", async function () {
       const ml = await page.evaluate(function () {
         return !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) &&
