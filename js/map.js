@@ -9,7 +9,8 @@
 // =========================
 // Expose : initMapFromConfig, cleanupExistingMap, window.map, iconeDefault / iconeTrack, _iconMap (tag →
 //   icône, résolveur unique), _ktaBuiltinIconUrls (= TAGS_BUILTIN, top-level), KTA_POPUP_OPTS,
-//   _ktaImageOverlays / _applyLevelFilterToImageLayers (filtre multi-niveau).
+//   _ktaImageOverlays / _applyLevelFilterToImageLayers (filtre multi-niveau), ktaRecalculerLimitesCarte
+//   (maxBounds = image ∪ calques image enregistrés + marge).
 // ⚠️ Coordonnées : TOUJOURS convertCoord(x, y) = [imageHeight - y, x].
 // Garde-fous : scripts/check-icon-catalog.js, scripts/check-map-listeners.js
 // Doc : docs/architecture/rendering-leaflet.md
@@ -345,6 +346,57 @@ function cleanupExistingMap() {
   map        = null;
 }
 
+// ── Limites de la carte (maxBounds) ──────────
+// Image du plan ∪ emprise de TOUS les calques image enregistrés (tous niveaux, affichés ou non : rien ne saute au
+// changement de niveau), + marge de 30 % du plus petit côté de l'image (invisible) : avec viscosity 1.0, sans marge,
+// l'auto-pan ne peut pas recentrer une popup près du bord (popup mobile ~250×150 px au zoom max).
+// ⚠️ contrat : sans calque calé, résultat identique au pixel près à image + marge (un calque non calé a les bornes
+// de l'image). Calque calé : getBounds() du plugin Rotated couvre les 4 coins (4e = tr + bl − tl).
+function _ktaLimitesCarte(imgW, imgH, registre) {
+  const marge = Math.round(Math.min(imgW, imgH) * 0.3);
+  let sud = 0, ouest = 0, nord = imgH, est = imgW;
+  (registre || []).forEach(function(entry) {
+    const ov = entry && entry.overlay;
+    const b = (ov && typeof ov.getBounds === "function") ? ov.getBounds() : null;
+    if (!b || !b.isValid()) return;
+    const s = b.getSouth(), w = b.getWest(), n = b.getNorth(), e = b.getEast();
+    if (![s, w, n, e].every(Number.isFinite)) return;
+    sud = Math.min(sud, s); ouest = Math.min(ouest, w); nord = Math.max(nord, n); est = Math.max(est, e);
+  });
+  return [[sud - marge, ouest - marge], [nord + marge, est + marge]];
+}
+
+// Emprise des calques image d'un niveau, en px plan (x vers la droite, y vers le bas : bornes négatives ou au-delà
+// de l'image possibles) → { x0, y0, x1, y1 } | null (aucun calque). Même union de getBounds() que _ktaLimitesCarte,
+// sans marge et pour ce seul niveau. `opts.affiches` : seulement les calques posés sur la carte (ceux que lit
+// tiling.js > ktaDessinerRegionPlan). Lu par detectionStructures.js (emprise de « Détecter ») et verifierPlan.js (C7).
+window.ktaEmpriseCalques = function(niveau, opts) {
+  const H = window.APP_CONFIG && Number(window.APP_CONFIG.imageHeight);
+  if (!(H > 0)) return null;
+  const affiches = !!(opts && opts.affiches);
+  let r = null;
+  (window._ktaImageOverlays || []).forEach(function(c) {
+    const ov = c && c.overlay;
+    if (!ov || c.level !== niveau || typeof ov.getBounds !== "function") return;
+    if (affiches && !(window.map && window.map.hasLayer(ov))) return;
+    const b = ov.getBounds();
+    if (!b || !b.isValid()) return;
+    const x0 = b.getWest(), x1 = b.getEast(), y0 = H - b.getNorth(), y1 = H - b.getSouth();
+    if (![x0, y0, x1, y1].every(Number.isFinite)) return;
+    r = r ? { x0: Math.min(r.x0, x0), y0: Math.min(r.y0, y0), x1: Math.max(r.x1, x1), y1: Math.max(r.y1, y1) }
+      : { x0: x0, y0: y0, x1: x1, y1: y1 };
+  });
+  return r;
+};
+
+// Repose les limites de la carte courante d'après son registre de calques (map.js > _registerOverlay, calque
+// déplacé en place). mapBearing.js relit map.options.maxBounds à chaque pas : il suit sans rien d'autre.
+window.ktaRecalculerLimitesCarte = function() {
+  const cfg = window.APP_CONFIG;
+  if (!window.map || !cfg || !(cfg.imageWidth > 0) || !(cfg.imageHeight > 0)) return;
+  window.map.setMaxBounds(_ktaLimitesCarte(cfg.imageWidth, cfg.imageHeight, window._ktaImageOverlays));
+};
+
 // ── Initialisation de la carte ──────────
 async function initMapFromConfig() {
   const config = window.PLAN_CONFIG;
@@ -377,13 +429,10 @@ async function initMapFromConfig() {
   // Bornes réelles du plan (image).
   bounds = [[0, 0], [config.plan.imageHeight, config.plan.imageWidth]];
 
-  // maxBounds élargies (~30 % du plus petit côté, invisible) : avec viscosity 1.0, sans marge, l'auto-pan ne
-  // peut pas recentrer une popup près du bord (popup mobile ~250×150 px au zoom max).
-  const _bufferPx = Math.round(Math.min(config.plan.imageWidth, config.plan.imageHeight) * 0.3);
-  const _maxBounds = [
-    [-_bufferPx,                          -_bufferPx],
-    [config.plan.imageHeight + _bufferPx,  config.plan.imageWidth + _bufferPx]
-  ];
+  // Registre des calques image du plan (filtre multi-niveau, limites de la carte), neuf AVANT la carte : les
+  // limites posées à la création ne lisent jamais les calques du plan précédent. main.js ne le vide pas.
+  window._ktaImageOverlays = [];
+  const _maxBounds = _ktaLimitesCarte(config.plan.imageWidth, config.plan.imageHeight, window._ktaImageOverlays);
 
   // minZoom selon la taille de l'image ET la plateforme. Mobile plafonné : au minZoom Leaflet traite l'image
   // entière, un plan de 8000+ px sature la RAM. Desktop plus généreux (vue d'ensemble).
@@ -536,9 +585,10 @@ async function initMapFromConfig() {
     return (a.order || 0) - (b.order || 0);
   });
 
-  // Registre des calques image pour le filtre multi-niveau ; vidé au changement de plan
-  // (main.js > _libererRessourcesPlanPrecedent).
-  window._ktaImageOverlays = [];
+  // 🩸 Calques calés chargés en ASYNCHRONE : un plan fermé pendant ce chargement ne doit rien enregistrer dans le
+  // plan suivant (registre, carte, limites). Carte et registre de CE plan sont retenus ici et comparés.
+  const _carte    = map;
+  const _registre = window._ktaImageOverlays;
 
   // multiLevel actif et niveau hors visibleLevels → pas ajouté, même si layerConfig.visible.
   const _mlActif = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -571,16 +621,36 @@ async function initMapFromConfig() {
       _registerOverlay(overlay);
     }
     function _registerOverlay(overlay) {
+      if (window.map !== _carte || window._ktaImageOverlays !== _registre) {
+        console.log("[Map] Calque", layerId, "chargé après la fermeture de son plan → ignoré");
+        return;
+      }
       overlay._ktaLevel = lvl;  // stocke pour le filtre runtime
-      if (layerConfig.visible && niveauVisible) overlay.addTo(map);
+      // Opacité choisie au curseur des filtres (config.js > getPlanOpaciteCalque) ; sans réglage, l'overlay reste
+      // tel que Leaflet le crée (opaque, aucun style posé).
+      const opacite = typeof window.getPlanOpaciteCalque === "function"
+        ? window.getPlanOpaciteCalque(null, layerId) : 1;
+      if (opacite < 1) overlay.setOpacity(opacite);
+      if (layerConfig.visible && niveauVisible) overlay.addTo(_carte);
       overlays[layerConfig.label] = overlay;
-      window._ktaImageOverlays.push({
+      _registre.push({
         // id stable pour le FilterPanel (le libellé peut contenir espaces et accents).
         id:      layerId,
         overlay: overlay,
         label:   layerConfig.label,
         level:   lvl
       });
+      // Calque déplacé en place (reposition du plugin Rotated, setBounds de Leaflet) : les limites suivent.
+      ["reposition", "setBounds"].forEach(function(nom) {
+        const original = overlay[nom];
+        if (typeof original !== "function") return;
+        overlay[nom] = function() {
+          const r = original.apply(this, arguments);
+          if (window.map === _carte) window.ktaRecalculerLimitesCarte();
+          return r;
+        };
+      });
+      window.ktaRecalculerLimitesCarte();
     }
 
     if (calib && hasRotated) {

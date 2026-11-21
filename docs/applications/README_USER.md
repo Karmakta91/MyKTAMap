@@ -367,7 +367,7 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 
 | Section | Ce qu'elle filtre |
 |---|---|
-| 🖼️ **Calques d'image** | L'image du plan et ses calques additionnels |
+| 🖼️ **Calques d'image** | L'image du plan et ses calques additionnels ; sous chaque calque, un curseur **Opacité** (10 à 100 %) pour voir le plan ou l'autre niveau à travers, retenu pour ce plan sur cet appareil et repris par l'export image (sans effet sur la détection ni la vue 3D) |
 | 📊 **Calques de données** | Les calques livrés avec le plan, et **Annotations du plan** (tout ce qui a été dessiné sur le plan : tes ajouts et, sur une installation partagée, ceux de ton équipe ; la décocher les masque sans rien supprimer) |
 | 🏗️ **Niveaux M-LVL** | Plans multi-niveaux : niveau actif (pour dessiner) et niveaux visibles — synchronisé avec la fenêtre Niveaux |
 | 🏷️ **Tags des points** | Les tags réellement présents sur le plan, avec leur compteur |
@@ -603,7 +603,7 @@ Un niveau à la fois, sur 30 m autour de toi par défaut (réglage 🔭 Portée)
 **🧱 Textures**
 
 - Parois des galeries : pierre de taille (assises de blocs, joints irréguliers, relief à la lampe). La pierre garde sa taille quelle que soit la hauteur de galerie.
-- Piliers et fronts de taille : roche brute (la masse calcaire laissée en place : bosses, nuances, fines strates, fissures et traces d'outil, sans joints) ; la 2e masse est la même roche, à peine plus chaude ; pour bien la distinguer de la 1re, coupe les textures. Une structure personnalisée prend la roche.
+- Piliers et fronts de taille : roche brute (la masse calcaire laissée en place : bosses, nuances, fines strates, fissures et traces d'outil, sans joints) ; la 2e masse est la même roche, à peine plus chaude ; pour bien la distinguer de la 1re, coupe les textures. Une structure personnalisée prend la roche. Le pilier à bras, maçonné à la main, est dans la même roche mais monté en assises : 6 à 10 rangs de blocs empilés, légèrement décalés, joints sombres, chaque pilier différent et le même à chaque ouverture.
 - Murs : parpaing, à sa taille réelle (un parpaing fait 50 cm, quel que soit le mur). Un mur tracé en ligne est en pierre de taille, de la même teinte que les parois des galeries.
 - Arcs de soutènement : pierre de taille de la même teinte que les parois des galeries, partout — claveaux en pierre dressée, piédroits dans la pierre des parois, et au-dessus de l'arc une maçonnerie de moellons plus rustique.
 - **Comblé** : terre et sable calcaire tassés, mêlés de cailloux et de blocs de calcaire anguleux à moitié enfouis.
@@ -732,7 +732,7 @@ Où et comment un passage se dessine :
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. **Choisir un outil suffit** : un toucher pose un point là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
-- Un tracé ou un front se termine par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
+- Un tracé ou un front se termine en **re-touchant son dernier point**, ou par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
 - **✏️ Ajouter un point** : touche le sol là où il va ; la fenêtre de la carte s'ouvre par-dessus la vue (nom, type, photos), au doigt comme au clavier. Le point prend **le niveau de la 3D** et paraît dans la scène ; ⏪ l'annule.
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
@@ -979,7 +979,7 @@ Dans le groupe **🛣️ Tracés** :
 - **🟩 Route principale**, **🟪 Route secondaire**, **🟨 Chemin**
 - **🪜 Jonction interniveau** — sur un plan multi-niveau seulement (voir 🏗️ Mode multi-niveau)
 
-Appuie sur un type, tape le plan point par point, puis re-appuie sur le type (ou sur **✅ Valider le tracé en cours**) pour terminer.
+Appuie sur un type et tape le plan point par point. Pour terminer le tracé, **re-tape son dernier point** (ou appuie sur **✅ Valider le tracé en cours**) : l'outil reste allumé, le toucher suivant commence le tracé suivant du même type. Re-taper le **premier** point, lui, ajoute un point : c'est ainsi qu'on referme une boucle de galerie. ⏪ juste après la fin rouvre le tracé pour le prolonger. Re-appuie sur le type pour éteindre l'outil. La 🪜 Jonction fait exception : chaque toucher est un point, et ✅ la termine en éteignant l'outil.
 
 ---
 
@@ -1030,13 +1030,16 @@ Pour les carrières : les éléments porteurs et l'avancement de l'exploitation,
 |---|---|---|
 | 🟡 **Pilier 1ère masse** | surface fermée | jaune |
 | 🟠 **Pilier 2e masse** | surface fermée | orange |
+| **Pilier à bras** — petit pilier maçonné à la main, posé d'un seul toucher | carré de 1 m | jaune barré d'une croix |
 | 🔵 **Mur** (pierre sèche, maçonnerie) | surface fermée | bleu |
 | 🟦 **Mur (ligne)** — un mur levé en trait, souvent à l'import SIG | ligne | trait bleu |
 | 🟨 **Front de taille 1ère masse** | ligne | trait jaune |
 | 🟧 **Front de taille 2e masse** | ligne | trait orange |
 | **Arc de soutènement** — un arc isolé posé d'une paroi à l'autre de la galerie | ligne | trait bleu fin rayé de rouge |
 
-Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Un pilier ou un mur se ferme aussi en re-tapant son **premier** point ; un front, un mur (ligne) ou un arc se termine en re-tapant son **dernier** point (⏪ juste après le rouvre). Après ✅ ou ce re-tap, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+
+Un **pilier à bras** se pose d'**un seul toucher** : un carré de 1 m de côté (à l'échelle du plan), centré là où tu touches, côtés alignés sur le plan, au niveau actif. L'outil reste allumé : chaque toucher pose un autre pilier, ⏪ retire le dernier. Ses sommets s'ajustent ensuite comme ceux des autres piliers. Comme eux, il n'a aucun effet sur l'itinéraire, arrête le tracker, se dresse dans la vue 3D (en colonne de blocs de pierre empilés avec 🧱 Textures, chaque pilier différent et le même à chaque ouverture ; en bloc simple sans) et compte comme pilier dans le Volume exploité. Sur la carte, la légende et les exports image et PDF, c'est un carré jaune barré d'une croix fine ; le KMZ et la Vue OSM le montrent plein. La détection ne le propose jamais.
 
 Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **au niveau −1** (le banc sous la 1re masse), quel que soit le niveau affiché ; les autres prennent le niveau actif. La liste **Niveau** de leur fiche les déplace.
 
@@ -1048,11 +1051,13 @@ Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itin�
 
 Le bouton **Détecter piliers et fronts** du groupe **🏛️ Structures** (aussi dans l'**📊 Éditeur de données**, à côté de **Vérifier le plan**) dessine pour toi les piliers et les fronts de taille déjà présents sur l'image du plan. Un bandeau en bas de l'écran te guide :
 
-1. **Couleurs** : touche **Masse A**, puis un pilier de cette couleur sur la carte ; fais de même avec **Masse B** (une autre couleur de pilier) et **Front** (un trait de front). Chaque toucher mesure aussi la taille du pilier touché et les variations de sa couleur : touche un pilier clair, un foncé et un petit, deux ou trois touchers suffisent. Couleurs et réglages sont retenus pour ce plan, sur cet appareil (ils ne partent ni dans la session ni dans l'export du profil).
+1. **Couleurs** : touche **Masse A**, puis un pilier de cette couleur sur la carte ; fais de même avec **Masse B** (une autre couleur de pilier) et **Front** (un trait de front). Chaque toucher mesure aussi la taille du pilier touché et les variations de sa couleur : touche un pilier clair, un foncé et un petit, deux ou trois touchers suffisent. Sur un plan au trait (piliers blancs cernés de noir), touche l'intérieur du pilier, même tout près de son trait : c'est le pilier qui est mesuré, pas le trait. Couleurs et réglages sont retenus pour ce plan, sur cet appareil (ils ne partent ni dans la session ni dans l'export du profil).
 2. **Zone** : touche deux coins opposés du cadre à analyser, ou choisis **Tout le plan**. Sur un grand plan, l'analyse se fait à mi-résolution et peut prendre une minute au téléphone ; **Annuler** l'arrête.
-3. **Aperçu** : ce qui a été trouvé s'affiche par-dessus le plan, sans rien écrire. Deux curseurs ajustent le résultat sans relancer l'analyse : **Tolérance de couleur** (plus haut : accepte des couleurs plus éloignées des exemples) et **Taille minimale** (plus haut : écarte les petits objets), et **Taille maximale** (plus bas : écarte les grandes masses, utile quand les piliers sont blancs ou clairs comme le fond et les galeries). Pendant la pipette, un réticule rouge montre le point lu ; toucher le fond le dit, sans ajouter d'exemple. Touche un objet pour le retirer (ou le remettre), choisis le type de chaque couleur (pilier ou front, 1ère ou 2e masse), puis **Ajouter**.
+3. **Aperçu** : ce qui a été trouvé s'affiche par-dessus le plan, sans rien écrire. Trois curseurs ajustent le résultat sans relancer l'analyse : **Tolérance de couleur** des piliers (plus haut : accepte des couleurs plus éloignées des exemples ; les fronts gardent celle de leur exemple), **Taille minimale** (plus haut : écarte les petits objets) et **Taille maximale** (plus bas : écarte les grandes masses, utile quand les piliers sont blancs ou clairs comme le fond et les galeries). Pendant la pipette, un réticule rouge montre le point lu ; toucher le fond le dit, sans ajouter d'exemple. Touche un objet pour le retirer (ou le remettre), choisis le type de chaque couleur (pilier ou front, 1ère ou 2e masse), puis **Ajouter**.
 
-Un seul **Annuler** de l'historique retire tout ce qui vient d'être ajouté. Ce qui est déjà dessiné sur le même niveau n'est pas ajouté une seconde fois : tu peux relancer sur une zone voisine sans doublon. Les niveaux suivent la règle du dessin à la main (2e masse au niveau −1) ; si le niveau ou les filtres masquent ce qui vient d'être ajouté, un message le dit. Une bande de galerie (ou un mur tracé en trait) de la même couleur que les piliers est reconnue à sa forme et n'est pas posée en pilier, même soudée à eux. Deux piliers qui se touchent sortent en un seul, un front qui passe sous un pilier en deux morceaux, et un pilier très allongé peut être pris pour une bande : retire ou complète à la main. Pendant la détection, la vue tournée se redresse. Pendant la pipette et le cadre, toucher un pilier déjà dessiné prend l'exemple sans ouvrir sa fiche.
+Un seul **Annuler** de l'historique retire tout ce qui vient d'être ajouté. Ce qui est déjà dessiné sur le même niveau n'est pas ajouté une seconde fois : tu peux relancer sur une zone voisine sans doublon. Les niveaux suivent la règle du dessin à la main (2e masse au niveau −1) ; si le niveau ou les filtres masquent ce qui vient d'être ajouté, un message le dit. Une bande de galerie (ou un mur tracé en trait) de la même couleur que les piliers est reconnue à sa forme et n'est pas posée en pilier, même soudée à eux. Le trait qui entoure un pilier trouvé marque la fin du pilier : ce n'est pas un front. Si tu écartes ce pilier (curseurs de taille), son contour redevient un front ; les fronts plus loin des piliers ne changent pas. Deux piliers qui se touchent sortent en un seul, un front qui passe sous un pilier en deux morceaux, et un pilier très allongé peut être pris pour une bande : retire ou complète à la main. Pendant la détection, la vue tournée se redresse. Sur un niveau autre que 0, seuls les calques image de ce niveau affichés dans les filtres ≡ sont lus : un niveau sans image, ou dont les calques sont tous masqués, est refusé par un message (rien n'est pris sur l'image d'un autre niveau). Pendant la pipette et le cadre, toucher un pilier déjà dessiné prend l'exemple sans ouvrir sa fiche.
+
+**Remplir au clic** (même bandeau, à l'étape des couleurs) : pour un plan au trait, quand les piliers sont dessinés par leur contour. Choisis le type (seuls les types à contour fermé sont proposés : piliers, mur et tes types de structure en surface, jamais un front), puis touche l'intérieur de chaque contour : la zone se remplit en aperçu, et tu enchaînes. Touche une zone pour la retirer ou la remettre, puis **Ajouter** pose tout d'un coup ; un seul **Annuler** de l'historique retire toutes les zones. Le **Pilier à bras**, posé d'un seul toucher, n'est pas dans la liste. Un trou de 1 ou 2 pixels dans le trait est bouché tout seul, et un tout petit pilier, même flou, se remplit quand même si tu touches son centre clair ; un contour plus ouvert, ou une zone trop grande pour une structure (plus de 40 m de côté si le plan a une échelle), est refusé par un message : trace-le à la main. Une zone déjà dessinée sur le même niveau n'est pas ajoutée une seconde fois. Le contour passe au milieu du trait : le trait fait partie du pilier ; deux piliers séparés par un même trait se le partagent.
 
 **Dans le Générateur**, à l'étape **Calques de données** (mode Avancé), le bouton **Détecter piliers et fronts** fait la même chose sur l'image du plan **avant** de le générer, en le modifiant, ou dans **Mettre à jour le plan**. Une fenêtre montre l'image : pipette, cadre ou tout le plan, aperçu et curseurs comme sur la carte ; l'analyse lit l'image en pleine définition. Ce que tu ajoutes va dans un calque **Structures détectées** du plan généré, déjà aligné sur l'image même quand les marges blanches sont rognées. Ce qui est déjà dans un calque du plan n'est pas ajouté une seconde fois. Sur une très grande image, un téléphone peut manquer de mémoire, comme pour le découpage en tuiles.
 
@@ -1137,7 +1142,7 @@ Seules les cibles de **même forme** sont proposées : une **ligne** (tracé, fr
 Dans la fenêtre de conversion, **🎯 Sélectionner plusieurs objets à convertir** affiche un bandeau :
 
 - **tape un objet** pour l'ajouter (bleu pointillé), re-tape-le pour le retirer ;
-- **➕ Tous les « type » du niveau affiché** ajoute tous les objets du même type que le dernier ajouté ;
+- **➕ Tous les « type » des niveaux visibles** ajoute tous les objets du même type que le dernier ajouté ;
 - **✅ Convertir (N)** ouvre le choix du type pour tout le lot ; **Annuler** abandonne.
 
 Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et explique pourquoi), mais il peut mélanger les familles : fronts de taille et chemins, tous des lignes, deviennent ensemble des galeries. Les objets déjà du bon type restent tels quels, et le message final les compte. Un seul `Ctrl+Z` annule tout le lot.
@@ -1153,7 +1158,7 @@ Le lot ne mélange pas lignes et surfaces fermées (le bandeau refuse et expliqu
 Le même bandeau sert à **supprimer** d'un coup, par exemple tout ce qu'un import a posé de travers dans un secteur. On y arrive aussi sans passer par un objet : dans 🛣️ Tracés, ⬛ Zones ou 🏛️ Structures, **🧹 Effacer → ✏️ Effacer par zone** (ou **🎯 Sélectionner** puis **✏️ Par zone** dans le bandeau du bas) : le tracé de la zone démarre tout de suite, et la confirmation n'a d'avance que la famille du groupe cochée (les autres restent proposées, décochées).
 
 - **✏️ Sélectionner par zone** : tape les sommets de la zone sur la carte (comme une mesure ♦️ Surface ; **↩️ Dernier sommet** corrige un tap raté), puis **✅ Prendre la zone**. Ta mesure ♦️ en cours n'est pas perdue : elle revient telle quelle.
-- Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux du **niveau affiché**. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.
+- Seuls les objets **entièrement** dans la zone s'ajoutent (tous leurs sommets, ou le point lui-même), et seulement ceux des **niveaux visibles** (cochés dans ≡ Filtres), comme au tap : afficher un niveau suffit pour prendre ses objets, le masquer les laisse de côté. Un objet à cheval sur le bord n'est pas pris, et rien n'est jamais coupé.
 - Les **points** entrent aussi dans la sélection (cercle bleu pointillé). Re-tape un objet pour le retirer ; tu peux tracer plusieurs zones.
 - **🗑️ Supprimer (N)** ouvre une confirmation avec une case par famille (📍 Points, 〰️ Tracés, 🟦 Zones, 🧱 Structures) et leur nombre : décoche une famille pour la garder.
 - La fenêtre annonce aussi : les **photos** des points (elles ne sont pas effacées, elles passent « sans point » dans 🧰 Outils > 📸 Mes photos), les **objets d'un calque de données** vus dans la zone (jamais supprimés : passe le calque en **🔄 Modifier** d'abord), et les **points portails** (liaison vers un autre plan), toujours gardés.
@@ -1175,6 +1180,8 @@ Tes **50 dernières actions** sur le plan s'annulent et se rétablissent :
 Un message en bas de l'écran dit ce qui a été annulé ou refait (« ↩ Annulé : Pose du point … »).
 
 **Ce qui s'annule** : ajout, modification, déplacement et suppression de points ; chaque point posé d'un tracé, d'une zone ou d'une structure, leur fermeture, leur suppression (y compris « Tous ») ; les conversions.
+
+⏪ sur le **premier point** d'un tracé, d'une zone ou d'une structure en cours le retire sans éteindre l'outil : rien ne reste sur la carte, et le toucher suivant commence un nouvel objet du même type. De même, ⏩ après avoir annulé la fin d'un tracé, d'une zone ou d'une structure la refait sans éteindre l'outil.
 
 **Ce qui ne s'annule pas** : la suppression d'une photo, l'import d'une session, le suivi de position, et la mesure une fois l'outil 📐 éteint.
 

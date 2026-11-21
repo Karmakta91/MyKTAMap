@@ -142,3 +142,47 @@
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
+
+- **Transparence des calques image** — un curseur par calque image (filtres ou Réglages, et pendant son calage)
+  pour voir le plan ou l'autre niveau à travers, comme la transparence du fond OSM. Vérifié le 21/11/2026 : seule
+  l'image du plan a une transparence, fond OSM allumé (`fondOsmPlan.js`) ; aucune sur `_ktaImageOverlays`.
+  `qui: Claude · action: topo (où placer le curseur, retenu par plan) · fini: calque réglable et retenu, checkup vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection : image lue sur un niveau** — un niveau sans calque image lit l'image du niveau 0 (piliers recopiés
+  au mauvais niveau, sans avertir) ; un calque masqué est lu quand même. Vérifié le 21/11/2026 dans
+  `tiling.js > ktaDessinerRegionPlan`. Reco : refus avec message, calques masqués ignorés.
+  `qui: Claude · action: lot Dev après le lot maxbounds · fini: refus sans calque, calque masqué non lu, checkup rouge puis vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection : remplir au clic** — pot de peinture dans la fenêtre Détecter : clic dans une zone blanche cernée de
+  noir → type choisi (contour fermé), reste actif, aperçu puis un Valider ; trous du trait de 1-2 px fermés, sinon
+  refus « contour ouvert ». Décisions QCM 21/11/2026. Après le lot « image lue sur un niveau ».
+  `qui: Claude · action: brief Dev une fois les lots en cours finis · fini: remplissage, refus de fuite, checkup rouge puis vert · depuis: 21/11/2026 · taille: M`
+
+- **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
+  fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
+  fictifs : liseré noir de 2 px autour de l'image ; carrés de 3 × 3 px tous les 7 px autour d'un pilier.
+  `qui: Claude · action: topo après le lot fronts en passe mixte · fini: cadre écarté, pointillés fermés, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+
+- **Export : calage local des calques ignoré** — `exporter.js` cale les calques avec `layerCfg.calibration` (plan-config)
+  au lieu de `ImageLayerCalibration.getCalibration` (prefs d'abord). Théorique aujourd'hui : aucun geste n'écrit de
+  calage dans les prefs (au plus un profil importé). Vu le 21/11/2026.
+  `qui: Claude · action: corriger quand un geste de recalage local existera · fini: export identique à la carte avec un calage des prefs · depuis: 21/11/2026 · taille: XS`
+
+- **Export : petits piliers noirs** — PNG/PDF et « Télécharger le plan » : le contour des structures suit weight × scale,
+  un petit pilier sort entièrement noir. Le pilier à bras suit déjà la loi de l'écran (`ktaBordSurfacePourLargeur`) ;
+  l'étendre aux autres types. Vu le 21/11/2026.
+  `qui: Claude · action: petit lot Dev · fini: pilier de 1 m exporté lisible, checkup exports vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection auto : contour au bord intérieur du trait** — sur un plan au trait, la masse détectée s'arrête au bord
+  intérieur (environ 1 px trop petite tout autour) alors que le trait fait partie du pilier (décision du 21/11/2026,
+  appliquée au remplir au clic). Aligner la détection auto sur le milieu du trait.
+  `qui: Claude · action: topo après le lot remplir · fini: contour au milieu du trait, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection : contours affinés** — plan de mauvaise qualité : remplir et détection auto donnent des piliers en dent
+  de scie. Lissage en mètres toujours, redressement (côtés droits, angles droits) si la forme est presque un
+  rectangle ; case « Affiner les contours » cochée par défaut dans Détecter. Décisions du 21/11/2026 : après le bump.
+  `qui: Claude · action: brief Dev après le bump · fini: pilier carré mal tracé rendu rectangle, pilier tourné lissé, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+- **Transparence de l'image principale** — sur un plan multi-niveau, seul le calque se règle : impossible d'atténuer
+  l'image principale pour caler un niveau sur l'autre. Curseur 10–100 % sous « Afficher le plan de base », par plan sur
+  l'appareil, multiplié par la transparence OSM, exports comme à l'écran. Décisions du 21/11/2026 : après le bump.
+  `qui: Claude · action: brief Dev après le bump · fini: curseur visible, 50 % ici et 50 % OSM donnent 25 %, export PNG atténué, checkup rouge puis vert · depuis: 21/11/2026 · taille: S`

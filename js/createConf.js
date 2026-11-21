@@ -5814,7 +5814,7 @@ const _SIG_TYPES_SUP = {
   points:    [],
   lignes:    ["struct:front-1", "struct:front-2", "struct:mur-ligne", "struct:arc", "struct:mur",
               "zone:masse-sol", "zone:remblais", "zone:eau", "zone:effondrement", "zone:inaccessible", "zone:pente"],
-  polygones: ["struct:pilier-1", "struct:pilier-2", "struct:mur",
+  polygones: ["struct:pilier-1", "struct:pilier-2", "struct:pilier-bras", "struct:mur",
               "struct:front-1", "struct:front-2", "struct:mur-ligne",
               "trace:chemin", "trace:secondaire", "trace:principal"]
 };

@@ -512,10 +512,16 @@ async function ktaDessinerRegionTuiles(ctx, pc, region, echelle, opts) {
 
 // ── Région de l'image du plan, quelle que soit la source ──
 // ktaDessinerRegionPlan(ctx, region {x,y,w,h} en px plan, echelle (px de ctx par px plan), opts { niveau, plafond })
-// → Promise<{ ok, source }>. Ordre : calques image du niveau (niveau ≠ 0, Générateur : imageLayers[].level, calés
-// comme sur la carte), tuiles V2 (servies, ZIP ou plan ☁️ déchiffré : ktaDessinerRegionTuiles), images du fond déjà
-// chargées (plan direct ou tuiles V1). Rien n'est téléchargé de plus que ce que la carte a déjà.
-// ⚠️ contrat : même aiguillage que vue3d.js > _dessinerPlanSol, qui garde le sien tant que la 3D est gelée.
+// → Promise<{ ok, source } | { ok: false, raison }>. Niveau ≠ 0 : ses calques image (Générateur :
+// imageLayers[].level, calés comme sur la carte) affichés sur la carte, rien d'autre. Niveau 0 : tuiles V2 (servies,
+// ZIP ou plan ☁️ déchiffré : ktaDessinerRegionTuiles), sinon images du fond déjà chargées (plan direct ou tuiles V1) ;
+// ses calques sont des surcouches, jamais lus. Rien n'est téléchargé de plus que ce que la carte a déjà.
+// ⚠️ contrat (décision produit) : un niveau ≠ 0 sans calque image rend { ok: false, raison: "niveau-sans-image" },
+//   tous ses calques retirés de la carte (case des filtres ≡ décochée, niveau masqué) { raison: "calques-masques" },
+//   sans rien dessiner : l'image du niveau 0 recopiait ses piliers au niveau actif. Un calque masqué n'est pas lu ;
+//   l'opacité réglée (setOpacity) ne compte pas, l'image est lue pleine.
+// ⚠️ contrat : vue3d.js > _dessinerPlanSol garde son propre aiguillage, avec repli sur le plan de base (décision
+//   produit de la 3D) ; seul detectionStructures.js appelle cette fonction.
 // 🩸 Tuiles V1 : seules celles que la carte a chargées ; une zone jamais affichée reste blanche.
 function _imageDeCalque(ov) {
   const pret = function(i) { return i && i.complete && i.naturalWidth > 0; };
@@ -534,10 +540,13 @@ async function ktaDessinerRegionPlan(ctx, region, echelle, opts) {
   if (!ctx || !region || !(echelle > 0) || !H) return { ok: false };
   const P = function(ll) { return { x: (ll.lng - region.x) * echelle, y: (H - ll.lat - region.y) * echelle }; };
   const niveau = Number.isInteger(o.niveau) ? o.niveau : 0;
-  const calques = niveau === 0 ? [] : (window._ktaImageOverlays || []).filter(function(c) {
-    return c && c.overlay && c.level === niveau;
-  });
-  if (calques.length) {
+  if (niveau !== 0) {
+    const duNiveau = (window._ktaImageOverlays || []).filter(function(c) {
+      return c && c.overlay && c.level === niveau;
+    });
+    if (!duNiveau.length) return { ok: false, raison: "niveau-sans-image" };
+    const calques = duNiveau.filter(function(c) { return !!window.map && window.map.hasLayer(c.overlay); });
+    if (!calques.length) return { ok: false, raison: "calques-masques" };
     const imgs = await Promise.all(calques.map(function(c) { return _imageDeCalque(c.overlay); }));
     let n = 0;
     imgs.forEach(function(img, i) {

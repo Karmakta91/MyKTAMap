@@ -1769,3 +1769,43 @@ window.resetRuntimeAssets          = resetRuntimeAssets;
 window.findMatchingFile            = findMatchingFile;
 window.cloneAndResolvePlanConfig   = cloneAndResolvePlanConfig;
 window.validateImportedPlan        = validateImportedPlan;
+
+// ── Opacité des calques image (curseur des filtres ≡, js/filterPanel.js), retenue par calque et par plan ──────
+// Pref `imageLayerOpacity[layerId]` = 0.1 à 1 ; absente → 1. ⚠️ contrat : 100 % retire l'entrée (et l'objet vide),
+// sans réglage rien n'est écrit et le rendu ne change pas. Lue à la pose du calque (map.js > _registerOverlay) et
+// par l'export PNG (exporter.js), jamais par la détection ni la vue 3D, qui lisent l'image pleine.
+// 🩸 Prefs illisibles (JSON abîmé) ou stockage bloqué : on n'écrit rien, pour ne pas écraser les autres réglages
+// du plan (calages des calques, Nord…) par un objet neuf.
+const OPACITE_CALQUE_MIN = 0.1;
+function _opaciteCalqueValide(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(OPACITE_CALQUE_MIN, Math.min(1, Math.round(n * 100) / 100));
+}
+function getPlanOpaciteCalque(planId, layerId) {
+  if (!layerId) return 1;
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const t = _readPlanPrefs(pid).imageLayerOpacity;
+  return (t && typeof t === "object" && layerId in t) ? _opaciteCalqueValide(t[layerId]) : 1;
+}
+function setPlanOpaciteCalque(planId, layerId, valeur) {
+  if (!layerId) return false;
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _opaciteCalqueValide(valeur);
+  let prefs;
+  try {
+    const raw = localStorage.getItem(_planPrefsKey(pid));
+    if (!raw && v >= 1) return true;
+    prefs = raw ? JSON.parse(raw) : {};
+  } catch (e) { return false; }
+  if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return false;
+  const t = (prefs.imageLayerOpacity && typeof prefs.imageLayerOpacity === "object") ? prefs.imageLayerOpacity : {};
+  if (v >= 1) delete t[layerId];
+  else t[layerId] = v;
+  if (Object.keys(t).length) prefs.imageLayerOpacity = t;
+  else delete prefs.imageLayerOpacity;
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
+window.getPlanOpaciteCalque = getPlanOpaciteCalque;
+window.setPlanOpaciteCalque = setPlanOpaciteCalque;

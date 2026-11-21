@@ -912,6 +912,7 @@
       let nom;
       if (zone.type === "pilier-1") nom = "Pilier 1ère masse";
       else if (zone.type === "pilier-2") nom = "Pilier 2e masse";
+      else if (zone.type === "pilier-bras") nom = "Pilier à bras";
       else if (zone.type === "mur") nom = "Mur";
       else if (zone.type === "pente") nom = "🪜 Jonction";   // même nom que le tracé jonction (#zone_pente)
       else nom = _nomType(zone.type);

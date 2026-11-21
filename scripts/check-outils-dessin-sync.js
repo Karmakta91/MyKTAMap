@@ -6,8 +6,9 @@
 // 🩸 Ctrl+Z passe par `HistoryManager.undo → _applyState`, dont les reset* remettent `window.modeX` à null :
 //    sans resync, le bouton reste allumé mais mort.
 // Contrat :
-//   1. `_applyState` RESTAURE le mode tant qu'une forme est en cours (index >= 0 dans le snapshot) :
-//      `!window.modeX` après un undo veut dire « tout annulé », jamais « en plein dessin ».
+//   1. `_applyState` RESTAURE le mode s'il y a une forme en cours après (index >= 0 dans le snapshot) ou avant
+//      (⏪ de son premier point, ⏩ de sa fin : `_formeEnCours`) : `!window.modeX` après un ⏪ / ⏩ veut dire
+//      « rien en cours avant comme après », jamais « en plein dessin ».
 //   2. `interface.js > HistoryManager.onChange` : bouton actif + mode éteint → `_fermerModeX()`.
 // On EXÉCUTE dans un `vm` les corps extraits (onChange, `_applyState`, `_captureState`) : un grep du
 // texte d'un appel valide un code cassé.
@@ -120,8 +121,23 @@ if (CORPS_ONCHANGE) {
 // le mode, comme les vrais.
 const CORPS_APPLY = corpsApres(HSRC, "function _applyState(s) {");
 t("extraction de `_applyState`", typeof CORPS_APPLY === "string" && CORPS_APPLY.length > 0);
+// Fonctions `_x(` appelées par `_applyState` et définies dans le fichier, extraites telles quelles (signature et
+// corps) : le banc joue le vrai code, quel que soit le nom de l'aide.
+const AIDES_APPLY = (function () {
+  const noms = {};
+  (CORPS_APPLY || "").replace(/\b(_[A-Za-z]\w*)\(/g, function (m, n) { noms[n] = true; return m; });
+  return Object.keys(noms).map(function (n) {
+    const m = new RegExp("function " + n + "\\(([^)]*)\\) \\{").exec(HSRC);
+    const corps = m ? corpsApres(HSRC, m[0]) : null;
+    return corps === null ? "" : "function " + n + "(" + m[1] + "){" + corps + "}\n";
+  }).join("");
+})();
+t("extraction des aides de `_applyState`", AIDES_APPLY.length > 0);
 
-function jouerApplyState(s, modesAvant) {
+// `courant` : forme en cours AVANT l'undo, par catégorie ({ liste, idx }) ; absent = rien en cours.
+function jouerApplyState(s, modesAvant, courant) {
+  const cour = courant || {};
+  const lire = function (k) { return cour[k] || { liste: [], idx: -1 }; };
   const store = {};
   const ctx = {
     console: { log() {}, warn() {}, error() {} },
@@ -139,11 +155,18 @@ function jouerApplyState(s, modesAvant) {
     setCurrentRoadByIndex:      function () {},
     setCurrentZoneByIndex:      function () {},
     setCurrentStructureByIndex: function () {},
-    setEditorPoints: function () {}
+    setEditorPoints: function () {},
+    getRoads:      function () { return lire("roads").liste; },
+    getZones:      function () { return lire("zones").liste; },
+    getStructures: function () { return lire("structures").liste; },
+    getCurrentRoadIndex:      function () { return lire("roads").idx; },
+    getCurrentZoneIndex:      function () { return lire("zones").idx; },
+    getCurrentStructureIndex: function () { return lire("structures").idx; }
   };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext("function _applyState(s){" + CORPS_APPLY + "}\n_applyState(" + JSON.stringify(s) + ");",
+  vm.runInContext(AIDES_APPLY +
+    "function _applyState(s){" + CORPS_APPLY + "}\n_applyState(" + JSON.stringify(s) + ");",
     ctx, { filename: "historyManager.js#_applyState" });
   return ctx;
 }
@@ -171,6 +194,44 @@ if (CORPS_APPLY) {
   r = jouerApplyState({ zones: [{ points: [{}] }], currentZoneIndex: 0 }, { road: "principal", zone: "eau", structure: "mur" });
   t("🩸 _applyState : un undo ZONES ne touche pas `modeRoad` (isolation catégorie)", r.modeRoad === "principal");
   t("🩸 _applyState : un undo ZONES ne touche pas `modeStructure` (isolation catégorie)", r.modeStructure === "mur");
+
+  // ── ⏪ du premier point : la forme en cours est absente du snapshot → outil gardé (décision produit) ──
+  const enCours = function (uid) { return { liste: [{ uid: uid, points: [{}] }], idx: 0 }; };
+  r = jouerApplyState({ roads: [], currentRoadIndex: -1 }, { road: "principal" }, { roads: enCours("r1") });
+  t("⏪ du 1er point d'un TRACÉ → `modeRoad` gardé", r.modeRoad === "principal");
+  r = jouerApplyState({ zones: [], currentZoneIndex: -1 }, { zone: "eau" }, { zones: enCours("z1") });
+  t("⏪ du 1er point d'une ZONE → `modeZone` gardé", r.modeZone === "eau");
+  r = jouerApplyState({ structures: [], currentStructureIndex: -1 }, { structure: "front-1" },
+    { structures: enCours("s1") });
+  t("⏪ du 1er point d'une STRUCTURE → `modeStructure` gardé", r.modeStructure === "front-1");
+  // Sans uid : l'index de la forme en cours au-delà de la liste du snapshot vaut une création.
+  r = jouerApplyState({ roads: [{ points: [{}, {}] }], currentRoadIndex: -1 }, { road: "principal" },
+    { roads: { liste: [{ points: [{}, {}] }, { points: [{}] }], idx: 1 } });
+  t("⏪ du 1er point sans uid (index au-delà du snapshot) → `modeRoad` gardé", r.modeRoad === "principal");
+  // ── ⏩ d'une fin : la forme en cours est PRÉSENTE dans le snapshot sans y être en cours → outil gardé, comme la
+  // fin elle-même (décision produit) ──
+  const fini = function (uid) { return [{ uid: uid, points: [{}, {}] }]; };
+  const rouvert = function (uid) { return { liste: fini(uid), idx: 0 }; };
+  r = jouerApplyState({ roads: fini("r1"), currentRoadIndex: -1 }, { road: "principal" }, { roads: rouvert("r1") });
+  t("⏩ de la fin d'un TRACÉ → `modeRoad` gardé", r.modeRoad === "principal");
+  r = jouerApplyState({ structures: fini("s1"), currentStructureIndex: -1 }, { structure: "front-1" },
+    { structures: rouvert("s1") });
+  t("⏩ de la fin d'une LIGNE de Structures → `modeStructure` gardé", r.modeStructure === "front-1");
+  r = jouerApplyState({ zones: fini("z1"), currentZoneIndex: -1 }, { zone: "eau" }, { zones: rouvert("z1") });
+  t("⏩ de la fermeture d'une ZONE → `modeZone` gardé", r.modeZone === "eau");
+  r = jouerApplyState({ structures: fini("p1"), currentStructureIndex: -1 }, { structure: "pilier-1" },
+    { structures: rouvert("p1") });
+  t("⏩ de la fermeture d'un POLYGONE de Structures → `modeStructure` gardé", r.modeStructure === "pilier-1");
+  r = jouerApplyState({ roads: [{ points: [{}, {}] }], currentRoadIndex: -1 }, { road: "principal" },
+    { roads: { liste: [{ points: [{}, {}] }], idx: 0 } });
+  t("⏩ de la fin d'un tracé sans uid → `modeRoad` gardé", r.modeRoad === "principal");
+  // 🩸 ⏩ sans rien en cours (objet posé, suppression rétablie) : inchangé, l'outil sort du mode.
+  r = jouerApplyState({ roads: fini("r1"), currentRoadIndex: -1 }, { road: "principal" });
+  t("⏩ sans rien en cours (TRACÉ) → `modeRoad` laissé null (inchangé)", r.modeRoad === null);
+  r = jouerApplyState({ zones: fini("z1"), currentZoneIndex: -1 }, { zone: "eau" });
+  t("⏩ sans rien en cours (ZONE) → `modeZone` laissé null (inchangé)", r.modeZone === null);
+  r = jouerApplyState({ structures: fini("s1"), currentStructureIndex: -1 }, { structure: "front-1" });
+  t("⏩ sans rien en cours (STRUCTURE) → `modeStructure` laissé null (inchangé)", r.modeStructure === null);
 }
 
 // ── 4. Le snapshot capture les TROIS index ──────

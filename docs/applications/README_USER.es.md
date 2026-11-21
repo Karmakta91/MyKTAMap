@@ -367,7 +367,7 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 
 | Sección | Qué filtra |
 |---|---|
-| 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales |
+| 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales; bajo cada capa, un control **Opacidad** (10 a 100 %) para ver el plano o el otro nivel a través de ella, guardado para este mapa en este dispositivo y aplicado por la exportación de imagen (sin efecto en la detección ni en la vista 3D) |
 | 📊 **Capas de datos** | Las capas incluidas con el mapa, y **Anotaciones del plano** (todo lo dibujado en el plano: tus añadidos y, en una instalación compartida, los de tu equipo; desmarcarla los oculta sin borrar nada) |
 | 🏗️ **Niveles M-LVL** | Mapas multinivel: nivel activo (para dibujar) y niveles visibles — sincronizado con la ventana Niveles |
 | 🏷️ **Tags de los puntos** | Los tags realmente presentes en el mapa, con su recuento |
@@ -603,7 +603,7 @@ Un nivel a la vez, a 30 m alrededor de ti por defecto (ajuste 🔭 Alcance).
 **🧱 Texturas**
 
 - Paredes de las galerías: sillería (hiladas de bloques, juntas irregulares, relieve con la lámpara). La sillería conserva su tamaño sea cual sea la altura de la galería.
-- Pilares y frentes de cantera: roca bruta (la masa caliza dejada en su sitio: relieve, matices, finos estratos, grietas y marcas de herramienta, sin juntas); la 2.ª masa es la misma roca, en un tono apenas más cálido; para distinguirla bien de la 1.ª, desactiva las texturas. Una estructura personalizada lleva la roca.
+- Pilares y frentes de cantera: roca bruta (la masa caliza dejada en su sitio: relieve, matices, finos estratos, grietas y marcas de herramienta, sin juntas); la 2.ª masa es la misma roca, en un tono apenas más cálido; para distinguirla bien de la 1.ª, desactiva las texturas. Una estructura personalizada lleva la roca. El pilar hecho a mano es de la misma roca pero en hiladas: de 6 a 10 filas de bloques apilados, algo desplazados, juntas oscuras, cada pilar distinto y el mismo en cada apertura.
 - Muros: bloque de hormigón, a su tamaño real (un bloque mide 50 cm, sea cual sea el muro). Un muro trazado en línea es de sillería, del mismo tono que las paredes de las galerías.
 - Arcos de sostenimiento: piedra de sillería del mismo tono que las paredes de las galerías, en todas partes — dovelas de piedra labrada, pilares en la piedra de las paredes y, sobre el arco, una mampostería de mampuestos más rústica.
 - **Colmatado**: tierra y arena caliza compactadas, mezcladas con piedras y bloques de caliza angulosos medio enterrados.
@@ -732,7 +732,7 @@ Dónde y cómo se dibuja un paso:
 - Cada botón abre **el mismo menú que en el mapa**: pilares, muros, frentes de corte, tus tipos personalizados, ➕ nuevo tipo, ✅ Cerrar / Validar.
 - No se dibuja nada mientras no elijas una herramienta. **Elegir una herramienta basta**: un toque pone un punto donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
 - **Cerrar un pilar, un muro o una zona**: toca el **círculo dorado** del primer punto, o ✅ en el menú. Para un muro fino, acerca la vista antes: el círculo crece con ella.
-- Un trazado o un frente se termina con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
+- Un trazado o un frente se termina **volviendo a tocar su último punto**, o con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
 - **✏️ Añadir un punto**: toca el suelo donde va; la ventana del mapa se abre sobre la vista (nombre, tipo, fotos), con el dedo o con el teclado. El punto toma **el nivel de la 3D** y aparece en la escena; ⏪ lo deshace.
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
@@ -979,7 +979,7 @@ En el grupo **🛣️ Trazados**:
 - **🟩 Ruta principal**, **🟪 Ruta secundaria**, **🟨 Camino**
 - **🪜 Unión entre niveles** — solo en un mapa multinivel (ver 🏗️ Modo multinivel)
 
-Pulsa un tipo, toca el mapa punto a punto y vuelve a pulsar el tipo (o **✅ Validar el trazado en curso**) para terminar.
+Pulsa un tipo y toca el mapa punto a punto. Para terminar el trazado, **vuelve a tocar su último punto** (o pulsa **✅ Validar el trazado en curso**): la herramienta sigue encendida y el toque siguiente empieza el trazado siguiente del mismo tipo. Volver a tocar el **primer** punto, en cambio, añade un punto: así se cierra un bucle de galería. ⏪ justo después de terminar reabre el trazado para prolongarlo. Vuelve a pulsar el tipo para apagar la herramienta. La 🪜 Unión es la excepción: cada toque es un punto, y ✅ la termina apagando la herramienta.
 
 ---
 
@@ -1030,13 +1030,16 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 |---|---|---|
 | 🟡 **Pilar 1ª masa** | superficie cerrada | amarillo |
 | 🟠 **Pilar 2ª masa** | superficie cerrada | naranja |
+| **Pilar hecho a mano** — pequeño pilar de mampostería levantado a mano, colocado con un solo toque | cuadrado de 1 m | amarillo con una cruz |
 | 🔵 **Muro** (piedra seca, mampostería) | superficie cerrada | azul |
 | 🟦 **Muro (línea)** — un muro levantado como trazo, a menudo en una importación SIG | línea | trazo azul |
 | 🟨 **Frente de cantera 1ª masa** | línea | trazo amarillo |
 | 🟧 **Frente de cantera 2ª masa** | línea | trazo naranja |
 | **Arco de sostenimiento** — un arco aislado colocado de una pared a otra de la galería | línea | trazo azul fino rayado de rojo |
 
-Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Un pilar o un muro se cierra también volviendo a tocar su **primer** punto; un frente, un muro (línea) o un arco se termina volviendo a tocar su **último** punto (⏪ justo después lo reabre). Tras ✅ o ese toque, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+
+Un **pilar hecho a mano** se coloca con **un solo toque**: un cuadrado de 1 m de lado (a la escala del mapa), centrado donde tocas, con los lados alineados con el mapa, en el nivel activo. La herramienta sigue encendida: cada toque coloca otro pilar, ⏪ quita el último. Sus vértices se ajustan luego como los de los demás pilares. Como ellos, no tiene ningún efecto en el itinerario, detiene al rastreador, se levanta en la vista 3D (como una columna de bloques de piedra apilados con 🧱 Texturas, cada pilar distinto y el mismo en cada apertura; como un bloque simple sin ellas) y cuenta como pilar en el Volumen explotado. En el mapa, la leyenda y las exportaciones de imagen y PDF es un cuadrado amarillo con una cruz fina; el KMZ y la Vista OSM lo muestran lleno. La detección nunca lo propone.
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **en el nivel −1** (el banco bajo la 1ª masa), sea cual sea el nivel mostrado; los demás toman el nivel activo. La lista **Nivel** de su ficha los mueve.
 
@@ -1048,11 +1051,13 @@ Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerari
 
 El botón **Detectar pilares y frentes** del grupo **🏛️ Estructuras** (también en el **📊 Editor de datos**, junto a **Revisar el mapa**) dibuja por ti los pilares y los frentes de cantera que ya aparecen en la imagen del mapa. Una banda en la parte inferior de la pantalla te guía:
 
-1. **Colores**: toca **Masa A** y luego un pilar de ese color en el mapa; haz lo mismo con **Masa B** (otro color de pilar) y **Frente** (un trazo de frente). Cada toque mide también el tamaño del pilar tocado y las variaciones de su color: toca un pilar claro, uno oscuro y uno pequeño, dos o tres toques bastan. Colores y ajustes se recuerdan para este mapa, en este dispositivo (no van ni a la sesión ni a la exportación del perfil).
+1. **Colores**: toca **Masa A** y luego un pilar de ese color en el mapa; haz lo mismo con **Masa B** (otro color de pilar) y **Frente** (un trazo de frente). Cada toque mide también el tamaño del pilar tocado y las variaciones de su color: toca un pilar claro, uno oscuro y uno pequeño, dos o tres toques bastan. En un plano a trazo (pilares blancos rodeados de negro), toca el interior del pilar, aunque sea junto a su trazo: se mide el pilar, no el trazo. Colores y ajustes se recuerdan para este mapa, en este dispositivo (no van ni a la sesión ni a la exportación del perfil).
 2. **Zona**: toca dos esquinas opuestas del marco que analizar, o elige **Todo el mapa**. En un mapa grande, el análisis se hace a media resolución y puede tardar un minuto en el teléfono; **Cancelar** lo detiene.
-3. **Vista previa**: lo encontrado se dibuja sobre el mapa, sin escribir nada. Dos controles deslizantes ajustan el resultado sin volver a lanzar el análisis: **Tolerancia de color** (más alto: acepta colores más alejados de las muestras) y **Tamaño mínimo** (más alto: descarta los objetos pequeños), y **Tamaño máximo** (más bajo: descarta las masas grandes, útil cuando los pilares son blancos o claros como el fondo y las galerías). Con el cuentagotas, una retícula roja muestra el punto leído; tocar el fondo lo indica, sin añadir muestra. Toca un objeto para quitarlo (o volver a ponerlo), elige el tipo de cada color (pilar o frente, 1.ª o 2.ª masa) y luego **Añadir**.
+3. **Vista previa**: lo encontrado se dibuja sobre el mapa, sin escribir nada. Tres controles deslizantes ajustan el resultado sin volver a lanzar el análisis: **Tolerancia de color** de los pilares (más alto: acepta colores más alejados de las muestras; los frentes conservan la de su muestra), **Tamaño mínimo** (más alto: descarta los objetos pequeños) y **Tamaño máximo** (más bajo: descarta las masas grandes, útil cuando los pilares son blancos o claros como el fondo y las galerías). Con el cuentagotas, una retícula roja muestra el punto leído; tocar el fondo lo indica, sin añadir muestra. Toca un objeto para quitarlo (o volver a ponerlo), elige el tipo de cada color (pilar o frente, 1.ª o 2.ª masa) y luego **Añadir**.
 
-Un solo **Deshacer** del historial quita todo lo que se acaba de añadir. Lo que ya está dibujado en el mismo nivel no se añade una segunda vez: puedes volver a lanzarlo en una zona vecina sin duplicados. Los niveles siguen la regla del dibujo a mano (2.ª masa en el nivel −1); si el nivel o los filtros ocultan lo que se acaba de añadir, un mensaje lo dice. Una banda de galería (o un muro trazado como línea) del mismo color que los pilares se reconoce por su forma y no se coloca como pilar, aunque esté soldada a ellos. Dos pilares que se tocan salen como uno solo, un frente que pasa bajo un pilar en dos trozos, y un pilar muy alargado puede tomarse por una banda: quítalo o complétalo a mano. Durante la detección, la vista girada se endereza. Con el cuentagotas o al trazar el marco, tocar un pilar ya dibujado toma la muestra sin abrir su ficha.
+Un solo **Deshacer** del historial quita todo lo que se acaba de añadir. Lo que ya está dibujado en el mismo nivel no se añade una segunda vez: puedes volver a lanzarlo en una zona vecina sin duplicados. Los niveles siguen la regla del dibujo a mano (2.ª masa en el nivel −1); si el nivel o los filtros ocultan lo que se acaba de añadir, un mensaje lo dice. Una banda de galería (o un muro trazado como línea) del mismo color que los pilares se reconoce por su forma y no se coloca como pilar, aunque esté soldada a ellos. La línea que rodea un pilar detectado marca dónde termina el pilar: no es un frente. Si descartas ese pilar (controles de tamaño), su contorno vuelve a ser un frente; los frentes alejados de los pilares no cambian. Dos pilares que se tocan salen como uno solo, un frente que pasa bajo un pilar en dos trozos, y un pilar muy alargado puede tomarse por una banda: quítalo o complétalo a mano. Durante la detección, la vista girada se endereza. En un nivel distinto del 0, solo se leen las capas de imagen de ese nivel mostradas en los filtros ≡: un nivel sin imagen, o con todas sus capas ocultas, se rechaza con un mensaje (no se toma nada de la imagen de otro nivel). Con el cuentagotas o al trazar el marco, tocar un pilar ya dibujado toma la muestra sin abrir su ficha.
+
+**Rellenar con un toque** (misma banda, en el paso de los colores): para un mapa a trazo, cuando los pilares están dibujados por su contorno. Elige el tipo (solo se proponen los tipos de contorno cerrado: pilares, muro y tus tipos de estructura en superficie, nunca un frente) y toca el interior de cada contorno: la zona se rellena en la vista previa, y sigues. Toca una zona para quitarla o volver a ponerla; luego **Añadir** lo coloca todo de una vez y un solo **Deshacer** del historial quita todas las zonas. El **Pilar hecho a mano**, que se coloca con un solo toque, no está en la lista. Un hueco de 1 o 2 píxeles en el trazo se cierra solo, y un pilar muy pequeño, aunque esté borroso, se rellena igualmente si tocas su centro claro; un contorno más abierto, o una zona demasiado grande para una estructura (más de 40 m de lado si el mapa tiene escala), se rechaza con un mensaje: trázalo a mano. Una zona ya dibujada en el mismo nivel no se añade una segunda vez. El contorno pasa por el centro del trazo: el trazo forma parte del pilar; dos pilares separados por un mismo trazo se lo reparten.
 
 **En el Generador**, en el paso **Capas de datos** (modo Avanzado), el botón **Detectar pilares y frentes** hace lo mismo sobre la imagen del plano **antes** de generarlo, al modificarlo o en **Actualizar el mapa**. Una ventana muestra la imagen: cuentagotas, marco o todo el plano, vista previa y controles como en el mapa; el análisis lee la imagen a resolución completa. Lo que añades va a una capa **Estructuras detectadas** del plano generado, ya alineada con la imagen aunque se recorten los márgenes blancos. Lo que ya está en una capa del plano no se añade dos veces. Con una imagen muy grande, un teléfono puede quedarse sin memoria, como al dividir en teselas.
 
@@ -1137,7 +1142,7 @@ Solo se proponen destinos de la **misma forma**: una **línea** (trazado, frente
 En la ventana de conversión, **🎯 Seleccionar varios objetos para convertir** muestra un aviso:
 
 - **toca un objeto** para añadirlo (azul punteado), vuelve a tocarlo para quitarlo;
-- **➕ Todos los «tipo» del nivel mostrado** añade todos los objetos del mismo tipo que el último añadido;
+- **➕ Todos los «tipo» de los niveles visibles** añade todos los objetos del mismo tipo que el último añadido;
 - **✅ Convertir (N)** abre la elección del tipo para todo el lote; **Cancelar** lo abandona.
 
 El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica por qué), pero puede mezclar familias: frentes de cantera y caminos, todos líneas, se convierten juntos en galerías. Los objetos que ya son del tipo correcto se quedan como están, y el mensaje final los cuenta. Un solo `Ctrl+Z` deshace todo el lote.
@@ -1153,7 +1158,7 @@ El lote no mezcla líneas y superficies cerradas (el aviso lo rechaza y explica 
 El mismo aviso sirve también para **eliminar** de golpe, por ejemplo todo lo que una importación colocó mal en un sector. También se llega sin pasar por un objeto: en 🛣️ Trazados, ⬛ Zonas o 🏛️ Estructuras, **🧹 Borrar → ✏️ Borrar por zona** (o **🎯 Seleccionar** y luego **✏️ Por zona** en el aviso de abajo): el trazado de la zona empieza enseguida, y la confirmación solo lleva marcada de antemano la familia del grupo (las demás siguen propuestas, sin marcar).
 
 - **✏️ Seleccionar por zona**: toca los vértices de la zona en el mapa (como una medida ♦️ Superficie; **↩️ Último vértice** corrige un toque fallido) y luego **✅ Usar la zona**. Tu medida ♦️ en curso no se pierde: vuelve tal cual.
-- Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los del **nivel mostrado**. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.
+- Solo se añaden los objetos **completamente** dentro de la zona (todos sus vértices, o el propio punto), y solo los de los **niveles visibles** (marcados en ≡ Filtros), como al tocar: mostrar un nivel basta para tomar sus objetos, ocultarlo los deja fuera. Un objeto a caballo sobre el borde no se toma, y nunca se corta nada.
 - Los **puntos** también entran en la selección (círculo azul punteado). Vuelve a tocar un objeto para quitarlo; puedes trazar varias zonas.
 - **🗑️ Eliminar (N)** abre una confirmación con una casilla por familia (📍 Puntos, 〰️ Trazados, 🟦 Zonas, 🧱 Estructuras) y su número: desmarca una familia para conservarla.
 - La ventana anuncia también: las **fotos** de los puntos (no se borran, pasan a «sin punto» en 🧰 Herramientas > 📸 Mis fotos), los **objetos de una capa de datos** vistos en la zona (nunca eliminados: pasa antes la capa a **🔄 Modificar**) y los **puntos portal** (enlace a otro plano), siempre conservados.
@@ -1175,6 +1180,8 @@ Tus **50 últimas acciones** en el mapa se pueden deshacer y rehacer:
 Un mensaje en la parte inferior de la pantalla dice lo que se ha deshecho o rehecho («↩ Deshecho: Colocación del punto …»).
 
 **Lo que se deshace**: añadir, modificar, mover y eliminar puntos; cada punto colocado en un trazado, una zona o una estructura, su cierre, su eliminación (incluido «Todos»); las conversiones.
+
+⏪ sobre el **primer punto** de un trazado, una zona o una estructura en curso lo quita sin apagar la herramienta: no queda nada en el mapa, y el siguiente toque empieza un objeto nuevo del mismo tipo. Del mismo modo, ⏩ tras deshacer el final de un trazado, una zona o una estructura lo rehace sin apagar la herramienta.
 
 **Lo que no se deshace**: eliminar una foto, importar una sesión, el seguimiento de posición, y la medición una vez apagada la herramienta 📐.
 

@@ -11,14 +11,23 @@
  * plus grande que la marge signalée et jamais coupée, masse coupée par le cadre demandé rendue entière, lecture
  * à résolution réduite, réglages en mètres, annulation, worker (message → résultat). Fronts : trait droit et en L,
  * trait de la couleur d'un pilier (le pilier reste une masse, le trait ne le traverse pas), ergot, bruit, trait sur
- * plusieurs blocs raccordé. Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
+ * plusieurs blocs raccordé, pilier de la couleur du trait écarté par la taille (reste retiré du trait) ; passe
+ * mixte (pilier clair cerné + front fin) : traits entiers à toute taille, sur petits blocs aussi, cerne du pilier
+ * gardé qui n'est pas un front, rendu aux fronts quand un curseur écarte le pilier.
+ * Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
  * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
  * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
  * trait de la couleur des piliers ; pipette sur un trait de 2 px, un coin de pilier, le fond ; scènes « fond blanc »
- * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; recalcul sur les
- * blocs gardés sans relecture.
- * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs, sans comblement des trous,
+ * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; plan au trait (piliers
+ * blancs cernés de 5 à 34 px, galeries blanches, chiffres et texte, filigrane, flou, bruit) : pipette au bord des
+ * petits piliers = leur intérieur, réglages déduits ≥ 90 % et ≤ 5 % de morceaux de galerie, contre-épreuves (seul
+ * pixel le plus encré, ancien plafond de tolérance) ; recalcul sur les blocs gardés sans relecture.
+ * Remplir au clic : pilier cerné droit ou oblique rempli au MILIEU du trait (≤ 1 px), mur partagé coupé au milieu,
+ * chiffre dedans englobé, trous de 1 et 2 px fermés, 3 et 4 px refusés, bord de l'image ou de la région lue refusé,
+ * plafond (quart de la région lue, ou donné) refusé, toucher sur le trait refusé, bruit, échelle 0,5, pilier plein.
+ * Contre-épreuves (sabotages) : remplissage sans fermeture (le trou de 1 px fuit), sans marge, sans ouverture,
+ * sans dédoublonnage des blocs, sans comblement des trous,
  * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
  *
  * Usage : node scripts/check-detection.js   (exit 1 si un contrôle échoue)
@@ -183,6 +192,82 @@ function sceneBlanche(pilier) {
   return { img, vrais, petit: vrais.reduce((a, p) => (p.w * p.h < a.w * a.h ? p : a)),
     gros: vrais.reduce((a, p) => (p.w * p.h > a.w * a.h ? p : a)) };
 }
+// Planche « au trait » (imite un plan scanné) : réseau fermé par un mur noir, murs intérieurs qui ne ferment rien,
+// piliers BLANCS de 5 à 34 px (un tiers sous 10 px) cernés d'un trait noir de 1 à 3 px, galeries blanches entre eux,
+// intrus au trait à boucles fermées (5 chiffres, 8 lettres), filigrane gris en travers, flou 3 × 3, bruit ± 12.
+function plancheTrait() {
+  const W = 900, H = 600, f = new Float32Array(W * H * 3).fill(255), vrais = [], intrus = [];
+  const rect = (x, y, w, h, c) => {
+    for (let j = Math.max(0, y); j < Math.min(H, y + h); j++) {
+      for (let i = Math.max(0, x); i < Math.min(W, x + w); i++) {
+        const k = (j * W + i) * 3; f[k] = c[0]; f[k + 1] = c[1]; f[k + 2] = c[2];
+      }
+    }
+  };
+  const boucle = (x, y, w, h) => {
+    rect(x, y, w, 2, NOIR); rect(x, y + h - 2, w, 2, NOIR); rect(x, y, 2, h, NOIR); rect(x + w - 2, y, 2, h, NOIR);
+  };
+  let g = 7;
+  const al = () => { g = (g * 16807) % 2147483647; return g / 2147483647; };
+  rect(40, 40, 820, 2, NOIR); rect(40, 558, 820, 2, NOIR); rect(40, 40, 2, 520, NOIR); rect(858, 40, 2, 520, NOIR);
+  rect(300, 42, 2, 300, NOIR); rect(600, 260, 2, 298, NOIR); rect(42, 460, 200, 2, NOIR);
+  const chiffres = ["2,3", "5,1", "9,4", "13,2", "16,6"];
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 18; c++) {
+    const x0 = 60 + c * 44, y0 = 60 + r * 44, ic = chiffres.indexOf(c + "," + r);
+    if ((Math.abs(x0 - 300) < 30 && y0 < 350) || (Math.abs(x0 - 600) < 30 && y0 > 240) || (y0 > 440 && x0 < 250)) {
+      continue;   // près d'un mur
+    }
+    if (ic >= 0) {   // chiffre au trait : « 8 », « 0 » ou « 6 »
+      const cx = x0 + 6, cy = y0 + 2;
+      if (ic % 3 === 0) { boucle(cx, cy, 11, 11); boucle(cx, cy + 9, 11, 12); }
+      else if (ic % 3 === 1) boucle(cx, cy, 12, 20);
+      else { rect(cx, cy, 2, 20, NOIR); boucle(cx, cy + 9, 12, 11); }
+      intrus.push({ x: cx - 2, y: cy - 2, w: 18, h: 26 });
+      continue;
+    }
+    const t = al();
+    const s = t < 0.3 ? 6 + Math.round(al() * 4) : t < 0.8 ? 12 + Math.round(al() * 12) : 26 + Math.round(al() * 8);
+    const w = s, h = Math.round(s * (0.7 + al() * 0.6)), ep = 1 + Math.floor(al() * 3);
+    const x = x0 + Math.round(al() * 4), y = y0 + Math.round(al() * 4);
+    rect(x - ep, y - ep, w + 2 * ep, h + 2 * ep, NOIR); rect(x, y, w, h, BLANC);
+    vrais.push({ x, y, w, h });
+  }
+  for (let i = 0; i < 8; i++) boucle(260 + i * 16, 520, 10, 16);   // texte : lettres à boucle
+  intrus.push({ x: 256, y: 516, w: 132, h: 24 });
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    if ((i + j * 1.3) % 420 >= 26) continue;
+    const k = (j * W + i) * 3;
+    for (let c = 0; c < 3; c++) f[k + c] = f[k + c] * 0.72 + 150 * 0.28;
+  }
+  const img = image(W, H);
+  let h = 9;
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) for (let c = 0; c < 3; c++) {
+    let s = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = i + dx, y = j + dy, p = dx || dy ? 1 : 4;
+      if (x >= 0 && y >= 0 && x < W && y < H) { s += f[(y * W + x) * 3 + c] * p; n += p; }
+    }
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    img.data[(j * W + i) * 4 + c] = s / n + (h % 25) - 12;
+  }
+  return { img, vrais, intrus };
+}
+// Exemple comme dans l'app : fenêtre de 192 px autour du doigt, 640 si la composante la dépasse ou la remplit.
+function exempleFenetre(img, x, y, o) {
+  let m = null;
+  for (const n of [192, 640]) {
+    const x0 = Math.floor(x - n / 2), y0 = Math.floor(y - n / 2), data = new Uint8ClampedArray(n * n * 4);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const sx = x0 + i, sy = y0 + j;
+      if (sx < 0 || sy < 0 || sx >= img.W || sy >= img.H) continue;   // hors image : transparent
+      const s = (sy * img.W + sx) * 4, d = (j * n + i) * 4;
+      data[d] = img.data[s]; data[d + 1] = img.data[s + 1]; data[d + 2] = img.data[s + 2]; data[d + 3] = 255;
+    }
+    m = D.mesurerExemple({ data, w: n, h: n }, x - x0, y - y0, o);
+    if (!m || !(m.coupe || m.fond)) break;
+  }
+  return m;
+}
 function lancer(img, extra) {
   return D.detecter(Object.assign({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: img.W, h: img.H },
     limites: { w: img.W, h: img.H }, classes: CLASSES, reglages: { aireMin: 100, ouverture: 7 } }, extra || {}));
@@ -191,6 +276,10 @@ const boiteDe = m => {
   const xs = m.points.map(p => p.x), ys = m.points.map(p => p.y);
   return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
 };
+// aire d'un polygone [[x, y]]
+const _aireP = p => Math.abs(p.reduce((s, a, i) => {
+  const b = p[(i + 1) % p.length]; return s + a[0] * b[1] - b[0] * a[1];
+}, 0)) / 2;
 const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
 
 (async function main() {
@@ -316,6 +405,15 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   const entre = r.traits.some(traverse);
   t("trait de la couleur d'un pilier : le pilier reste une masse, le trait ne passe pas dedans",
     r.masses.length === 1 && r.traits.length >= 1 && !entre, { masses: r.masses.length, traits: r.traits.length });
+  const nTraverse = r.traits.length;
+  // le même pilier écarté par la taille (minimale ou maximale) reste retiré du trait : il n'en devient pas un front
+  for (const [nom, rg] of [["minimale", { aireMin: 5000, ouverture: 7 }], ["maximale", { aireMin: 100, ouverture: 7,
+    aireMax: 1000 }]]) {
+    r = await lancerT(image(400, 200).rect(20, 98, 360, 4, ORANGE).rect(160, 70, 60, 60, ORANGE), { reglages: rg });
+    t("trait de la couleur d'un pilier écarté par la taille " + nom + " : aucun pilier, mêmes fronts (" +
+      r.traits.length + "), aucun ne passe dedans", r.masses.length === 0 && r.traits.length === nTraverse &&
+      !r.traits.some(traverse), { masses: r.masses.length, traits: r.traits.map(bornes) });
+  }
   r = await lancerT(image(400, 200).rect(20, 98, 360, 4, ORANGE).rect(160, 70, 60, 60, ORANGE),
     { classes: [AT[1]] });
   t("contre-épreuve : sans classe de masse, le squelette du pilier rentre dans le trait",
@@ -450,7 +548,7 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     const dd = D.reglagesDepuisExemples({ a: ex }, { a: "masse" });
     const avec = async (aireMax) => D.detecter({ lireBloc: lecteur(sc.img),
       region: { x: 0, y: 0, w: sc.img.W, h: sc.img.H }, limites: { w: sc.img.W, h: sc.img.H },
-      classes: [{ id: "a", couleurs: ex.map((x) => x.rgb), tolerance: dd.tolerances.a }],
+      classes: [{ id: "a", couleurs: ex.filter(Boolean).map((x) => x.rgb), tolerance: dd.tolerances.a }],
       reglages: Object.assign({ aireMax: aireMax }, D.reglagesPourTaille(dd.taille)) });
     const rMax = await avec(dd.tailleMax * dd.tailleMax), rSans = await avec(0);
     const nMax = sc.vrais.filter((p) => rMax.masses.some((m) => dans(m, p))).length;
@@ -465,6 +563,128 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
         geante(rSans) > 0);
     }
   }
+
+  // ── Plan au trait : piliers blancs cernés, galeries blanches, intrus, filigrane, flou, bruit ──
+  const pt = plancheTrait(), nPt = pt.vrais.length;
+  const centreDans = (m, v) => {
+    const cx = m.boite.x + m.boite.w / 2, cy = m.boite.y + m.boite.h / 2;
+    return cx >= v.x - 1 && cx <= v.x + v.w + 1 && cy >= v.y - 1 && cy <= v.y + v.h + 1;
+  };
+  const bilanPt = (r) => ({
+    piliers: pt.vrais.filter((v) => r.masses.some((m) => centreDans(m, v))).length,
+    intrus: r.masses.filter((m) => pt.intrus.some((v) => centreDans(m, v))).length,
+    morceaux: r.masses.filter((m) => !pt.vrais.some((v) => centreDans(m, v)) &&
+      !pt.intrus.some((v) => centreDans(m, v))).length });
+  // Pipette au bord : chaque petit pilier (≤ 10 px) touché sur sa première rangée intérieure, des 4 côtés (le trait est
+  // dans le carré 5 × 5 du doigt). Juste = épaisseur à ± 2 px de (côté − 1), la valeur d'un pilier net (chanfrein) ;
+  // ± 2 : le flou déplace la frontière d'au plus 1 px de chaque côté.
+  const petitsPt = pt.vrais.filter((v) => Math.min(v.w, v.h) <= 10);
+  const touchersBord = (o) => {
+    let justes = 0, traits = 0;
+    petitsPt.forEach((v) => {
+      [[v.x, v.y + v.h / 2], [v.x + v.w - 1, v.y + v.h / 2], [v.x + v.w / 2, v.y], [v.x + v.w / 2, v.y + v.h - 1]]
+        .forEach(([x, y]) => {
+          const m = exempleFenetre(pt.img, x, y, o);
+          if (m && !m.fond && Math.abs(m.epaisseur - (Math.min(v.w, v.h) - 1)) <= 2) justes++;
+          if (m && !m.fond && Math.min.apply(null, m.rgb) < 200) traits++;
+        });
+    });
+    return { justes, traits, n: petitsPt.length * 4 };
+  };
+  const bordNouv = touchersBord({}), bordAnc = touchersBord({ nature: "trait" });
+  t("plan au trait, pipette au bord de " + petitsPt.length + " petits piliers (4 côtés) : " + bordNouv.justes + "/" +
+    bordNouv.n + " tailles justes, " + bordNouv.traits + " exemple(s) pris sur le trait",
+    bordNouv.justes === bordNouv.n && bordNouv.traits === 0, bordNouv);
+  t("contre-épreuve : règle du seul pixel le plus encré (sans viser le clair) → trait pris " + bordAnc.traits + "/" +
+    bordAnc.n + ", tailles justes " + bordAnc.justes, bordAnc.traits > bordAnc.n / 2, bordAnc);
+  // Trois touchers comme sur le terrain : un grand au centre, le plus petit près de son bord, un moyen au centre.
+  const grandPt = pt.vrais.reduce((a, v) => (v.w * v.h > a.w * a.h ? v : a));
+  const petitPt = pt.vrais.reduce((a, v) => (Math.min(v.w, v.h) < Math.min(a.w, a.h) ? v : a));
+  const moyenPt = pt.vrais.find((v) => v.w >= 16 && v.w <= 20);
+  const touchersPt = (o) => [exempleFenetre(pt.img, grandPt.x + grandPt.w / 2, grandPt.y + grandPt.h / 2, o),
+    exempleFenetre(pt.img, petitPt.x, petitPt.y + Math.floor(petitPt.h / 2), o),
+    exempleFenetre(pt.img, moyenPt.x + moyenPt.w / 2, moyenPt.y + moyenPt.h / 2, o)];
+  const detPt = (ex, dd) => D.detecter({ lireBloc: lecteur(pt.img), region: { x: 0, y: 0, w: pt.img.W, h: pt.img.H },
+    limites: { w: pt.img.W, h: pt.img.H },
+    classes: [{ id: "a", couleurs: ex.filter(Boolean).map((x) => x.rgb), tolerance: dd.tolerances.a }],
+    reglages: Object.assign({ aireMax: dd.tailleMax * dd.tailleMax }, D.reglagesPourTaille(dd.taille)) });
+  const exPt = touchersPt({}), ddPt = D.reglagesDepuisExemples({ a: exPt.filter(Boolean) }, { a: "masse" });
+  const vraiMin = Math.min(petitPt.w, petitPt.h) - 1;
+  t("plan au trait, 3 touchers : exemples clairs cernés, taille minimale déduite " + ddPt.taille + " px (plus petit " +
+    "pilier : " + vraiMin + " ± 1), tolérance " + ddPt.tolerances.a + " (≥ 15 : englobe le blanc bruité et le " +
+    "filigrane)", exPt.every((x) => x && x.cerne) && Math.abs(ddPt.taille - vraiMin) <= 1 && ddPt.tolerances.a >= 15,
+    { exemples: exPt.map((x) => x && [x.rgb, x.aire, x.epaisseur, x.ecartTrait, x.ecartAuDela]), deduits: ddPt });
+  // Seuil des morceaux de galerie : 5 % des piliers. Hors des piliers et des intrus il ne reste que des éclats du
+  // fond aux coins de l'image (filigrane) ; l'ancien plafond en fait plus de 15 %.
+  const bPt = bilanPt(await detPt(exPt, ddPt));
+  t("plan au trait, réglages déduits SANS curseur : " + bPt.piliers + "/" + nPt + " piliers (≥ 90 %), " +
+    bPt.morceaux + " morceau(x) de galerie (≤ 5 %), intrus passés : " + bPt.intrus + " (boucles de 5 chiffres et " +
+    "8 lettres, blanches et fermées comme un pilier)",
+    bPt.piliers >= 0.9 * nPt && bPt.morceaux <= 0.05 * nPt, bPt);
+  const exPlafond = exPt.filter(Boolean).map((x) => Object.assign({}, x, { cerne: false }));
+  const ddPlafond = D.reglagesDepuisExemples({ a: exPlafond }, { a: "masse" });
+  const bPlafond = bilanPt(await detPt(exPlafond, ddPlafond));
+  t("contre-épreuve : ancien plafond (60 % de l'écart au fond, tolérance " + ddPlafond.tolerances.a + ") → " +
+    bPlafond.morceaux + " morceaux de galerie (> 5 %)", bPlafond.morceaux > 0.05 * nPt, bPlafond);
+  const exAnc = touchersPt({ nature: "trait" }).filter(Boolean).map((x) => Object.assign({}, x, { cerne: false }));
+  const ddAnc = D.reglagesDepuisExemples({ a: exAnc }, { a: "masse" });
+  const bAnc = bilanPt(await detPt(exAnc, ddAnc));
+  t("contre-épreuve : les deux anciennes règles (exemple sur le trait + ancien plafond) → taille " + ddAnc.taille +
+    " px, tolérance " + ddAnc.tolerances.a + ", " + bAnc.piliers + "/" + nPt + " piliers, " + bAnc.morceaux +
+    " morceaux", ddAnc.taille <= 2 && bAnc.morceaux > 0.05 * nPt, bAnc);
+
+  // ── Passe mixte : piliers clairs cernés ET fronts fins dans la même détection ──
+  // Galerie entre deux traits noirs de 3 px, pilier blanc cerné d'un rectangle noir de 3 px dedans. Le fond et la
+  // galerie, du blanc des piliers, sont écartés par la taille maximale : ils ne doivent pas effacer les traits. Le
+  // cerne n'est pas un front tant que le pilier est gardé ; écarté par un curseur, le pilier le rend aux fronts.
+  const mx = image(400, 300).rect(20, 120, 360, 3, NOIR).rect(20, 163, 360, 3, NOIR).anneau(180, 130, 46, 26, 3, NOIR);
+  const exMxP = D.mesurerExemple(lecteurSync(mx), 200, 143);
+  const exMxF = D.mesurerExemple(lecteurSync(mx), 100, 121, { nature: "trait" });
+  const ddMx = D.reglagesDepuisExemples({ a: [exMxP], f: [exMxF] }, { a: "masse", f: "trait" });
+  const mixte = (taille, autres) => lancer(mx, { classes: [
+    { id: "a", couleurs: [exMxP.rgb], tolerance: ddMx.tolerances.a },
+    { id: "f", nature: "trait", couleurs: [exMxF.rgb], tolerance: ddMx.tolerances.f }],
+  reglages: Object.assign({ aireMax: ddMx.tailleMax * ddMx.tailleMax }, D.reglagesPourTaille(taille), autres || {}) });
+  const mur = (tr, y) => Math.abs(bornes(tr)[1] - y) <= 2 && Math.abs(bornes(tr)[3] - y) <= 2 &&
+    bornes(tr)[0] <= 24 && bornes(tr)[2] >= 376;
+  const dansPilier = tr => bornes(tr)[0] >= 178 && bornes(tr)[1] >= 128 && bornes(tr)[2] <= 228 &&
+    bornes(tr)[3] <= 158;
+  const murs = rr => rr.traits.some(x => mur(x, 121.5)) && rr.traits.some(x => mur(x, 164.5));
+  const cernes = rr => rr.traits.filter(dansPilier).length;
+  const autres = rr => rr.traits.filter(x => !mur(x, 121.5) && !mur(x, 164.5) && !dansPilier(x)).length;
+  const bilanMx = rr => ({ piliers: rr.masses.length, fronts: rr.traits.map(bornes) });
+  r = await mixte(ddMx.taille);
+  t("passe mixte (exemple de pilier clair cerné + exemple de front) : les 2 traits de la galerie sortent en entier, " +
+    "le pilier est trouvé, son cerne n'est pas un front (" + r.traits.length + " front(s))",
+  exMxP && exMxP.cerne && r.masses.length === 1 && murs(r) && r.traits.length === 2, bilanMx(r));
+  const parTaille = [];
+  for (const tl of [5, 9, ddMx.taille, 25]) {
+    const x = await mixte(tl);
+    parTaille.push({ taille: tl, piliers: x.masses.length, murs: murs(x), cernes: cernes(x), autres: autres(x) });
+  }
+  t("passe mixte, pilier gardé à toute taille minimale : les 2 traits entiers, aucun cerne ni autre front " +
+    JSON.stringify(parTaille.map(v => [v.taille, v.piliers, v.murs, v.cernes])),
+  parTaille.every(v => v.piliers === 1 && v.murs && v.cernes === 0 && v.autres === 0), parTaille);
+  // pilier écarté par un curseur (taille minimale au-dessus de lui, ou taille maximale au-dessous) : son cerne
+  // redevient un front, les 2 traits restent entiers
+  for (const [nom, rr] of [["minimale (45 px)", await mixte(45)],
+    ["maximale (20 px)", await mixte(ddMx.taille, { aireMax: 400 })]]) {
+    t("passe mixte, pilier écarté par la taille " + nom + " : son cerne redevient un front (" + cernes(rr) +
+      "), les 2 traits restent entiers", rr.masses.length === 0 && murs(rr) && cernes(rr) >= 1 && autres(rr) === 0,
+    bilanMx(rr));
+  }
+  r = await mixte(ddMx.taille, { bloc: 128, marge: 64 });
+  t("passe mixte sur petits blocs (128 px, marge 64) : mêmes 2 traits entiers après raccord, 1 pilier, pas de cerne",
+    r.masses.length === 1 && murs(r) && r.traits.length === 2, bilanMx(r));
+
+  // Pilier blanc touché au centre, fenêtre au fond lu GRIS (plan au trait serré) : le seuil tiré de l'écart au fond
+  // tombait sous le bruit et la composante n'était qu'un lambeau du pilier.
+  const serre = image(192, 192).rect(0, 0, 192, 192, [225, 225, 225]).rect(86, 86, 20, 20, NOIR)
+    .rect(88, 88, 16, 16, BLANC).bruit(12);
+  const exSerre = D.mesurerExemple(lecteurSync(serre), 96, 96);
+  t("pilier blanc au centre, fond lu gris et bruité : le pilier entier (aire " + (exSerre && exSerre.aire) +
+    " sur 256, épaisseur " + (exSerre && exSerre.epaisseur) + ")",
+    exSerre && !exSerre.fond && exSerre.aire >= 230 && exSerre.aire <= 256 && exSerre.epaisseur >= 14, exSerre);
 
   // ── Recalcul sur les blocs gardés : pas de relecture de l'image ──
   let lectures = 0;
@@ -507,6 +727,162 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   await lancer(grand, Object.assign({ onProgres: (i, n) => vus.push(i + "/" + n) }, petitsBlocs));
   t("avancement : un appel par bloc, jusqu'à n/n", vus.length === 20 && vus[19] === "20/20", vus.slice(-1));
 
+  // ── Remplir au clic (ktaDetection.js > remplir) : zone fermée par le trait, contour au MILIEU du trait ──
+  // Tolérance du contour : 1 px. La fermeture (rayon 1) ne déplace pas un trait droit et au plus de 1 px une marche
+  // d'escalier oblique ; le milieu d'un trait d'épaisseur impaire tombe au milieu d'un pixel (0,5 px) ; la
+  // simplification (1 px) reste sous cette marge. Traits de 4 px pour les contrôles du milieu : le bord intérieur
+  // (ancien comportement) y est à 2 px de l'attendu, au-delà de la tolérance.
+  t("remplir : fonction exposée par le moteur", typeof D.remplir === "function", typeof D.remplir);
+  if (typeof D.remplir === "function") {
+    const distSeg = (p, a, b) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+      const u = L ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)) : 0;
+      return Math.hypot(p[0] - a[0] - u * dx, p[1] - a[1] - u * dy);
+    };
+    const auBord = (p, poly) => Math.min(...poly.map((a, i) => distSeg(p, a, poly[(i + 1) % poly.length])));
+    // écart de Hausdorff (sommets ↔ côtés) entre le contour rendu et le contour attendu
+    const ecart = (pts, attendu) => {
+      const rp = pts.map(p => [p.x, p.y]);
+      return Math.max(...rp.map(p => auBord(p, attendu)), ...attendu.map(p => auBord(p, rp)));
+    };
+    const rectPts = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    // pilier cerné : intérieur blanc (x, y, w, h), trait noir de `ep` px autour ; trou de `trou` px en haut
+    const cerne = (img, x, y, w, h, ep, trou) => {
+      img.anneau(x - ep, y - ep, w + 2 * ep, h + 2 * ep, ep, NOIR);
+      if (trou) img.rect(x + 10, y - ep, trou, ep, BLANC);
+      return img;
+    };
+    // contour attendu : milieu du trait de `ep` px autour de l'intérieur (x, y, w, h)
+    const milieu = (x, y, w, h, ep) => rectPts(x - ep / 2, y - ep / 2, w + ep, h + ep);
+    // polygone convexe décalé de d px vers l'extérieur (côtés parallèles, sommets à leur intersection)
+    const decale = (pts, d) => {
+      const sens = Math.sign(pts.reduce((s, a, i) => {
+        const b = pts[(i + 1) % pts.length]; return s + a[0] * b[1] - b[0] * a[1];
+      }, 0));
+      const lignes = pts.map((a, i) => {
+        const b = pts[(i + 1) % pts.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const nx = sens * (b[1] - a[1]) / L, ny = -sens * (b[0] - a[0]) / L;
+        return [[a[0] + nx * d, a[1] + ny * d], [b[0] - a[0], b[1] - a[1]]];
+      });
+      return lignes.map((l, i) => {
+        const p = lignes[(i + lignes.length - 1) % lignes.length], det = p[1][0] * l[1][1] - p[1][1] * l[1][0];
+        const u = ((l[0][0] - p[0][0]) * l[1][1] - (l[0][1] - p[0][1]) * l[1][0]) / det;
+        return [p[0][0] + u * p[1][0], p[0][1] + u * p[1][1]];
+      });
+    };
+    const R1 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0)), 70, 55);
+    t("remplir : pilier cerné (trait 4 px) → contour au milieu du trait (≤ 1 px), aire 44 × 34 px",
+      R1.points && ecart(R1.points, milieu(50, 40, 40, 30, 4)) <= 1 && Math.abs(R1.aire - 1496) <= 30, R1);
+    const R2 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 70, 55);
+    t("remplir : pilier cerné (trait 2 px) → contour au milieu du trait (≤ 1 px)",
+      R2.points && ecart(R2.points, milieu(50, 40, 40, 30, 2)) <= 1, R2);
+    const obl = [[60, 40], [140, 70], [120, 150], [50, 120]];
+    const io = image(250, 250).poly(decale(obl, 2), NOIR).poly(decale(obl, -2), BLANC);
+    const RO = D.remplir(lecteurSync(io), 90, 90);
+    // 🩸 La pointe d'un coin aigu tramé perd jusqu'à un pixel en diagonale : sommets attendus à ≤ 1,5 px ; les côtés,
+    //   eux, à ≤ 1 px (chaque sommet rendu mesuré aux côtés attendus).
+    const cotesO = RO.points ? Math.max(...RO.points.map(p => auBord([p.x, p.y], obl))) : Infinity;
+    t("remplir : pilier oblique cerné (trait 4 px) → côtés au milieu du trait (≤ 1 px, coins ≤ 1,5), aire à 1 %",
+      RO.points && cotesO <= 1 && ecart(RO.points, obl) <= 1.5 && Math.abs(RO.aire - _aireP(obl)) / _aireP(obl) < 0.01,
+      RO.points && { cotes: cotesO, ecart: ecart(RO.points, obl), aire: RO.aire, attendue: _aireP(obl) });
+    const voisins = cerne(cerne(image(300, 300), 50, 40, 40, 30, 4, 0), 94, 40, 40, 30, 4, 0);
+    const RV = D.remplir(lecteurSync(voisins), 70, 55);
+    t("remplir : deux piliers séparés par un trait de 4 px → partagé en son milieu (≤ 1 px)",
+      RV.points && ecart(RV.points, milieu(50, 40, 40, 30, 4)) <= 1, RV);
+    const RT = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0).rect(62, 50, 16, 10, NOIR)), 55, 45);
+    t("remplir : chiffre ou pastille dedans englobé (contour extérieur seul)",
+      RT.points && ecart(RT.points, milieu(50, 40, 40, 30, 4)) <= 1, RT);
+    const R1p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 1)), 70, 55);
+    t("remplir : trou de 1 px dans le trait fermé → rempli au même contour",
+      R1p.points && ecart(R1p.points, milieu(50, 40, 40, 30, 2)) <= 1, R1p);
+    const R2p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 2)), 70, 55);
+    t("remplir : trou de 2 px fermé → rempli",
+      R2p.points && ecart(R2p.points, milieu(50, 40, 40, 30, 2)) <= 1, R2p);
+    const R4p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 4)), 70, 55);
+    t("remplir : trou de 4 px → refus « ouvert »", R4p.refus === "ouvert", R4p);
+    const R3p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 3)), 70, 55);
+    t("remplir : trou de 3 px → refus « ouvert » (la fermeture s'arrête à 2 px)", R3p.refus === "ouvert", R3p);
+    // contre-épreuve : sans fermeture, le trou de 1 px fuit
+    const R1s = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 1)), 70, 55, { fermeture: 0 });
+    t("remplir : contre-épreuve sans fermeture → le trou de 1 px fuit (refus)", R1s.refus === "ouvert", R1s);
+    const Rb = D.remplir(lecteurSync(image(300, 300).anneau(-5, 20, 60, 40, 2, NOIR)), 20, 40);
+    t("remplir : zone ouverte sur le bord de l'image → refus « ouvert »", Rb.refus === "ouvert", Rb);
+    // fenêtre lue plus petite que le contour (fermé dans l'image) : touche le bord de la région lue
+    const grandC = cerne(image(400, 400), 50, 50, 220, 220, 2, 0);
+    const fen = await lecteur(grandC)(100, 100, 100, 100, 1);
+    const Rf = D.remplir(fen, 50, 50, { x0: 100, y0: 100 });
+    t("remplir : zone qui dépasse la région lue → refus « ouvert »", Rf.refus === "ouvert", Rf);
+    const Rp = D.remplir(lecteurSync(grandC), 150, 150);
+    t("remplir : zone fermée au-delà du plafond (quart de la région lue) → refus « tropGrand »",
+      Rp.refus === "tropGrand", Rp);
+    const Rpm = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 70, 55, { aireMax: 1199 });
+    t("remplir : plafond donné (aireMax 1199 < 1200) → refus « tropGrand »", Rpm.refus === "tropGrand", Rpm);
+    const Rtr = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 49, 55);
+    t("remplir : toucher sur le trait → refus « trait »", Rtr.refus === "trait", Rtr);
+    const Rbr = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0).bruit(8)), 70, 55);
+    t("remplir : bruit ± 8 (compression) → même contour (≤ 1 px)",
+      Rbr.points && ecart(Rbr.points, milieu(50, 40, 40, 30, 4)) <= 1, Rbr);
+    const imgE = cerne(image(400, 400), 100, 80, 60, 40, 4, 0);
+    const be = await lecteur(imgE)(40, 20, 200, 200, 0.5);
+    const Re = D.remplir(be, (130 - 40) * 0.5, (100 - 20) * 0.5, { x0: 40, y0: 20, echelle: 0.5 });
+    t("remplir : échelle 0,5 et coin de bloc → contour en pixels du plan (≤ 2 px)",
+      Re.points && ecart(Re.points, milieu(100, 80, 60, 40, 4)) <= 2, Re);
+    const pilierPlein = image(200, 200).rect(40, 40, 30, 20, ORANGE);
+    const Rpl = D.remplir(lecteurSync(pilierPlein), 55, 50);
+    t("remplir : pilier plein coloré sur fond blanc → son contour, sans gonfler sur le fond",
+      Rpl.points && ecart(Rpl.points, rectPts(40, 40, 30, 20)) <= 1, Rpl);
+
+    // ── Fermeture en repli : petit pilier flou (intérieur de 2 à 3 px) avalé par la fermeture ──
+    const flouter = img => {   // flou 3 × 3 (moyenne), comme un plan scanné puis agrandi
+      const src = Uint8ClampedArray.from(img.data);
+      for (let j = 0; j < img.H; j++) for (let i = 0; i < img.W; i++) for (let c = 0; c < 3; c++) {
+        let s = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const x = i + dx, y = j + dy;
+          if (x >= 0 && y >= 0 && x < img.W && y < img.H) { s += src[(y * img.W + x) * 4 + c]; n++; }
+        }
+        img.data[(j * img.W + i) * 4 + c] = s / n;
+      }
+      return img;
+    };
+    const petits = flouter(cerne(cerne(image(200, 200), 50, 40, 3, 3, 2, 0), 90, 40, 2, 4, 2, 0));
+    // contour attendu : dans l'anneau extérieur du trait (flou : 1 px de plus), autour du point touché
+    const dansAnneau = (r, x, y, w, h) => r.points && r.boite.x >= x - 3 && r.boite.y >= y - 3 &&
+      r.boite.x + r.boite.w <= x + w + 3 && r.boite.y + r.boite.h <= y + h + 3 && r.aire >= 2;
+    const Rf3 = D.remplir(lecteurSync(petits), 51, 41);
+    t("remplir : pilier flou de 3 px avalé par la fermeture → rempli sans elle (repli), dans son trait", dansAnneau(Rf3,
+      50, 40, 3, 3), Rf3);
+    const Rf2 = D.remplir(lecteurSync(petits), 90, 41);
+    t("remplir : pilier flou de 2 px × 4 → rempli par le repli", dansAnneau(Rf2, 90, 40, 2, 4), Rf2);
+    const Rf3s = D.remplir(lecteurSync(petits), 51, 41, { repli: false });
+    t("remplir : contre-épreuve sans repli → le pilier flou de 3 px est refusé (« trait »)", Rf3s.refus === "trait",
+      Rf3s);
+    const Rtr2 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 48, 55);
+    t("remplir : toucher au cœur du trait → toujours refusé, le repli ne remplit jamais le trait",
+      Rtr2.refus === "trait", Rtr2);
+
+    // ── Plafond en mètres (plan à échelle connue), sinon 512 px ──
+    t("remplir : plafond exposé (plafondRemplir)", typeof D.plafondRemplir === "function");
+    if (typeof D.plafondRemplir === "function") {
+      const sans = D.plafondRemplir(null), a10 = D.plafondRemplir(10);
+      t("remplir : sans échelle, plafond 512 × 512 px, sans côté maximal",
+        sans.aireMax === 512 * 512 && !sans.coteMax, sans);
+      t("remplir : à 10 px/m, côté maximal " + D.REMPLIR.coteMaxM + " m = " + a10.coteMax + " px",
+        a10.coteMax === D.REMPLIR.coteMaxM * 10 && a10.aireMax === a10.coteMax * a10.coteMax, a10);
+      // galerie fictive fermée : 600 × 16 px (60 m × 1,6 m à 10 px/m), aire sous le plafond mais trop longue
+      const gal = image(800, 200).anneau(98, 98, 604, 20, 2, NOIR);
+      const Rg = D.remplir(lecteurSync(gal), 300, 108, a10);
+      t("remplir : galerie fictive de 60 m (plan à 10 px/m) → refus « tropGrand »", Rg.refus === "tropGrand", Rg);
+      const Rgs = D.remplir(lecteurSync(gal), 300, 108, { aireMax: sans.aireMax });
+      t("remplir : la même galerie sans échelle passe (plafond 512² px) : c'est le côté en mètres qui la refuse",
+        !!Rgs.points, Rgs.refus);
+      // grande structure plausible : 30 × 25 m à 10 px/m
+      const gros = cerne(image(500, 400), 60, 60, 300, 250, 4, 0);
+      const Rgr = D.remplir(lecteurSync(gros), 200, 180, a10);
+      t("remplir : grande structure plausible (30 × 25 m, plan à 10 px/m) → remplie", !!Rgr.points, Rgr.refus);
+    }
+  }
+
   // ── Worker : le fichier charge le moteur et répond à un message ──
   const src = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetectionWorker.js"), "utf8");
   const envoyes = [];
@@ -534,6 +910,27 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   t("worker : bloc gardé (garde), recalcul sans le renvoyer (taille 60 px → plus de masse)",
     envoyes[2] && envoyes[2].resultat.garde === true && Array.isArray(envoyes[3] && envoyes[3].resultat) &&
     envoyes[3].resultat.length === 1 && envoyes[3].resultat[0].masses.length === 0, [envoyes[2], envoyes[3]]);
+
+  // ── Limites { x0, y0, x1, y1 } : emprise d'un calque qui déborde de l'image (bornes négatives) ──
+  {
+    const im = image(400, 300).rect(60, 230, 40, 40, ORANGE).rect(280, 50, 40, 40, ORANGE);
+    const lire = lecteur(im), OX = 100, OY = 100;   // px plan = px de l'image − 100
+    const decale = (x, y, w, h, e) => lire(x + OX, y + OY, w, h, e);
+    const lim = { x0: -OX, y0: -OY, x1: 400 - OX, y1: 300 - OY };
+    const rl = await D.detecter({ lireBloc: decale, region: { x: lim.x0, y: lim.y0, w: 400, h: 300 }, limites: lim,
+      classes: CLASSES, reglages: { aireMin: 100, ouverture: 7, bloc: 128, marge: 32 } });
+    const bx = rl.masses.map(boiteDe);
+    t("limites négatives : 2 masses, rien de « trop grand »", rl.masses.length === 2 && rl.tropGrands.length === 0,
+      { n: rl.masses.length, trop: rl.tropGrands.length });
+    t("limites négatives : masse en coordonnées négatives entière (-40,130)-(0,170)",
+      bx.some(b => proche(b, [-40, 130, 0, 170], 0.01)), bx);
+    t("limites négatives : masse à cheval sur x = 200 (bord d'une image plus petite) entière (180,-50)-(220,-10)",
+      bx.some(b => proche(b, [180, -50, 220, -10], 0.01)), bx);
+    const rc = await D.detecter({ lireBloc: decale, region: { x: -500, y: -500, w: 2000, h: 2000 }, limites: lim,
+      classes: CLASSES, reglages: { aireMin: 100, ouverture: 7, bloc: 128, marge: 32 } });
+    t("région plus grande que les limites : ramenée dedans, mêmes 2 masses", rc.masses.length === 2 &&
+      rc.blocs === rl.blocs, { n: rc.masses.length, blocs: [rc.blocs, rl.blocs] });
+  }
 
   // ── Pas de DOM dans le moteur ──
   const moteur = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8")

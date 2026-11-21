@@ -10,7 +10,8 @@
 // La zone se dessine avec l'outil ♦️ Surface (measure.js) : la mesure en cours est mise de côté, la zone tracée
 // à sa place, puis la mesure est rendue telle quelle (commencer / terminer / abandonner).
 // ⚠️ « Dans la zone » = ENTIÈREMENT dedans : tous les sommets (ou le point lui-même). Un objet à cheval n'est ni
-//   pris ni coupé (décision produit). Niveau ACTIF seulement (APP_CONFIG.activeLevel ; plan à un niveau : tout).
+//   pris ni coupé (décision produit). Niveaux VISIBLES (décision produit) : la règle du clic, sans copie
+//   (selectionMulti.js > ktaNiveauVisible ; zone sur plusieurs niveaux : l'un des siens ; un seul niveau : tout).
 // Exclus : itinéraire calculé, jonctions entre niveaux (tracé `jonction`, zone `pente`, POI jonction), aperçus,
 //   mesures (elles ne sont pas des objets). Objets de calque : jamais touchés, seulement COMPTÉS (le calque passe
 //   d'abord en « 🔄 Modifier » : ses copies sont alors en session et se suppriment comme le reste).
@@ -24,7 +25,7 @@
 //   POI) jamais touchées, comptées dans la fenêtre comme les objets de calque.
 // Expose : window.KtaSelectionZone = { dansZone, commencer, enCours, nbSommets, retirerSommet, terminer,
 //   abandonner, preparer, supprimerLot, confirmerEtSupprimer, niveauLot, confirmerEtChangerNiveau, FAMILLES }.
-// Garde-fou : scripts/check-selection-multi.js · checkup : scripts/smoke/checkup-suppr-zone.js
+// Garde-fou : scripts/check-selection-multi.js · checkups : scripts/smoke/checkup-suppr-zone.js, checkup-selection-zone.js
 (function () {
   "use strict";
 
@@ -69,19 +70,9 @@
     return true;
   }
 
-  // Niveau actif, ou null sur un plan à un niveau (tout compte).
-  function _niveauActif() {
-    const c = window.APP_CONFIG || {};
-    if (c.multiLevel !== true) return null;
-    return Number.isInteger(c.activeLevel) ? c.activeLevel : 0;
-  }
-  function _auNiveau(lvl, niveau) {
-    return niveau === null || (Number.isInteger(lvl) ? lvl : 0) === niveau;
-  }
-  // Zone sur plusieurs niveaux : au niveau si c'est l'un des siens (poiJonction.js > ktaNiveauxObjet).
-  function _zoneAuNiveau(z, niveau) {
-    if (niveau === null || typeof window.ktaNiveauxObjet !== "function") return _auNiveau(z.level, niveau);
-    return window.ktaNiveauxObjet(z).indexOf(niveau) >= 0;
+  // Règle de niveau du clic (selectionMulti.js, chargé avant) : une seule définition pour toute la sélection.
+  function _visible(obj) {
+    return typeof window.ktaNiveauVisible !== "function" || window.ktaNiveauVisible(obj);
   }
 
   function _estPoiJonction(p) {
@@ -93,23 +84,22 @@
     try { return !!(id && CS && typeof CS.estRapatrie === "function" && CS.estRapatrie(id)); } catch (e) { return false; }
   }
 
-  // Objets de session entièrement dans `poly` (coordonnées plan), au niveau actif, et objets de calque qui le
+  // Objets de session entièrement dans `poly` (coordonnées plan), sur un niveau visible, et objets de calque qui le
   // seraient (jamais touchés : rendus pour être comptés, sans doublon d'une zone à l'autre).
   // → { items: [{ famille, obj }], calque: [{ famille, ref }], jonctions: [obj] } (`ref` = marqueur ou entrée du
   // registre du calque ; `jonctions` = tracés jonction et POI jonction de session dedans, écartés, comptés).
   function dansZone(poly) {
     const res = { items: [], calque: [], jonctions: [] };
     if (!Array.isArray(poly) || poly.length < 3) return res;
-    const b = _boite(poly), niveau = _niveauActif();
+    const b = _boite(poly);
     FAMILLES.forEach(function (famille) {
       _lire(famille).forEach(function (obj) {
         if (!obj || obj._preview || obj.type === "itinerary") return;
         if (obj.type === "jonction") {
-          const dansNiv = niveau === null || obj.fromLevel === niveau || obj.toLevel === niveau;
-          if (dansNiv && _toutDedans(obj.points, poly, b)) res.jonctions.push(obj);
+          if (_visible(obj) && _toutDedans(obj.points, poly, b)) res.jonctions.push(obj);
           return;
         }
-        if (!(famille === "zones" ? _zoneAuNiveau(obj, niveau) : _auNiveau(obj.level, niveau))) return;
+        if (!_visible(obj)) return;
         if (famille === "editorPoints") {
           if (!_toutDedans([obj], poly, b)) return;
           if (_estPoiJonction(obj)) { res.jonctions.push(obj); return; }
@@ -122,7 +112,7 @@
     // Calques de données (lecture seule). Un calque en « Modifier » est en session : pas compté deux fois.
     (Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers : []).forEach(function (m) {
       if (!m || typeof m.getLatLng !== "function" || _calqueRapatrie(m._ktaLayerId)) return;
-      if (Array.isArray(m._ktaNiveaux) || !_auNiveau(m._ktaLevel, niveau)) return;
+      if (Array.isArray(m._ktaNiveaux) || !_visible({ level: m._ktaLevel })) return;
       const ll = m.getLatLng(), H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
       if (_toutDedans([{ x: ll.lng, y: H - ll.lat }], poly, b)) res.calque.push({ famille: "editorPoints", ref: m });
     });
@@ -131,7 +121,7 @@
       (Array.isArray(c[1]) ? c[1] : []).forEach(function (e) {
         // Les ronds d'extrémité de jonction n'ont pas de `points` : écartés avec les jonctions.
         if (!e || !Array.isArray(e.points) || EXCLUS[e.type] || _calqueRapatrie(e.layerId)) return;
-        if (!(c[0] === "zones" ? _zoneAuNiveau(e, niveau) : _auNiveau(e.level, niveau))) return;
+        if (!_visible(e)) return;
         if (!_toutDedans(e.points, poly, b)) return;
         res.calque.push({ famille: c[0], ref: e });
       });
@@ -336,6 +326,15 @@
     });
   }
 
+  // Libellé des niveaux visibles (« -1, 0 »), ou null sur un plan à un niveau : note de la fenêtre Supprimer.
+  function _niveauxVisibles() {
+    const c = window.APP_CONFIG || {};
+    if (c.multiLevel !== true) return null;
+    const vis = (Array.isArray(c.visibleLevels) ? c.visibleLevels : [0]).filter(Number.isInteger)
+      .sort(function (a, b) { return a - b; });
+    return vis.map(function (n) { return window.ktaFormatNiveau ? window.ktaFormatNiveau(n) : String(n); }).join(", ");
+  }
+
   function _fenetre(pf, prep, coches, total, photos, nCalque, cleAvant) {
     let cases = "";
     FAMILLES.forEach(function (f) {
@@ -344,9 +343,9 @@
         (coches[f] ? " checked" : "") + (n ? "" : " disabled") + '> ' + window.ktaIcone(ICO_FAMILLE[f]) + ' ' +
         _esc(_t("selm.suppr.fam." + f, { n: n })) + '</label>';
     });
-    const niveau = _niveauActif();
     const notes = [];
-    if (niveau !== null) notes.push(_t("selm.suppr.niveau", { n: niveau > 0 ? "+" + niveau : String(niveau) }));
+    const vis = _niveauxVisibles();
+    if (vis) notes.push(_t("selm.suppr.niveau", { n: vis }));
     if (photos) notes.push(_t("selm.suppr.photos", { n: photos }));
     if (prep.portails) notes.push(_t("selm.suppr.portails", { n: prep.portails }));
     if (nCalque) notes.push(_t("selm.suppr.calques", { n: nCalque }));

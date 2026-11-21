@@ -2708,6 +2708,9 @@ async function sectionPente(page) {
       for (let i = 0; i < n; i++) {
         const okPas = K.avancer(0.25);
         await pause(40);
+        // 🩸 Au moins deux images après le pas : sous charge, une image dépasse 40 ms et la caméra lue avait un pas
+        // de retard (WebKit).
+        await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
         const e = e0();
         rel.push({ z: +(e.pos.y / sc - oz).toFixed(3), niveau: e.niveau, cam: e.cameraY, oeil: e.oeil,
           dy: e.pente.dy, sur: e.pente.sur, geste: !!e.geste, fondu: e.fondu, ok: okPas });
@@ -3144,6 +3147,9 @@ async function sectionMasseSol(page) {
       for (let i = 0; i < n; i++) {
         const ok = K.avancer(pas || 0.1);
         await pause(25);
+        // 🩸 Caméra replacée à l'image qui suit le pas : 25 ms ne suffisent pas à une image lente (WebKit, rendu
+        // logiciel), la caméra lue avait un pas de retard. Deux images, comme ici().
+        await new Promise(function (ok2) { requestAnimationFrame(function () { requestAnimationFrame(ok2); }); });
         const l = lire();
         l.ok = ok;
         rel.push(l);
@@ -9174,7 +9180,7 @@ async function sectionDessin(page) {
     camera();
     const vR = K.viser(ecran(8, 4, 0.03).x, ecran(8, 4, 0.03).y);
     r.trace = { type: trace && trace.type, niveau: trace && trace.level, points: trace ? trace.points.map(m) : null,
-      fini: !window.getCurrentRoad() && !window.modeRoad, vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
+      fini: !window.getCurrentRoad() && window.modeRoad === "principal", vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
       uid: trace && trace.uid, refaitesPendant: refaitesPendant };
     // Aimantation des tracés (réglage de la carte) : un toucher à 8 px d'écran d'un sommet s'y accroche (rayon d'écran
     // de la 2D, 14 px, converti à la profondeur du point touché). 🩸 En px et non en mètres : le rayon suit le recul.
@@ -9188,6 +9194,11 @@ async function sectionDessin(page) {
     const aim = nouveau(window.getRoads(), avA);
     r.aimant = { premier: aim ? m(aim.points[0]) : null, n: aim ? aim.points.length : 0 };
     C.snapDraw = snapAv.on; C.snapDrawPx = snapAv.px;
+    // Fin au toucher du dernier sommet (ui.md § Enchaîner les tracés) : la vue rejoue le geste de la carte.
+    const avFin = uids(window.getRoads());
+    await tap(ecran(6, -2)); await tap(ecran(10, -2)); await tap(ecran(10, -2));
+    const fin = nouveau(window.getRoads(), avFin);
+    r.finDernier = { n: fin ? fin.points.length : 0, enCours: !!window.getCurrentRoad(), mode: window.modeRoad };
     window._desactiverTousLesModes();
 
     // ── Mesure 📐 : deux points à 10 m, distance de la carte et étiquette dans la 3D ──
@@ -9427,7 +9438,9 @@ async function sectionDessin(page) {
   verifier(r.armeTrace && r.trace.type === "principal" && r.trace.niveau === -1 && r.trace.fini &&
     r.trace.refaitesPendant === 0 && proche(r.trace.points, [[6, 4], [10, 4], [10, 8]], 0.03) &&
     r.trace.vise && r.trace.vise.uid === r.trace.uid,
-    "tracé au doigt, validé par ✅ : niveau −1, aucune reconstruction pendant, visible", r.trace);
+    "tracé au doigt, validé par ✅ (outil resté armé) : niveau −1, aucune reconstruction pendant, visible", r.trace);
+  verifier(r.finDernier.n === 2 && !r.finDernier.enCours && r.finDernier.mode === "chemin",
+    "tracé au doigt terminé en retouchant son dernier sommet, outil resté armé", r.finDernier);
   verifier(r.aimant.n === 2 && proche([r.aimant.premier], [[6, 4]], 1e-6),
     "aimantation des tracés (snapDraw) : toucher à 8 px d'écran d'un sommet → accroché sur lui", r.aimant);
   verifier(r.armeMesure && r.mesure.points === 2 && Math.abs(r.mesure.distance - 10) < 0.03 &&
@@ -18792,14 +18805,17 @@ async function sectionCaseBoutonsZoom(nav) {
           const nv = window.APP_CONFIG.multiLevel === true ? (window.APP_CONFIG.activeLevel || 0) : null;
           Vx.secteurs.poser(id, nv, [{ x: p.x - d, y: p.y - d }, { x: p.x + d, y: p.y - d }, { x: p.x + d, y: p.y + d },
             { x: p.x - d, y: p.y + d }]);
-          window.KtaVolumeExploite.ouvrir();
-          const champ = document.getElementById("kta-volume-h");
-          r.volume = champ ? champ.value : null;
-          if (champ) { champ.value = "2.5"; champ.dispatchEvent(new Event("input", { bubbles: true })); }
-          const x = document.querySelector("#kta-volume-modal .kta-panneau-close");
-          if (x) x.click();
-          Vx.secteurs.retirer(id);
-          return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
+          // ⚠️ ouvrir() rend une promesse : calcul à faire, la fenêtre d'attente s'affiche d'abord, sans le champ
+          // hauteur ; il n'existe qu'une fois la promesse tenue (volumeExploite.js > ouvrir).
+          return Vx.ouvrir().then(function () {
+            const champ = document.getElementById("kta-volume-h");
+            r.volume = champ ? champ.value : null;
+            if (champ) { champ.value = "2.5"; champ.dispatchEvent(new Event("input", { bubbles: true })); }
+            const x = document.querySelector("#kta-volume-modal .kta-panneau-close");
+            if (x) x.click();
+            Vx.secteurs.retirer(id);
+            return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
+          });
         }).then(function () {
           r.depuisVolume = K.etat().hauteur;
           return K.fermer();
@@ -20433,12 +20449,13 @@ async function sectionCaseBoutonsZoom(nav) {
         // réel : sous charge, les images s'espacent et le geste dure plus que GESTE.ms à l'horloge — les fourchettes en
         // millisecondes réelles (bascule 350-750, fin 800-1 300) tombaient au hasard de la charge (WebKit). Bascule à
         // M = 500 ms de geste (vue3d.js > _majGeste), relevée à l'image suivante au plus tard ; fin à T = 1 000 ms.
+        // 🩸 etat().geste.t est arrondi : une dernière image à 999,5 ms et plus se lit « 1000 », geste encore en cours.
         const premierApres = apres.filter(function (q) { return q.gt !== null; })[0] || apres[0] || {};
         const bascule = premierApres.gt !== undefined ? premierApres.gt : null;
         const gtMax = Math.max.apply(null, ge.ech.filter(function (q) { return q.gt !== null; }).map(function (q) { return q.gt; }));
         verifier(ge.lance && avant.length > 3 && apres.length > 3 && yMin0 < 0 && yMax1 > PJ.h && fMax >= 0.9 &&
           fin.f === 0 && fin.voile === false && Math.abs(fin.y - ge.oeil) < 0.01 && fin.t < 6000 &&
-          bascule !== null && bascule >= 500 && bascule <= 600 && gtMax > 850 && gtMax < 1000,
+          bascule !== null && bascule >= 500 && bascule <= 600 && gtMax > 850 && gtMax <= 1000,
           "descente animée : caméra de " + ge.oeil + " m à " + yMin0.toFixed(2) + " m, noir (" + fMax + ") à la bascule (" +
           bascule + " ms de geste), arrivée par le plafond (" + yMax1.toFixed(2) + " m), geste mené à son terme (" + gtMax +
           " ms de geste ; fin à " + fin.t + " ms d'horloge), voile retiré",
@@ -23954,6 +23971,11 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionSautCarnet(page);
       await sectionPlanSolNiveaux(page);
     }
+    // 🩸 La page principale ne sert plus : la suite ouvre chaque section suivante dans son propre contexte. Gardée
+    // ouverte, elle restait inactive jusqu'à la fin avec tout ce que les sections y ont chargé (mesuré : ~0,6 Go sous
+    // Chromium, 3 Go et plus sous WebKit), la moitié d'une longue suite. Ses erreurs sont déjà relevées
+    // (erreurs, consoleErr), jugées à la fin.
+    await contexte.close();
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     if (SEUL === "massesol" && process.env.KTA_V3D_PERF === "masse") await perfMasseSol(nav);
     if (!SEUL || SEUL === "textures") await sectionTexturesSol(nav);

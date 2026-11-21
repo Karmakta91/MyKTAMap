@@ -797,6 +797,24 @@ window.ktaToleranceFermeture = function(e) {
   return pxParUnite > 0 ? Math.max(m, window.KTA_FERMETURE_MIN_PX / pxParUnite) : m;
 };
 
+// ── Fin d'une ligne sur son dernier sommet (tracés et lignes de Structures, carte et vue 3D) ──────────
+// ⚠️ contrat (décision produit) : retoucher le DERNIER sommet posé, à ktaToleranceFermeture près, termine la ligne et
+// l'outil reste armé (le toucher suivant en commence une autre du même type). Le 1er sommet reste un point ordinaire
+// (boucle de galerie). Testé AVANT le magnétisme des tracés. Jonction exclue (saisie à part, road.js).
+window.ktaRetoucheDernierSommet = function(points, x, y, e) {
+  if (!Array.isArray(points) || points.length === 0) return false;
+  const d = points[points.length - 1];
+  return Math.hypot(x - d.x, y - d.y) <= window.ktaToleranceFermeture(e);
+};
+// 🩸 Retoucher vite le dernier sommet est un double clic : sans ceci, la carte zoome au moment où la ligne se termine.
+// Le zoom au double clic est coupé le temps d'avaler ce double clic, puis rendu s'il était actif.
+window.ktaAvalerDoubleClic = function() {
+  const m = window.map, h = m && m.doubleClickZoom;
+  if (!h || typeof h.enabled !== "function" || !h.enabled()) return;
+  h.disable();
+  setTimeout(function() { try { h.enable(); } catch (err) { /* carte détruite entre-temps */ } }, 600);
+};
+
 // true si un outil « clic carte » est armé : dessin, mesure, ajout de point, recalage tracker, et tous les pickers
 // de position (floater commun `.kta-iti-floater`). ⚠️ contrat : outil armé = tout toucher sur la carte va à l'outil,
 // même sur un objet, et aucune fiche ne s'ouvre. Lu par le garde `popupopen` et le ré-émetteur de clic en capture
@@ -3038,11 +3056,11 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       // Structures embarquées en lecture seule (structure.json est un data layer comme un autre).
       if (Array.isArray(json.structures) && json.structures.length > 0) {
-        // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 <
-        // front-2 < front-1 < arc (fronts devant, l'arc par-dessus) ; multi-niveau : level croissant d'abord
-        // (structures.js > renderStructures).
-        const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
-          "arc": 6 };
+        // Styles du résolveur (mêmes valeurs qu'en session). Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 =
+        // pilier à bras < front-2 < front-1 < arc (fronts devant, l'arc par-dessus) ; multi-niveau : level croissant
+        // d'abord (structures.js > renderStructures).
+        const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3, "front-2": 4,
+          "front-1": 5, "arc": 6 };
         const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         const structuresTriees = [...json.structures].sort(function(a, b) {
           if (_multiLevelOnSort) {
@@ -3081,8 +3099,8 @@ function ajouterPointsDepuisJSON(url, layer) {
               ktaStructNiveau: structure.level
             }).addTo(layer);
           } else {
-            // pilier / mur : polygone rempli, l'aire capte les clics
-            leafletLayer = L.polygon(latlngs, Object.assign({}, style, {
+            // pilier / mur : polygone rempli, l'aire capte les clics ; pilier à bras : barré (classe de la session)
+            leafletLayer = window.ktaPolygoneStructure(latlngs, style, Object.assign({}, style, {
               interactive: hasNoteROStruct, ktaStructType: structure.type, ktaStructNiveau: structure.level
             })).addTo(layer);
           }
@@ -3393,9 +3411,20 @@ async function telechargerPlan() {
 
       ctx.strokeStyle = style.color || "#888888";
       ctx.lineWidth   = style.weight || 2;
+      // 🩸 Carré barré (pilier à bras, 1 m) : contour à la loi de l'écran à l'échelle 1 (le quart du front), sinon
+      // contour et croix noircissent le carré entier.
+      if (style.croix && typeof window.ktaBordSurfacePourLargeur === "function" &&
+          typeof window.ktaLargeurFrontPourRatio === "function") {
+        ctx.lineWidth = window.ktaBordSurfacePourLargeur(ctx.lineWidth, window.ktaLargeurFrontPourRatio(1));
+      }
       ctx.globalAlpha = style.opacity ?? 0.6;
       ctx.lineJoin    = "round";
       ctx.stroke();
+      // Carré barré (pilier à bras) : même croix qu'à l'écran (structures.js > ktaPeindreCroix).
+      if (style.croix && typeof window.ktaPeindreCroix === "function") {
+        window.ktaPeindreCroix(ctx, points.map(function(p) { return { x: p.x, y: toCanvasY(p.y) }; }),
+          style.color, ctx.lineWidth, style.opacity ?? 0.6);
+      }
 
       ctx.restore();
     }
@@ -3464,9 +3493,9 @@ async function telechargerPlan() {
           // structures embarquées (piliers, mur, fronts) : ordre Z et couleurs comme ajouterPointsDepuisJSON et
           // exporter.js > _genererCanvasExport
           if (Array.isArray(json.structures) && json.structures.length > 0) {
-            // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc
-            const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
-              "arc": 6 };
+            // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 = pilier à bras < front-2 < front-1 < arc
+            const ordreStruct = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3,
+              "front-2": 4, "front-1": 5, "arc": 6 };
             const _mlOnStructEmb = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
             [...json.structures].sort(function(a, b) {
               if (_mlOnStructEmb) {
@@ -3543,9 +3572,9 @@ async function telechargerPlan() {
         return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(s);
       });
       if (structures.length > 0) {
-        // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc
-        const ordreStructS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
-          "arc": 6 };
+        // ordre Z : mur < mur-ligne < pilier-2 < pilier-1 = pilier à bras < front-2 < front-1 < arc
+        const ordreStructS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3,
+          "front-2": 4, "front-1": 5, "arc": 6 };
         const _mlOnStructSess = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         [...structures].sort(function(a, b) {
           if (_mlOnStructSess) {

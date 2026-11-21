@@ -38,6 +38,8 @@
     "m-masse-sol": '<rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.4"/><ellipse cx="10" ' +
       'cy="10" rx="2" ry="1.5"/><ellipse cx="14.5" cy="15" rx="2" ry="1.5"/><circle cx="15" cy="9" r=".8"/>' +
       '<circle cx="9" cy="15.5" r=".8"/>',
+    // Pilier à bras : le carré barré de la carte (styleResolver.js > CANON.structures["pilier-bras"]).
+    "m-pilier-bras": '<rect x="5" y="5" width="14" height="14" rx="1"/><path d="M5 5l14 14M19 5 5 19"/>',
     "m-pilier": '<rect x="6" y="3" width="12" height="18" rx="1"/><path d="M6 9h12M6 15h12M11 3v6M14 9v6M10 15v6"/>',
     "ruler": '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 ' +
       '0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 ' +
@@ -364,6 +366,8 @@
     "chevron-up": '<path d="m18 15-6-6-6 6"/>',
     "chevron-down": '<path d="m6 9 6 6 6-6"/>',
     "blend": '<circle cx="9" cy="9" r="7"/><circle cx="15" cy="15" r="7"/>',
+    "paint-bucket": '<path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/>' +
+      '<path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>',
     "scroll": '<path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 ' +
       '1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
     "archive": '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 ' +

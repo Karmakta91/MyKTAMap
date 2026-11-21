@@ -367,7 +367,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 
 | Section | What it filters |
 |---|---|
-| 🖼️ **Image layers** | The map image and its additional layers |
+| 🖼️ **Image layers** | The map image and its additional layers; under each layer, an **Opacity** slider (10 to 100%) to see the plan or the other level through it, kept for this map on this device and used by the image export (no effect on detection or the 3D view) |
 | 📊 **Data layers** | The layers shipped with the map, and **Plan annotations** (everything drawn on the map: your additions and, on a shared installation, your team's; unticking it hides them without deleting anything) |
 | 🏗️ **M-LVL levels** | Multi-level maps: active level (for drawing) and visible levels — kept in sync with the Levels window |
 | 🏷️ **Point tags** | The tags actually present on the map, with their count |
@@ -603,7 +603,7 @@ One level at a time, 30 m around you by default (🔭 Range setting).
 **🧱 Textures**
 
 - Tunnel walls: dressed stone (courses of blocks, irregular joints, relief under the lamp). The stone keeps its size whatever the tunnel height.
-- Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints); the 2nd mass is the same rock in a barely warmer shade; to tell it clearly from the 1st, turn the textures off. A custom structure gets the rock.
+- Pillars and working faces: raw rock (the limestone mass left in place: bumps, shades, thin strata, cracks and tool marks, no joints); the 2nd mass is the same rock in a barely warmer shade; to tell it clearly from the 1st, turn the textures off. A custom structure gets the rock. The hand-built pillar is in the same rock but laid in courses: 6 to 10 rows of stacked blocks, slightly offset, dark joints, each pillar different and the same every time you open it.
 - Walls: concrete block, at its real size (a block is 50 cm long, whatever the wall). A wall drawn as a line is in dressed stone, in the same tone as the tunnel walls.
 - Support arches: dressed stone in the same tone as the gallery walls, everywhere — voussoirs in smooth-dressed stone, piers in the same stone as the gallery walls, and rougher rubble masonry above the arch.
 - **Filled to roof**: packed earth and limestone sand, mixed with angular limestone stones and blocks half buried.
@@ -732,7 +732,7 @@ Where and how a way through is drawn:
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
 - Nothing is drawn until a tool is chosen. **Choosing a tool is enough**: a tap places a point where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
-- A path or a working face ends with ✅. The tool stays chosen so you can carry on, as on the map.
+- A path or a working face ends when you **tap its last point again**, or with ✅. The tool stays chosen so you can carry on, as on the map.
 - **✏️ Add a point**: touch the ground where it goes; the map's window opens over the view (name, type, photos), by finger or keyboard. The point takes **the 3D level** and appears in the scene; ⏪ undoes it.
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
@@ -979,7 +979,7 @@ In the **🛣️ Paths** group:
 - **🟩 Main road**, **🟪 Secondary road**, **🟨 Path**
 - **🪜 Inter-level junction** — on a multi-level map only (see 🏗️ Multi-level mode)
 
-Press a type, tap the map point by point, then press the type again (or **✅ Confirm the current path**) to finish.
+Press a type and tap the map point by point. To finish the path, **tap its last point again** (or press **✅ Confirm the current path**): the tool stays on, and the next tap starts the next path of the same type. Tapping the **first** point again adds a point instead: that is how you close a loop of gallery. ⏪ right after finishing reopens the path so you can extend it. Press the type again to turn the tool off. 🪜 Junction is the exception: every tap is a point, and ✅ finishes it and turns the tool off.
 
 ---
 
@@ -1030,13 +1030,16 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 |---|---|---|
 | 🟡 **1st-mass pillar** | closed surface | yellow |
 | 🟠 **2nd-mass pillar** | closed surface | orange |
+| **Hand-built pillar** — a small pillar built up by hand, placed with a single tap | 1 m square | yellow with a cross |
 | 🔵 **Wall** (dry stone, masonry) | closed surface | blue |
 | 🟦 **Wall (line)** — a wall surveyed as a stroke, often from a GIS import | line | blue stroke |
 | 🟨 **1st-mass quarry face** | line | yellow stroke |
 | 🟧 **2nd-mass quarry face** | line | orange stroke |
 | **Support arch** — a single arch set from one wall of the gallery to the other | line | thin blue stroke striped red |
 
-Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. A pillar or a wall also closes when you tap its **first** point again; a quarry face, a wall (line) or an arch finishes when you tap its **last** point again (⏪ right after reopens it). After ✅ or that tap, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+
+A **hand-built pillar** is placed with **a single tap**: a 1 m square (at the map's scale), centred where you tap, its sides aligned with the map, on the active level. The tool stays on: each tap places another pillar, ⏪ removes the last one. Its vertices can then be adjusted like those of the other pillars. Like them, it has no effect on the route, stops the tracker, stands in the 3D view (as a column of stacked stone blocks with 🧱 Textures, each pillar different and the same every time you open it; as a plain block without) and counts as a pillar in the Mined volume. On the map, in the legend and in image and PDF exports it is a yellow square with a thin cross; KMZ and the OSM view show it plain. Detection never offers it.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **on level −1** (the bed under the 1st mass), whatever level is shown; the others take the active level. The **Level** list of their card moves them.
 
@@ -1048,11 +1051,13 @@ A **wall (line)** cuts every gallery it crosses **on its level**: the route goes
 
 The **Detect pillars and fronts** button in the **🏛️ Structures** group (also in the **📊 Data editor**, next to **Check the map**) draws for you the pillars and quarry faces already shown on the map image. A banner at the bottom of the screen guides you:
 
-1. **Colours**: tap **Mass A**, then a pillar of that colour on the map; do the same with **Mass B** (another pillar colour) and **Front** (a front line). Each tap also measures the size of the pillar tapped and the variations of its colour: tap a light pillar, a dark one and a small one, two or three taps are enough. Colours and settings are remembered for this map, on this device (they go neither into the session nor into the profile export).
+1. **Colours**: tap **Mass A**, then a pillar of that colour on the map; do the same with **Mass B** (another pillar colour) and **Front** (a front line). Each tap also measures the size of the pillar tapped and the variations of its colour: tap a light pillar, a dark one and a small one, two or three taps are enough. On a line drawing (white pillars outlined in black), tap inside the pillar, even right next to its outline: the pillar is measured, not the outline. Colours and settings are remembered for this map, on this device (they go neither into the session nor into the profile export).
 2. **Area**: tap two opposite corners of the frame to analyse, or choose **Whole map**. On a large map, the analysis runs at half resolution and may take a minute on a phone; **Cancel** stops it.
-3. **Preview**: what was found is drawn over the map, without writing anything. Two sliders adjust the result without running the analysis again: **Colour tolerance** (higher: accepts colours further from the samples) and **Minimum size** (higher: drops small objects), and **Maximum size** (lower: drops large masses, useful when the pillars are white or light like the background and the galleries). While picking, a red crosshair shows the point read; tapping the background says so, without adding a sample. Tap an object to remove it (or put it back), choose the type of each colour (pillar or front, 1st or 2nd mass), then **Add**.
+3. **Preview**: what was found is drawn over the map, without writing anything. Three sliders adjust the result without running the analysis again: **Colour tolerance** of the pillars (higher: accepts colours further from the samples; fronts keep the one from their sample), **Minimum size** (higher: drops small objects) and **Maximum size** (lower: drops large masses, useful when the pillars are white or light like the background and the galleries). While picking, a red crosshair shows the point read; tapping the background says so, without adding a sample. Tap an object to remove it (or put it back), choose the type of each colour (pillar or front, 1st or 2nd mass), then **Add**.
 
-A single **Undo** in the history removes everything just added. What is already drawn on the same level is not added a second time: you can run it again on a neighbouring area without duplicates. Levels follow the hand-drawing rule (2nd mass on level −1); if the level or the filters hide what was just added, a message says so. A gallery band (or a wall drawn as a line) of the same colour as the pillars is recognised by its shape and is not placed as a pillar, even when merged with them. Two touching pillars come out as one, a front passing under a pillar as two pieces, and a very elongated pillar may be taken for a band: remove or complete by hand. During detection, a rotated view is set straight. While picking or drawing the frame, tapping a pillar already drawn takes the sample without opening its sheet.
+A single **Undo** in the history removes everything just added. What is already drawn on the same level is not added a second time: you can run it again on a neighbouring area without duplicates. Levels follow the hand-drawing rule (2nd mass on level −1); if the level or the filters hide what was just added, a message says so. A gallery band (or a wall drawn as a line) of the same colour as the pillars is recognised by its shape and is not placed as a pillar, even when merged with them. The line around a detected pillar marks where the pillar ends: it is not a front. If you discard that pillar (size sliders), its outline becomes a front again; fronts away from the pillars do not change. Two touching pillars come out as one, a front passing under a pillar as two pieces, and a very elongated pillar may be taken for a band: remove or complete by hand. During detection, a rotated view is set straight. On a level other than 0, only that level's image layers shown in the ≡ filters are read: a level with no image, or whose layers are all hidden, is refused with a message (nothing is taken from another level's image). While picking or drawing the frame, tapping a pillar already drawn takes the sample without opening its sheet.
+
+**Fill on tap** (same banner, at the colours step): for a line-drawn map, where pillars are drawn by their outline. Choose the type (only closed-outline types are offered: pillars, wall and your own area structure types, never a front), then tap inside each outline: the area fills in the preview, and you keep going. Tap an area to remove or restore it, then **Add** places them all at once; a single **Undo** in the history removes all the areas. The **Hand-built pillar**, placed with a single tap, is not in the list. A gap of 1 or 2 pixels in the line is closed on its own, and a very small pillar, even blurred, still fills if you tap its light centre; a more open outline, or an area too large for a structure (over 40 m across if the map has a scale), is refused with a message: draw it by hand. An area already drawn on the same level is not added a second time. The outline runs along the middle of the line: the line is part of the pillar; two pillars separated by the same line share it.
 
 **In the Generator**, at the **Data layers** step (Advanced mode), the **Detect pillars and fronts** button does the same on the plan image **before** generating it, while editing it, or in **Update the map**. A window shows the image: eyedropper, frame or whole plan, preview and sliders as on the map; the analysis reads the image at full resolution. What you add goes into a **Detected structures** layer of the generated plan, already aligned with the image even when the white margins are trimmed. What is already in a layer of the plan is not added twice. On a very large image, a phone may run out of memory, as for tiling.
 
@@ -1137,7 +1142,7 @@ Only targets of the **same shape** are offered: a **line** (path, quarry face) b
 In the conversion window, **🎯 Select several objects to convert** shows a banner:
 
 - **tap an object** to add it (blue dotted), tap it again to remove it;
-- **➕ All "type" on the displayed level** adds every object of the same type as the last one added;
+- **➕ All "type" on the visible levels** adds every object of the same type as the last one added;
 - **✅ Convert (N)** opens the type choice for the whole batch; **Cancel** gives up.
 
 The batch does not mix lines and closed surfaces (the banner refuses and explains why), but it can mix families: quarry faces and paths, all lines, become galleries together. Objects already of the right type are left as they are, and the final message counts them. A single `Ctrl+Z` undoes the whole batch.
@@ -1153,7 +1158,7 @@ The batch does not mix lines and closed surfaces (the banner refuses and explain
 The same banner can also **delete** in one go, for example everything an import placed wrongly in a sector. You can also get there without going through an object: in 🛣️ Paths, ⬛ Zones or 🏛️ Structures, **🧹 Erase → ✏️ Erase by area** (or **🎯 Select** then **✏️ By area** in the bottom banner): drawing the area starts right away, and the confirmation only has the group's family ticked in advance (the others are still offered, unticked).
 
 - **✏️ Select by area**: tap the corners of the area on the map (like a ♦️ Surface measure; **↩️ Last corner** fixes a missed tap), then **✅ Use this area**. Your current ♦️ measure is not lost: it comes back as it was.
-- Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **displayed level**. An object straddling the edge is not taken, and nothing is ever cut.
+- Only objects **entirely** inside the area are added (all their corners, or the point itself), and only those on the **visible levels** (ticked in ≡ Filters), as with a tap: showing a level is enough to take its objects, hiding it leaves them out. An object straddling the edge is not taken, and nothing is ever cut.
 - **Points** join the selection too (blue dotted circle). Tap an object again to remove it; you can draw several areas.
 - **🗑️ Delete (N)** opens a confirmation with one checkbox per family (📍 Points, 〰️ Paths, 🟦 Areas, 🧱 Structures) and their count: untick a family to keep it.
 - The window also tells you about: the points' **photos** (they are not erased, they become “without a point” in 🧰 Tools > 📸 My photos), the **data layer objects** seen in the area (never deleted: switch the layer to **🔄 Edit** first), and **portal points** (link to another map), always kept.
@@ -1175,6 +1180,8 @@ Your **last 50 actions** on the map can be undone and redone:
 A message at the bottom of the screen says what was undone or redone ("↩ Undone: Placing point …").
 
 **What can be undone**: adding, editing, moving and deleting points; each point placed on a path, zone or structure, closing them, deleting them (including "All"); conversions.
+
+⏪ on the **first point** of a path, zone or structure in progress removes it without switching the tool off: nothing is left on the map, and the next tap starts a new object of the same type. Likewise, ⏩ after undoing the end of a path, zone or structure redoes it without switching the tool off.
 
 **What cannot be undone**: deleting a photo, importing a session, position tracking, and the measurement once the 📐 tool is off.
 

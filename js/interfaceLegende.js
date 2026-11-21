@@ -246,6 +246,15 @@ function _ktaLegendeCorps(src, opts) {
     return "repeating-linear-gradient(90deg," + c + " 0 4px," + s.rayures.color + " 4px 7px)";
   }
   function _couleurFond(cat, key)  { const s = _resolu(cat, key); return (s && s.fillColor) || "#888888"; }
+  // Fond d'une pastille de surface : remplissage, barré des deux diagonales si le style a une `croix` (pilier à bras).
+  function _fondSurface(cat, key) {
+    const s = _resolu(cat, key), f = _couleurFond(cat, key);
+    if (!s || !s.croix) return f;
+    const diag = function (a) {
+      return "linear-gradient(" + a + "deg,transparent 43%," + s.color + " 43% 57%,transparent 57%)";
+    };
+    return diag(45) + "," + diag(-45) + "," + f;
+  }
 
   function _ligneTrace(key) {
     if (!_visible("traces", key)) return "";
@@ -324,7 +333,7 @@ function _ktaLegendeCorps(src, opts) {
   // Structures : polygones (fillColor + borderColor), polylines (lineColor).
   function _ligneStructPoly(key) {
     if (!_visible("structures", key)) return "";
-    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_couleurFond("structures", key)}; opacity:0.85; height:14px; border:2px solid ${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
+    return `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${_fondSurface("structures", key)}; opacity:0.85; height:14px; border:2px solid ${_couleurTrait("structures", key)};"></span><span class="kta-legende-label">${_label("structures", key)}</span></div>`;
   }
   function _ligneStructLine(key) {
     if (!_visible("structures", key)) return "";
@@ -333,6 +342,7 @@ function _ktaLegendeCorps(src, opts) {
   let contenuStructures = `<div class="kta-aide-section"><div class="kta-aide-section-titre">${window.ktaIcone("m-pilier")} ${window.I18n.t("legendui.section.structures")}</div>`;
   contenuStructures += _ligneStructPoly("pilier-1");
   contenuStructures += _ligneStructPoly("pilier-2");
+  contenuStructures += _ligneStructPoly("pilier-bras");
   contenuStructures += _ligneStructPoly("mur");
   contenuStructures += _ligneStructLine("mur-ligne");
   contenuStructures += _ligneStructLine("front-1");

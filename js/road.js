@@ -9,7 +9,7 @@
 // calques de données, magnétisme au dessin, décimation et culling PerfUltra.
 // Expose : initRoad, toggleRoadMode, renderRoads, getRoads/setRoads, registerEmbeddedRoad, clearEmbeddedRoads,
 //          getAllEmbeddedRoads, getRoadIntersections (ronds dessinés, lus par la vue 3D), ktaDecimerPointsTrace,
-//          ktaMajLargeurTracesSession…
+//          ktaMajLargeurTracesSession, ktaTerminerTraceEnCours (fin d'un tracé, outil armé)…
 // Dépend de : styleResolver.js (window.ktaResolveStyle), LegendCustomization, HistoryManager, KtaUid, PerfUltra.
 // Pièges : 🩸 Styles des types : TOUJOURS window.ktaResolveStyle, jamais de table locale (check-style-canon.js).
 //          🩸 Intersections en O(N²×P²) : plafond de routes, AABB, débounce pendant le dessin.
@@ -143,6 +143,16 @@ function initRoad() {
     let x = e.latlng.lng;
     let y = APP_CONFIG.imageHeight - e.latlng.lat;
 
+    // Retouche du dernier sommet = fin du tracé, outil armé (utils.js > ktaRetoucheDernierSommet). Avant le
+    // magnétisme : il pourrait déplacer le point vers un autre sommet. Jonction exclue (saisie à part).
+    if (currentRoad && currentRoad.type !== "jonction" &&
+        typeof window.ktaRetoucheDernierSommet === "function" &&
+        window.ktaRetoucheDernierSommet(currentRoad.points, x, y, e)) {
+      terminerTraceEnCours();
+      window.ktaAvalerDoubleClic();
+      return;
+    }
+
     // Magnétisme : le point cliqué s'accroche au sommet existant le plus proche. 🩸 Deux tracés joints à l'œil
     // tombent souvent à 5-10 px l'un de l'autre → deux nœuds au lieu d'un ; au-delà de la PROXIMITY_TOLERANCE du
     // Pathfinder (15 px), l'itinéraire refuse une galerie visiblement reliée.
@@ -195,6 +205,29 @@ function initRoad() {
     }
   });
 }
+
+// Termine le tracé en cours, l'outil reste armé : le toucher suivant commence un nouveau tracé du même type. Étape
+// annulable : ⏪ restaure l'index du tracé en cours (HistoryManager > currentRoadIndex), le toucher suivant le prolonge.
+// 🩸 Un tracé d'un seul point ne reste pas en données (il n'est rendu nulle part, mais compterait partout).
+// → false si aucun tracé en cours.
+function terminerTraceEnCours() {
+  if (!currentRoad) return false;
+  const avant = window.HistoryManager ? window.HistoryManager.captureState("roads") : null;
+  const r = currentRoad;
+  const seul = !Array.isArray(r.points) || r.points.length < 2;
+  if (seul) {
+    const i = roadsData.indexOf(r);
+    if (i >= 0) roadsData.splice(i, 1);
+  }
+  currentRoad = null;
+  renderRoads();
+  if (window.HistoryManager && avant) {
+    const k = seul ? "road.history.abandon" : "road.history.end";
+    window.HistoryManager.record(window.I18n.t(k, { type: _libelleTypeTrace(r.type) }), avant, "roads");
+  }
+  return true;
+}
+window.ktaTerminerTraceEnCours = terminerTraceEnCours;
 
 // Libellé d'un type de tracé pour l'historique : custom = son libellé ; built-in renommé dans la légende = le nom
 // choisi.

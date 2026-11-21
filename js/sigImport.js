@@ -541,6 +541,8 @@
       "pilier1eremasse": "struct:pilier-1", "1eremasse": "struct:pilier-1",
       pilier2: "struct:pilier-2", "pilier-2": "struct:pilier-2",
       "pilier2emasse": "struct:pilier-2", "2emasse": "struct:pilier-2",
+      "pilier-bras": "struct:pilier-bras", "pilier bras": "struct:pilier-bras", "pilier a bras": "struct:pilier-bras",
+      "pilierbras": "struct:pilier-bras", "pilierabras": "struct:pilier-bras",
       mur: "struct:mur", murs: "struct:mur", muret: "struct:mur",
       maconnerie: "struct:mur", beton: "struct:mur",
       "front1": "struct:front-1", "front2": "struct:front-2",

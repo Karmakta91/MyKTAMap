@@ -471,6 +471,27 @@ function casC7() {
     de(analyse(bac(casC7(), { imageHeight: 0 })).liste, "C7").length === 0);
 }
 
+// C7 et calques : emprise = image ∪ calques image du niveau de l'objet (map.js > ktaEmpriseCalques).
+{
+  const calques = {
+    _ktaImageOverlays: [{ level: -1, overlay: {} }],
+    ktaEmpriseCalques: n => (n === -1 ? { x0: -300, y0: -300, x1: 1300, y1: 1300 } : null)
+  };
+  const d = {
+    structures: [R("st_m1", "pilier-1", carre(-200, -200, 50), { level: -1 }),
+      R("st_m1_loin", "pilier-1", carre(-600, 500, 50), { level: -1 }),
+      R("st_n0", "pilier-1", carre(-200, -200, 50))],
+    zones: [R("zn_niv", "eau", carre(1100, 500, 50), { niveaux: [0, -1] })]
+  };
+  const m = {};
+  de(analyse(bac(d, { imageWidth: 1000, imageHeight: 1000, multiLevel: true, availableLevels: [0, -1] }, calques))
+    .liste, "C7").forEach(c => { m[c.objet.uid] = c.motif; });
+  t("C7 : structure du niveau −1 sur le débord de son calque → rien", !m.st_m1, m);
+  t("C7 : structure du niveau −1 au-delà de son calque → signalée", m.st_m1_loin === "dehors", m);
+  t("C7 : même structure au niveau 0 (calque d'un autre niveau) → signalée", m.st_n0 === "dehors", m);
+  t("C7 : zone sur les niveaux 0 et −1, dans le calque du −1 → rien", !m.zn_niv, m);
+}
+
 // ── 10. C8 : niveau inconnu ──
 function casC8() {
   return {

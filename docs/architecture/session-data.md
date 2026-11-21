@@ -948,7 +948,7 @@ CSS dédié : `.kta-group-flyout` + sous-classes + variants thème clair. Scroll
 
 **`_setGroupeModeActif`** : skip `_ouvrirGroupe(id)` pour les groupes flyout (pas d'expansion accordéon).
 
-**Bouton ✅ Valider tracé** ajouté (équivalent strict re-clic type actif via `_fermerModeRoad`). Cohérence 3 groupes : `[types built-in] + [séparateur] + [customs ✨] + [✅ Valider/Fermer] + [🧹 Effacer]`.
+**Bouton ✅ Valider tracé** : termine le tracé en cours et garde l'outil armé (`ktaTerminerTraceEnCours` ; jonction : éteint), cf. `ui.md` § Enchaîner les tracés. Cohérence 3 groupes : `[types built-in] + [séparateur] + [customs ✨] + [✅ Valider/Fermer] + [🧹 Effacer]`.
 
 **Fix message structures Fermer pour customs polyline** : utilise `window.isStructurePolylineType()` qui consulte LC (avant hardcodé `front-1 || front-2`).
 
@@ -1800,7 +1800,7 @@ objet → layer fiable pour les trois familles, et un re-render écraserait des 
 (`#8cb4ff`) : ce n'est pas un style de *type*, c'est un état d'interface, et `check-style-canon.js` refuse toute table de
 couleurs locale.
 
-**➕ « Tous les \<type\> du niveau affiché »** n'est pas un confort : sans lui, désigner 200 objets un par un coûte autant
+**➕ « Tous les \<type\> des niveaux visibles »** n'est pas un confort : sans lui, désigner 200 objets un par un coûte autant
 qu'avant. On divise le nombre de *conversions*, pas celui des *clics*.
 
 **🧭 Dette adressée à moitié, sciemment.** `_pointInPolygon` vivait en **quatre** copies locales (`interface.js`,
@@ -1814,7 +1814,11 @@ surface à vide ; le clic carte pose un sommet (le handler de la sélection l'ig
 le contour et **remet la mesure d'avant** (aussi à l'abandon et à la fermeture du bandeau). `dansZone(poly)` :
 - ⚠️ **entièrement dedans** = tous les sommets (ou le point) dans le polygone (ray-casting `ktaPointInPolygon`, boîte
   englobante d'abord) ; un objet à cheval n'est ni pris ni coupé (décision produit) ;
-- **niveau actif** seulement (`APP_CONFIG.activeLevel` ; plan à un niveau : tout) ;
+- **niveaux visibles** (`APP_CONFIG.visibleLevels`), par la **même** règle que le clic et « ➕ Tous du type » :
+  `window.ktaNiveauVisible(obj)`, définie une fois dans `selectionMulti.js` (chargé avant) et relue telle quelle, jamais
+  recopiée (`check-selection-multi.js` le vérifie) ; zone sur plusieurs niveaux : prise si l'un des siens est visible
+  (`ktaNiveauxObjet`) ; jonction comptée si l'un de ses deux bouts l'est ; plan à un niveau : tout (décision produit :
+  la zone prend ce que la carte montre, comme le clic) ;
 - familles : points de session, tracés, zones, structures ; exclus : `itinerary`, `jonction`, POI jonction
   (`KtaPoiJonction.estJonction`), `_preview` (la mesure n'est pas un objet) ;
 - objets de **calque** (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons`, `_ktaDataStructurePolygons`) : rendus à
@@ -1826,7 +1830,7 @@ La zone prend tout ce qu'elle contient, lignes et surfaces mêlées, points comp
 d'ouverture reste celle du **clic** ; un point se vise au clic (ajout ou retrait), jamais refusé pour son ouverture.
 
 **🗑️ Suppression en lot** : `confirmerEtSupprimer(items, nCalque, { familles? })` ouvre `ktaConfirm` avec une case par famille et son
-nombre (les cases vivent dans le message, branchées sur la fenêtre montée ; le bouton se recompte), et annonce : niveau,
+nombre (les cases vivent dans le message, branchées sur la fenêtre montée ; le bouton se recompte), et annonce : niveaux visibles,
 photos des points (comptées par `MyKTAMapPhotos.listerPlan`), points **portails** gardés (une liaison inter-plan se purge
 sans retour possible par ⏪), objets de calque ignorés. `supprimerLot({ famille: [obj] })` : 🔒 refusé en lecture seule
 (`ktaEditionRefusee`) ; **un** instantané `captureState()` (quatre familles), listes lues d'un bloc, identité par référence

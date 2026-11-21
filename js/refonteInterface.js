@@ -994,6 +994,7 @@
       const STRUCT_LABELS = {
         "pilier-1": window.I18n.t("ui.refonte.label_struct_pilier1_short") + " 🟡",
         "pilier-2": window.I18n.t("ui.refonte.label_struct_pilier2_short") + " 🟠",
+        "pilier-bras": window.I18n.t("ui.refonte.label_struct_pilierBras"),
         "mur":      window.I18n.t("ui.refonte.label_struct_mur") + " 🔵",
         "mur-ligne": window.I18n.t("ui.refonte.label_struct_murLigne") + " 🟦",
         "front-1":  window.I18n.t("ui.refonte.label_struct_front1_short") + " 🟨",
@@ -1368,6 +1369,7 @@
       Object.keys(sByType).forEach(function(t) {
         const fallbackTxt = t === "pilier-1" ? window.I18n.t("ui.refonte.label_struct_pilier1") :
                             t === "pilier-2" ? window.I18n.t("ui.refonte.label_struct_pilier2") :
+                            t === "pilier-bras" ? window.I18n.t("ui.refonte.label_struct_pilierBras") :
                             t === "mur"      ? window.I18n.t("ui.refonte.label_struct_mur") :
                             t === "mur-ligne" ? window.I18n.t("ui.refonte.label_struct_murLigne") :
                             t === "front-1"  ? window.I18n.t("ui.refonte.label_struct_front1") :

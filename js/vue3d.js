@@ -343,8 +343,23 @@
   const MUR_PIERRE = { m: 1, tete: 0.02 };
   // ⚠️ contrat (décision produit) : le mur en surface fermée (`mur`) est en parpaing, le mur tracé en ligne
   // (`mur-ligne`) en pierre de taille. La forme est portée par le type (isStructurePolylineType).
-  const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "front-1": "roche", "front-2": "roche",
+  // Pilier à bras : la roche des piliers, montée en assises de blocs (_pilierBras) ; 🧱 coupé, le bloc simple.
+  const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "pilier-bras": "roche", "front-1": "roche",
+    "front-2": "roche",
     "mur": "parpaing", "mur-ligne": "pierre" };
+  // Pilier à bras (`pilier-bras`, 🧱 activé, _pilierBras) : pilier maçonné à la main, une colonne de blocs empilés en
+  // assises du sol au plafond. `assise` m de haut visés (bornés à `min`..`max` assises, hauteurs tirées à ± `ecart`),
+  // joints horizontaux et verticaux de `joint` m ouverts sur un cœur sombre (teinte × `coeurTeinte`) en retrait de
+  // `coeur` m ; un bloc par assise ou deux (probabilité `deux`, partage à `partage` de la largeur, sens alterné d'une
+  // assise à l'autre). Retrait de chaque bloc tiré dans `retrait` m (`bord` pour l'assise du pied et celle du
+  // plafond : plus larges, le calage), puis décalé d'au plus `decale` m et tourné d'au plus `biais` rad, dans la marge
+  // que le retrait laisse : aucun bloc ne sort du contour, aucun ne découvre le cœur. Nuance par bloc : × 1 − `nuance`
+  // au plus. ⚠️ contrat : tirages de la graine de l'uid (_aleaGraine), jamais Math.random — le même pilier à chaque
+  // ouverture et sur chaque appareil. Coût : 90 à 150 triangles par pilier (le prisme simple : 18), dans le lot
+  // de la roche de la tuile — aucun maillage ni appel de dessin de plus (checkup-pilier-bras-3d.js).
+  const PILIER_BRAS = { assise: 0.3, min: 6, max: 10, ecart: 0.22, joint: 0.016, coeur: 0.09, coeurTeinte: 0.3,
+    deux: 0.7, partage: [0.38, 0.62], retrait: [0.015, 0.065], bord: [0.002, 0.012], decale: 0.03, biais: 0.05,
+    nuance: 0.14 };
   const LISERE = 0.15;              // m
   // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises). ⚠️ contrat : le rayon du
   // recalage du tracker (KtaGalerie.versGalerie), une seule valeur.
@@ -1930,6 +1945,117 @@
       b: base.b * k * (c > 0 ? 1 - c : 1) };
   }
 
+  // Pilier à bras `s` (🧱 activé, PILIER_BRAS) dans le lot de la roche `lot`, à la hauteur `h` : assises de blocs et
+  // cœur sombre vu par les joints, couleur `col` (_nuanceRoche) nuancée par bloc, motif `m` (ROCHE.m). Contour de
+  // quatre sommets (le carré posé, sommets ajustés compris) : chaque bloc est un quadrilatère pris dans ce contour en
+  // coordonnées bilinéaires, il suit donc les sommets réels ; autre contour : une assise = le contour resserré vers
+  // son centre (un bloc). Pied au fond d'un sol abaissé (_fondPied, ombre de contact posée au nouveau pied) ; sur une
+  // pente `pente`, construit à plat puis relevé (_releverPente). Coordonnées de texture en mètres comme _prisme,
+  // origine du motif tirée par bloc. → false si le contour ne se prête pas au modèle (la structure garde son prisme).
+  // 🩸 lot.brise coupé le temps du pilier : ses faces courtes ne vont pas au relevé des pans (_pansReleves).
+  // Relevé du checkup : e.piliersBras (uid → { assises, blocs, tris, debord (m hors du contour), forme }).
+  function _pilierBras(lot, s, pente, h, col, m) {
+    const P = PILIER_BRAS, e = _e, ring = _anneau(s.points || [], e.sc);
+    if (ring.length < 3) return false;
+    const quad = ring.length === 4, nr = ring.length;
+    let cx = 0, cz = 0;
+    ring.forEach(function (q) { cx += q[0] / nr; cz += q[1] / nr; });
+    const d = function (a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); };
+    let R = Infinity;   // distance du centre au côté le plus proche (contour resserré)
+    for (let i = 0; i < nr; i++) {
+      const a = ring[i], b = ring[(i + 1) % nr], l = d(a, b);
+      if (l > 1e-6) R = Math.min(R, Math.abs((b[0] - a[0]) * (cz - a[1]) - (b[1] - a[1]) * (cx - a[0])) / l);
+    }
+    if (!(R > P.coeur * 2)) return false;
+    const lu = quad ? (d(ring[0], ring[1]) + d(ring[3], ring[2])) / 2 : 0;
+    const lv = quad ? (d(ring[0], ring[3]) + d(ring[1], ring[2])) / 2 : 0;
+    const pt = function (u, v) {
+      const A = ring[0], B = ring[1], C = ring[2], D = ring[3];
+      return [(1 - u) * (1 - v) * A[0] + u * (1 - v) * B[0] + u * v * C[0] + (1 - u) * v * D[0],
+        (1 - u) * (1 - v) * A[1] + u * (1 - v) * B[1] + u * v * C[1] + (1 - u) * v * D[1]];
+    };
+    // Case [u0, u1] × [v0, v1] du contour en retrait de g (côté u0), dr (u1), b (v0), ht (v1) m.
+    const caseQuad = function (u0, u1, v0, v1, g, dr, b, ht) {
+      const a0 = u0 + g / lu, a1 = u1 - dr / lu, b0 = v0 + b / lv, b1 = v1 - ht / lv;
+      return [pt(a0, b0), pt(a1, b0), pt(a1, b1), pt(a0, b1)];
+    };
+    const resserre = function (r) {
+      const k = 1 - r / R;
+      return ring.map(function (q) { return [cx + (q[0] - cx) * k, cz + (q[1] - cz) * k]; });
+    };
+    // Débord d'un point hors du contour (m, 0 dedans ; contour de sens positif, convexe).
+    const hors = function (q) {
+      let out = 0;
+      for (let i = 0; i < nr; i++) {
+        const a = ring[i], b = ring[(i + 1) % nr], l = d(a, b);
+        if (l > 1e-6) out = Math.max(out, ((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0])) / l);
+      }
+      return out;
+    };
+    const p0 = s.points[0];
+    const alea = _aleaGraine(_hachage(String(s.uid || (p0 ? Math.round(p0.x) + "," + Math.round(p0.y) : ""))));
+    const tire = function (a) { return a[0] + (a[1] - a[0]) * alea(); };
+    const y0 = pente ? 0 : _fondPied(ring), H = h - y0, J = P.joint;
+    const n = Math.max(P.min, Math.min(P.max, Math.round(H / P.assise)));
+    const hs = [];
+    let tot = 0;
+    for (let i = 0; i < n; i++) { hs.push(1 + P.ecart * (2 * alea() - 1)); tot += hs[i]; }
+    const sens0 = alea() < 0.5 ? 0 : 1, debut = lot.p.length, O = lot.ombre, brise = lot.brise, dv = lot.dv;
+    const forme = [n];
+    let blocs = 0, debord = 0, cum = 0;
+    lot.brise = false;
+    if (O && y0) lot.ombre = Object.assign({}, O, { sol: y0 });
+    try {
+      for (let i = 0; i < n; i++) {
+        const yb = y0 + cum * H / tot + (i > 0 ? J / 2 : 0);
+        cum += hs[i];
+        const yt = y0 + cum * H / tot - (i < n - 1 ? J / 2 : 0), bord = i === 0 || i === n - 1;
+        const deux = quad && alea() < P.deux, sens = (i + sens0) % 2, t = tire(P.partage);
+        // [u0, u1, v0, v1, côté du partage : 0 aucun, 1 u0, 2 u1, 3 v0, 4 v1]
+        const cases = !deux ? [[0, 1, 0, 1, 0]] : sens === 0 ? [[0, t, 0, 1, 2], [t, 1, 0, 1, 1]] :
+          [[0, 1, 0, t, 4], [0, 1, t, 1, 3]];
+        cases.forEach(function (cs) {
+          const r = tire(bord ? P.bord : P.retrait), rp = J / 2 + 0.012 * alea(), ins = [r, r, r, r];
+          if (cs[4]) ins[cs[4] - 1] = rp;
+          // Jeu du bloc : jamais hors du contour, jamais sur le cœur, jamais sur le bloc voisin.
+          const jeu = Math.max(0, Math.min(r, cs[4] ? rp - J / 4 : Infinity,
+            P.coeur - 0.01 - Math.max(r, cs[4] ? rp : 0)));
+          let c4 = quad ? caseQuad(cs[0], cs[1], cs[2], cs[3], ins[0], ins[1], ins[2], ins[3]) : resserre(r);
+          let bx = 0, bz = 0, ray = 0;
+          c4.forEach(function (q) { bx += q[0] / c4.length; bz += q[1] / c4.length; });
+          c4.forEach(function (q) { ray = Math.max(ray, Math.hypot(q[0] - bx, q[1] - bz)); });
+          const dec = Math.min(P.decale, jeu * 0.6) * Math.SQRT1_2;
+          const ang = Math.min(P.biais, jeu * 0.4 / Math.max(ray, 0.01));
+          const tx = dec * (2 * alea() - 1), tz = dec * (2 * alea() - 1), a = ang * (2 * alea() - 1);
+          const ca = Math.cos(a), sa = Math.sin(a);
+          c4 = c4.map(function (q) {
+            const x = q[0] - bx, z = q[1] - bz;
+            return [bx + x * ca - z * sa + tx, bz + x * sa + z * ca + tz];
+          });
+          c4.forEach(function (q) { debord = Math.max(debord, hors(q)); });
+          const k = 1 - P.nuance * alea();
+          lot.dv = alea();
+          _prisme(lot, c4, yb, yt, { r: col.r * k, g: col.g * k, b: col.b * k }, i === n - 1, m, m * alea());
+          blocs++;
+          forme.push(c4.map(function (q) {
+            return Math.round((q[0] - ring[0][0]) * 1000) + "," + Math.round((q[1] - ring[0][1]) * 1000);
+          }).join(";") + "@" + Math.round((yb - y0) * 1000));
+        });
+      }
+      const ct = P.coeurTeinte, c = P.coeur;
+      lot.dv = 0;
+      _prisme(lot, quad ? caseQuad(0, 1, 0, 1, c, c, c, c) : resserre(c), y0, h,
+        { r: col.r * ct, g: col.g * ct, b: col.b * ct }, false, m);
+    } finally {
+      lot.brise = brise; lot.ombre = O; lot.dv = dv;
+    }
+    if (y0) e.piedsMasse = (e.piedsMasse || 0) + 1;
+    if (pente) _releverPente(lot, debut, pente, e.hauteur, s.uid || null);
+    (e.piliersBras || (e.piliersBras = new Map())).set(s.uid || forme[1], { assises: n, blocs: blocs,
+      tris: (lot.p.length - debut) / 9, debord: +debord.toFixed(4), forme: _hachage(forme.join("|")) });
+    return true;
+  }
+
   // ⚠️ contrat (décision produit) : un mur (polygone ou en ligne) monte jusqu'au plafond du niveau quand la vue en a
   // un (hauteur d'yeux, suivi) : aucun jour sous le plafond. Construit à la hauteur h, il est ramené à HAUTEUR_MUR en
   // vue d'édition (sans plafond) par l'échelle de ses maillages (_echelleMurs : famille « murs », aucune
@@ -2007,6 +2133,10 @@
       const lot = tex ? lotsTex[tex] : _estMur(s.type) ? murs : opaque;
       const hs = h;   // mur compris : ramené en vue d'édition par _echelleMurs
       const pente = _structurePente(s);
+      if (tex === "roche" && s.type === "pilier-bras" && _pilierBras(lot, s, pente, hs, col, m)) {
+        if (!pente) _structureSurTremie(lot, s, hs, col, m);
+        continue;
+      }
       if (pente) {
         _structureSurPente(lot, s, pente, hs, col, m);
       } else if (_estLigne(s.type)) {
@@ -4549,7 +4679,7 @@
     e.tuiles.forEach(_libererTuile);
     _razCompteurs();
     _majEntreActif();
-    e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
+    e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0; e.piliersBras = null;
     _gererTuiles(true);
     (e.volPassages || []).forEach(_libererVolume);
     _gererVolumes();
@@ -4590,6 +4720,7 @@
     // Zones jonction du niveau : leurs structures des autres niveaux sont dessinées et bloquent avec lui.
     if (!e.galerie) d.structures = d.structures.concat(_structuresEmpruntees(e.niveau, e.pentes));
     e.structPente = new Map(); e.paroisCoupees = 0; e.zonesPente = 0;
+    if (!reprise) e.piliersBras = null;   // relevé des piliers à bras (_pilierBras) : tuiles reprises gardées
     let tg = performance.now();
     // Grille des structures du niveau : par le cache (_cacheNiveau, lue seulement : _volumeContenant).
     if (e.galerie) e.volumes = null;
@@ -15281,6 +15412,7 @@
       facesRemblais: e.facesRemblais, facesEboulis: e.facesEboulis, zonesCreusees: e.zonesCreusees || 0,
       volumesIti: (e.volumesIti || []).length, rubans: Object.assign({}, e.rubans),
       liseres: Object.assign({}, e.liseres), arcs: _etatArcs(),
+      piliersBras: e.piliersBras ? Object.fromEntries(e.piliersBras) : {},
       zonesTube: e.zonesTube, poiTube: e.poiTube, halos: e.halos,
       equipe: Object.assign({ membres: 0, membres3d: 0, reperes: 0, itineraires: 0 }, e.nbEquipe || {}),
       membres: e.equipe ? e.equipe.children.filter(function (o) { return o.userData.famille === "membre"; })

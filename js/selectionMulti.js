@@ -21,7 +21,8 @@
 //   de registre objet → layer fiable ; un re-rendu écraserait les styles).
 // Couleur = accent d'interaction de la charte (état d'interface, pas un style de type).
 // Expose : window.SelectionMulti { ouvrir(graine, onValide), ouvrirZone({ familles? }), fermer, liste, estActif }
-//   et window.ktaPointInPolygon / ktaDistPointSegment (foyer canonique ; d'anciennes copies locales subsistent).
+//   et window.ktaPointInPolygon / ktaDistPointSegment (foyer canonique ; d'anciennes copies locales subsistent),
+//   window.ktaNiveauVisible(obj) (règle de niveau de toute la sélection, clic comme zone : niveaux VISIBLES).
 // Garde-fou : scripts/check-selection-multi.js
 (function () {
   "use strict";
@@ -91,10 +92,14 @@
     return window.KtaConvertir.estOuvert(famille, type);
   }
 
-  // Le niveau affiché. Hors multi-niveau, tout passe.
+  // ⚠️ Règle de niveau UNIQUE de la sélection (clic, « Tous du type », zone dessinée : selectionZone.js la relit
+  // par window.ktaNiveauVisible) : l'objet est sur un niveau VISIBLE (APP_CONFIG.visibleLevels), comme la carte
+  // l'affiche. Hors multi-niveau, tout passe. Jonction : visible si l'un de ses deux bouts l'est (config.js).
   function _niveauVisible(obj) {
     if (!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true)) return true;
+    if (!obj) return false;
     const vis = Array.isArray(window.APP_CONFIG.visibleLevels) ? window.APP_CONFIG.visibleLevels : [0];
+    if (obj.type === "jonction") return vis.indexOf(obj.fromLevel) >= 0 || vis.indexOf(obj.toLevel) >= 0;
     // Zone sur plusieurs niveaux : visible si l'un des siens l'est (poiJonction.js > ktaNiveauxObjet).
     if (Array.isArray(obj.niveaux) && Array.isArray(obj.points) && typeof window.ktaNiveauxObjet === "function") {
       return window.ktaNiveauxObjet(obj).some(function (n) { return vis.indexOf(n) >= 0; });
@@ -102,6 +107,7 @@
     const lvl = Number.isInteger(obj.level) ? obj.level : 0;
     return vis.indexOf(lvl) >= 0;
   }
+  window.ktaNiveauVisible = _niveauVisible;
 
   // Points de session aussi : un point se retire au re-clic, et s'ajoute (il ne compte que pour 🗑️).
   function _candidats() {
@@ -253,7 +259,7 @@
     }
   }
 
-  // Tous les objets du MÊME TYPE que le dernier ajouté, au niveau affiché (relevé importé).
+  // Tous les objets du MÊME TYPE que le dernier ajouté, sur les niveaux visibles (relevé importé).
   function _ajouterTousDuType() {
     if (!_dernier) return;
     const fam = _dernier.famille, typ = _dernier.obj.type;

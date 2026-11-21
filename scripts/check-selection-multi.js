@@ -14,8 +14,10 @@
 //   5. Les objets déjà du bon type sont SAUTÉS, ni en échec ni cause de refus.
 //   6. `itinerary` (trajet calculé) et `jonction` (niveaux reliés) ne sont ni sources ni cibles, même dans un
 //      lot : convertis, l'un deviendrait une donnée du relevé, l'autre un tracé qui ne relie plus rien.
-//   7. Sélection par zone (`js/selectionZone.js`) : ENTIÈREMENT dedans seulement, niveau actif, objets de calque
-//      comptés jamais pris ; suppression en lot = un instantané, une entrée ⏪, une écriture par famille.
+//   7. Sélection par zone (`js/selectionZone.js`) : ENTIÈREMENT dedans seulement, niveaux VISIBLES par la règle du
+//      clic (`window.ktaNiveauVisible`, jamais une copie : un niveau masqué n'est pas pris, un niveau visible autre
+//      que l'actif l'est), objets de calque comptés jamais pris ; suppression en lot = un instantané, une entrée ⏪,
+//      une écriture par famille.
 // =====================================================================
 "use strict";
 
@@ -381,6 +383,66 @@ const ligne = (x, y, l) => [{ x: x, y: y }, { x: x + l, y: y }];
       t("i18n " + l + " : " + k, typeof D[k] === "string" && D[k].length > 0);
     });
   });
+}
+
+// ── 8 bis. Zone = niveaux VISIBLES, règle du clic (une seule définition) ──────
+{
+  const h = contexte();
+  const SZ = h.ctx.KtaSelectionZone;
+  // poiJonction.js > ktaNiveauxObjet, réduit à ce que la règle lit (niveaux d'une zone, sinon son niveau).
+  h.ctx.ktaNiveauxObjet = (o) => Array.isArray(o.niveaux) ? o.niveaux.slice() : [Number.isInteger(o.level) ? o.level : 0];
+  Object.assign(h.ctx.APP_CONFIG, { multiLevel: true, activeLevel: 0, visibleLevels: [0, 1] });
+  const zone = carre(0, 0, 100);
+  const n0 = { uid: "rd_n0", type: "chemin", level: 0, points: ligne(10, 10, 50) };
+  const n1 = { uid: "rd_n1", type: "chemin", level: 1, points: ligne(10, 20, 50) };
+  const n1Cheval = { uid: "rd_n1c", type: "chemin", level: 1, points: ligne(80, 30, 50) };
+  const nMasque = { uid: "rd_m", type: "chemin", level: -1, points: ligne(10, 40, 50) };
+  const pil1 = { uid: "st_n1", type: "pilier-1", level: 1, points: carre(20, 60, 10) };
+  const zMulti = { uid: "zn_m", type: "eau", level: -1, niveaux: [-1, 1], points: carre(60, 60, 10) };
+  const zMasquee = { uid: "zn_x", type: "eau", level: -1, niveaux: [-1, 2], points: carre(40, 60, 10) };
+  const pt1 = { uid: "pt_n1", id: "P", x: 50, y: 50, level: 1 };
+  const joncVis = { uid: "rd_jv", type: "jonction", fromLevel: 1, toLevel: 2, points: ligne(10, 80, 20) };
+  const joncMasq = { uid: "rd_jm", type: "jonction", fromLevel: -1, toLevel: 2, points: ligne(10, 85, 20) };
+  h.R = [n0, n1, n1Cheval, nMasque, joncVis, joncMasq];
+  h.S = [pil1]; h.Z = [zMulti, zMasquee]; h.P = [pt1];
+  h.ctx._ktaDataPolylines = [
+    { layerId: "c1", type: "chemin", level: 1, points: ligne(10, 90, 20) },
+    { layerId: "c1", type: "chemin", level: -1, points: ligne(30, 90, 20) }
+  ];
+  h.ctx._ktaDataMarkers = [
+    { _ktaLayerId: "c1", _ktaLevel: 1, getLatLng: () => ({ lat: 1000 - 20, lng: 20 }) },
+    { _ktaLayerId: "c1", _ktaLevel: -1, getLatLng: () => ({ lat: 1000 - 25, lng: 25 }) }
+  ];
+  const r = SZ.dansZone(zone);
+  const uids = r.items.map((i) => i.obj.uid).sort();
+  t("🩸 zone : un objet d'un niveau VISIBLE autre que l'actif est pris (tracé, pilier, point)",
+    ["rd_n1", "st_n1", "pt_n1"].every((u) => uids.indexOf(u) >= 0));
+  t("zone : l'objet du niveau actif reste pris", uids.indexOf("rd_n0") >= 0);
+  t("🩸 zone : un objet d'un niveau MASQUÉ n'est pas pris", uids.indexOf("rd_m") < 0);
+  t("zone : à cheval sur un niveau visible = pas pris", uids.indexOf("rd_n1c") < 0);
+  t("zone sur plusieurs niveaux : prise si l'un des siens est visible, sinon non",
+    uids.indexOf("zn_m") >= 0 && uids.indexOf("zn_x") < 0);
+  t("jonction comptée si l'un de ses bouts est visible, jamais dans le lot",
+    r.jonctions.length === 1 && r.jonctions[0] === joncVis && !r.items.some((i) => i.obj.type === "jonction"));
+  t("calque : seuls ses objets des niveaux visibles sont comptés", r.calque.length === 2);
+  h.ctx.APP_CONFIG.visibleLevels = [0];
+  const r2 = SZ.dansZone(zone).items.map((i) => i.obj.uid);
+  t("🩸 zone : niveau 1 masqué → ses objets ne sont plus pris",
+    JSON.stringify(r2) === JSON.stringify(["rd_n0"]));
+  h.ctx.APP_CONFIG.multiLevel = false;
+  t("plan à un niveau : tout ce qui est entièrement dedans, quel que soit son champ niveau",
+    SZ.dansZone(zone).items.length === 7);
+  const SMSRC = fs.readFileSync("js/selectionMulti.js", "utf8");
+  const SZSRC = fs.readFileSync("js/selectionZone.js", "utf8");
+  t("🩸 règle partagée : selectionMulti.js expose window.ktaNiveauVisible = _niveauVisible (clic et Tous du type)",
+    /window\.ktaNiveauVisible = _niveauVisible;/.test(SMSRC) &&
+    /EXCLUS\[obj\.type\] \|\| !_niveauVisible\(obj\)/.test(SMSRC) && /if \(!_niveauVisible\(obj\)\) return;/.test(SMSRC));
+  // Corps de dansZone et de ses aides de niveau (jusqu'au dessin de la zone), commentaires ôtés.
+  const corps = SZSRC.slice(SZSRC.indexOf("function _visible("), SZSRC.indexOf("// ── Dessin de la zone"))
+    .replace(/^\s*\/\/.*$/gm, "");
+  t("🩸 règle partagée : selectionZone.js la relit, sans copie de la règle de niveau",
+    /window\.ktaNiveauVisible\(obj\)/.test(corps) && /function dansZone\(/.test(corps) &&
+    !/activeLevel|visibleLevels|ktaNiveauxObjet|fromLevel|toLevel/.test(corps));
 }
 
 // ── 9. Niveau en lot (🏗️ Niveau du bandeau) ──────

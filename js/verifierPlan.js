@@ -111,9 +111,21 @@ window.KtaVerifierPlan = (function () {
       multiLevel: _multi(),
       echelle: _echelle(),
       image: { w: Number(C.imageWidth) || 0, h: Number(C.imageHeight) || 0 },
+      emprises: _emprisesCalques(),
       niveaux: Array.isArray(C.availableLevels) ? C.availableLevels.slice() : null,
       planOuvert: true
     };
+  }
+
+  // Emprise des calques image par niveau (map.js > ktaEmpriseCalques, affichés ou non) : { "<niveau>": boîte }.
+  function _emprisesCalques() {
+    const f = window.ktaEmpriseCalques, out = {};
+    if (typeof f !== "function") return out;
+    (window._ktaImageOverlays || []).forEach(function (c) {
+      const n = c && Number.isInteger(c.level) ? c.level : 0;
+      if (!Object.prototype.hasOwnProperty.call(out, String(n))) out[String(n)] = f(n);
+    });
+    return out;
   }
 
   function _galerie(r) {
@@ -517,16 +529,30 @@ window.KtaVerifierPlan = (function () {
   }
 
   // ── C7 : objet hors de l'image du plan ──────────
-  // Un sommet (ou le point) au-delà de [0, largeur] × [0, hauteur] de plus de BORD_M : souvent un import mal calé.
+  // Un sommet (ou le point) au-delà de plus de BORD_M de l'image [0, largeur] × [0, hauteur] ∪ les calques image du
+  // niveau de l'objet (`d.emprises`, `level`, absent = 0 ; et `niveaux` d'une zone) : souvent un import mal calé.
+  // 🩸 Sans les calques, une structure posée sur la partie d'un calque qui déborde de l'image était « hors plan ».
   function _c7(d, objs) {
     const w = d.image && d.image.w, h = d.image && d.image.h;
     if (!(w > 0 && h > 0)) return [];
-    const tol = seuilBordPx(d.echelle), out = [];
+    const tol = seuilBordPx(d.echelle), out = [], emp = d.emprises || {};
+    const boite = function (o) {
+      const b = { x0: 0, y0: 0, x1: w, y1: h };
+      [o.level == null ? 0 : o.level].concat(Array.isArray(o.niveaux) ? o.niveaux : []).forEach(function (n) {
+        const c = emp[String(n)];
+        if (!c) return;
+        _etendre(b, { x: c.x0, y: c.y0 });
+        _etendre(b, { x: c.x1, y: c.y1 });
+      });
+      return b;
+    };
     objs.forEach(function (e) {
-      const pts = _sommets(e);
+      const pts = _sommets(e), b = boite(e.o);
       let hors = 0, premier = null;
       pts.forEach(function (p) {
-        if (p.x < -tol || p.y < -tol || p.x > w + tol || p.y > h + tol) { hors++; if (!premier) premier = p; }
+        if (p.x < b.x0 - tol || p.y < b.y0 - tol || p.x > b.x1 + tol || p.y > b.y1 + tol) {
+          hors++; if (!premier) premier = p;
+        }
       });
       if (hors) out.push(_constat("C7", e, hors === pts.length ? "dehors" : "deborde", { ancre: _ancre(premier) }));
     });

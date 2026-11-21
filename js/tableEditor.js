@@ -1850,7 +1850,7 @@
         if (g.points.length === avant) return true;   // rien retiré → jamais supprimé
         const estLigne = (k === "roads")
           || (k === "structures" && !(typeof g.type === "string"
-              && (g.type === "pilier-1" || g.type === "pilier-2" || g.type === "mur")));
+              && (g.type === "pilier-1" || g.type === "pilier-2" || g.type === "pilier-bras" || g.type === "mur")));
         const min = (k === "zones") ? 3 : (estLigne ? 2 : 3);
         if (g.points.length < min) { bilan.objets++; return false; }
         return true;

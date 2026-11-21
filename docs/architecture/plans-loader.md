@@ -814,7 +814,14 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
   de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
   règle de niveau, écriture (`poser`). Sans argument, `contextePlan()` : le plan ouvert, la session, une étape ⏪.
-  Le Générateur fournit le sien (ci-dessous). Règle de niveau commune :
+  Le Générateur fournit le sien (ci-dessous). ⚠️ **Emprise lue** (`ctx.emprise()`, relue à chaque geste ; absente =
+  `[0, largeur] × [0, hauteur]`, cas du Générateur) : niveau ≠ 0, union des calques image AFFICHÉS du niveau actif
+  (`map.js > ktaEmpriseCalques(niveau, { affiches: true })`, getBounds, coins calés compris, sans marge), en px plan,
+  bornes négatives ou au-delà de l'image possibles ; niveau 0, l'image (ses calques ne sont pas lus). Remplir,
+  « Tout le plan », le cadre (ramené dedans) et `detecter` (limites et bords du plan) s'y bornent. 🩸 Bornés à l'image
+  principale, un calque plus grand qu'elle voyait son débord refusé (« Aucune image du plan à cet endroit ») et un
+  pilier à cheval sur le bord de l'image sortait rogné net (le bord de l'image pris pour le bord du plan).
+  Règle de niveau commune :
   `structures.js > ktaNiveauNouvelleStructure(type, { multiLevel, niveau })` (absent = le plan ouvert).
 - **Dans le Générateur** (`js/detectionGenerateur.js`, `createConf.js > _detecterStructuresGenerateur`) : bouton
   « Détecter piliers et fronts » de l'étape Calques de données (mode Avancé), en Nouveau, en Modifier et dans
@@ -843,20 +850,38 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
   `{ masses: [{ classe, points, aire, boite }], tropGrands, ignorees, blocs }`, coordonnées en **pixels du plan**.
+  `limites` = `{ x0, y0, x1, y1 }` (emprise, bornes négatives possibles) ou `{ w, h }` (= `[0, w] × [0, h]`) ; la
+  région y est ramenée.
 - **Méthode, par bloc** : classe de couleur de chaque pixel (écart ΔE en Lab à l'exemple le plus proche, table sur
   6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
   (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
   des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
   250 px², 1,5 px, trou 700 px²), utilisés seulement sans exemple mesuré ; `depuisMetres(r, pxParM)`.
 - ⚠️ **Réglages déduits des exemples** (décision produit, après un essai sur deux vrais plans : 3 piliers sur une
-  soixantaine). `mesurerExemple(bloc, x, y)` mesure la composante touchée à la pipette : couleur médiane, aire,
-  épaisseur (2 × la distance au bord maximale, chanfrein 3-4), étalement (90e centile des ΔE sur l'INTÉRIEUR, à 2 px
-  du bord : les pixels de bord, mêlés au contour noir par le flou, soudaient des piliers voisins), écart au fond
-  (médiane du bord de la fenêtre lue) ; `coupe` si elle dépasse la fenêtre. `reglagesDepuisExemples` : tolérance =
-  étalement + 6, plancher 22, plafond 60 % de l'écart au fond (un bleu clair est à ΔE 26 du blanc) ; l'écart ENTRE
-  exemples n'y entre pas (chaque pixel est comparé à l'exemple le plus proche) ; taille = plus petite épaisseur des
-  exemples de masse non coupés. `reglagesPourTaille(t, pxParM?)` : ouverture t/2, aire t²/2, trou 0,6 t² ; plan
-  calibré : aire jamais sous 10 × 10 cm, ouverture jamais au-delà de 60 cm (bornes, pas la règle).
+  soixantaine). `mesurerExemple(bloc, x, y, { nature })` mesure la composante touchée à la pipette : couleur
+  médiane, aire, épaisseur (2 × la distance au bord maximale, chanfrein 3-4), étalement (90e centile des ΔE sur
+  l'INTÉRIEUR, à 2 px du bord : les pixels de bord, mêlés au contour noir par le flou, soudaient des piliers voisins),
+  écart au fond (médiane du bord de la fenêtre lue), écart au cœur du pourtour (`ecartTrait` : 90e centile des
+  anneaux à 1, 2 et 3 px) et à l'au-delà (`ecartAuDela` : anneaux à 5–7 px), `cerne` (pourtour ≥ ΔE 30 et 15 de
+  plus que l'au-delà) ; `coupe` si elle dépasse la fenêtre. `reglagesDepuisExemples` : tolérance = étalement + 6,
+  plancher 22, plafond 60 % de l'écart à ce qui TOUCHE l'exemple : le fond (un bleu clair est à ΔE 26 du blanc),
+  sauf pilier clair cerné (ci-dessous) ; l'écart ENTRE exemples n'y entre pas (chaque pixel est comparé à l'exemple
+  le plus proche) ; taille = plus petite épaisseur des exemples de masse non coupés. `reglagesPourTaille(t,
+  pxParM?)` : ouverture t/2, aire t²/2, trou 0,6 t² ; plan calibré : aire jamais sous 10 × 10 cm, ouverture jamais
+  au-delà de 60 cm (bornes, pas la règle).
+- ⚠️ **Piliers clairs cernés** (plan au trait : piliers, galeries et fond blancs, le trait seul les sépare ; décision
+  produit après un essai sur un plan réel au trait) : le plafond du fond y mettait la tolérance au niveau du bruit
+  (fond lu blanc, ou gris moyen des traits) et les galeries se cassaient en morceaux pris pour des piliers. Un
+  exemple `cerne` qui a la place d'englober l'au-delà (au-delà + 10 ≤ 60 % de l'écart au trait,
+  `ktaDetection.js > _clairCerne`) prend une tolérance de 60 % de l'écart au CŒUR du trait (le plus faible des
+  exemples : le trait le plus fin commande ; plafond 60 comme partout). 🩸 Les galeries étroites sont grisées en
+  leur milieu par le flou : une tolérance qui n'englobe que le blanc les coupe aux passages étroits ; à 60 % du
+  trait elles restent d'un seul tenant avec le fond, géantes, écartées par la taille maximale, et les piliers restent
+  séparés par le cœur du trait. Un bleu clair cerné de bleu sur blanc (au-delà ΔE 26) n'a pas cette place : il garde
+  le plafond du fond. Jamais pour un exemple de Front. Planche fabriquée (`check-detection.js`, 140 piliers blancs
+  de 5 à 34 px, traits de 1 à 3 px, filigrane, flou, bruit) : 140 sur 140, 4 éclats du fond, tolérance 25 ; ancien
+  plafond : tolérance 6, 22 morceaux de galerie. Limite : chiffres et lettres au trait ont des boucles blanches
+  fermées, de la taille d'un petit pilier : elles sortent (14 sur la planche), à retirer dans l'aperçu.
 - **Recalcul sans relecture** : `detecter({ executeur, garder: true })` fait garder les blocs lus par le worker
   (`executeurWorker`, sinon `executeurLocal` dans la page), au plus 200 Mo d'image ; `recalculer(executeur,
   { classes, reglages })` refait le calcul sur eux (curseurs de l'aperçu). Au-delà du budget, `recalculable` est
@@ -866,14 +891,24 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - 🩸 **Blocs avec marge** (`bloc` 2048, `marge` 256 px) : une masse est rendue par le bloc qui contient le coin
   haut-gauche de sa boîte ; celle qui touche le bord de la marge (pas le bord du plan) est signalée dans
   `tropGrands`, jamais coupée. La marge est lue au-delà du cadre demandé : une masse coupée par le cadre reste entière.
+  « Bord du plan » = bord des `limites` (l'emprise) : une masse qui le touche est rendue telle quelle.
 - **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
   la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
 - **Fronts** (classe `nature: "trait"`) : 🩸 un trait a souvent la couleur d'un pilier, il ne concourt donc pas
-  avec les masses pour un pixel : couleur du trait MOINS les masses (après ouverture, dilatées de `ecartMasse` 2 px),
-  fermeture de 3 px, squelette Zhang-Suen, chemins entre bouts et carrefours (ergots < `ergot` 15 px et bruit <
+  avec les masses pour un pixel : couleur du trait MOINS les masses **de sa couleur** (`_masseDuTrait` : composantes
+  après ouverture, de toute taille, dont la moitié au moins des pixels est dans le masque du trait ; dilatées de
+  `ecartMasse` 2 px), fermeture de 3 px, squelette Zhang-Suen, chemins entre bouts et carrefours (ergots < `ergot` 15 px et bruit <
   `longueurMin` 20 px retirés), Douglas-Peucker. 🩸 Chaque bloc découpe ses traits à son cœur (Liang-Barsky : un
   segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
   les morceaux bout à bout (même classe, bouts à moins de 2 px).
+  ⚠️ (décision produit) Une masse d'une autre couleur ne retire rien d'un front ; un pilier de la couleur du front
+  écarté par un curseur de taille reste retiré (sinon son squelette deviendrait un front). 🩸 Retirer toutes les masses
+  effaçait les fronts fins d'une passe mixte (pilier clair cerné + front) : le fond et les galeries du blanc des
+  piliers, écartés par la taille maximale mais dilatés quand même, mangeaient tout trait de 3 px bordé de blanc.
+  ⚠️ (décision produit) **Le contour d'un pilier détecté n'est pas un front** : il marque la fin du pilier. Un chemin
+  couché à 90 % au moins (`CERNE_PART`) dans le halo d'une masse GARDÉE (dilatée de `ecartMasse` + `TRAIT_FIN` + 1 px)
+  est écarté. Les fronts varient donc avec les curseurs de taille, mais seulement par ces contours : un pilier écarté
+  rend son cerne aux fronts ; les traits loin des piliers ne bougent pas.
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
   `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
   d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par
@@ -904,25 +939,92 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   couleur**, **Taille minimale** et **Taille maximale**, partis des réglages déduits : un curseur relâché recalcule
   sur les blocs gardés (200 ms sans mouvement), sans relire l'image ; les valeurs sont gardées avec les couleurs du
   plan (même clé) jusqu'au prochain exemple → « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+  ⚠️ La tolérance affichée est celle RÉELLEMENT appliquée aux masses (Masse A, sinon B ; l'autre masse garde son
+  écart déduit à elle), bornes 6–60 comme le moteur ; les fronts gardent la leur, hors curseur
+  (`detectionStructures.js > _classes`). 🩸 Le curseur montrait le maximum des classes (celle d'un Front) pendant
+  que les masses tournaient bien plus bas.
 - 🩸 **Pipette** : la couleur de l'exemple est celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le
   plus loin du fond) et de ses semblables, et la composante part de ce pixel. La médiane du carré entier valait le
   fond sur un trait fin ou un coin de pilier touché un peu à côté : la pipette disait « aucune image » (trait de
   2 px : 2 touchers sur 2 ; pilier de 10 px : 12 sur 100). Carré entièrement de la couleur du fond : « c'est le fond »
-  (avant : un exemple blanc ajouté en silence), SAUF si la zone touchée est enfermée par un trait (pilier blanc cerné
-  sur plan blanc) : c'est alors un objet. « Aucune image » seulement si rien n'a été dessiné à cet endroit (plan V1 :
-  zone jamais affichée).
+  (avant : un exemple blanc ajouté en silence), SAUF si la zone claire touchée est enfermée (région à ΔE ≤ 12 du
+  pixel le plus clair du carré qui ne touche pas le bord de la fenêtre : pilier blanc cerné sur plan blanc) : c'est
+  alors un objet. « Aucune image » seulement si rien n'a été dessiné à cet endroit (plan V1 : zone jamais affichée).
+- 🩸 **Petit pilier clair touché près de son trait** : le pixel le plus encré du carré est le trait, l'exemple prenait
+  sa couleur (planche fabriquée : aire de quelques dizaines de px, taille minimale déduite 2 px). Si ce pixel
+  appartient à un trait FIN (épaisseur ≤ 4 px), que le pixel le plus clair du carré est plus clair que lui (ΔE > 20)
+  et que sa région claire est fermée, l'exemple est cette région ; seuil de la composante à mi-chemin de l'encre qui
+  l'enferme (90e centile des ΔE à 1–3 px : la rangée de bord adoucie par le flou reste au pilier). Un pilier coloré
+  plein (épais) touché un peu à côté reste l'exemple (coin de pilier, pastille claire au centre) ; un exemple de
+  Front (`nature: "trait"`) n'est jamais redirigé. Planche fabriquée : 156 touchers au bord de 39 petits piliers,
+  156 tailles justes (± 2 px) et aucun trait pris ; règle du seul pixel le plus encré : le trait pris 156 fois.
+  Même chemin quand le pixel le plus encré est PLUS CLAIR que le fond lu (plan au trait serré : la médiane du bord
+  de la fenêtre est un gris de traits) : le seuil tiré de l'écart au fond tombait sous le bruit, la composante
+  n'était qu'un lambeau du pilier (pilier blanc de 16 px sur fond gris bruité : rien, désormais 256 px sur 256).
 - **Taille maximale** : déduite du plus grand exemple de masse (× 4 en aire), plafonnée à la marge des blocs ; une
   masse plus grande est écartée et comptée à part (« écartés par la taille maximale », distinct de « trop grands pour
-  un bloc »). Cas des plans aux piliers blancs ou clairs cernés d'un trait : fond et galeries de la couleur des
-  piliers forment des masses géantes, écartées ; les piliers, séparés par le trait, restent. 🩸 Seuls les trous
+  un bloc »). Cas des plans aux piliers blancs ou clairs cernés d'un trait : fond et galeries, englobés par la
+  tolérance (piliers clairs cernés, plus haut), forment des masses géantes, écartées ; les piliers, séparés par le
+  trait, restent. 🩸 Seuls les trous
   COMPACTS sont comblés (plus du tiers de leur boîte) : le trait qui cerne un pilier est un « trou » en anneau dans le
   masque du fond, le combler soudait le pilier au fond (scène fabriquée : 26 piliers sur 45 au lieu de 45).
-- **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
-  carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
-  Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.
+- **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` (seul appelant : ce parcours). Niveau ≠ 0 : ses
+  calques image AFFICHÉS sur la carte (calés comme sur la carte), rien d'autre. Niveau 0 (ou plan sans
+  multi-niveau) : tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1) ;
+  les calques du niveau 0 sont des surcouches, jamais lus. L'opacité réglée d'un calque ne compte pas (image pleine).
+  ⚠️ (décision produit) **Refus plutôt que l'image d'un autre niveau** : un niveau ≠ 0 sans calque image rend
+  `{ ok: false, raison: "niveau-sans-image" }`, un niveau dont tous les calques sont retirés de la carte (case des
+  filtres ≡ décochée, niveau masqué) `{ raison: "calques-masques" }`, sans rien dessiner ; `_lireBloc` lève alors
+  une erreur `KtaDetectionRefus` et la pipette comme le calcul s'arrêtent sur un toast (`detect.refus.<raison>`),
+  sans aperçu. 🩸 L'ancien repli sur l'image du niveau 0 recopiait ses piliers au niveau actif sans rien dire. Un
+  calque masqué parmi d'autres n'est simplement pas lu. `vue3d.js > _dessinerPlanSol` garde son aiguillage, avec
+  repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
+- **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11/2026) : un MODE du même bandeau (bouton
+  « Remplir au clic » de l'étape des exemples), pas un outil à part. Chaque toucher remplit la zone du fond fermée
+  par le trait autour du doigt ; le mode reste actif, les zones s'ajoutent à l'aperçu (un toucher sur l'une la retire
+  ou la remet), puis un seul « Ajouter N » les pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le
+  même chemin que la détection). Type : liste des types de structure à contour FERMÉ (intégrés et types
+  personnalisés de la légende, géométrie lue par `isStructurePolylineType` : jamais un front, un mur en ligne ni un
+  arc ; ni un type posé d'un clic à taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par
+  défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
+  recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas ajoutée ; revérifié à « Ajouter »
+  au niveau du type final.
+  - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
+    la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
+    dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
+    ouvert ; ⚠️ **en repli** (décision produit) : si la fermeture avale le point touché (pilier large de 2 à 3 px, ou
+    grisé par le flou) et qu'il est du côté clair de son voisinage (L* au moins à mi-chemin du plus sombre et du
+    plus clair à ± 3 px, `_coteClair`), on recommence sans fermeture (`repli: false` : contre-épreuve). 🩸 Cette
+    condition empêche de remplir un morceau du trait depuis un pixel sombre (toucher sur le trait, ou au bord d'un
+    petit pilier flou : il faut toucher son centre clair).
+    Composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
+    (`_contour`, `_simplifierFerme` à 1 px) ; un chiffre ou une pastille dedans est englobé.
+  - ⚠️ **Milieu du trait** (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin.
+    `_jusquAuMilieu` donne à la zone les pixels du trait plus proches d'elle que de l'autre côté du trait (distances
+    de chanfrein 3-4 dans le trait, égalité à la zone), à au plus 6 px d'elle (`demiTrait`) ; deux piliers séparés
+    par un même trait se le partagent en son milieu. 🩸 Sans autre côté à moins de 12 px (pilier plein coloré sur
+    fond uni, où tout le fond est « trait » ; aplat noir épais), rien n'est gagné : la zone garderait sinon 6 px de
+    fond autour. Un pilier plein se remplit donc à son propre bord. La détection automatique (piliers et fronts)
+    garde son contour, inchangé.
+  - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
+    l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
+    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
+    (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) si la zone touche son bord.
+    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM)`, décision produit) : plan à échelle connue
+    (`ctx.pxParM()`, échelle écrite dans le plan) → **40 m de côté** (boîte de la zone) **et 1 600 m²** ; sans
+    échelle → 512 × 512 px d'aire, sans côté maximal. 40 m = la plus grande structure plausible prise large : un pilier
+    tourné fait quelques mètres, une masse laissée ou un massif de consolidation quelques dizaines ; une valeur
+    généreuse ne refuse jamais un vrai pilier, et une galerie fermée, longue de plusieurs dizaines de mètres, sort
+    par son côté. 🩸 512 px sans échelle reste trop large sur une petite image (une galerie fermée y passe : essai
+    sur un plan au trait de 1 170 px de large). Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+  - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
+    trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
+    pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; galerie fictive de 60 m refusée à
+    échelle connue, structure de 30 × 25 m acceptée, 512² px sans échelle) · `scripts/smoke/checkup-remplir.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
-  pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout.
+  pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
+  (`pilier-bras`, posé d'un clic) n'est jamais proposé : la liste `detectionStructures.js > TYPES` est fermée.
 - **Doublons** : une masse qui recouvre une structure du même niveau (session ou calque), un front dont tous les
   sommets et milieux sont à moins de 3 px d'un front existant du même niveau : écartés et comptés « déjà présents ».
   Relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
@@ -930,4 +1032,7 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
-- Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours).
+- Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-detection-emprise.js` (calque du
+  niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
+  le bord de l'image entier, niveau 0 inchangé ; Chromium et WebKit).

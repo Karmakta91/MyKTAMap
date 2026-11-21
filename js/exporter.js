@@ -41,6 +41,12 @@
       ? window.ktaResolveStyle("structures", key, { flat: true }) : null;
     return (s && s.rayures && s.rayures.color) || null;
   }
+  // Structure barrée d'une croix (pilier à bras) ? Lu au canon, jamais recopié.
+  function _croixDe(key) {
+    const s = (typeof window.ktaResolveStyle === "function")
+      ? window.ktaResolveStyle("structures", key, { flat: true }) : null;
+    return !!(s && s.croix);
+  }
 
   // `zone` (facultatif) : part et nature d'une masse au sol (styleResolver.js > ktaStyleOptsZone ; masse non
   // exploitée = aplat plus dense, le canvas d'export ne peint pas de motif).
@@ -862,7 +868,8 @@
 
     // 🩸 Les sous-types ne sont PAS listés en dur : un plan importé (types tous personnalisés) aurait son total
     // juste et tous ses sous-types à zéro.
-    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"]);
+    const _sS = _compterEtCustom(structures, ["pilier-1", "pilier-2", "pilier-bras", "mur", "mur-ligne", "front-1",
+      "front-2", "arc"]);
     const structuresByType   = _sS.par;
     const structTypesCustom  = _sS.custom;
     const _sR = _compterEtCustom(roads, ["principal", "secondaire", "chemin"]);
@@ -923,6 +930,8 @@
       row("structures", Ti("imgexport.ann.structures"), nbStructures, true) +
       rowSub("structures_pilier-1", _lp("structures", "pilier-1", Ti("imgexport.structType.pilier1")), structuresByType["pilier-1"], true) +
       rowSub("structures_pilier-2", _lp("structures", "pilier-2", Ti("imgexport.structType.pilier2")), structuresByType["pilier-2"], true) +
+      rowSub("structures_pilier-bras", _lp("structures", "pilier-bras", Ti("imgexport.structType.pilierBras")),
+             structuresByType["pilier-bras"], true) +
       rowSub("structures_mur",      _lp("structures", "mur", Ti("imgexport.structType.mur")),     structuresByType["mur"],      true) +
       rowSub("structures_mur-ligne", _lp("structures", "mur-ligne", Ti("imgexport.structType.murLigne")),
              structuresByType["mur-ligne"], true) +
@@ -950,8 +959,8 @@
       // Synchro parent ↔ enfants des structures. Les sous-types custom sont ajoutés à la volée : liste non écrite
       // en dur, sinon décocher « Structures » ne les décoche pas.
       _syncAnnotParent("ann_structures",
-        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur", "ann_structures_mur-ligne",
-         "ann_structures_front-1", "ann_structures_front-2", "ann_structures_arc"]
+        ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_pilier-bras", "ann_structures_mur",
+         "ann_structures_mur-ligne", "ann_structures_front-1", "ann_structures_front-2", "ann_structures_arc"]
         .concat(structTypesCustom.map(function (c) { return "ann_structures_" + c.type; })));
 
       const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
@@ -1021,7 +1030,12 @@
       } else if (e.geometry === "polygon" || e.fillColor) {
         const fill   = e.fillColor || e.lineColor || "#888";
         const border = e.borderColor || e.lineColor || fill;
-        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(fill) + ';border:1px solid ' + _esc(border) + ';flex:0 0 14px;border-radius:2px;"></span>';
+        // Pilier à bras : les deux diagonales, couleur du contour, sur le remplissage.
+        const diag = function (a) {
+          return "linear-gradient(" + a + "deg,transparent 43%," + _esc(border) + " 43% 57%,transparent 57%),";
+        };
+        const fond = (e.category === "structures" && _croixDe(e.key)) ? diag(45) + diag(-45) + _esc(fill) : _esc(fill);
+        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + fond + ';border:1px solid ' + _esc(border) + ';flex:0 0 14px;border-radius:2px;"></span>';
       } else {
         swatch = '<span style="display:inline-block;width:14px;height:14px;flex:0 0 14px;"></span>';
       }
@@ -1316,7 +1330,7 @@
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
-    ["pilier-1","pilier-2","mur","mur-ligne","front-1","front-2","arc"].forEach(function(t) {
+    ["pilier-1","pilier-2","pilier-bras","mur","mur-ligne","front-1","front-2","arc"].forEach(function(t) {
       const cb = document.getElementById("ann_structures_" + t);
       etat.ann["structures_" + t] = cb ? cb.checked : true;
     });
@@ -1619,6 +1633,7 @@
     opts.ann.structuresTypes = {
       "pilier-1": document.getElementById("ann_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("ann_structures_pilier-2")?.checked ?? true,
+      "pilier-bras": document.getElementById("ann_structures_pilier-bras")?.checked ?? true,
       "mur":      document.getElementById("ann_structures_mur")?.checked      ?? true,
       "mur-ligne": document.getElementById("ann_structures_mur-ligne")?.checked ?? true,
       "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
@@ -1893,6 +1908,12 @@
       });
       for (const layerCfg of layers) {
         if (!opts.imageLayers[layerCfg.id]) continue;
+        // Opacité du curseur des filtres, comme à l'écran (config.js > getPlanOpaciteCalque) ; restaurée après le
+        // calque pour ne pas délaver ce qui suit (icônes, tracés).
+        const opacite = typeof window.getPlanOpaciteCalque === "function"
+          ? window.getPlanOpaciteCalque(null, layerCfg.id || layerCfg.label) : 1;
+        const alphaAvant = ctx.globalAlpha;
+        if (opacite < 1) ctx.globalAlpha = alphaAvant * opacite;
         try {
           const img = await loadImage(layerCfg.file);
           // Calque calibré (2 ancres) : dessiné avec la transformation affine équivalente (ctx.transform), comme
@@ -1905,6 +1926,7 @@
             ctx.drawImage(img, 0, 0, Wplan, Hplan);
           }
         } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
+        ctx.globalAlpha = alphaAvant;
       }
     }
 
@@ -1996,11 +2018,12 @@
     if (opts.ann.structures && window.getStructures) {
       const structures = window.ktaExportEtatsFiltres(window.getStructures());
       // Fronts : polylignes épaisses sans contour (`weight` converti par `scale`).
-      // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc, + tri par level en multi-niveau
-      // (comme structures.js > renderStructures).
-      const ordreS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5, "arc": 6 };
+      // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 = pilier à bras < front-2 < front-1 < arc, + tri par level en
+      // multi-niveau (comme structures.js > renderStructures).
+      const ordreS = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3, "front-2": 4,
+        "front-1": 5, "arc": 6 };
       const filtreS = opts.ann.structuresTypes || {
-        "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
+        "pilier-1": true, "pilier-2": true, "pilier-bras": true, "mur": true, "mur-ligne": true,
         "front-1":  true, "front-2": true, "arc": true
       };
       // Custom : la géométrie déclarée tranche (polyligne → trait épais, polygone → contour noir), via le gabarit
@@ -2048,10 +2071,11 @@
             ctx.globalAlpha = s.fillOpacity;
             ctx.fill();
             ctx.strokeStyle = s.color;
-            ctx.lineWidth = s.weight * scale;
+            ctx.lineWidth = _contourSurfaceExp(s);
             ctx.globalAlpha = s.opacity;
             ctx.lineJoin = "round";
             ctx.stroke();
+            _croixExp(st.points, s);
           }
           ctx.restore();
         }, st);
@@ -2059,6 +2083,19 @@
     }
 
     // ── Helpers polygones / polylignes ──
+    // Contour d'une surface. 🩸 Carré barré (pilier à bras, 1 m) : la loi de l'écran (structures.js >
+    // ktaBordSurfacePourLargeur, le quart du front) ; à `weight × scale`, contour et croix noircissaient le carré
+    // entier. Les autres surfaces gardent leur contour d'export.
+    function _contourSurfaceExp(style) {
+      if (!style.croix || typeof window.ktaBordSurfacePourLargeur !== "function") return style.weight * scale;
+      return window.ktaBordSurfacePourLargeur(style.weight * scale, _largeurFrontExp(style));
+    }
+    // Croix d'un style barré (pilier à bras), après le contour, à son épaisseur (structures.js > ktaPeindreCroix).
+    function _croixExp(points, style) {
+      if (!style || !style.croix || typeof window.ktaPeindreCroix !== "function") return;
+      window.ktaPeindreCroix(ctx, points.map(function (p) { return { x: sc(p.x), y: sc(p.y) }; }), style.color,
+        _contourSurfaceExp(style), style.opacity);
+    }
     function _drawPolygon(points, style) {
       if (!points || points.length < 3) return;
       ctx.save();
@@ -2072,10 +2109,11 @@
       ctx.globalAlpha = style.fillOpacity;
       ctx.fill();
       ctx.strokeStyle = style.color;
-      ctx.lineWidth = style.weight * scale;
+      ctx.lineWidth = _contourSurfaceExp(style);
       ctx.globalAlpha = style.opacity;
       ctx.lineJoin = "round";
       ctx.stroke();
+      _croixExp(points, style);
       ctx.restore();
     }
     function _drawPolyline(points, style, largeurPx) {
@@ -2217,13 +2255,13 @@
       });
 
       // Structures embarquées : couleurs et ordre Z comme les structures de session (mur < mur-ligne < pilier-2 <
-      // pilier-1 < front-2 < front-1 < arc). Mêmes filtres (opts.ann.structures + structuresTypes) : la modale n'a
-      // qu'un groupe.
+      // pilier-1 = pilier à bras < front-2 < front-1 < arc). Mêmes filtres (opts.ann.structures + structuresTypes) :
+      // la modale n'a qu'un groupe.
       if (opts.ann.structures && embeddedStructures.length > 0) {
-        const ordreS_E = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5,
-          "arc": 6 };
+        const ordreS_E = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3, "front-2": 4,
+          "front-1": 5, "arc": 6 };
         const filtreS_E = opts.ann.structuresTypes || {
-          "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
+          "pilier-1": true, "pilier-2": true, "pilier-bras": true, "mur": true, "mur-ligne": true,
           "front-1":  true, "front-2": true, "arc": true
         };
         const _mlOnEmbS = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -2704,13 +2742,15 @@
             .filter(function(e) { return e.visible; })
             .map(function(e) {
               // Polyligne (front-X : lineColor ; arc : + rayures du canon) ou polygone (pilier-X / mur : fillColor
-              // + borderColor).
+              // + borderColor ; pilier à bras : + croix du canon).
               if (e.lineColor) return { label: e.label, lineColor: e.lineColor, rayures: _rayuresDe(e.key) };
-              return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor };
+              return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor, croix: _croixDe(e.key) };
             })
         : [
             { label: window.I18n.t("imgexport.legLabel.pilier1"), fillColor: "#f4c542", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.pilier2"), fillColor: "#ff9933", borderColor: "#000000" },
+            { label: window.I18n.t("imgexport.legLabel.pilierBras"), fillColor: "#f4c542", borderColor: "#000000",
+              croix: true },
             { label: window.I18n.t("imgexport.legLabel.mur"),     fillColor: "#1e3a8a", borderColor: "#000000" },
             { label: window.I18n.t("imgexport.legLabel.murLigne"), lineColor: "#1e3a8a" },
             { label: window.I18n.t("imgexport.legLabel.front1"),  lineColor:  "#f4c542" },
@@ -2955,6 +2995,10 @@
               ctx.strokeStyle = l.borderColor;
               ctx.lineWidth = 2;
               ctx.strokeRect(xCol, yLine, ic, ic);
+            }
+            if (l.croix && typeof window.ktaPeindreCroix === "function") {
+              window.ktaPeindreCroix(ctx, [{ x: xCol, y: yLine }, { x: xCol + ic, y: yLine },
+                { x: xCol + ic, y: yLine + ic }, { x: xCol, y: yLine + ic }], l.borderColor || "#000000", 2, 1);
             }
             ctx.restore();
           }

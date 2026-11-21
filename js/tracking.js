@@ -275,7 +275,7 @@ window._applyLevelFilterToTracker = _appliquerFiltreNiveauSurTracker;
 // Type → forme de l'obstacle (true = polygone fermé, false = ligne).
 // ⚠️ `arc` (arc de soutènement) absent exprès : on passe dessous, ni le tracker ni la vue 3D ne s'y arrêtent.
 const _OBST_TYPES = {
-  "pilier-1": true, "pilier-2": true, "mur": true,
+  "pilier-1": true, "pilier-2": true, "pilier-bras": true, "mur": true,
   "front-1": false, "front-2": false, "mur-ligne": false
 };
 // Types personnalisés (`cust-…`) : ignorés par le tracker (décision produit), comptés seulement à la demande

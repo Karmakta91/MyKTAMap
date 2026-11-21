@@ -2259,9 +2259,10 @@ function initInterface() {
       _historyUiSubBound = true;
       window.HistoryManager.onChange(function(state) {
         if (_syncHistoryUiRef) _syncHistoryUiRef(state);
-        // 🩸 Undo jusqu'à VIDER une forme en cours : _applyState remet le mode à null sans toucher
-        // au bouton, resté kta-actif (« allumé mais mort »). Bouton actif + mode éteint → on ferme.
-        // Exact car _applyState restaure le mode tant qu'il reste une forme en cours ; et
+        // 🩸 Undo qui sort du mode (rien en cours avant comme après) : _applyState remet le mode à null
+        // sans toucher au bouton, resté kta-actif (« allumé mais mort »). Bouton actif + mode éteint → on
+        // ferme. Exact car _applyState garde le mode s'il y a une forme en cours après, ou avant (⏪ de
+        // son premier point, ⏩ de sa fin : historyManager.js > _formeEnCours) ; et
         // desactiverFn ne bascule que `if (window.modeX)`, donc ne ré-arme pas l'outil.
         try {
           if (_modesActifs["road"]      && !window.modeRoad)      _fermerModeRoad();
@@ -2836,8 +2837,9 @@ _setGroupeModeActif("tracker", isTracking, null);
   }
 
   _sousActionsTraces.push(
-    // Valider : clôt le tracé en cours, quel que soit son type (custom compris) = re-clic sur le
-    // type actif (le tracé reste dans roadsData). Sans isTypeAction → après le séparateur.
+    // Valider : termine le tracé en cours, quel que soit son type (custom compris), et l'outil reste armé
+    // (décision produit, comme celui de Structures) ; retoucher le type actif l'éteint. La jonction, saisie à part
+    // avec ses deux niveaux, s'éteint. Sans isTypeAction → après le séparateur.
     { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.trace.valider"),
       onClick: function() {
         if (!window.modeRoad) {
@@ -2848,7 +2850,11 @@ _setGroupeModeActif("tracker", isTracking, null);
           );
           return;
         }
-        _fermerModeRoad();
+        if (window.modeRoad === "jonction" || typeof window.ktaTerminerTraceEnCours !== "function") {
+          _fermerModeRoad();
+          return;
+        }
+        window.ktaTerminerTraceEnCours();
       }
     },
       // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.
@@ -3125,6 +3131,15 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (structures.js) : c'est la masse inférieure vue depuis le niveau actif.
       { icone: "🟠", dynamicIcon: function() { return _iconeType("structures", "pilier-2", "🟠"); }, titre: window.I18n.t("ui.struct.pilier2"), dynamicTitre: function() { return _titreType("structures", "pilier-2", window.I18n.t("ui.struct.pilier2")); }, isTypeAction: true, typeKey: "pilier-2",
         onClick: function(btn) { _activerStructure("pilier-2", btn, _iconeType("structures", "pilier-2", "🟠")); } },
+      // Pilier à bras : posé d'UN clic, carré de 1 m barré d'une croix (structures.js > POSE_UN_CLIC).
+      { icone: window.ktaIcone("m-pilier-bras"),
+        dynamicIcon: function() { return _iconeType("structures", "pilier-bras", window.ktaIcone("m-pilier-bras")); },
+        titre: window.I18n.t("ui.struct.pilierBras"),
+        dynamicTitre: function() { return _titreType("structures", "pilier-bras", window.I18n.t("ui.struct.pilierBras")); },
+        isTypeAction: true, typeKey: "pilier-bras",
+        onClick: function(btn) {
+          _activerStructure("pilier-bras", btn, _iconeType("structures", "pilier-bras", window.ktaIcone("m-pilier-bras")));
+        } },
       // Mur : rond bleu, à ne pas confondre avec le carré 🟦 de la zone eau.
       { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), dynamicTitre: function() { return _titreType("structures", "mur", window.I18n.t("ui.struct.mur")); }, isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
