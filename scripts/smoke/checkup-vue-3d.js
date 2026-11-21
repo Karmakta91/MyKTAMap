@@ -23971,6 +23971,11 @@ async function sectionCaseBoutonsZoom(nav) {
       await sectionSautCarnet(page);
       await sectionPlanSolNiveaux(page);
     }
+    // 🩸 La page principale ne sert plus : la suite ouvre chaque section suivante dans son propre contexte. Gardée
+    // ouverte, elle restait inactive jusqu'à la fin avec tout ce que les sections y ont chargé (mesuré : ~0,6 Go sous
+    // Chromium, 3 Go et plus sous WebKit), la moitié d'une longue suite. Ses erreurs sont déjà relevées
+    // (erreurs, consoleErr), jugées à la fin.
+    await contexte.close();
     if (!SEUL || SEUL === "sol") await sectionPlanSolEcranDense(nav);
     if (SEUL === "massesol" && process.env.KTA_V3D_PERF === "masse") await perfMasseSol(nav);
     if (!SEUL || SEUL === "textures") await sectionTexturesSol(nav);
