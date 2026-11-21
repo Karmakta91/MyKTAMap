@@ -79,6 +79,37 @@ sans cela. Preuve : `scripts/smoke/checkup-dessin-sans-fiche.js` (2D et 3D, doig
 
 ---
 
+### 🔗 Enchaîner les tracés : fin d'un objet, outil armé
+
+**Règle (décision produit)** : finir un objet ne désarme jamais l'outil ; le toucher suivant commence un nouvel objet
+du même type. Seul le re-toucher du type actif (ou un autre outil, Échap) éteint l'outil.
+
+| Famille | Terminer en touchant | ✅ du panneau |
+|---|---|---|
+| Tracés (principal, secondaire, chemin, types perso) | le **dernier** sommet posé | termine, outil armé (`road.js > ktaTerminerTraceEnCours`) |
+| Lignes de Structures (fronts, mur en ligne, arc, lignes perso) | le **dernier** sommet posé | termine, outil armé (`fermerStructureEnCours`) |
+| Zones, polygones de Structures | le **1er** sommet (≥ 3 points) | ferme, outil armé |
+| Pilier à bras | — (posé d'un clic, rien en cours) | — |
+| Jonction | rien : chaque toucher est un sommet | éteint l'outil (saisie à part, ses deux niveaux) |
+
+- Tolérance : `utils.js > ktaRetoucheDernierSommet`, le rayon de `ktaToleranceFermeture` (mètres du plan, plancher en
+  px d'écran ; les mètres seuls dans la vue 3D, qui rejoue le geste de la carte et voit l'objet fini).
+- 🩸 Testée **avant** le magnétisme des tracés (`road.js > _snapSurSommetProche`), qui pourrait déplacer le point.
+  Le 1er sommet d'un tracé reste un point ordinaire : y revenir ferme une boucle de galerie (le magnétisme s'y
+  accroche) ; le retoucher ensuite, devenu le dernier, termine.
+- Un tracé ou une ligne d'un seul point retouché ne reste pas en données (entrée « Abandonner » de l'historique).
+- Terminer est une **étape de l'historique** : ⏪ rend l'index de l'objet en cours (`HistoryManager >
+  currentRoadIndex / currentStructureIndex`) et garde l'outil armé ; le toucher suivant prolonge l'objet.
+- 🩸 Retoucher vite = double clic : `utils.js > ktaAvalerDoubleClic` coupe le zoom au double clic le temps de
+  l'avaler (sinon la carte zoome à la fin de chaque tracé).
+- Les autres appelants de `_fermerModeRoad` (suppressions qui vident le tracé en cours, Effacer tout, §23) éteignent
+  toujours l'outil.
+
+Preuve : `scripts/smoke/checkup-enchainer-traces.js` (vrais clics : 3 tracés puis 3 fronts et un mur en ligne
+enchaînés, boucle, double clic, ✅, ⏪, zone, pilier, pilier à bras et jonction inchangés).
+
+---
+
 ### 35. Modales custom pour re-sélection ZIP (depuis v172)
 
 Remplacement des `confirm()` natifs OS dans `reSelectionnerZipPourPlan` (index.html) par des modales custom respectant la charte graphique du projet. Plus important : changement **fonctionnel** sur le cas "nom différent" — refus définitif au lieu de "Charger quand même".

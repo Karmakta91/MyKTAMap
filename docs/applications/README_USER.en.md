@@ -732,7 +732,7 @@ Where and how a way through is drawn:
 - Each button opens **the same menu as on the map**: pillars, walls, working faces, your custom types, ➕ new type, ✅ Close / Validate.
 - Nothing is drawn until a tool is chosen. **Choosing a tool is enough**: a tap places a point where you touch. Dragging, pinching and the mouse wheel still move the view, without placing a point.
 - **Closing a pillar, a wall or a zone**: tap the **gold circle** of the first point, or ✅ in the menu. For a thin wall, zoom in first: the circle grows with the view.
-- A path or a working face ends with ✅. The tool stays chosen so you can carry on, as on the map.
+- A path or a working face ends when you **tap its last point again**, or with ✅. The tool stays chosen so you can carry on, as on the map.
 - **✏️ Add a point**: touch the ground where it goes; the map's window opens over the view (name, type, photos), by finger or keyboard. The point takes **the 3D level** and appears in the scene; ⏪ undoes it.
 - The object is **the map's own**: same card, same colours, ⏪ Undo. It takes **the level of the 3D view**; the map keeps its level.
 - While drawing, a **line on the ground** shows the object; it stands up in relief when finished.
@@ -979,7 +979,7 @@ In the **🛣️ Paths** group:
 - **🟩 Main road**, **🟪 Secondary road**, **🟨 Path**
 - **🪜 Inter-level junction** — on a multi-level map only (see 🏗️ Multi-level mode)
 
-Press a type, tap the map point by point, then press the type again (or **✅ Confirm the current path**) to finish.
+Press a type and tap the map point by point. To finish the path, **tap its last point again** (or press **✅ Confirm the current path**): the tool stays on, and the next tap starts the next path of the same type. Tapping the **first** point again adds a point instead: that is how you close a loop of gallery. ⏪ right after finishing reopens the path so you can extend it. Press the type again to turn the tool off. 🪜 Junction is the exception: every tap is a point, and ✅ finishes it and turns the tool off.
 
 ---
 
@@ -1037,7 +1037,7 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 | 🟧 **2nd-mass quarry face** | line | orange stroke |
 | **Support arch** — a single arch set from one wall of the gallery to the other | line | thin blue stroke striped red |
 
-Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. A pillar or a wall also closes when you tap its **first** point again; a quarry face, a wall (line) or an arch finishes when you tap its **last** point again (⏪ right after reopens it). After ✅ or that tap, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
 A **hand-built pillar** is placed with **a single tap**: a 1 m square (at the map's scale), centred where you tap, its sides aligned with the map, on the active level. The tool stays on: each tap places another pillar, ⏪ removes the last one. Its vertices can then be adjusted like those of the other pillars. Like them, it has no effect on the route, stops the tracker, stands as a block in the 3D view and counts as a pillar in the Mined volume. On the map, in the legend and in image and PDF exports it is a yellow square with a thin cross; KMZ and the OSM view show it plain. Detection never offers it.
 

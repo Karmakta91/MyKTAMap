@@ -732,7 +732,7 @@ Où et comment un passage se dessine :
 - Chaque bouton ouvre **le même menu que sur la carte** : piliers, murs, fronts de taille, tes types perso, ➕ nouveau type, ✅ Fermer / Valider.
 - Rien ne se dessine tant qu'aucun outil n'est choisi. **Choisir un outil suffit** : un toucher pose un point là où tu touches. Glisser, pincer et la molette bougent toujours la vue, sans poser de point.
 - **Fermer un pilier, un mur ou une zone** : touche le **rond doré** du premier point, ou ✅ dans le menu. Pour un mur fin, zoome d'abord : le rond grandit avec la vue.
-- Un tracé ou un front se termine par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
+- Un tracé ou un front se termine en **re-touchant son dernier point**, ou par ✅. L'outil reste choisi pour enchaîner, comme sur la carte.
 - **✏️ Ajouter un point** : touche le sol là où il va ; la fenêtre de la carte s'ouvre par-dessus la vue (nom, type, photos), au doigt comme au clavier. Le point prend **le niveau de la 3D** et paraît dans la scène ; ⏪ l'annule.
 - L'objet est **celui de la carte** : même fiche, mêmes couleurs, ⏪ Annuler. Il prend **le niveau de la 3D** ; la carte, elle, ne change pas de niveau.
 - Pendant le dessin, un **trait au sol** montre l'objet ; il apparaît en relief à sa fin.
@@ -979,7 +979,7 @@ Dans le groupe **🛣️ Tracés** :
 - **🟩 Route principale**, **🟪 Route secondaire**, **🟨 Chemin**
 - **🪜 Jonction interniveau** — sur un plan multi-niveau seulement (voir 🏗️ Mode multi-niveau)
 
-Appuie sur un type, tape le plan point par point, puis re-appuie sur le type (ou sur **✅ Valider le tracé en cours**) pour terminer.
+Appuie sur un type et tape le plan point par point. Pour terminer le tracé, **re-tape son dernier point** (ou appuie sur **✅ Valider le tracé en cours**) : l'outil reste allumé, le toucher suivant commence le tracé suivant du même type. Re-taper le **premier** point, lui, ajoute un point : c'est ainsi qu'on referme une boucle de galerie. ⏪ juste après la fin rouvre le tracé pour le prolonger. Re-appuie sur le type pour éteindre l'outil. La 🪜 Jonction fait exception : chaque toucher est un point, et ✅ la termine en éteignant l'outil.
 
 ---
 
@@ -1037,7 +1037,7 @@ Pour les carrières : les éléments porteurs et l'avancement de l'exploitation,
 | 🟧 **Front de taille 2e masse** | ligne | trait orange |
 | **Arc de soutènement** — un arc isolé posé d'une paroi à l'autre de la galerie | ligne | trait bleu fin rayé de rouge |
 
-Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Un pilier ou un mur se ferme aussi en re-tapant son **premier** point ; un front, un mur (ligne) ou un arc se termine en re-tapant son **dernier** point (⏪ juste après le rouvre). Après ✅ ou ce re-tap, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
 
 Un **pilier à bras** se pose d'**un seul toucher** : un carré de 1 m de côté (à l'échelle du plan), centré là où tu touches, côtés alignés sur le plan, au niveau actif. L'outil reste allumé : chaque toucher pose un autre pilier, ⏪ retire le dernier. Ses sommets s'ajustent ensuite comme ceux des autres piliers. Comme eux, il n'a aucun effet sur l'itinéraire, arrête le tracker, se dresse en bloc dans la vue 3D et compte comme pilier dans le Volume exploité. Sur la carte, la légende et les exports image et PDF, c'est un carré jaune barré d'une croix fine ; le KMZ et la Vue OSM le montrent plein. La détection ne le propose jamais.
 

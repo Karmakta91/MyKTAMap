@@ -948,7 +948,7 @@ CSS dédié : `.kta-group-flyout` + sous-classes + variants thème clair. Scroll
 
 **`_setGroupeModeActif`** : skip `_ouvrirGroupe(id)` pour les groupes flyout (pas d'expansion accordéon).
 
-**Bouton ✅ Valider tracé** ajouté (équivalent strict re-clic type actif via `_fermerModeRoad`). Cohérence 3 groupes : `[types built-in] + [séparateur] + [customs ✨] + [✅ Valider/Fermer] + [🧹 Effacer]`.
+**Bouton ✅ Valider tracé** : termine le tracé en cours et garde l'outil armé (`ktaTerminerTraceEnCours` ; jonction : éteint), cf. `ui.md` § Enchaîner les tracés. Cohérence 3 groupes : `[types built-in] + [séparateur] + [customs ✨] + [✅ Valider/Fermer] + [🧹 Effacer]`.
 
 **Fix message structures Fermer pour customs polyline** : utilise `window.isStructurePolylineType()` qui consulte LC (avant hardcodé `front-1 || front-2`).
 

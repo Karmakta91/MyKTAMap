@@ -732,7 +732,7 @@ Dónde y cómo se dibuja un paso:
 - Cada botón abre **el mismo menú que en el mapa**: pilares, muros, frentes de corte, tus tipos personalizados, ➕ nuevo tipo, ✅ Cerrar / Validar.
 - No se dibuja nada mientras no elijas una herramienta. **Elegir una herramienta basta**: un toque pone un punto donde tocas. Deslizar, pellizcar y la rueda siguen moviendo la vista, sin poner puntos.
 - **Cerrar un pilar, un muro o una zona**: toca el **círculo dorado** del primer punto, o ✅ en el menú. Para un muro fino, acerca la vista antes: el círculo crece con ella.
-- Un trazado o un frente se termina con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
+- Un trazado o un frente se termina **volviendo a tocar su último punto**, o con ✅. La herramienta sigue elegida para encadenar, como en el mapa.
 - **✏️ Añadir un punto**: toca el suelo donde va; la ventana del mapa se abre sobre la vista (nombre, tipo, fotos), con el dedo o con el teclado. El punto toma **el nivel de la 3D** y aparece en la escena; ⏪ lo deshace.
 - El objeto es **el del mapa**: misma ficha, mismos colores, ⏪ Deshacer. Toma **el nivel de la 3D**; el mapa conserva el suyo.
 - Mientras dibujas, una **línea en el suelo** muestra el objeto; aparece en relieve al terminar.
@@ -979,7 +979,7 @@ En el grupo **🛣️ Trazados**:
 - **🟩 Ruta principal**, **🟪 Ruta secundaria**, **🟨 Camino**
 - **🪜 Unión entre niveles** — solo en un mapa multinivel (ver 🏗️ Modo multinivel)
 
-Pulsa un tipo, toca el mapa punto a punto y vuelve a pulsar el tipo (o **✅ Validar el trazado en curso**) para terminar.
+Pulsa un tipo y toca el mapa punto a punto. Para terminar el trazado, **vuelve a tocar su último punto** (o pulsa **✅ Validar el trazado en curso**): la herramienta sigue encendida y el toque siguiente empieza el trazado siguiente del mismo tipo. Volver a tocar el **primer** punto, en cambio, añade un punto: así se cierra un bucle de galería. ⏪ justo después de terminar reabre el trazado para prolongarlo. Vuelve a pulsar el tipo para apagar la herramienta. La 🪜 Unión es la excepción: cada toque es un punto, y ✅ la termina apagando la herramienta.
 
 ---
 
@@ -1037,7 +1037,7 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 | 🟧 **Frente de cantera 2ª masa** | línea | trazo naranja |
 | **Arco de sostenimiento** — un arco aislado colocado de una pared a otra de la galería | línea | trazo azul fino rayado de rojo |
 
-Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Un pilar o un muro se cierra también volviendo a tocar su **primer** punto; un frente, un muro (línea) o un arco se termina volviendo a tocar su **último** punto (⏪ justo después lo reabre). Tras ✅ o ese toque, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
 
 Un **pilar hecho a mano** se coloca con **un solo toque**: un cuadrado de 1 m de lado (a la escala del mapa), centrado donde tocas, con los lados alineados con el mapa, en el nivel activo. La herramienta sigue encendida: cada toque coloca otro pilar, ⏪ quita el último. Sus vértices se ajustan luego como los de los demás pilares. Como ellos, no tiene ningún efecto en el itinerario, detiene al rastreador, se levanta como un bloque en la vista 3D y cuenta como pilar en el Volumen explotado. En el mapa, la leyenda y las exportaciones de imagen y PDF es un cuadrado amarillo con una cruz fina; el KMZ y la Vista OSM lo muestran lleno. La detección nunca lo propone.
 
