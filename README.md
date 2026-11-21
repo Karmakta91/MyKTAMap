@@ -689,6 +689,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-jonction-fiche.js` | Fiche d'une jonction inter-niveau, « Effacer la session » depuis Détails de la session |
 | `smoke/checkup-langues.js` | Changer de langue ne fait pas basculer l'Aide ni la Documentation dans une autre |
 | `smoke/checkup-rognage.js` | Rognage automatique du Générateur : calques décalés ou laissés en nouveau plan, repère gardé en mise à jour et en régénération V1 → V2 |
+| `smoke/checkup-maxbounds.js` | Limites de la carte = image ∪ calques de niveau calés (décalé, agrandi, tourné) : coins atteints au zoom max et par glissé, molette et pincement (contexte tactile) sur la partie hors de l'image, fond OSM, plan orienté, calque repositionné, sans calage au pixel près, plan suivant ouvert pendant un chargement tardif ; Chromium et WebKit |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
 | `smoke/checkup-georef-reglages.js` | Calage modifié dans les Réglages : gagne sur le calage embarqué (mémoire, registre, fond OSM sans rallumer, Secours, plan rouvert, « Mettre à jour le plan »), calage périmé écarté |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |

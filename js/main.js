@@ -35,7 +35,7 @@ async function initDataFromConfig() {
   window._ktaDataPolygons  = [];
   window._ktaDataStructurePolygons = [];
   // 🩸 Ne PAS vider window._ktaImageOverlays ici : initDataFromConfig tourne APRÈS initMapFromConfig, qui vient de
-  // le remplir (reset fait dans map.js juste avant les push). Le vider casse les cases imageLayer du filtre.
+  // le remplir (reset fait dans map.js avant la création de la carte). Le vider casse les cases imageLayer du filtre.
   // Ghosts note du data layer KMZ : sinon références mortes vers les layerGroups du plan précédent (utils.js).
   if (typeof window._kta_resetDataLayerNoteGhosts === "function") {
     window._kta_resetDataLayerNoteGhosts();
