@@ -13,6 +13,11 @@
   lettre, d'un massif ouvert ou d'un morceau de galerie (essai du 21/11/2026 sur un plan aux galeries contourées :
   88 % d'objets faux). Pistes : compacité, contact avec une galerie, écarter le texte. Déclencheur : un plan de
   ce type à monter pour de vrai, ou le remplir au clic jugé insuffisant.
+- **Largeur des galeries** — plans où les galeries ont des largeurs très variables (réseaux étrangers, grottes) : les
+  murs sont lourds, le tracé perd la largeur. Retenu (21/11/2026) : largeur portée par le tracé (par tracé, puis par
+  sommet), bande sur la carte, parois 3D et passage étroit pour l'itinéraire ; saisie manuelle possible, mais la
+  lecture sur l'image (remplir la galerie → axe + largeur) conditionne l'intérêt (lot L). Contour du vide écarté.
+  Déclencheur : un besoin réel au-delà de l'essai privé.
 - **Adresse de contact de l'installation** — `contact@myktamap.fr` est en dur (`index.html` ×2, dicos ×3, guide ×3).
   Idée : un champ ConfAdmin → `index.json > config`, repli sur l'adresse actuelle ; trancher quelles mentions
   suivent (crédit, licence, `NETWORK_AUDIT` restent). Déclencheur : une installation tierce qui le demande.
