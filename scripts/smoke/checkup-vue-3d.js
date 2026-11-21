@@ -2708,6 +2708,9 @@ async function sectionPente(page) {
       for (let i = 0; i < n; i++) {
         const okPas = K.avancer(0.25);
         await pause(40);
+        // 🩸 Au moins deux images après le pas : sous charge, une image dépasse 40 ms et la caméra lue avait un pas
+        // de retard (WebKit).
+        await new Promise(function (ok) { requestAnimationFrame(function () { requestAnimationFrame(ok); }); });
         const e = e0();
         rel.push({ z: +(e.pos.y / sc - oz).toFixed(3), niveau: e.niveau, cam: e.cameraY, oeil: e.oeil,
           dy: e.pente.dy, sur: e.pente.sur, geste: !!e.geste, fondu: e.fondu, ok: okPas });
@@ -3144,6 +3147,9 @@ async function sectionMasseSol(page) {
       for (let i = 0; i < n; i++) {
         const ok = K.avancer(pas || 0.1);
         await pause(25);
+        // 🩸 Caméra replacée à l'image qui suit le pas : 25 ms ne suffisent pas à une image lente (WebKit, rendu
+        // logiciel), la caméra lue avait un pas de retard. Deux images, comme ici().
+        await new Promise(function (ok2) { requestAnimationFrame(function () { requestAnimationFrame(ok2); }); });
         const l = lire();
         l.ok = ok;
         rel.push(l);
