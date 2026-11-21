@@ -11,7 +11,9 @@
  * plus grande que la marge signalée et jamais coupée, masse coupée par le cadre demandé rendue entière, lecture
  * à résolution réduite, réglages en mètres, annulation, worker (message → résultat). Fronts : trait droit et en L,
  * trait de la couleur d'un pilier (le pilier reste une masse, le trait ne le traverse pas), ergot, bruit, trait sur
- * plusieurs blocs raccordé. Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
+ * plusieurs blocs raccordé, pilier de la couleur du trait écarté par la taille (reste retiré du trait) ; passe
+ * mixte (pilier clair cerné + front fin) : traits entiers, indépendants de la taille minimale, sur petits blocs aussi.
+ * Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
  * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
  * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
@@ -394,6 +396,15 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   const entre = r.traits.some(traverse);
   t("trait de la couleur d'un pilier : le pilier reste une masse, le trait ne passe pas dedans",
     r.masses.length === 1 && r.traits.length >= 1 && !entre, { masses: r.masses.length, traits: r.traits.length });
+  const nTraverse = r.traits.length;
+  // le même pilier écarté par la taille (minimale ou maximale) reste retiré du trait : il n'en devient pas un front
+  for (const [nom, rg] of [["minimale", { aireMin: 5000, ouverture: 7 }], ["maximale", { aireMin: 100, ouverture: 7,
+    aireMax: 1000 }]]) {
+    r = await lancerT(image(400, 200).rect(20, 98, 360, 4, ORANGE).rect(160, 70, 60, 60, ORANGE), { reglages: rg });
+    t("trait de la couleur d'un pilier écarté par la taille " + nom + " : aucun pilier, mêmes fronts (" +
+      r.traits.length + "), aucun ne passe dedans", r.masses.length === 0 && r.traits.length === nTraverse &&
+      !r.traits.some(traverse), { masses: r.masses.length, traits: r.traits.map(bornes) });
+  }
   r = await lancerT(image(400, 200).rect(20, 98, 360, 4, ORANGE).rect(160, 70, 60, 60, ORANGE),
     { classes: [AT[1]] });
   t("contre-épreuve : sans classe de masse, le squelette du pilier rentre dans le trait",
@@ -612,6 +623,44 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   t("contre-épreuve : les deux anciennes règles (exemple sur le trait + ancien plafond) → taille " + ddAnc.taille +
     " px, tolérance " + ddAnc.tolerances.a + ", " + bAnc.piliers + "/" + nPt + " piliers, " + bAnc.morceaux +
     " morceaux", ddAnc.taille <= 2 && bAnc.morceaux > 0.05 * nPt, bAnc);
+
+  // ── Passe mixte : piliers clairs cernés ET fronts fins dans la même détection ──
+  // Galerie entre deux traits noirs de 3 px, pilier blanc cerné d'un rectangle noir de 3 px dedans. Le fond et la
+  // galerie, du blanc des piliers, sont écartés par la taille maximale : ils ne doivent pas effacer les traits. Le
+  // cerne du pilier sort aussi en front (comme en passe Front seule) : une masse ne retire que sa couleur.
+  const mx = image(400, 300).rect(20, 120, 360, 3, NOIR).rect(20, 163, 360, 3, NOIR).anneau(180, 130, 46, 26, 3, NOIR);
+  const exMxP = D.mesurerExemple(lecteurSync(mx), 200, 143);
+  const exMxF = D.mesurerExemple(lecteurSync(mx), 100, 121, { nature: "trait" });
+  const ddMx = D.reglagesDepuisExemples({ a: [exMxP], f: [exMxF] }, { a: "masse", f: "trait" });
+  const longueur = tr => tr.points.reduce((s, p, i) => i ? s + Math.hypot(p.x - tr.points[i - 1].x,
+    p.y - tr.points[i - 1].y) : 0, 0);
+  const longueurs = rr => Math.round(rr.traits.reduce((s, x) => s + longueur(x), 0));
+  const mixte = (taille, blocs) => lancer(mx, { classes: [
+    { id: "a", couleurs: [exMxP.rgb], tolerance: ddMx.tolerances.a },
+    { id: "f", nature: "trait", couleurs: [exMxF.rgb], tolerance: ddMx.tolerances.f }],
+  reglages: Object.assign({ aireMax: ddMx.tailleMax * ddMx.tailleMax }, D.reglagesPourTaille(taille), blocs || {}) });
+  const mur = (tr, y) => Math.abs(bornes(tr)[1] - y) <= 2 && Math.abs(bornes(tr)[3] - y) <= 2 &&
+    bornes(tr)[0] <= 24 && bornes(tr)[2] >= 376;
+  const dansPilier = tr => bornes(tr)[0] >= 178 && bornes(tr)[1] >= 128 && bornes(tr)[2] <= 228 &&
+    bornes(tr)[3] <= 158;
+  const deuxMurs = rr => rr.masses.length === 1 && rr.traits.some(x => mur(x, 121.5)) &&
+    rr.traits.some(x => mur(x, 164.5)) && rr.traits.every(x => mur(x, 121.5) || mur(x, 164.5) || dansPilier(x));
+  r = await mixte(ddMx.taille);
+  t("passe mixte (exemple de pilier clair cerné + exemple de front) : les 2 traits de la galerie sortent en entier, " +
+    "le pilier est trouvé, rien d'autre que son cerne (" + r.traits.length + " front(s), " + longueurs(r) + " px)",
+  exMxP && exMxP.cerne && deuxMurs(r), { exemples: [exMxP, exMxF], masses: r.masses.map(boiteDe),
+    traits: r.traits.map(bornes) });
+  const parTaille = [];
+  for (const tl of [5, 9, ddMx.taille, 25]) {
+    const x = await mixte(tl);
+    parTaille.push([tl, x.masses.length, x.traits.length, longueurs(x)]);
+  }
+  t("passe mixte : nombre et longueur des fronts indépendants de la taille minimale des piliers " +
+    "([taille, piliers, fronts, px] " + JSON.stringify(parTaille) + ")",
+  parTaille.every(v => v[1] === 1 && v[2] === parTaille[0][2] && v[3] === parTaille[0][3]), parTaille);
+  r = await mixte(ddMx.taille, { bloc: 128, marge: 64 });
+  t("passe mixte sur petits blocs (128 px, marge 64) : mêmes 2 traits entiers après raccord, 1 pilier", deuxMurs(r),
+    { masses: r.masses.length, traits: r.traits.map(bornes) });
 
   // Pilier blanc touché au centre, fenêtre au fond lu GRIS (plan au trait serré) : le seuil tiré de l'écart au fond
   // tombait sous le bruit et la composante n'était qu'un lambeau du pilier.

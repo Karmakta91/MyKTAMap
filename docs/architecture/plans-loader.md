@@ -885,11 +885,18 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
   la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
 - **Fronts** (classe `nature: "trait"`) : 🩸 un trait a souvent la couleur d'un pilier, il ne concourt donc pas
-  avec les masses pour un pixel : couleur du trait MOINS les masses (après ouverture, dilatées de `ecartMasse` 2 px),
-  fermeture de 3 px, squelette Zhang-Suen, chemins entre bouts et carrefours (ergots < `ergot` 15 px et bruit <
+  avec les masses pour un pixel : couleur du trait MOINS les masses **de sa couleur** (`_masseDuTrait` : composantes
+  après ouverture, de toute taille, dont la moitié au moins des pixels est dans le masque du trait ; dilatées de
+  `ecartMasse` 2 px), fermeture de 3 px, squelette Zhang-Suen, chemins entre bouts et carrefours (ergots < `ergot` 15 px et bruit <
   `longueurMin` 20 px retirés), Douglas-Peucker. 🩸 Chaque bloc découpe ses traits à son cœur (Liang-Barsky : un
   segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
   les morceaux bout à bout (même classe, bouts à moins de 2 px).
+  ⚠️ (décision produit) Une masse d'une autre couleur ne retire rien d'un front, et les curseurs de taille (minimale,
+  maximale) ne changent pas les fronts : un pilier de la couleur du front écarté par un curseur reste retiré. 🩸 Retirer
+  toutes les masses effaçait les fronts fins d'une passe mixte (pilier clair cerné + front) : le fond et les galeries
+  du blanc des piliers, écartés par la taille maximale mais dilatés quand même, mangeaient tout trait de 3 px bordé de
+  blanc, et la taille minimale changeait le nombre de fronts. Conséquence : dans une passe mixte, le trait qui cerne
+  un pilier clair sort aussi en front, comme dans une passe Front seule (à retirer dans l'aperçu au besoin).
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
   `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
   d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par

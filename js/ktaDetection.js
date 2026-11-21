@@ -9,7 +9,7 @@
 // Méthode : chaque pixel → classe de couleur (écart ΔE en Lab aux exemples de la pipette), ouverture morphologique
 // (carré de côté `ouverture` : retire moucheté, traits creux, appendices), composantes d'aire ≥ `aireMin`, contour
 // extérieur suivi sur les BORDS des pixels (aire exacte), Douglas-Peucker à `simplification`.
-// Traits (classe nature "trait") : couleur du trait MOINS les masses pleines, fermeture, squelette (Zhang-Suen),
+// Traits (classe nature "trait") : couleur du trait MOINS les masses de sa couleur, fermeture, squelette (Zhang-Suen),
 // chemins sans ergots ni bruit, découpés au cœur du bloc puis raccordés bout à bout entre blocs.
 // Bandes de la couleur des piliers (galerie, mur en trait) retirées par leur forme (_retirerBandes : tronçons du
 // squelette d'épaisseur constante plus longs que 4 × cette épaisseur).
@@ -228,7 +228,7 @@
     const masses = [], tropGrands = [];
     let ignorees = 0, ecartees = 0;
     const m = new Uint8Array(N), tmp = new Uint8Array(N), vu = new Uint8Array(N), pile = new Int32Array(N);
-    const pleins = clTraits.length ? new Uint8Array(N) : null;   // masses après ouverture, retirées des traits
+    const pleins = clTraits.length ? new Uint8Array(N) : null;   // masses après ouverture (toutes tailles)
     const trouMax = Math.max(0, Math.round((o.reglages.trouMax === undefined ? REGLAGES.trouMax : o.reglages.trouMax) *
       e * e));
     for (let c = 1; c <= clMasses.length; c++) {
@@ -277,7 +277,8 @@
     clTraits.forEach(function (cl) {
       const dedans = _tableClasses([cl]);
       for (let i = 0, k = 0; i < N; i++, k += 4) m[i] = d[k + 3] >= 128 && dedans(d[k], d[k + 1], d[k + 2]) ? 1 : 0;
-      _traitsBloc(m, tmp, pleins, W, H, o, e).forEach(function (pts) {
+      const retirer = pleins ? _masseDuTrait(m, pleins, W, H, vu, pile) : null;
+      _traitsBloc(m, tmp, retirer, W, H, o, e).forEach(function (pts) {
         traits.push({ classe: cl.id, points: pts });
       });
     });
@@ -502,12 +503,40 @@
     if (cur) out.push(cur);
     return out.filter(function (p) { return p.length >= 2; });
   }
-  // Traits d'un masque : moins les masses (dilatées), fermeture de 3 px (trous d'anticrénelage), squelette, chemins
-  // sans ergots ni bruit, simplifiés, rendus en pixels du plan et découpés au cœur du bloc.
-  function _traitsBloc(T, tmp, pleins, W, H, o, e) {
+  // Masses à retirer du masque T d'un trait : les composantes de `pleins` dont la moitié au moins des pixels est dans
+  // T (masse de la couleur du trait), quelle que soit leur taille. → nouveau masque ; `vu` et `pile` sont réutilisés
+  // (`pile` sert de file : la composante en cours est pile[0..n[).
+  // ⚠️ contrat (décision produit) : une masse ne retire d'un front que si elle en a la couleur, gardée ou non par
+  //   les tailles minimale et maximale ; les curseurs de taille ne changent donc pas les fronts. Le trait qui cerne
+  //   un pilier clair sort en front, comme dans une passe Front seule.
+  // 🩸 Retirer toutes les masses effaçait les fronts fins d'une passe mixte : le fond et les galeries du blanc des
+  //   piliers clairs cernés, dilatés de ecartMasse, mangeaient tout trait de 3 px bordé de blanc. Ne retirer que les
+  //   masses gardées faisait revenir en front le squelette d'un pilier de la couleur du front écarté par un curseur.
+  function _masseDuTrait(T, pleins, W, H, vu, pile) {
+    const N = W * H, out = new Uint8Array(N);
+    vu.fill(0);
+    for (let p = 0; p < N; p++) {
+      if (!pleins[p] || vu[p]) continue;
+      let n = 0, h = 0, dans = 0;
+      pile[n++] = p; vu[p] = 1;
+      while (h < n) {
+        const q = pile[h++], qx = q % W;
+        if (T[q]) dans++;
+        if (qx > 0 && pleins[q - 1] && !vu[q - 1]) { vu[q - 1] = 1; pile[n++] = q - 1; }
+        if (qx < W - 1 && pleins[q + 1] && !vu[q + 1]) { vu[q + 1] = 1; pile[n++] = q + 1; }
+        if (q >= W && pleins[q - W] && !vu[q - W]) { vu[q - W] = 1; pile[n++] = q - W; }
+        if (q < N - W && pleins[q + W] && !vu[q + W]) { vu[q + W] = 1; pile[n++] = q + W; }
+      }
+      if (2 * dans >= n) for (let k = 0; k < n; k++) out[pile[k]] = 1;
+    }
+    return out;
+  }
+  // Traits d'un masque : moins les masses de sa couleur (dilatées), fermeture de 3 px (trous d'anticrénelage),
+  // squelette, chemins sans ergots ni bruit, simplifiés, rendus en pixels du plan et découpés au cœur du bloc.
+  function _traitsBloc(T, tmp, retirer, W, H, o, e) {
     const rg = o.reglages;
-    if (pleins) {
-      _passe(pleins, tmp, W, H, Math.max(1, Math.round((rg.ecartMasse === undefined ? 2 : rg.ecartMasse) * e)), false);
+    if (retirer) {
+      _passe(retirer, tmp, W, H, Math.max(1, Math.round((rg.ecartMasse === undefined ? 2 : rg.ecartMasse) * e)), false);
       for (let i = 0; i < W * H; i++) if (tmp[i]) T[i] = 0;
     }
     _passe(T, tmp, W, H, 1, false);
