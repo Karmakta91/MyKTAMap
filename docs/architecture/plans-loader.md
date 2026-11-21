@@ -983,8 +983,10 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
     dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
     ouvert ; ⚠️ **en repli** (décision produit) : si la fermeture avale le point touché (pilier large de 2 à 3 px, ou
-    grisé par le flou) et qu'il est plus clair que le trait voisin, on recommence sans fermeture (`repli: false` :
-    contre-épreuve). 🩸 La condition « plus clair » empêche de remplir le trait lui-même quand on le touche.
+    grisé par le flou) et qu'il est du côté clair de son voisinage (L* au moins à mi-chemin du plus sombre et du
+    plus clair à ± 3 px, `_coteClair`), on recommence sans fermeture (`repli: false` : contre-épreuve). 🩸 Cette
+    condition empêche de remplir un morceau du trait depuis un pixel sombre (toucher sur le trait, ou au bord d'un
+    petit pilier flou : il faut toucher son centre clair).
     Composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
     (`_contour`, `_simplifierFerme` à 1 px) ; un chiffre ou une pastille dedans est englobé.
   - ⚠️ **Milieu du trait** (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin.
