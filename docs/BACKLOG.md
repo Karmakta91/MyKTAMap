@@ -162,3 +162,8 @@
   fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
   fictifs : liseré noir de 2 px autour de l'image ; carrés de 3 × 3 px tous les 7 px autour d'un pilier.
   `qui: Claude · action: topo après le lot fronts en passe mixte · fini: cadre écarté, pointillés fermés, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+
+- **Export : calage local des calques ignoré** — `exporter.js` cale les calques avec `layerCfg.calibration` (plan-config)
+  au lieu de `ImageLayerCalibration.getCalibration` (prefs d'abord). Théorique aujourd'hui : aucun geste n'écrit de
+  calage dans les prefs (au plus un profil importé). Vu le 21/11/2026.
+  `qui: Claude · action: corriger quand un geste de recalage local existera · fini: export identique à la carte avec un calage des prefs · depuis: 21/11/2026 · taille: XS`
