@@ -18799,14 +18799,17 @@ async function sectionCaseBoutonsZoom(nav) {
           const nv = window.APP_CONFIG.multiLevel === true ? (window.APP_CONFIG.activeLevel || 0) : null;
           Vx.secteurs.poser(id, nv, [{ x: p.x - d, y: p.y - d }, { x: p.x + d, y: p.y - d }, { x: p.x + d, y: p.y + d },
             { x: p.x - d, y: p.y + d }]);
-          window.KtaVolumeExploite.ouvrir();
-          const champ = document.getElementById("kta-volume-h");
-          r.volume = champ ? champ.value : null;
-          if (champ) { champ.value = "2.5"; champ.dispatchEvent(new Event("input", { bubbles: true })); }
-          const x = document.querySelector("#kta-volume-modal .kta-panneau-close");
-          if (x) x.click();
-          Vx.secteurs.retirer(id);
-          return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
+          // ⚠️ ouvrir() rend une promesse : calcul à faire, la fenêtre d'attente s'affiche d'abord, sans le champ
+          // hauteur ; il n'existe qu'une fois la promesse tenue (volumeExploite.js > ouvrir).
+          return Vx.ouvrir().then(function () {
+            const champ = document.getElementById("kta-volume-h");
+            r.volume = champ ? champ.value : null;
+            if (champ) { champ.value = "2.5"; champ.dispatchEvent(new Event("input", { bubbles: true })); }
+            const x = document.querySelector("#kta-volume-modal .kta-panneau-close");
+            if (x) x.click();
+            Vx.secteurs.retirer(id);
+            return K.ouvrir({ depart: { x: p.x, y: p.y + 4 * p.sc, cap: 0 } });
+          });
         }).then(function () {
           r.depuisVolume = K.etat().hauteur;
           return K.fermer();
@@ -20440,12 +20443,13 @@ async function sectionCaseBoutonsZoom(nav) {
         // réel : sous charge, les images s'espacent et le geste dure plus que GESTE.ms à l'horloge — les fourchettes en
         // millisecondes réelles (bascule 350-750, fin 800-1 300) tombaient au hasard de la charge (WebKit). Bascule à
         // M = 500 ms de geste (vue3d.js > _majGeste), relevée à l'image suivante au plus tard ; fin à T = 1 000 ms.
+        // 🩸 etat().geste.t est arrondi : une dernière image à 999,5 ms et plus se lit « 1000 », geste encore en cours.
         const premierApres = apres.filter(function (q) { return q.gt !== null; })[0] || apres[0] || {};
         const bascule = premierApres.gt !== undefined ? premierApres.gt : null;
         const gtMax = Math.max.apply(null, ge.ech.filter(function (q) { return q.gt !== null; }).map(function (q) { return q.gt; }));
         verifier(ge.lance && avant.length > 3 && apres.length > 3 && yMin0 < 0 && yMax1 > PJ.h && fMax >= 0.9 &&
           fin.f === 0 && fin.voile === false && Math.abs(fin.y - ge.oeil) < 0.01 && fin.t < 6000 &&
-          bascule !== null && bascule >= 500 && bascule <= 600 && gtMax > 850 && gtMax < 1000,
+          bascule !== null && bascule >= 500 && bascule <= 600 && gtMax > 850 && gtMax <= 1000,
           "descente animée : caméra de " + ge.oeil + " m à " + yMin0.toFixed(2) + " m, noir (" + fMax + ") à la bascule (" +
           bascule + " ms de geste), arrivée par le plafond (" + yMax1.toFixed(2) + " m), geste mené à son terme (" + gtMax +
           " ms de geste ; fin à " + fin.t + " ms d'horloge), voile retiré",
