@@ -182,3 +182,7 @@
   de scie. Lissage en mètres toujours, redressement (côtés droits, angles droits) si la forme est presque un
   rectangle ; case « Affiner les contours » cochée par défaut dans Détecter. Décisions du 21/11/2026 : après le bump.
   `qui: Claude · action: brief Dev après le bump · fini: pilier carré mal tracé rendu rectangle, pilier tourné lissé, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+- **Transparence de l'image principale** — sur un plan multi-niveau, seul le calque se règle : impossible d'atténuer
+  l'image principale pour caler un niveau sur l'autre. Curseur 10–100 % sous « Afficher le plan de base », par plan sur
+  l'appareil, multiplié par la transparence OSM, exports comme à l'écran. Décisions du 21/11/2026 : après le bump.
+  `qui: Claude · action: brief Dev après le bump · fini: curseur visible, 50 % ici et 50 % OSM donnent 25 %, export PNG atténué, checkup rouge puis vert · depuis: 21/11/2026 · taille: S`
