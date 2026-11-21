@@ -849,13 +849,25 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
   250 px², 1,5 px, trou 700 px²), utilisés seulement sans exemple mesuré ; `depuisMetres(r, pxParM)`.
 - ⚠️ **Réglages déduits des exemples** (décision produit, après un essai sur deux vrais plans : 3 piliers sur une
-  soixantaine). `mesurerExemple(bloc, x, y)` mesure la composante touchée à la pipette : couleur médiane, aire,
-  épaisseur (2 × la distance au bord maximale, chanfrein 3-4), étalement (90e centile des ΔE sur l'INTÉRIEUR, à 2 px
-  du bord : les pixels de bord, mêlés au contour noir par le flou, soudaient des piliers voisins), écart au fond
-  (médiane du bord de la fenêtre lue) ; `coupe` si elle dépasse la fenêtre. `reglagesDepuisExemples` : tolérance =
-  étalement + 6, plancher 22, plafond 60 % de l'écart au fond (un bleu clair est à ΔE 26 du blanc) ; l'écart ENTRE
-  exemples n'y entre pas (chaque pixel est comparé à l'exemple le plus proche) ; taille = plus petite épaisseur des
-  exemples de masse non coupés. `reglagesPourTaille(t, pxParM?)` : ouverture t/2, aire t²/2, trou 0,6 t² ; plan
+  soixantaine). `mesurerExemple(bloc, x, y, { nature })` mesure la composante touchée à la pipette : couleur
+  médiane, aire, épaisseur (2 × la distance au bord maximale, chanfrein 3-4), étalement (90e centile des ΔE sur
+  l'INTÉRIEUR, à 2 px du bord : les pixels de bord, mêlés au contour noir par le flou, soudaient des piliers voisins),
+  écart au fond (médiane du bord de la fenêtre lue), écart au pourtour (`ecartTrait` : plus forte médiane des
+  anneaux à 1, 2 et 3 px) et à l'au-delà (`ecartAuDela` : anneaux à 5–7 px), `cerne` (pourtour ≥ ΔE 30 et 15 de
+  plus que l'au-delà) ; `coupe` si elle dépasse la fenêtre. `reglagesDepuisExemples` : tolérance = étalement + 6,
+  plancher 22, plafond 60 % de l'écart à ce qui TOUCHE l'exemple : le fond (un bleu clair est à ΔE 26 du blanc),
+  sauf pilier clair cerné (ci-dessous) ; l'écart ENTRE exemples n'y entre pas (chaque pixel est comparé à l'exemple
+  le plus proche) ; taille = plus petite épaisseur des exemples de masse non coupés.
+- ⚠️ **Piliers clairs cernés** (plan au trait : piliers, galeries et fond blancs, le trait seul les sépare ; décision
+  produit après un essai sur un plan réel au trait) : le plafond du fond y mettait la tolérance au niveau du bruit
+  (fond lu blanc, ou gris moyen des traits) et les galeries se cassaient en morceaux pris pour des piliers. Un exemple `cerne` dont l'au-delà tient sous 60 % de l'écart au trait,
+  marge de 10 comprise (`ktaDetection.js > _clairCerne`), prend : tolérance ≥ au-delà + 10 (galeries et fond
+  englobés nettement, d'un seul tenant, géants, écartés par la taille maximale) et ≤ 60 % de l'écart au trait (le
+  pilier ne s'y soude pas). Un bleu clair cerné de bleu sur blanc (au-delà ΔE 26) n'a pas cette place : il garde le
+  plafond du fond. Jamais pour un exemple de Front. Planche fabriquée (`check-detection.js`, 140 piliers blancs de
+  5 à 34 px, filigrane, flou, bruit) : 140 sur 140, 4 éclats du fond, tolérance 23 ; ancien plafond : tolérance 6,
+  22 morceaux de galerie. Limite : chiffres et lettres au trait ont des boucles blanches fermées, de la taille d'un
+  petit pilier : elles sortent (14 sur la planche), à retirer dans l'aperçu. `reglagesPourTaille(t, pxParM?)` : ouverture t/2, aire t²/2, trou 0,6 t² ; plan
   calibré : aire jamais sous 10 × 10 cm, ouverture jamais au-delà de 60 cm (bornes, pas la règle).
 - **Recalcul sans relecture** : `detecter({ executeur, garder: true })` fait garder les blocs lus par le worker
   (`executeurWorker`, sinon `executeurLocal` dans la page), au plus 200 Mo d'image ; `recalculer(executeur,
@@ -904,17 +916,30 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   couleur**, **Taille minimale** et **Taille maximale**, partis des réglages déduits : un curseur relâché recalcule
   sur les blocs gardés (200 ms sans mouvement), sans relire l'image ; les valeurs sont gardées avec les couleurs du
   plan (même clé) jusqu'au prochain exemple → « Ajouter N ». Blocs de 1 024 px au doigt, 2 048 au pointeur fin.
+  ⚠️ La tolérance affichée est celle RÉELLEMENT appliquée aux masses (Masse A, sinon B ; l'autre masse garde son
+  écart déduit à elle), bornes 6–60 comme le moteur ; les fronts gardent la leur, hors curseur
+  (`detectionStructures.js > _classes`). 🩸 Le curseur montrait le maximum des classes (celle d'un Front) pendant
+  que les masses tournaient bien plus bas.
 - 🩸 **Pipette** : la couleur de l'exemple est celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le
   plus loin du fond) et de ses semblables, et la composante part de ce pixel. La médiane du carré entier valait le
   fond sur un trait fin ou un coin de pilier touché un peu à côté : la pipette disait « aucune image » (trait de
   2 px : 2 touchers sur 2 ; pilier de 10 px : 12 sur 100). Carré entièrement de la couleur du fond : « c'est le fond »
-  (avant : un exemple blanc ajouté en silence), SAUF si la zone touchée est enfermée par un trait (pilier blanc cerné
-  sur plan blanc) : c'est alors un objet. « Aucune image » seulement si rien n'a été dessiné à cet endroit (plan V1 :
-  zone jamais affichée).
+  (avant : un exemple blanc ajouté en silence), SAUF si la zone claire touchée est enfermée (région à ΔE ≤ 12 du
+  pixel le plus clair du carré qui ne touche pas le bord de la fenêtre : pilier blanc cerné sur plan blanc) : c'est
+  alors un objet. « Aucune image » seulement si rien n'a été dessiné à cet endroit (plan V1 : zone jamais affichée).
+- 🩸 **Petit pilier clair touché près de son trait** : le pixel le plus encré du carré est le trait, l'exemple prenait
+  sa couleur (planche fabriquée : aire de quelques dizaines de px, taille minimale déduite 2 px). Si ce pixel appartient à un trait FIN (épaisseur ≤
+  4 px), que le pixel le plus clair du carré est plus clair que lui (ΔE > 20) et que sa région claire est fermée,
+  l'exemple est cette région ; seuil de la composante à mi-chemin de l'encre qui l'enferme (90e centile des ΔE à
+  1–3 px : la rangée de bord adoucie par le flou reste au pilier). Un pilier coloré plein (épais) touché un peu à
+  côté reste l'exemple (coin de pilier, pastille claire au centre) ; un exemple de Front (`nature: "trait"`)
+  n'est jamais redirigé. Planche fabriquée : 156 touchers au bord de 39 petits piliers, 156 tailles justes (± 2 px)
+  et aucun trait pris ; règle du seul pixel le plus encré : le trait pris 156 fois.
 - **Taille maximale** : déduite du plus grand exemple de masse (× 4 en aire), plafonnée à la marge des blocs ; une
   masse plus grande est écartée et comptée à part (« écartés par la taille maximale », distinct de « trop grands pour
-  un bloc »). Cas des plans aux piliers blancs ou clairs cernés d'un trait : fond et galeries de la couleur des
-  piliers forment des masses géantes, écartées ; les piliers, séparés par le trait, restent. 🩸 Seuls les trous
+  un bloc »). Cas des plans aux piliers blancs ou clairs cernés d'un trait : fond et galeries, englobés par la
+  tolérance (piliers clairs cernés, plus haut), forment des masses géantes, écartées ; les piliers, séparés par le
+  trait, restent. 🩸 Seuls les trous
   COMPACTS sont comblés (plus du tiers de leur boîte) : le trait qui cerne un pilier est un « trou » en anneau dans le
   masque du fond, le combler soudait le pilier au fond (scène fabriquée : 26 piliers sur 45 au lieu de 45).
 - **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
