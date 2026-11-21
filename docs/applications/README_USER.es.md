@@ -367,7 +367,7 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 
 | Sección | Qué filtra |
 |---|---|
-| 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales |
+| 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales; bajo cada capa, un control **Opacidad** (10 a 100 %) para ver el plano o el otro nivel a través de ella, guardado para este mapa en este dispositivo y aplicado por la exportación de imagen (sin efecto en la detección ni en la vista 3D) |
 | 📊 **Capas de datos** | Las capas incluidas con el mapa, y **Anotaciones del plano** (todo lo dibujado en el plano: tus añadidos y, en una instalación compartida, los de tu equipo; desmarcarla los oculta sin borrar nada) |
 | 🏗️ **Niveles M-LVL** | Mapas multinivel: nivel activo (para dibujar) y niveles visibles — sincronizado con la ventana Niveles |
 | 🏷️ **Tags de los puntos** | Los tags realmente presentes en el mapa, con su recuento |

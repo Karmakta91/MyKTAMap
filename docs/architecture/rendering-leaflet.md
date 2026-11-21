@@ -401,6 +401,30 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 
 ---
 
+## 🌫️ Opacité d'un calque image
+
+Réglée au curseur de la section « Calques image » des filtres ≡ (`filterPanel.js`, `ui.md`), pour voir le plan ou
+un autre niveau à travers.
+- **Stockage** : par calque et par plan, sur l'appareil — `myktamap_plan_prefs_<planId>.imageLayerOpacity[layerId]`
+  (0,1 à 1), même objet que `imageLayerCalibrations`. Accès par `config.js > getPlanOpaciteCalque` /
+  `setPlanOpaciteCalque` seulement : écriture qui garde les autres clés, rien d'écrit si les prefs sont illisibles ou
+  le stockage bloqué. Exportée avec le profil (préfixe `myktamap_plan_prefs_`).
+- ⚠️ **Opaque par défaut** : sans réglage, rien n'est écrit, aucun `setOpacity` n'est appelé, le rendu est celui
+  d'avant ; revenir à 100 % retire l'entrée.
+- **Pose** : `map.js > _registerOverlay` applique la pref à l'enregistrement, donc aussi aux calques calés qui
+  arrivent en asynchrone.
+- **Indépendante du fond OSM sous le plan** : `fondOsmPlan.js > _opacitePlan` ne touche que `tilePane`,
+  `_ktaBaseLayers` et `_baseTiles` ; les calques image sont dans `overlayPane` et gardent leur réglage dans les deux
+  sens.
+- **Exports** : `exporter.js` (calques cochés) dessine chaque calque avec `globalAlpha` = son opacité, restauré
+  après ; le PDF et le GeoTIFF passent par le même moteur (`MyKTAMapExporterGenererCanvas`).
+- 🩸 **Détection et vue 3D lisent l'image pleine** (`tiling.js > ktaDessinerRegionPlan`, `vue3d.js >
+  _dessinerCalquesSol`) : elles dessinent `ov._rawImage || ov._image` par `drawImage`, qui ignore l'opacité CSS de
+  l'élément. Ne pas y lire l'opacité du calque.
+- 🛡️ `scripts/smoke/checkup-transparence-calques.js` (calques fabriqués sur le relevé fictif, Chromium et WebKit).
+
+---
+
 ## 🧭 Limites de la carte (`maxBounds`) — image ∪ calques de niveau
 
 `map.js > _ktaLimitesCarte` est la seule règle ; `window.ktaRecalculerLimitesCarte()` la repose sur la carte courante

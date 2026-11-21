@@ -367,7 +367,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 
 | Section | What it filters |
 |---|---|
-| 🖼️ **Image layers** | The map image and its additional layers |
+| 🖼️ **Image layers** | The map image and its additional layers; under each layer, an **Opacity** slider (10 to 100%) to see the plan or the other level through it, kept for this map on this device and used by the image export (no effect on detection or the 3D view) |
 | 📊 **Data layers** | The layers shipped with the map, and **Plan annotations** (everything drawn on the map: your additions and, on a shared installation, your team's; unticking it hides them without deleting anything) |
 | 🏗️ **M-LVL levels** | Multi-level maps: active level (for drawing) and visible levels — kept in sync with the Levels window |
 | 🏷️ **Point tags** | The tags actually present on the map, with their count |
