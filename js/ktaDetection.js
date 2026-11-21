@@ -1079,15 +1079,20 @@
     if (k > 0) { const c = Math.round(REMPLIR.coteMaxM * k); return { aireMax: c * c, coteMax: c }; }
     return { aireMax: REMPLIR.plafondPx * REMPLIR.plafondPx, coteMax: 0 };
   }
-  // Le point touché (Lab `labG`) est-il plus clair que la médiane des pixels du trait (masque T) à ± 3 px ?
-  function _plusClairQueLeTrait(T, lab, labG, W, H, px, py) {
-    const l = [];
+  // Le point touché est-il du côté CLAIR de son voisinage (L* au moins à mi-chemin entre le plus sombre et le plus
+  // clair des pixels à ± 3 px) ? 🩸 Pas « plus clair que le trait » : autour d'un petit pilier grisé, le masque du
+  // trait compte aussi le fond blanc d'en face, et un toucher sur un pixel sombre du bord passait, remplissant un
+  // morceau du trait (essai sur plan flou).
+  function _coteClair(lab, labG, W, H, px, py) {
+    let lo = Infinity, hi = -Infinity;
     for (let j = Math.max(0, py - 3); j <= Math.min(H - 1, py + 3); j++) {
-      for (let i = Math.max(0, px - 3); i <= Math.min(W - 1, px + 3); i++) if (T[j * W + i]) l.push(lab(j * W + i)[0]);
+      for (let i = Math.max(0, px - 3); i <= Math.min(W - 1, px + 3); i++) {
+        const l = lab(j * W + i)[0];
+        if (l < lo) lo = l;
+        if (l > hi) hi = l;
+      }
     }
-    if (!l.length) return false;
-    l.sort(function (a, b) { return a - b; });
-    return labG[0] > l[l.length >> 1];
+    return hi > lo && labG[0] >= (lo + hi) / 2;
   }
   // Pixels du trait (masque F) gagnés par la zone m : ceux plus près de la zone que de l'autre côté du trait
   // (distances de chanfrein 3-4 dans le trait, égalité gagnée par la zone), à au plus `cap` px de la zone. Calcul
@@ -1177,9 +1182,9 @@
     }
     // ⚠️ contrat (décision produit) : fermeture en REPLI. Un pilier large de 2 à 3 px, ou grisé par le flou, est
     //   avalé par la fermeture (le point touché tombe dans le trait fermé) : on recommence alors sans fermeture.
-    // 🩸 Seulement si le point touché est plus CLAIR que le trait qui l'entoure : un toucher sur le trait lui-même
-    //   (foncé, entouré de fond clair) remplirait sinon le trait comme une zone.
-    if (F[g] && !T[g] && F !== T && o.repli !== false && _plusClairQueLeTrait(T, lab, labG, W, H, px, py)) F = T;
+    // 🩸 Seulement si le point touché est du côté CLAIR de son voisinage (_coteClair) : un toucher sur le trait
+    //   (foncé) ou sur un pixel sombre du bord remplirait sinon un morceau du trait comme une zone.
+    if (F[g] && !T[g] && F !== T && o.repli !== false && _coteClair(lab, labG, W, H, px, py)) F = T;
     if (F[g]) return { refus: "trait" };
     // composante 4-connexe du fond fermé : `file` = ses pixels, `m` = son masque (contour)
     const m = new Uint8Array(N), file = new Int32Array(N);
