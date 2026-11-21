@@ -613,6 +613,15 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     " px, tolérance " + ddAnc.tolerances.a + ", " + bAnc.piliers + "/" + nPt + " piliers, " + bAnc.morceaux +
     " morceaux", ddAnc.taille <= 2 && bAnc.morceaux > 0.05 * nPt, bAnc);
 
+  // Pilier blanc touché au centre, fenêtre au fond lu GRIS (plan au trait serré) : le seuil tiré de l'écart au fond
+  // tombait sous le bruit et la composante n'était qu'un lambeau du pilier.
+  const serre = image(192, 192).rect(0, 0, 192, 192, [225, 225, 225]).rect(86, 86, 20, 20, NOIR)
+    .rect(88, 88, 16, 16, BLANC).bruit(12);
+  const exSerre = D.mesurerExemple(lecteurSync(serre), 96, 96);
+  t("pilier blanc au centre, fond lu gris et bruité : le pilier entier (aire " + (exSerre && exSerre.aire) +
+    " sur 256, épaisseur " + (exSerre && exSerre.epaisseur) + ")",
+    exSerre && !exSerre.fond && exSerre.aire >= 230 && exSerre.aire <= 256 && exSerre.epaisseur >= 14, exSerre);
+
   // ── Recalcul sur les blocs gardés : pas de relecture de l'image ──
   let lectures = 0;
   const lireCompte = (x, y, w, h, e) => { lectures++; return lecteur(grand)(x, y, w, h, e); };

@@ -717,7 +717,7 @@
   // La composante = pixels 4-connexes à moins du seuil (ΔE) de la couleur de départ ; épaisseur = 2 × la plus grande
   // distance au bord (chanfrein 3-4) ; étalement = 90e centile des ΔE à la couleur médiane.
   // `ecartFond` : ΔE entre cette couleur et le fond (médiane du bord de la fenêtre).
-  // `ecartTrait` : ΔE au pourtour immédiat (la plus forte des médianes des anneaux à 1, 2 et 3 px) ; `ecartAuDela` :
+  // `ecartTrait` : ΔE au cœur du pourtour immédiat (90e centile des anneaux à 1, 2 et 3 px) ; `ecartAuDela` :
   //   ΔE à ce qu'il y a derrière (anneaux à 5–7 px) ; `cerne` : pourtour net, nettement plus loin que l'au-delà
   //   (pilier cerné d'un trait). reglagesDepuisExemples s'en sert pour les piliers clairs cernés.
   // 🩸 Seuil = la moitié de l'écart au fond, plafonné à `seuil` (28) : un bleu clair est à ΔE 26 du blanc, un seuil
@@ -871,6 +871,12 @@
         return { fond: true, rgb: [d[k], d[k + 1], d[k + 2]] };
       }
       viserClair(rc);
+    } else if (labFond && nature !== "trait" && lab(graine)[0] > labFond[0]) {
+      // 🩸 Objet PLUS CLAIR que le fond lu (plan au trait serré : la médiane du bord de la fenêtre est un gris de
+      //   traits) : le seuil tiré de l'écart au fond tombait au niveau du bruit, la composante n'était qu'un
+      //   lambeau du pilier. Région claire fermée : seuil tiré de l'encre qui l'enferme, comme ci-dessus.
+      const rc = regionClaire();
+      if (rc) viserClair(rc);
     } else if (labFond && nature !== "trait" && graine !== clair) {
       // 🩸 Doigt sur un petit pilier CLAIR, près du trait qui le cerne : le pixel le plus encré du carré est le trait,
       //   et l'exemple prenait sa couleur (petite aire, taille minimale déduite de 1 ou 2 px). Si ce pixel est un
@@ -916,7 +922,11 @@
     // Pourtour (composante entière dans la fenêtre seulement) : trait à 1–3 px, au-delà à 5–7 px.
     const an = coupe ? null : anneaux(liste, labM, 7);
     const medA = function (v) { return v.length ? med(v) : 0; };
-    const ecartTrait = an ? Math.max(medA(an[1]), medA(an[2]), medA(an[3])) : 0;
+    const p90 = function (v) {
+      v.sort(function (a, b2) { return a - b2; });
+      return v.length ? v[Math.floor(v.length * 0.9)] : 0;
+    };
+    const ecartTrait = an ? p90(an[1].concat(an[2], an[3])) : 0;
     const ecartAuDela = an ? medA(an[5].concat(an[6], an[7])) : 0;
     const r1 = function (v) { return Math.round(v * 10) / 10; };
     return { rgb: rgb, aire: liste.length, epaisseur: _pxEpaisseur(ep.dmax),
@@ -934,17 +944,20 @@
   //   plusieurs exemples couvrent déjà leur écart. L'ajouter soudait des piliers voisins à travers le flou (mesuré :
   //   ΔE 39 → 179 piliers sur 216, ΔE 27 → 214).
   const TOL_PLANCHER = 22, TOL_MARGE = 6, TOL_MAX = 60, TOL_PART_FOND = 0.6, TOL_MIN = 6, TOL_AU_DELA = 10;
+  const TOL_PART_TRAIT = 0.6;
   const TAILLE_MAX_FACTEUR = 4;
   // ⚠️ contrat (décision produit) : pilier CLAIR CERNÉ d'un trait (plan au trait : piliers et galeries blancs, le
   //   trait seul les sépare). Plafonner à 60 % de l'écart au fond y mettait la tolérance au niveau du bruit des
   //   galeries (fond lu : blanc, ou gris moyen des traits) : elles se cassaient en morceaux pris pour des piliers.
-  //   Ici la tolérance englobe la couleur d'au-delà du trait (+ TOL_AU_DELA) sans approcher le trait (≤ 60 % de son
-  //   écart) : galeries et fond restent d'un seul tenant, géants, écartés par la taille maximale ; les piliers,
-  //   séparés par le trait, restent. Il faut cette place : un bleu clair cerné de bleu sur blanc (au-delà ΔE 26) ne
-  //   l'a pas, il garde le plafond du fond. Jamais pour une classe de trait (front).
+  //   Ici la tolérance va à 60 % de l'écart au cœur du trait (le plus faible des exemples : le trait le plus fin
+  //   commande) : les galeries étroites, grisées par le flou en leur milieu, restent d'un seul tenant avec le fond,
+  //   géantes, écartées par la taille maximale ; les piliers, séparés par le cœur du trait, restent. 🩸 Englober
+  //   seulement l'au-delà (+ 10) ne suffisait pas : sur un plan réel au trait, les passages étroits coupaient encore
+  //   les galeries. Il faut la place d'englober l'au-delà (+ TOL_AU_DELA) : un bleu clair cerné de bleu sur blanc
+  //   (au-delà ΔE 26) ne l'a pas, il garde le plafond du fond. Jamais pour une classe de trait (front).
   function _clairCerne(x) {
     return !!x.cerne && typeof x.ecartTrait === "number" && typeof x.ecartAuDela === "number" &&
-      x.ecartAuDela + TOL_AU_DELA <= x.ecartTrait * TOL_PART_FOND;
+      x.ecartAuDela + TOL_AU_DELA <= x.ecartTrait * TOL_PART_TRAIT;
   }
   function reglagesDepuisExemples(exemples, natures) {
     const tolerances = {};
@@ -956,12 +969,12 @@
       ex.forEach(function (x) { etal = Math.max(etal, Number(x.etalement) || 0); });
       // 🩸 jamais au-delà de 60 % de l'écart à ce qui touche l'exemple : un pilier bleu clair sur blanc (ΔE 26)
       //   ferait du fond un pilier. Ce qui le touche est le fond, sauf pour un pilier clair cerné d'un trait
-      //   (_clairCerne) : c'est le trait, et la tolérance doit au contraire englober nettement la couleur d'au-delà.
+      //   (_clairCerne) : c'est le trait, et la tolérance va au contraire jusqu'à 60 % de son écart.
       let plafond = TOL_MAX, voulue = Math.max(TOL_PLANCHER, etal + TOL_MARGE);
       ex.forEach(function (x) {
         if (!(natures && natures[c] === "trait") && _clairCerne(x)) {
-          plafond = Math.min(plafond, x.ecartTrait * TOL_PART_FOND);
-          voulue = Math.max(voulue, x.ecartAuDela + TOL_AU_DELA);
+          plafond = Math.min(plafond, x.ecartTrait * TOL_PART_TRAIT);
+          voulue = Math.max(voulue, x.ecartTrait * TOL_PART_TRAIT);
         } else if (typeof x.ecartFond === "number") plafond = Math.min(plafond, x.ecartFond * TOL_PART_FOND);
       });
       tolerances[c] = Math.round(Math.max(TOL_MIN, Math.min(plafond, TOL_MAX, voulue)));
