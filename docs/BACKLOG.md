@@ -167,3 +167,13 @@
   au lieu de `ImageLayerCalibration.getCalibration` (prefs d'abord). Théorique aujourd'hui : aucun geste n'écrit de
   calage dans les prefs (au plus un profil importé). Vu le 21/11/2026.
   `qui: Claude · action: corriger quand un geste de recalage local existera · fini: export identique à la carte avec un calage des prefs · depuis: 21/11/2026 · taille: XS`
+
+- **Export : petits piliers noirs** — PNG/PDF et « Télécharger le plan » : le contour des structures suit weight × scale,
+  un petit pilier sort entièrement noir. Le pilier à bras suit déjà la loi de l'écran (`ktaBordSurfacePourLargeur`) ;
+  l'étendre aux autres types. Vu le 21/11/2026.
+  `qui: Claude · action: petit lot Dev · fini: pilier de 1 m exporté lisible, checkup exports vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection auto : contour au bord intérieur du trait** — sur un plan au trait, la masse détectée s'arrête au bord
+  intérieur (environ 1 px trop petite tout autour) alors que le trait fait partie du pilier (décision du 21/11/2026,
+  appliquée au remplir au clic). Aligner la détection auto sur le milieu du trait.
+  `qui: Claude · action: topo après le lot remplir · fini: contour au milieu du trait, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
