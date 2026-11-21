@@ -9174,7 +9174,7 @@ async function sectionDessin(page) {
     camera();
     const vR = K.viser(ecran(8, 4, 0.03).x, ecran(8, 4, 0.03).y);
     r.trace = { type: trace && trace.type, niveau: trace && trace.level, points: trace ? trace.points.map(m) : null,
-      fini: !window.getCurrentRoad() && !window.modeRoad, vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
+      fini: !window.getCurrentRoad() && window.modeRoad === "principal", vise: vR ? { genre: vR.genre, uid: vR.uid } : null,
       uid: trace && trace.uid, refaitesPendant: refaitesPendant };
     // Aimantation des tracés (réglage de la carte) : un toucher à 8 px d'écran d'un sommet s'y accroche (rayon d'écran
     // de la 2D, 14 px, converti à la profondeur du point touché). 🩸 En px et non en mètres : le rayon suit le recul.
@@ -9188,6 +9188,11 @@ async function sectionDessin(page) {
     const aim = nouveau(window.getRoads(), avA);
     r.aimant = { premier: aim ? m(aim.points[0]) : null, n: aim ? aim.points.length : 0 };
     C.snapDraw = snapAv.on; C.snapDrawPx = snapAv.px;
+    // Fin au toucher du dernier sommet (ui.md § Enchaîner les tracés) : la vue rejoue le geste de la carte.
+    const avFin = uids(window.getRoads());
+    await tap(ecran(6, -2)); await tap(ecran(10, -2)); await tap(ecran(10, -2));
+    const fin = nouveau(window.getRoads(), avFin);
+    r.finDernier = { n: fin ? fin.points.length : 0, enCours: !!window.getCurrentRoad(), mode: window.modeRoad };
     window._desactiverTousLesModes();
 
     // ── Mesure 📐 : deux points à 10 m, distance de la carte et étiquette dans la 3D ──
@@ -9427,7 +9432,9 @@ async function sectionDessin(page) {
   verifier(r.armeTrace && r.trace.type === "principal" && r.trace.niveau === -1 && r.trace.fini &&
     r.trace.refaitesPendant === 0 && proche(r.trace.points, [[6, 4], [10, 4], [10, 8]], 0.03) &&
     r.trace.vise && r.trace.vise.uid === r.trace.uid,
-    "tracé au doigt, validé par ✅ : niveau −1, aucune reconstruction pendant, visible", r.trace);
+    "tracé au doigt, validé par ✅ (outil resté armé) : niveau −1, aucune reconstruction pendant, visible", r.trace);
+  verifier(r.finDernier.n === 2 && !r.finDernier.enCours && r.finDernier.mode === "chemin",
+    "tracé au doigt terminé en retouchant son dernier sommet, outil resté armé", r.finDernier);
   verifier(r.aimant.n === 2 && proche([r.aimant.premier], [[6, 4]], 1e-6),
     "aimantation des tracés (snapDraw) : toucher à 8 px d'écran d'un sommet → accroché sur lui", r.aimant);
   verifier(r.armeMesure && r.mesure.points === 2 && Math.abs(r.mesure.distance - 10) < 0.03 &&

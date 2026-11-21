@@ -2836,8 +2836,9 @@ _setGroupeModeActif("tracker", isTracking, null);
   }
 
   _sousActionsTraces.push(
-    // Valider : clôt le tracé en cours, quel que soit son type (custom compris) = re-clic sur le
-    // type actif (le tracé reste dans roadsData). Sans isTypeAction → après le séparateur.
+    // Valider : termine le tracé en cours, quel que soit son type (custom compris), et l'outil reste armé
+    // (décision produit, comme celui de Structures) ; retoucher le type actif l'éteint. La jonction, saisie à part
+    // avec ses deux niveaux, s'éteint. Sans isTypeAction → après le séparateur.
     { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.trace.valider"),
       onClick: function() {
         if (!window.modeRoad) {
@@ -2848,7 +2849,11 @@ _setGroupeModeActif("tracker", isTracking, null);
           );
           return;
         }
-        _fermerModeRoad();
+        if (window.modeRoad === "jonction" || typeof window.ktaTerminerTraceEnCours !== "function") {
+          _fermerModeRoad();
+          return;
+        }
+        window.ktaTerminerTraceEnCours();
       }
     },
       // Hors vue 3D : « Sélectionner » et « Par zone » se jouent au clic sur la carte.

@@ -4046,6 +4046,8 @@
   "report.txt.trackerDist": "Distancia recorrida: ",
   "report.txt.trackerPts": "Puntos registrados: ",
   "report.txt.zones": "Zonas: ",
+  "road.history.abandon": "Abandonar el trazado {type}",
+  "road.history.end": "Terminar el trazado {type}",
   "road.history.fallbackType": "trazado",
   "road.history.new": "Nuevo trazado {type}",
   "road.history.removeLast": "Eliminar último trazado ({type})",

@@ -797,6 +797,24 @@ window.ktaToleranceFermeture = function(e) {
   return pxParUnite > 0 ? Math.max(m, window.KTA_FERMETURE_MIN_PX / pxParUnite) : m;
 };
 
+// ── Fin d'une ligne sur son dernier sommet (tracés et lignes de Structures, carte et vue 3D) ──────────
+// ⚠️ contrat (décision produit) : retoucher le DERNIER sommet posé, à ktaToleranceFermeture près, termine la ligne et
+// l'outil reste armé (le toucher suivant en commence une autre du même type). Le 1er sommet reste un point ordinaire
+// (boucle de galerie). Testé AVANT le magnétisme des tracés. Jonction exclue (saisie à part, road.js).
+window.ktaRetoucheDernierSommet = function(points, x, y, e) {
+  if (!Array.isArray(points) || points.length === 0) return false;
+  const d = points[points.length - 1];
+  return Math.hypot(x - d.x, y - d.y) <= window.ktaToleranceFermeture(e);
+};
+// 🩸 Retoucher vite le dernier sommet est un double clic : sans ceci, la carte zoome au moment où la ligne se termine.
+// Le zoom au double clic est coupé le temps d'avaler ce double clic, puis rendu s'il était actif.
+window.ktaAvalerDoubleClic = function() {
+  const m = window.map, h = m && m.doubleClickZoom;
+  if (!h || typeof h.enabled !== "function" || !h.enabled()) return;
+  h.disable();
+  setTimeout(function() { try { h.enable(); } catch (err) { /* carte détruite entre-temps */ } }, 600);
+};
+
 // true si un outil « clic carte » est armé : dessin, mesure, ajout de point, recalage tracker, et tous les pickers
 // de position (floater commun `.kta-iti-floater`). ⚠️ contrat : outil armé = tout toucher sur la carte va à l'outil,
 // même sur un objet, et aucune fiche ne s'ouvre. Lu par le garde `popupopen` et le ré-émetteur de clic en capture

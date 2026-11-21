@@ -599,6 +599,26 @@ function initStructures() {
       return;
     }
 
+    // Ligne (front, mur en ligne, arc, ligne perso) : retoucher son dernier sommet la termine, l'outil reste armé
+    // (utils.js > ktaRetoucheDernierSommet) ; une ligne d'un seul point ne reste pas en données.
+    if (currentStructure && _isPolylineType(currentStructure.type) &&
+        typeof window.ktaRetoucheDernierSommet === "function" &&
+        window.ktaRetoucheDernierSommet(currentStructure.points, x, y, e)) {
+      const seule = currentStructure.points.length < 2;
+      if (seule) {
+        const i = structuresData.indexOf(currentStructure);
+        if (i >= 0) structuresData.splice(i, 1);
+      }
+      currentStructure = null;
+      renderStructures();
+      if (window.HistoryManager && _historyBefore) {
+        window.HistoryManager.record(window.I18n.t(seule ? "struct.undo.abandon" : "struct.undo.close",
+          { type: _typeLabel }), _historyBefore, "structures");
+      }
+      window.ktaAvalerDoubleClic();
+      return;
+    }
+
     if (!currentStructure) {
       currentStructure = {
         type: window.modeStructure,
@@ -610,7 +630,7 @@ function initStructures() {
       structuresData.push(currentStructure);
     }
 
-    // Polyline (front) : pas de fermeture par re-clic, on valide par le bouton ✅. Polygone : re-clic sur p0.
+    // Ligne : chaque toucher ajoute un sommet (la fin est traitée plus haut, ou par ✅). Polygone : re-clic sur p0.
     if (_isPolylineType(currentStructure.type)) {
       currentStructure.points.push({ x: x, y: y });
       if (window.KtaUid) window.KtaUid.touch(currentStructure);
