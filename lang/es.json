@@ -324,6 +324,8 @@
   "detect.historique": "Estructuras detectadas ({n})",
   "detect.pipette.toucher": "Toca un objeto de este color en el mapa.",
   "detect.recommencer": "Otra zona",
+  "detect.refus.calques-masques": "Las capas de imagen de este nivel están ocultas (filtros o niveles mostrados): nada que detectar.",
+  "detect.refus.niveau-sans-image": "Este nivel no tiene imagen: nada que detectar.",
   "detect.retour": "Volver",
   "detect.titre": "Detectar pilares y frentes",
   "detect.toast.cadreVide": "Marco demasiado pequeño: toca dos esquinas más alejadas.",

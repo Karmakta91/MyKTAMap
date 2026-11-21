@@ -727,6 +727,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-zones-niveaux.js` | Zone reliée à plusieurs niveaux : cases de la fiche, filtre, itinéraire contourné sur chacun, ⏪, KMZ et GeoJSON relus |
 | `smoke/checkup-zip-partage.js` | Plan ZIP tuilé rouvert depuis l'accueil : archive gardée une seule fois (aperçu et plan), tuiles détaillées de l'aperçu intactes |
 | `smoke/checkup-detection-generateur.js` | Détecter dans le Générateur : fenêtre à mini-carte, calque « Structures détectées », repère rogné, doublons en mode Modifier |
+| `smoke/checkup-detection-niveau.js` | Image lue par la détection selon le niveau : niveau sans calque image et calques masqués refusés avec un message (jamais l'image du niveau 0), calque masqué non lu, niveau 0 inchangé, opacité ignorée ; Chromium et WebKit |
 | `smoke/checkup-detection.js` | Détecter piliers et fronts : pipette, cadre, aperçu, Valider en une étape ⏪, doublons, multi-niveau, deux entrées, sur une scène fabriquée |
 | `smoke/checkup-largeur-osm-home.js` | Fronts, tracés et contours des piliers et murs à la loi de largeur sur la carte OSM de l'accueil (plan principal et plan empilé, très dézoomé, de près, après re-rendu) et dans la Vue OSM, sur un relevé fictif dense fabriqué ; réglage « Épaisseur des traits » à ×2 sur les deux cartes, itinéraire de la Vue OSM compris |
 | `smoke/checkup-rails-toucher.js` | Zone de toucher des rails latéraux de la carte (tactile et souris) |

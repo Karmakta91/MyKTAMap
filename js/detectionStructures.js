@@ -13,8 +13,10 @@
 //   Niveau de chaque structure : structures.js > ktaNiveauNouvelleStructure (même règle que le tracé à la main).
 // ⚠️ contrat : couleurs retenues par plan sur l'appareil (PREFIXE + ctx.cle), jamais dans la session ni dans l'export
 //   du profil (profileExportImport.js les exclut) ; retirées avec le plan (planRegistry.js > purgeAssociatedData).
-// 🩸 Mode plan : image lue par tiling.js > ktaDessinerRegionPlan (calques du niveau actif, tuiles V2, fond) en pixels
-//   du plan ; la vue est redressée et sa rotation bloquée pendant le parcours (MapBearing.suspend).
+// 🩸 Mode plan : image lue par tiling.js > ktaDessinerRegionPlan (calques affichés du niveau actif, tuiles V2, fond)
+//   en pixels du plan ; la vue est redressée et sa rotation bloquée pendant le parcours (MapBearing.suspend).
+// ⚠️ contrat (décision produit) : un niveau ≠ 0 sans image affichée (`raison` du dessin) est refusé, pipette comme
+//   calcul (_lireBloc lève REFUS) ; jamais l'image du niveau 0 à sa place.
 // Écarte ce qui recouvre déjà une structure du même niveau : relancer ne double rien. Réglages déduits des exemples ;
 // trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus.
 // Expose : window.KtaDetectionUI = { ouvrir(ctx?), fermer, etat, contextePlan, PREFIXE }.
@@ -36,6 +38,7 @@ window.KtaDetectionUI = (function () {
   const TYPES = { a: ["pilier-1", "pilier-2"], b: ["pilier-1", "pilier-2"], f: ["front-1", "front-2"] };
   const DEFAUT = { a: "pilier-1", b: "pilier-2", f: "front-1" };
   const ECART_TRAIT = 3;                // px : un front détecté à moins de cet écart d'un front existant est déjà là
+  const REFUS = "KtaDetectionRefus";    // nom de l'erreur levée par _lireBloc quand le contexte refuse de dessiner
 
   const _t = function (k, v) { return window.I18n.t(k, v); };
   const _esc = function (s) { return window.ktaEsc(s); };
@@ -46,7 +49,8 @@ window.KtaDetectionUI = (function () {
 
   // ── Contexte du plan ouvert (session, carte du plan, image par tiling.js) ──
   // Forme d'un contexte : { carte (L.Map, CRS.Simple), largeur, hauteur (px de l'image lue), versCarte(x, y) → LatLng,
-  //   depuisCarte(latlng) → { x, y }, dessiner(ctx2d, region, echelle) → Promise<{ ok }>, multi, niveau(type) →
+  //   depuisCarte(latlng) → { x, y }, dessiner(ctx2d, region, echelle) → Promise<{ ok, raison? }> (raison : refus,
+  //   clé detect.refus.<raison>), multi, niveau(type) →
   //   entier | null, existantes() → [{ type, points, level }], pxParM() → nombre | null, cle (couleurs retenues),
   //   poser(structures) → nombre de masquées, refuse() → bool, entrer(), sortir(), parent (reçoit le bandeau),
   //   hotes? (fenêtres sous le parcours, ignorées par l'Échap), messagePoses?(n) (texte après « Valider ») }.
@@ -151,6 +155,7 @@ window.KtaDetectionUI = (function () {
       throw fini;
     }
     const r = await _e.ctx.dessiner(ctx, { x: x, y: y, w: w, h: h }, e);
+    if (r && r.raison) throw Object.assign(new Error(r.raison), { name: REFUS, raison: r.raison });
     const d = ctx.getImageData(0, 0, bw, bh);
     // `dessine` : une image a été posée (faux : zone sans image chargée, la fenêtre reste au blanc de fond)
     return { data: d.data, w: bw, h: bh, dessine: !!(r && r.ok) };
@@ -401,7 +406,12 @@ window.KtaDetectionUI = (function () {
     if (!_e || !ev || !ev.latlng) return;
     const pt = _e.ctx.depuisCarte(ev.latlng), x = pt.x, y = pt.y;
     if (_e.etape === "exemples" && _e.pipette) {
-      const c = _e.pipette, ex = await _exempleEn(x, y, _natures()[c]);
+      const c = _e.pipette;
+      let ex = null;
+      try { ex = await _exempleEn(x, y, _natures()[c]); } catch (err) {
+        if (err && err.name === REFUS) { _toast(_t("detect.refus." + err.raison), "warn"); return; }
+        throw err;
+      }
       if (!_e) return;
       if (!ex) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
       if (ex.fond) { _toast(_t("detect.toast.surFond"), "warn"); return; }   // doigt sur le fond : pas d'exemple
@@ -458,7 +468,8 @@ window.KtaDetectionUI = (function () {
       if (_e !== e) return;
       e.etape = "zone"; e.coins = [];
       _lacherExecuteur();
-      if (!err || err.name !== "AbortError") {
+      if (err && err.name === REFUS) _toast(_t("detect.refus." + err.raison), "warn");
+      else if (!err || err.name !== "AbortError") {
         console.warn("[Detection] échec :", err);
         _toast(_t("detect.toast.echec"), "warn");
       }

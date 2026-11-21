@@ -324,6 +324,8 @@
   "detect.historique": "Detected structures ({n})",
   "detect.pipette.toucher": "Tap an object of this colour on the map.",
   "detect.recommencer": "Another area",
+  "detect.refus.calques-masques": "The image layers of this level are hidden (filters or shown levels): nothing to detect.",
+  "detect.refus.niveau-sans-image": "This level has no image: nothing to detect.",
   "detect.retour": "Back",
   "detect.titre": "Detect pillars and fronts",
   "detect.toast.cadreVide": "Frame too small: tap two corners further apart.",
