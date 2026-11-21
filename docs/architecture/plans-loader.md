@@ -981,9 +981,15 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
     la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
     dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
-    ouvert ; composante 4-connexe du fond fermé → contour extérieur (`_contour`, `_simplifierFerme` à 1 px). La
-    zone est le **bord intérieur** du trait (le trait n'en fait pas partie) ; un chiffre ou une pastille dedans est
-    englobé. Un pilier plein coloré sur fond blanc se remplit aussi (le fond y joue le rôle du trait).
+    ouvert ; composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
+    (`_contour`, `_simplifierFerme` à 1 px) ; un chiffre ou une pastille dedans est englobé.
+  - ⚠️ **Milieu du trait** (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin.
+    `_jusquAuMilieu` donne à la zone les pixels du trait plus proches d'elle que de l'autre côté du trait (distances
+    de chanfrein 3-4 dans le trait, égalité à la zone), à au plus 6 px d'elle (`demiTrait`) ; deux piliers séparés
+    par un même trait se le partagent en son milieu. 🩸 Sans autre côté à moins de 12 px (pilier plein coloré sur
+    fond uni, où tout le fond est « trait » ; aplat noir épais), rien n'est gagné : la zone garderait sinon 6 px de
+    fond autour. Un pilier plein se remplit donc à son propre bord. La détection automatique (piliers et fronts)
+    garde son contour, inchangé.
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
     l'image (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
     (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
@@ -991,8 +997,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     refuse déjà une masse plus large que la marge (256 px) ; le remplissage accepte le double en côté pour une grande
     structure dessinée, et la grande fenêtre laisse une zone au plafond loin de son bord. Au-delà, c'est le fond ou
     une galerie qui fuit par un trou du trait. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
-  - Garde-fous : `check-detection.js` (contour exact à 1 px près, 1,5 px en oblique ; trous de 1 et 2 px bouchés, 3
-    et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture) · `scripts/smoke/checkup-remplir.js`.
+  - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
+    trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture) · `scripts/smoke/checkup-remplir.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
