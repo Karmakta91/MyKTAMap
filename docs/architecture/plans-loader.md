@@ -958,9 +958,17 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   trait, restent. 🩸 Seuls les trous
   COMPACTS sont comblés (plus du tiers de leur boîte) : le trait qui cerne un pilier est un « trou » en anneau dans le
   masque du fond, le combler soudait le pilier au fond (scène fabriquée : 26 piliers sur 45 au lieu de 45).
-- **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` — calques image du niveau actif (calés comme sur la
-  carte), sinon tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1).
-  Même aiguillage que `vue3d.js > _dessinerPlanSol`, qui garde le sien tant que la 3D est gelée.
+- **Lecture de l'image** : `tiling.js > ktaDessinerRegionPlan` (seul appelant : ce parcours). Niveau ≠ 0 : ses
+  calques image AFFICHÉS sur la carte (calés comme sur la carte), rien d'autre. Niveau 0 (ou plan sans
+  multi-niveau) : tuiles V2 (servies, ZIP, plan ☁️ déchiffré), sinon images du fond déjà chargées (plan direct, V1) ;
+  les calques du niveau 0 sont des surcouches, jamais lus. L'opacité réglée d'un calque ne compte pas (image pleine).
+  ⚠️ (décision produit) **Refus plutôt que l'image d'un autre niveau** : un niveau ≠ 0 sans calque image rend
+  `{ ok: false, raison: "niveau-sans-image" }`, un niveau dont tous les calques sont retirés de la carte (case des
+  filtres ≡ décochée, niveau masqué) `{ raison: "calques-masques" }`, sans rien dessiner ; `_lireBloc` lève alors
+  une erreur `KtaDetectionRefus` et la pipette comme le calcul s'arrêtent sur un toast (`detect.refus.<raison>`),
+  sans aperçu. 🩸 L'ancien repli sur l'image du niveau 0 recopiait ses piliers au niveau actif sans rien dire. Un
+  calque masqué parmi d'autres n'est simplement pas lu. `vue3d.js > _dessinerPlanSol` garde son aiguillage, avec
+  repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout.
