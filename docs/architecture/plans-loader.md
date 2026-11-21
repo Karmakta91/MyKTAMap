@@ -891,12 +891,14 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   `longueurMin` 20 px retirés), Douglas-Peucker. 🩸 Chaque bloc découpe ses traits à son cœur (Liang-Barsky : un
   segment simplifié peut traverser le bloc de part en part, ses deux bouts dehors) ; `detecter` raccorde ensuite
   les morceaux bout à bout (même classe, bouts à moins de 2 px).
-  ⚠️ (décision produit) Une masse d'une autre couleur ne retire rien d'un front, et les curseurs de taille (minimale,
-  maximale) ne changent pas les fronts : un pilier de la couleur du front écarté par un curseur reste retiré. 🩸 Retirer
-  toutes les masses effaçait les fronts fins d'une passe mixte (pilier clair cerné + front) : le fond et les galeries
-  du blanc des piliers, écartés par la taille maximale mais dilatés quand même, mangeaient tout trait de 3 px bordé de
-  blanc, et la taille minimale changeait le nombre de fronts. Conséquence : dans une passe mixte, le trait qui cerne
-  un pilier clair sort aussi en front, comme dans une passe Front seule (à retirer dans l'aperçu au besoin).
+  ⚠️ (décision produit) Une masse d'une autre couleur ne retire rien d'un front ; un pilier de la couleur du front
+  écarté par un curseur de taille reste retiré (sinon son squelette deviendrait un front). 🩸 Retirer toutes les masses
+  effaçait les fronts fins d'une passe mixte (pilier clair cerné + front) : le fond et les galeries du blanc des
+  piliers, écartés par la taille maximale mais dilatés quand même, mangeaient tout trait de 3 px bordé de blanc.
+  ⚠️ (décision produit) **Le contour d'un pilier détecté n'est pas un front** : il marque la fin du pilier. Un chemin
+  couché à 90 % au moins (`CERNE_PART`) dans le halo d'une masse GARDÉE (dilatée de `ecartMasse` + `TRAIT_FIN` + 1 px)
+  est écarté. Les fronts varient donc avec les curseurs de taille, mais seulement par ces contours : un pilier écarté
+  rend son cerne aux fronts ; les traits loin des piliers ne bougent pas.
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
   `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
   d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par

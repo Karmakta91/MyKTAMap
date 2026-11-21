@@ -10,7 +10,7 @@
 // (carré de côté `ouverture` : retire moucheté, traits creux, appendices), composantes d'aire ≥ `aireMin`, contour
 // extérieur suivi sur les BORDS des pixels (aire exacte), Douglas-Peucker à `simplification`.
 // Traits (classe nature "trait") : couleur du trait MOINS les masses de sa couleur, fermeture, squelette (Zhang-Suen),
-// chemins sans ergots ni bruit, découpés au cœur du bloc puis raccordés bout à bout entre blocs.
+// chemins sans ergots ni bruit ni cerne de pilier gardé, découpés au cœur du bloc puis raccordés entre blocs.
 // Bandes de la couleur des piliers (galerie, mur en trait) retirées par leur forme (_retirerBandes : tronçons du
 // squelette d'épaisseur constante plus longs que 4 × cette épaisseur).
 // Réglages déduits des exemples touchés (mesurerExemple, reglagesDepuisExemples, reglagesPourTaille) ; recalcul sur
@@ -229,6 +229,7 @@
     let ignorees = 0, ecartees = 0;
     const m = new Uint8Array(N), tmp = new Uint8Array(N), vu = new Uint8Array(N), pile = new Int32Array(N);
     const pleins = clTraits.length ? new Uint8Array(N) : null;   // masses après ouverture (toutes tailles)
+    const gardes = pleins ? new Uint8Array(N) : null;   // masses gardées (aireMin ≤ aire ≤ aireMax) : leur cerne
     const trouMax = Math.max(0, Math.round((o.reglages.trouMax === undefined ? REGLAGES.trouMax : o.reglages.trouMax) *
       e * e));
     for (let c = 1; c <= clMasses.length; c++) {
@@ -241,18 +242,19 @@
       vu.fill(0);
       for (let p = 0; p < N; p++) {
         if (!m[p] || vu[p]) continue;
-        // composante (4-connexité) : aire et boîte
+        // composante (4-connexité) : aire et boîte ; `pile` sert de file, la composante est pile[0..aire[
         let sp = 0, aire = 0, x0 = W, y0 = H, x1 = -1, y1 = -1;
         pile[sp++] = p; vu[p] = 1;
-        while (sp) {
-          const q = pile[--sp], qx = q % W, qy = (q - qx) / W;
-          aire++;
+        while (aire < sp) {
+          const q = pile[aire++], qx = q % W, qy = (q - qx) / W;
           if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
           if (qx > 0 && m[q - 1] && !vu[q - 1]) { vu[q - 1] = 1; pile[sp++] = q - 1; }
           if (qx < W - 1 && m[q + 1] && !vu[q + 1]) { vu[q + 1] = 1; pile[sp++] = q + 1; }
           if (qy > 0 && m[q - W] && !vu[q - W]) { vu[q - W] = 1; pile[sp++] = q - W; }
           if (qy < H - 1 && m[q + W] && !vu[q + W]) { vu[q + W] = 1; pile[sp++] = q + W; }
         }
+        // ⚠️ avant le tri par bloc : une masse rendue par le bloc voisin efface aussi son cerne dans la marge
+        if (gardes && aire >= aireMin && aire <= aireMax) for (let k = 0; k < aire; k++) gardes[pile[k]] = 1;
         // rendue par le bloc qui contient le coin haut-gauche de sa boîte
         if (x0 < coeur.x || y0 < coeur.y || x0 >= coeur.x + coeur.w || y0 >= coeur.y + coeur.h) continue;
         if (aire < aireMin) { ignorees++; continue; }
@@ -278,7 +280,7 @@
       const dedans = _tableClasses([cl]);
       for (let i = 0, k = 0; i < N; i++, k += 4) m[i] = d[k + 3] >= 128 && dedans(d[k], d[k + 1], d[k + 2]) ? 1 : 0;
       const retirer = pleins ? _masseDuTrait(m, pleins, W, H, vu, pile) : null;
-      _traitsBloc(m, tmp, retirer, W, H, o, e).forEach(function (pts) {
+      _traitsBloc(m, tmp, retirer, gardes, W, H, o, e).forEach(function (pts) {
         traits.push({ classe: cl.id, points: pts });
       });
     });
@@ -507,8 +509,7 @@
   // T (masse de la couleur du trait), quelle que soit leur taille. → nouveau masque ; `vu` et `pile` sont réutilisés
   // (`pile` sert de file : la composante en cours est pile[0..n[).
   // ⚠️ contrat (décision produit) : une masse ne retire d'un front que si elle en a la couleur, gardée ou non par
-  //   les tailles minimale et maximale ; les curseurs de taille ne changent donc pas les fronts. Le trait qui cerne
-  //   un pilier clair sort en front, comme dans une passe Front seule.
+  //   les tailles minimale et maximale (le cerne d'un pilier gardé est écarté plus loin, _traitsBloc).
   // 🩸 Retirer toutes les masses effaçait les fronts fins d'une passe mixte : le fond et les galeries du blanc des
   //   piliers clairs cernés, dilatés de ecartMasse, mangeaient tout trait de 3 px bordé de blanc. Ne retirer que les
   //   masses gardées faisait revenir en front le squelette d'un pilier de la couleur du front écarté par un curseur.
@@ -532,12 +533,22 @@
     return out;
   }
   // Traits d'un masque : moins les masses de sa couleur (dilatées), fermeture de 3 px (trous d'anticrénelage),
-  // squelette, chemins sans ergots ni bruit, simplifiés, rendus en pixels du plan et découpés au cœur du bloc.
-  function _traitsBloc(T, tmp, retirer, W, H, o, e) {
+  // squelette, chemins sans ergots ni bruit ni cernes de piliers gardés, simplifiés, rendus en pixels du plan et
+  // découpés au cœur du bloc.
+  // ⚠️ contrat (décision produit) : le contour d'un pilier détecté marque la fin du pilier, ce n'est pas un mur. Un
+  //   chemin couché à CERNE_PART au moins dans le halo d'une masse GARDÉE (dilatée de ecartMasse + TRAIT_FIN + 1)
+  //   n'est pas un front ; un pilier écarté par un curseur rend son cerne aux fronts. Un front qui passe près d'un
+  //   pilier n'y a qu'une petite part de sa longueur et reste entier.
+  const CERNE_PART = 0.9;
+  function _traitsBloc(T, tmp, retirer, gardes, W, H, o, e) {
     const rg = o.reglages;
+    let halo = null;
     if (retirer) {
-      _passe(retirer, tmp, W, H, Math.max(1, Math.round((rg.ecartMasse === undefined ? 2 : rg.ecartMasse) * e)), false);
+      const ecart = Math.max(1, Math.round((rg.ecartMasse === undefined ? 2 : rg.ecartMasse) * e));
+      _passe(retirer, tmp, W, H, ecart, false);
       for (let i = 0; i < W * H; i++) if (tmp[i]) T[i] = 0;
+      halo = new Uint8Array(W * H);
+      _passe(gardes, halo, W, H, ecart + Math.round((TRAIT_FIN + 1) * e), false);
     }
     _passe(T, tmp, W, H, 1, false);
     _passe(tmp, T, W, H, 1, true);
@@ -551,6 +562,11 @@
       if (L < lmin && !(noeud && !bout)) return;   // bruit isolé
       if (bout && noeud && L < spur) return;          // ergot du squelette
       if (L < 4) return;
+      if (halo) {
+        let n = 0;
+        for (let k = 0; k < L; k++) if (halo[t.ch[k]]) n++;
+        if (n >= CERNE_PART * L) return;   // cerne d'un pilier gardé
+      }
       const pts = _dp(t.ch.map(function (i) { const x = i % W; return [x + 0.5, (i - x) / W + 0.5]; }), eps);
       _decouper(pts, coeur).forEach(function (mor) {
         out.push(mor.map(function (q) {
