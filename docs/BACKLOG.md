@@ -142,3 +142,8 @@
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
+
+- **Transparence des calques image** — un curseur par calque image (filtres ou Réglages, et pendant son calage)
+  pour voir le plan ou l'autre niveau à travers, comme la transparence du fond OSM. Vérifié le 21/11/2026 : seule
+  l'image du plan a une transparence, fond OSM allumé (`fondOsmPlan.js`) ; aucune sur `_ktaImageOverlays`.
+  `qui: Claude · action: topo (où placer le curseur, retenu par plan) · fini: calque réglable et retenu, checkup vert · depuis: 21/11/2026 · taille: S`
