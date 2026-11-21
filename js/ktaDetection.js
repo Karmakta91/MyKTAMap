@@ -15,8 +15,9 @@
 // squelette d'épaisseur constante plus longs que 4 × cette épaisseur).
 // Réglages déduits des exemples touchés (mesurerExemple, reglagesDepuisExemples, reglagesPourTaille) ; recalcul sur
 // les blocs gardés par l'exécuteur, sans relire l'image (recalculer).
+// Remplir au clic (remplir) : zone du fond fermée par le trait autour d'un point, trous de 1 à 2 px bouchés.
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
-//   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE }.
+//   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE, remplir, REMPLIR }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -1049,11 +1050,95 @@
     return out;
   }
 
+  // ── Remplir au clic : la zone du fond fermée par le trait autour d'un point ──
+  // b = { data, w, h } lu à `echelle` depuis le coin plan (x0, y0) ; (px, py) = point touché, en px de bloc.
+  // o = { x0, y0, echelle, tolerance (ΔE), fermeture (rayon, px de bloc), aireMax (px de bloc), simplification }.
+  // → { points, aire, boite } (px du plan) ou { refus: "hors" | "trait" | "ouvert" | "tropGrand" }.
+  // Trait = tout pixel à plus de `tolerance` de la couleur sous le doigt, fermé d'abord (dilatation puis érosion
+  //   d'un carré de rayon `fermeture`) : le rayon 1 bouche un trou de 1 à 2 px, un trou de 3 px et plus reste ouvert.
+  //   La zone = composante 4-connexe du fond ainsi fermé ; son contour extérieur est le BORD INTÉRIEUR du trait
+  //   (le trait n'en fait pas partie ; un chiffre ou une pastille dedans est englobé).
+  // ⚠️ contrat (décision produit) : une zone qui touche le bord du bloc lu (bord de l'image ou de la fenêtre lue) ou
+  //   dépasse `aireMax` n'est pas fermée : refus, jamais une zone partielle. aireMax par défaut : le quart du bloc.
+  // 🩸 L'érosion de _passe efface la rangée du bord du bloc (voisins hors bloc comptés vides) : le trait d'origine est
+  //   rajouté après la fermeture, qui ne doit jamais RETIRER de trait.
+  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1 });
+  function remplir(b, px, py, o) {
+    o = o || {};
+    const W = b.w, H = b.h, d = b.data, N = W * H, e = o.echelle || 1;
+    px = Math.floor(px); py = Math.floor(py);
+    if (px < 0 || py < 0 || px >= W || py >= H || d[(py * W + px) * 4 + 3] < 128) return { refus: "hors" };
+    const tol = Number(o.tolerance) > 0 ? Number(o.tolerance) : REMPLIR.tolerance;
+    const R = o.fermeture === undefined ? REMPLIR.fermeture : Math.max(0, Math.floor(o.fermeture));
+    const aireMax = Number(o.aireMax) > 0 ? Number(o.aireMax) : Math.floor(N / 4);
+    const cache = new Map();
+    const lab = function (i) {
+      const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
+      let v = cache.get(c);
+      if (!v) { v = rgbVersLab(d[k], d[k + 1], d[k + 2]); cache.set(c, v); }
+      return v;
+    };
+    // couleur du fond touché : médiane (canal par canal) du carré 5 × 5 à moins de 12 du pixel touché (bruit JPEG)
+    const g = py * W + px, labG = lab(g), r = [], v = [], bl = [];
+    for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
+      for (let i = Math.max(0, px - 2); i <= Math.min(W - 1, px + 2); i++) {
+        const q = j * W + i, k = q * 4;
+        if (d[k + 3] < 128 || deltaE(lab(q), labG) > 12) continue;
+        r.push(d[k]); v.push(d[k + 1]); bl.push(d[k + 2]);
+      }
+    }
+    const med = function (t) { t.sort(function (a, c) { return a - c; }); return t[t.length >> 1]; };
+    const lab0 = rgbVersLab(med(r), med(v), med(bl));
+    const T = new Uint8Array(N), hors = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      if (d[i * 4 + 3] < 128) hors[i] = 1;
+      else if (deltaE(lab(i), lab0) > tol) T[i] = 1;
+    }
+    let F = T;
+    if (R > 0) {
+      const tmp = new Uint8Array(N);
+      F = new Uint8Array(N);
+      _passe(T, tmp, W, H, R, false);
+      _passe(tmp, F, W, H, R, true);
+      for (let i = 0; i < N; i++) if (T[i]) F[i] = 1;
+    }
+    if (F[g]) return { refus: "trait" };
+    // composante 4-connexe du fond fermé : `file` = ses pixels, `m` = son masque (contour)
+    const m = new Uint8Array(N), file = new Int32Array(N);
+    let lu = 0, n = 0, premier = g, x0 = W, y0 = H, x1 = -1, y1 = -1;
+    file[n++] = g; m[g] = 1;
+    while (lu < n) {
+      const q = file[lu++], qx = q % W, qy = (q - qx) / W;
+      if (hors[q] || qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) return { refus: "ouvert" };
+      if (q < premier) premier = q;
+      if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
+      const vois = [q - 1, q + 1, q - W, q + W];
+      for (let k = 0; k < 4; k++) {
+        const t = vois[k];
+        if (m[t] || F[t]) continue;
+        m[t] = 1; file[n++] = t;
+      }
+    }
+    // 🩸 Plafond jugé APRÈS le remplissage : une fuite vers le bord est « ouverte », pas « trop grande »
+    if (n > aireMax) return { refus: "tropGrand" };
+    const eps = Math.max(0.5, (o.simplification === undefined ? REMPLIR.simplification : o.simplification) * e);
+    const s = _simplifierFerme(_contour(m, W, H, premier % W, (premier - premier % W) / W), eps);
+    if (s.length < 3) return { refus: "trait" };
+    const ox = o.x0 || 0, oy = o.y0 || 0;
+    return {
+      aire: n / (e * e),
+      boite: { x: ox + x0 / e, y: oy + y0 / e, w: (x1 - x0 + 1) / e, h: (y1 - y0 + 1) / e },
+      points: s.map(function (q) {
+        return { x: Math.round((ox + q[0] / e) * 10) / 10, y: Math.round((oy + q[1] / e) * 10) / 10 };
+      })
+    };
+  }
+
   const api = { detecter: detecter, detecterBloc: detecterBloc, depuisMetres: depuisMetres, REGLAGES: REGLAGES,
                 executeurWorker: executeurWorker, executeurLocal: executeurLocal, recalculer: recalculer,
                 mesurerExemple: mesurerExemple, reglagesDepuisExemples: reglagesDepuisExemples,
                 reglagesPourTaille: reglagesPourTaille, rgbVersLab: rgbVersLab, deltaE: deltaE,
-                _magasin: _magasin };
+                remplir: remplir, REMPLIR: REMPLIR, _magasin: _magasin };
   racine.KtaDetection = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : globalThis);

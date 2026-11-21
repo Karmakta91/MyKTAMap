@@ -738,6 +738,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-verifier-plan-auto.js` | Passe légère de Vérifier le plan : pastilles (carte et tuile Éditeur de données), un seul toast, rien à la réouverture au même nombre, un nouveau s'il change, rien pendant l'urgence ni en lecture seule, moteur qui lève sans effet, tâches longues pendant la passe |
 | `smoke/checkup-comble-itineraire.js` | Comblé et effondrement sur le relevé fictif : évités quand un détour existe, traversés et dits sinon (résultat, toast de « Y aller »), sortie d'urgence et brancard, `inaccessible` toujours dure, C12 de « Vérifier le plan » en « À revoir » |
 | `smoke/checkup-recalage-scan.js` | « Recaler des données sur un autre scan » sur des jeux fictifs |
+| `smoke/checkup-remplir.js` | « Remplir au clic » dans la fenêtre Détecter : types à contour fermé seuls, 3 touchers → 3 zones, contour ouvert refusé, pas de doublon, Valider en une étape ⏪, niveau du type ; Chromium et WebKit |
 | `smoke/checkup-repositionner.js` | « Repositionner » un POI de session à la souris |
 | `smoke/checkup-retour-accueil.js` | Fermer un plan le vide, « Reprendre » le retrouve |
 | `smoke/checkup-rotation-bloquee.js` | Option « Bloquer la rotation de la carte » : deux doigts et Maj + molette coupés sur la carte du plan et les deux cartes OSM, plan orienté et vue 3D intacts, coût mesuré option active |
