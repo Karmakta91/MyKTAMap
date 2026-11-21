@@ -7,7 +7,7 @@
 
 ### 0. 🎨 Styles des types — source de vérité UNIQUE (v1.76.0)
 
-**`js/styleResolver.js` est le SEUL endroit où vivent les styles des types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/masse-sol/remblais/effondrement/inaccessible/pente`, structures `pilier-1/pilier-2/mur/mur-ligne/front-1/front-2/arc`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
+**`js/styleResolver.js` est le SEUL endroit où vivent les styles des types built-in** (tracés `principal/secondaire/chemin/jonction/itinerary`, zones `eau/masse-sol/remblais/effondrement/inaccessible/pente`, structures `pilier-1/pilier-2/pilier-bras/mur/mur-ligne/front-1/front-2/arc`). Avant lui : ~25 tables recopiées sur 12 fichiers — c'est ainsi qu'une zone `inaccessible` de calque sortait en gris remblais dans l'export PNG (entrée oubliée + repli silencieux, même défaut que `jonction` en v1.7.1).
 
 **API** (globales `window.*`) :
 - `ktaResolveStyle(cat, clé[, {flat:true}])` → objet **NEUF** | `null` (l'appelant garde son repli). Résout aussi les customs `cust-*` via `LegendCustomization` (gabarit par catégorie/géométrie) et applique l'**override de couleur** utilisateur (`LegendCustomization.getColor`, cascade session > plan). Sans `opts` = style de la carte : `inaccessible` reçoit ses hachures en `CanvasPattern` (`_motifCanvas`, construit une fois, couleurs dans `CANON.zones.inaccessible._motif`), sur le canvas commun des vecteurs — l'ordre d'empilement zones < structures tient (`structures.js > ktaStructuresAuDessus`). `{flat:true}` = contexte qui ne peint pas de motif (canvas d'export, KMZ, fond OSM, pastilles) → `inaccessible` retombe sur son aplat `_flatFill` ; pas de canvas (Node) → aplat aussi. Une couleur choisie par l'utilisateur remplace le motif par un aplat. `masse-sol` : motif de grains **par cran** (`_motif.genre: "grains"`, `opts.comble`, part absente = ½, `ktaCombleZone`) — tuile de 48 px, grains tirés dans un ordre fixe (un cran plus haut garde ceux du cran d'en dessous), plafonnés à 85 %, cache par cran arrondi au vingtième ; aplat sable à 50 % en `flat`. `ktaEchantillonType(cat, clé)` → image opaque de son échantillon (pastille, légende) ; `KTA_ORDRE_ZONES` = empilement des zones (une table).
@@ -35,6 +35,22 @@ Contrastes WCAG mesurés (objet graphique, seuil 3:1) : bleu `#1e3a8a` 10,36 sur
 8,50 sur le fond clair `#f0e8d8`, mais 2,03 sur noir et 1,87 sur le fond sombre `#0a0d18` ; rouge `#cc0000` 5,89 /
 4,92 / 4,83 / 3,57 / 3,29 : sur fond sombre ce sont les rayures qui gardent l'arc visible.
 
+**Carré barré (pilier à bras)** : `CANON.structures["pilier-bras"]` = le plein du pilier 1re masse (`#f4c542`,
+contour noir, poids 3) et `croix: true`, gardée en `flat`. Carte : `structures.js > ktaPolygoneStructure(latlngs,
+style, opts)` rend un polygone à UNE couche qui, après remplissage et contour, peint ses deux diagonales
+(`ktaPeindreCroix` : couleur et opacité du contour, épaisseur 0,4 × le contour, plancher 0,5 px ; sommets projetés
+non découpés `_rings`, un carré au bord de l'écran garde sa vraie croix). Diagonales d'un contour retouché à n
+sommets : `ktaSegmentsCroix(n)` = (0, n/2) et (n/4, n/4 + n/2). Canvas seulement (renderer SVG : carré plein). Le
+contour suit la loi des surfaces au zoom (`ktaBordSurfacePourLargeur`), la croix le suit. Session et calques
+passent par la même fonction (`options.ktaCroix`). Exports PNG / PDF (`exporter.js > _croixExp`) et « Télécharger
+le plan » (`utils.js > telechargerPlan`) : même croix ; 🩸 leur contour de carré barré suit la loi de l'écran
+(`_contourSurfaceExp`, le quart du front), sinon `weight × scale` noircissait le carré d'un mètre. KMZ, Vue OSM,
+mini-carte d'urgence : carré plein. Pastilles : deux dégradés en diagonale sur le remplissage (`ktaTypeSwatchHtml`,
+≡ Légende, fenêtre d'export) ; légende de l'export : la même croix sur le carré.
+Pose d'un clic (`structures.js > POSE_UN_CLIC`, `ktaCarrePilierBras`) : carré de 1 m réel (`APP_CONFIG.scale`)
+centré sur le clic, côtés parallèles aux axes de l'image, au niveau actif (`ktaNiveauNouvelleStructure`) ; aucune
+structure en cours, l'outil reste armé, même après ⏪ (`historyManager.js` lit `ktaPoseUnClic`).
+
 **Règles** :
 - ❌ **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit BLOQUANT) refuse toute réintroduction. Exceptions assumées, listées dans le script : `emergencyMode.js` (palette vive dédiée), `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange sur OSM).
 - ⚠️ Le **KML garde SES largeurs/alphas** (`width` KML ≠ `weight` Leaflet, ajustés à l'échelle GPS) — seules les couleurs viennent du canon. Figé par `scripts/check-kml-styles.js`.
@@ -43,7 +59,7 @@ Contrastes WCAG mesurés (objet graphique, seuil 3:1) : bleu `#1e3a8a` 10,36 sur
 
 ### 0.1 🧱 Ordre de dessin des structures — un mur sous les piliers et fronts de son niveau (décision produit)
 
-**Règle** : un mur (`mur` polygone, `mur-ligne` trait) est toujours dessiné **sous** les piliers (`pilier-1/2`) et fronts
+**Règle** : un mur (`mur` polygone, `mur-ligne` trait) est toujours dessiné **sous** les piliers (`pilier-1/2`, `pilier-bras`) et fronts
 (`front-1/2`) de **son** niveau, qu'il vienne de la session ou d'un calque, quel que soit l'ordre de chargement des
 calques. Hors multi-niveau, tout est un seul niveau. Un **type personnalisé** n'a pas de rôle (sa légende ne dit pas
 qu'il est un mur) : il garde sa place. Un mur d'un **autre** niveau n'est pas concerné (l'ordre reste celui d'arrivée).
@@ -63,7 +79,7 @@ qu'il est un mur) : il garde sa place. Un mur d'un **autre** niveau n'est pas co
 - **Place par rapport aux autres familles** : le minimum. Un mur qui doit descendre se pose juste sous le premier
   pilier/front de son niveau ; s'il y avait entre les deux des zones ou des tracés (ceux d'un calque chargé entre-temps),
   le mur passe aussi sous eux. Les murs déjà en place (cas courant : session seule, ou un seul calque, déjà triés
-  `mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc`, l'arc passant ensuite au-dessus des tracés,
+  `mur < mur-ligne < pilier-2 < pilier-1 = pilier-bras < front-2 < front-1 < arc`, l'arc passant ensuite au-dessus des tracés,
   ci-dessus) ne bougent pas. Zones, tracés, piliers et fronts ne
   bougent jamais ; l'itinéraire (renderer à part) et les marqueurs (DOM) ne sont pas touchés.
 - Largeurs au zoom (`majLargeurFronts`, mutation de `options.weight`) et filtre de niveau (opacité des couches de

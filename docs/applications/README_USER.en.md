@@ -1030,6 +1030,7 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 |---|---|---|
 | 🟡 **1st-mass pillar** | closed surface | yellow |
 | 🟠 **2nd-mass pillar** | closed surface | orange |
+| **Hand-built pillar** — a small pillar built up by hand, placed with a single tap | 1 m square | yellow with a cross |
 | 🔵 **Wall** (dry stone, masonry) | closed surface | blue |
 | 🟦 **Wall (line)** — a wall surveyed as a stroke, often from a GIS import | line | blue stroke |
 | 🟨 **1st-mass quarry face** | line | yellow stroke |
@@ -1037,6 +1038,8 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 | **Support arch** — a single arch set from one wall of the gallery to the other | line | thin blue stroke striped red |
 
 Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. After ✅ or tapping the first point again, the tool stays on so you can chain the next pillar or face; press the type again to finish.
+
+A **hand-built pillar** is placed with **a single tap**: a 1 m square (at the map's scale), centred where you tap, its sides aligned with the map, on the active level. The tool stays on: each tap places another pillar, ⏪ removes the last one. Its vertices can then be adjusted like those of the other pillars. Like them, it has no effect on the route, stops the tracker, stands as a block in the 3D view and counts as a pillar in the Mined volume. On the map, in the legend and in image and PDF exports it is a yellow square with a thin cross; KMZ and the OSM view show it plain. Detection never offers it.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **on level −1** (the bed under the 1st mass), whatever level is shown; the others take the active level. The **Level** list of their card moves them.
 

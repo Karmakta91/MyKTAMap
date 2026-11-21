@@ -1030,6 +1030,7 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 |---|---|---|
 | 🟡 **Pilar 1ª masa** | superficie cerrada | amarillo |
 | 🟠 **Pilar 2ª masa** | superficie cerrada | naranja |
+| **Pilar hecho a mano** — pequeño pilar de mampostería levantado a mano, colocado con un solo toque | cuadrado de 1 m | amarillo con una cruz |
 | 🔵 **Muro** (piedra seca, mampostería) | superficie cerrada | azul |
 | 🟦 **Muro (línea)** — un muro levantado como trazo, a menudo en una importación SIG | línea | trazo azul |
 | 🟨 **Frente de cantera 1ª masa** | línea | trazo amarillo |
@@ -1037,6 +1038,8 @@ Para las canteras: los elementos portantes y el avance de la explotación, en el
 | **Arco de sostenimiento** — un arco aislado colocado de una pared a otra de la galería | línea | trazo azul fino rayado de rojo |
 
 Pulsa un tipo, toca los puntos y vuelve a pulsar el tipo encendido (o **✅ Cerrar la estructura en curso**): un pilar o un muro (3 puntos mínimo) se cierra sobre su primer punto, un frente de cantera, un muro (línea) o un arco (2 puntos mínimo) queda como línea abierta. Tras ✅ o volver a tocar el primer punto, la herramienta sigue encendida para encadenar el pilar o el frente siguiente; vuelve a pulsar el tipo para terminar.
+
+Un **pilar hecho a mano** se coloca con **un solo toque**: un cuadrado de 1 m de lado (a la escala del mapa), centrado donde tocas, con los lados alineados con el mapa, en el nivel activo. La herramienta sigue encendida: cada toque coloca otro pilar, ⏪ quita el último. Sus vértices se ajustan luego como los de los demás pilares. Como ellos, no tiene ningún efecto en el itinerario, detiene al rastreador, se levanta como un bloque en la vista 3D y cuenta como pilar en el Volumen explotado. En el mapa, la leyenda y las exportaciones de imagen y PDF es un cuadrado amarillo con una cruz fina; el KMZ y la Vista OSM lo muestran lleno. La detección nunca lo propone.
 
 En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente **en el nivel −1** (el banco bajo la 1ª masa), sea cual sea el nivel mostrado; los demás toman el nivel activo. La lista **Nivel** de su ficha los mueve.
 

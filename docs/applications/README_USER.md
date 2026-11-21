@@ -1030,6 +1030,7 @@ Pour les carrières : les éléments porteurs et l'avancement de l'exploitation,
 |---|---|---|
 | 🟡 **Pilier 1ère masse** | surface fermée | jaune |
 | 🟠 **Pilier 2e masse** | surface fermée | orange |
+| **Pilier à bras** — petit pilier maçonné à la main, posé d'un seul toucher | carré de 1 m | jaune barré d'une croix |
 | 🔵 **Mur** (pierre sèche, maçonnerie) | surface fermée | bleu |
 | 🟦 **Mur (ligne)** — un mur levé en trait, souvent à l'import SIG | ligne | trait bleu |
 | 🟨 **Front de taille 1ère masse** | ligne | trait jaune |
@@ -1037,6 +1038,8 @@ Pour les carrières : les éléments porteurs et l'avancement de l'exploitation,
 | **Arc de soutènement** — un arc isolé posé d'une paroi à l'autre de la galerie | ligne | trait bleu fin rayé de rouge |
 
 Appuie sur un type, tape les points, puis re-appuie sur le type allumé (ou sur **✅ Fermer la structure en cours**) : un pilier ou un mur (3 points minimum) se referme sur son premier point, un front de taille, un mur (ligne) ou un arc (2 points minimum) reste une ligne ouverte. Après ✅ ou le re-tap du premier point, l'outil reste allumé pour enchaîner le pilier ou le front suivant ; re-appuie sur le type pour finir.
+
+Un **pilier à bras** se pose d'**un seul toucher** : un carré de 1 m de côté (à l'échelle du plan), centré là où tu touches, côtés alignés sur le plan, au niveau actif. L'outil reste allumé : chaque toucher pose un autre pilier, ⏪ retire le dernier. Ses sommets s'ajustent ensuite comme ceux des autres piliers. Comme eux, il n'a aucun effet sur l'itinéraire, arrête le tracker, se dresse en bloc dans la vue 3D et compte comme pilier dans le Volume exploité. Sur la carte, la légende et les exports image et PDF, c'est un carré jaune barré d'une croix fine ; le KMZ et la Vue OSM le montrent plein. La détection ne le propose jamais.
 
 Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquement **au niveau −1** (le banc sous la 1re masse), quel que soit le niveau affiché ; les autres prennent le niveau actif. La liste **Niveau** de leur fiche les déplace.
 

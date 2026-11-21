@@ -154,6 +154,13 @@ lat] }` en WGS84 quelle que soit la projection ; relue par l'import SIG, `sigImp
 sommet inséré avant : l'indice avance ; sommet né sur le bord de la rampe : elle garde la première moitié ; sommet
 supprimé à un bout de son bord : le segment disparaît, la rampe aussi. La fin, en coordonnées du plan, ne bouge pas
 (voulu).
+→ **Pilier à bras** : structure `"type": "pilier-bras"`, polygone fermé ordinaire (`points`, `level`, `uid`), sans
+champ propre. Posé d'un clic en carré de 1 m (4 sommets arrondis au centième de px, `structures.js >
+ktaCarrePilierBras`), ses sommets se retouchent ensuite comme ceux de tout pilier. Comme un pilier : retranché du
+Volume exploité, obstacle du tracker et de la vue 3D (`tracking.js > _OBST_TYPES`), aucun effet sur l'itinéraire ;
+jamais proposé par la détection (`detectionStructures.js > TYPES`, liste fermée). KMZ : style `#structure_pilier-bras`
+(relu par `kmzImport.js`) ; GeoJSON : famille `structure`, type `pilier-bras` ; import SIG : synonymes `pilier bras`,
+`pilier à bras`.
 → **Zone jonction** : `"type": "pente"` (« Jonction » du menu Zone, plan multi-niveau), `level` = niveau de départ,
 `niveaux` = [départ, arrivée] (deux niveaux différents, triés). Chambre dont le sol suit en 3D la pente du tracé jonction
 qui la traverse (`galerieEmprise.js > penteDeZone`). Couleur, libellé et visibilité de légende : ceux du tracé jonction

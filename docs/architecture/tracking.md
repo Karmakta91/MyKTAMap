@@ -709,7 +709,7 @@ pas d'image de collision : le champ `plan.collisionImage` d'un ancien plan-confi
 `data-formats.md`, `scripts/smoke/checkup-sans-collision.js`).
 
 - **`_pasBloqueParStructure(x0, y0, x1, y1)`** — structures de session (`getStructures`) et du plan
-   (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier 1re/2e masse ou un mur fermé, ou
+   (`_ktaDataStructurePolygons`) : le pas est refusé s'il **entre** dans un pilier (1re, 2e masse, à bras) ou un mur fermé, ou
    s'il **coupe** une arête d'un de ces polygones (coin de pilier) ou un front de taille 1re/2e masse ou un mur
    (ligne). Les autres types (zones, arc de soutènement `arc`, types `cust-…`) ne comptent pas pour le tracker ;
    ⚠️ l'arc est absent de `_OBST_TYPES` exprès (on passe dessous : ni tracker, ni vue 3D) ; le 6e paramètre

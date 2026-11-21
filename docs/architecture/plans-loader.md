@@ -971,7 +971,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
-  pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout.
+  pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
+  (`pilier-bras`, posé d'un clic) n'est jamais proposé : la liste `detectionStructures.js > TYPES` est fermée.
 - **Doublons** : une masse qui recouvre une structure du même niveau (session ou calque), un front dont tous les
   sommets et milieux sont à moins de 3 px d'un front existant du même niveau : écartés et comptés « déjà présents ».
   Relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
