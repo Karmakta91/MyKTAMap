@@ -526,7 +526,7 @@
       pointsTags:      null,  // null = tous
       roadsTypes:      { principal: true, secondaire: true, chemin: true, jonction: true, itinerary: true },
       zonesTypes:      { eau: true, "masse-sol": true, remblais: true, effondrement: true, inaccessible: true },
-      structuresTypes: { "pilier-1": true, "pilier-2": true, "mur": true, "mur-ligne": true,
+      structuresTypes: { "pilier-1": true, "pilier-2": true, "pilier-bras": true, "mur": true, "mur-ligne": true,
                          "front-1": true, "front-2": true, "arc": true },
       levels:          null
     };

@@ -1249,9 +1249,10 @@
                        ? window.isStructurePolylineType
                        : function(t) { return t === "mur-ligne" || t === "front-1" || t === "front-2" || t === "arc"; };
 
-    // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 < front-2 < front-1 < arc. Sur Leaflet, ordre d'ajout =
-    // ordre Z : tri AVANT itération.
-    const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5, "arc": 6 };
+    // Ordre Z : mur < mur-ligne < pilier-2 < pilier-1 = pilier à bras < front-2 < front-1 < arc. Sur Leaflet, ordre
+    // d'ajout = ordre Z : tri AVANT itération.
+    const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3, "front-2": 4,
+      "front-1": 5, "arc": 6 };
     const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
     const sorted = all.slice().sort(function(a, b) {
       if (_multiLevelOnSort) {
@@ -1265,6 +1266,8 @@
     const POLYGON_STYLES = {
       "pilier-1": { color: "#000000", weight: 1, fillColor: "#f4c542", fillOpacity: 0.85, opacity: 0.9 },
       "pilier-2": { color: "#000000", weight: 1, fillColor: "#ff9933", fillOpacity: 0.85, opacity: 0.9 },
+      // Pilier à bras : le plein du pilier, sans croix (un carré de 1 m ne fait qu'un point sur la mini-carte).
+      "pilier-bras": { color: "#000000", weight: 1, fillColor: "#f4c542", fillOpacity: 0.85, opacity: 0.9 },
       "mur":      { color: "#000000", weight: 1, fillColor: "#1e3a8a", fillOpacity: 0.85, opacity: 0.9 }
     };
     const POLYLINE_STYLES = {

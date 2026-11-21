@@ -343,7 +343,9 @@
   const MUR_PIERRE = { m: 1, tete: 0.02 };
   // ⚠️ contrat (décision produit) : le mur en surface fermée (`mur`) est en parpaing, le mur tracé en ligne
   // (`mur-ligne`) en pierre de taille. La forme est portée par le type (isStructurePolylineType).
-  const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "front-1": "roche", "front-2": "roche",
+  // Pilier à bras : le bloc d'un pilier, sa roche (pas de modèle propre).
+  const TEXTURE_TYPE = { "pilier-1": "roche", "pilier-2": "roche", "pilier-bras": "roche", "front-1": "roche",
+    "front-2": "roche",
     "mur": "parpaing", "mur-ligne": "pierre" };
   const LISERE = 0.15;              // m
   // m : POI plus loin de l'axe d'un tracé = masqué en mode galerie (salles comprises). ⚠️ contrat : le rayon du

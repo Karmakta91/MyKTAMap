@@ -77,6 +77,12 @@
     structures: {
       "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
       "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
+      // Pilier à bras (petit pilier maçonné à la main) : le plein du pilier 1re masse, barré d'une croix fine qui le
+      // distingue d'un pilier tourné, même à quelques pixels. `croix` : les diagonales, peintes dans la couleur du
+      // contour (structures.js > ktaPeindreCroix : carte, exports canvas) ; un contexte qui ne sait pas les peindre
+      // (KMZ, fonds OSM) garde le carré plein. Posé d'un seul clic (structures.js > ktaCarrePilierBras).
+      // ⚠️ Comme tout pilier : obstacle du tracker et de la vue 3D, jamais de l'itinéraire, absent de la détection.
+      "pilier-bras": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1, croix: true },
       "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
       // Fronts de taille = polylines épaisses. `fillColor` reste égal à `color` (des consommateurs
       // lisent l'un ou l'autre) ; `isPolyline` est lu par les adaptateurs de rendu.
@@ -433,6 +439,15 @@
       return '<span style="display:inline-block;width:18px;height:4px;background:' + s.color +
              ';vertical-align:middle;border-radius:1px;"></span>';
     }
+    // Carré barré (pilier à bras) : les deux diagonales du contour, en dégradés, sur le remplissage.
+    if (s.croix) {
+      const diag = function (a) {
+        return "linear-gradient(" + a + "deg,transparent 43%," + s.color + " 43% 57%,transparent 57%)";
+      };
+      return '<span style="display:inline-block;width:13px;height:13px;background:' + diag(45) + ',' + diag(-45) +
+             ',' + (s.fillColor || s.color) + ';border:2px solid ' + s.color +
+             ';vertical-align:middle;border-radius:3px;"></span>';
+    }
     // Type à grains (masse au sol) : l'échantillon opaque du motif (ktaEchantillonType).
     const url = ktaEchantillonType(categorie, cle);
     if (url) {
@@ -450,10 +465,10 @@
   function ktaLabelAvecPastille(categorie, cle, label) {
     const l = String(label == null ? "" : label);
     // Trait rayé (arc) : aucun émoji de couleur ne le dit, son libellé n'en porte pas ; la pastille est posée.
-    // Type à grains (masse au sol) : pas d'émoji non plus (aucun ne dit le sable), la pastille est posée.
+    // Type à grains (masse au sol), carré barré (pilier à bras) : pas d'émoji non plus, la pastille est posée.
     const st = ktaResolveStyle(categorie, cle, { flat: true });
     const t = CANON[categorie] && CANON[categorie][cle];
-    if ((st && st.rayures) || (t && t._motif && t._motif.genre === "grains")) {
+    if ((st && (st.rayures || st.croix)) || (t && t._motif && t._motif.genre === "grains")) {
       return ktaTypeSwatchHtml(categorie, cle, "") + " " + l;
     }
     for (let i = 0; i < _EMOJIS_COULEUR.length; i++) {

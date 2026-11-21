@@ -18,7 +18,7 @@
   "use strict";
 
   // Structures intégrées, dans l'ordre des listes (même ordre que structures.js > STRUCTURE_TYPES_BUILTIN).
-  const STRUCT_INTEGRES = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"];
+  const STRUCT_INTEGRES = ["pilier-1", "pilier-2", "pilier-bras", "mur", "mur-ligne", "front-1", "front-2", "arc"];
 
   // Résout au RENDU (jamais au load) ; clé brute si le dico est absent.
   function t(key, params) {
@@ -1016,6 +1016,8 @@
         ${row("adv_structures", window.ktaIcone("m-pilier") + " " + t("export.adv.structures"), (d.structures || []).length, true)}
         ${rowSub("adv_structures_pilier-1", _lp("structures", "pilier-1", t("export.adv.structPilier1")),     structuresByType["pilier-1"].length, true)}
         ${rowSub("adv_structures_pilier-2", _lp("structures", "pilier-2", t("export.adv.structPilier2")),     structuresByType["pilier-2"].length, true)}
+        ${rowSub("adv_structures_pilier-bras", _lp("structures", "pilier-bras", t("export.adv.structPilierBras")),
+          structuresByType["pilier-bras"].length, true)}
         ${rowSub("adv_structures_mur",      _lp("structures", "mur", t("export.adv.structMur")),         structuresByType["mur"].length,      true)}
         ${rowSub("adv_structures_mur-ligne", _lp("structures", "mur-ligne", t("export.adv.structMurLigne")),
                  structuresByType["mur-ligne"].length, true)}
@@ -1098,7 +1100,7 @@
 
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
     syncParent("adv_zones", ["adv_zones_eau", "adv_zones_masse-sol", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
-    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur", "adv_structures_mur-ligne", "adv_structures_front-1", "adv_structures_front-2", "adv_structures_arc"]);
+    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_pilier-bras", "adv_structures_mur", "adv_structures_mur-ligne", "adv_structures_front-1", "adv_structures_front-2", "adv_structures_arc"]);
 
     // Points ↔ tags : la liste varie selon les points
     const tagsList = _listerTagsPoints(_compter().points);
@@ -1201,6 +1203,8 @@
     const structuresTypesHtml =
       rowTypeSub("conv_structures_pilier-1", t("export.conv.structPilier1"), structureCountByType["pilier-1"].length, true) +
       rowTypeSub("conv_structures_pilier-2", t("export.conv.structPilier2"), structureCountByType["pilier-2"].length, true) +
+      rowTypeSub("conv_structures_pilier-bras", t("export.conv.structPilierBras"),
+        structureCountByType["pilier-bras"].length, true) +
       rowTypeSub("conv_structures_mur",      t("export.conv.structMur"),     structureCountByType["mur"].length,      true) +
       rowTypeSub("conv_structures_mur-ligne", t("export.conv.structMurLigne"),
                  structureCountByType["mur-ligne"].length, true) +
@@ -1366,7 +1370,7 @@
 
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
     syncParent("conv_zones", ["conv_zones_eau", "conv_zones_masse-sol", "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
-    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_mur-ligne", "conv_structures_front-1", "conv_structures_front-2", "conv_structures_arc"]);
+    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_pilier-bras", "conv_structures_mur", "conv_structures_mur-ligne", "conv_structures_front-1", "conv_structures_front-2", "conv_structures_arc"]);
   }
 
   // Charge un .json (un calque) ou un .zip (plusieurs .json + photos/) pour le sens data2ed, puis re-rend.
@@ -2317,11 +2321,12 @@
       return !!incZones && zoneTypesActifs[z.type] !== false;
     });
 
-    // Structures par type : les 6 sous-types (fronts compris) doivent figurer dans ce dict, sinon
+    // Structures par type : tous les sous-types intégrés (fronts compris) doivent figurer dans ce dict, sinon
     // `undefined !== false` les inclut quoi qu'on coche.
     const structureTypesActifs = {
       "pilier-1": document.getElementById("conv_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("conv_structures_pilier-2")?.checked ?? true,
+      "pilier-bras": document.getElementById("conv_structures_pilier-bras")?.checked ?? true,
       "mur":      document.getElementById("conv_structures_mur")?.checked      ?? true,
       "mur-ligne": document.getElementById("conv_structures_mur-ligne")?.checked ?? true,
       "front-1":  document.getElementById("conv_structures_front-1")?.checked  ?? true,
@@ -3005,6 +3010,7 @@
     const structuresByType = {
       "pilier-1": allStructures.filter(function(s) { return s.type === "pilier-1"; }).length,
       "pilier-2": allStructures.filter(function(s) { return s.type === "pilier-2"; }).length,
+      "pilier-bras": allStructures.filter(function(s) { return s.type === "pilier-bras"; }).length,
       "mur":      allStructures.filter(function(s) { return s.type === "mur";      }).length,
       "mur-ligne": allStructures.filter(function(s) { return s.type === "mur-ligne"; }).length,
       "front-1":  allStructures.filter(function(s) { return s.type === "front-1";  }).length,
@@ -3254,13 +3260,15 @@
     const rByT = stats.roadsByType;
     const zByT = stats.zonesByType;
     const sByT = stats.structuresByType ||
-      { "pilier-1": 0, "pilier-2": 0, "mur": 0, "mur-ligne": 0, "front-1": 0, "front-2": 0, "arc": 0 };
+      { "pilier-1": 0, "pilier-2": 0, "pilier-bras": 0, "mur": 0, "mur-ligne": 0, "front-1": 0, "front-2": 0,
+        "arc": 0 };
     // 🩸 Les types hors intégrés comptent : un plan dont les structures sont toutes personnalisées aurait un
     // total à 0, donc une case grisée, et ses structures ne partiraient pas.
     const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin + (rByT.autres || 0);
     const zonesTotal = zByT.eau + zByT["masse-sol"] + zByT.remblais + zByT.effondrement + zByT.inaccessible +
       (zByT.autres || 0);
-    const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"] + (sByT["mur-ligne"] || 0)
+    const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + (sByT["pilier-bras"] || 0) + sByT["mur"]
+                          + (sByT["mur-ligne"] || 0)
                           + (sByT["front-1"] || 0) + (sByT["front-2"] || 0) + (sByT["arc"] || 0) + (sByT.autres || 0);
 
     return '<div class="kta-kmz-section">' +
@@ -3311,6 +3319,8 @@
         row("kmz_inc_structures", window.ktaIcone("m-pilier") + " " + t("export.kmz.structures"), structuresTotal, true) +
         rowSub("kmz_inc_structures_pilier-1", _lp("structures", "pilier-1", t("export.kmz.structPilier1")), sByT["pilier-1"], true) +
         rowSub("kmz_inc_structures_pilier-2", _lp("structures", "pilier-2", t("export.kmz.structPilier2")), sByT["pilier-2"], true) +
+        rowSub("kmz_inc_structures_pilier-bras", _lp("structures", "pilier-bras", t("export.kmz.structPilierBras")),
+          sByT["pilier-bras"] || 0, true) +
         rowSub("kmz_inc_structures_mur",      _lp("structures", "mur", t("export.kmz.structMur")),     sByT["mur"],      true) +
         rowSub("kmz_inc_structures_mur-ligne", _lp("structures", "mur-ligne", t("export.kmz.structMurLigne")),
                sByT["mur-ligne"] || 0, true) +
@@ -3403,7 +3413,7 @@
     setTimeout(function() {
       _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
       _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_masse-sol", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
-      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur", "kmz_inc_structures_mur-ligne", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2", "kmz_inc_structures_arc"]);
+      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_pilier-bras", "kmz_inc_structures_mur", "kmz_inc_structures_mur-ligne", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2", "kmz_inc_structures_arc"]);
       // Points : IDs kmz_inc_points_tag_<slug>
       const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
       const tagIds = Array.from(tagCheckboxes).map(function(cb) { return cb.id; });

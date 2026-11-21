@@ -474,7 +474,7 @@
       return Object.prototype.hasOwnProperty.call(z, type) ? z[type] : "✨";
     }
     if (category === "structures") {
-      return ({ "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "mur-ligne": "🟦",
+      return ({ "pilier-1": "🟡", "pilier-2": "🟠", "pilier-bras": "🟡", "mur": "🔵", "mur-ligne": "🟦",
                 "front-1": "🟨", "front-2": "🟧", "arc": "🟦" })[type] || "✨";
     }
     return "🏷️";
@@ -738,7 +738,7 @@
                ["eau", "masse-sol", "remblais", "effondrement", "inaccessible"]), "m-zone") +
            _section(window.I18n.t("filter.section.structTypes"), "structs",
              _renderTypesSection("structures", "structTypes", window.KTA_STRUCTURE_TYPES_BUILTIN ||
-               ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"]),
+               ["pilier-1", "pilier-2", "pilier-bras", "mur", "mur-ligne", "front-1", "front-2", "arc"]),
              "m-pilier");
   }
 

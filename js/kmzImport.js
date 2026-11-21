@@ -462,9 +462,9 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // #structure_pilier-1/2/mur/cust-… → structure polygone ; #zone_<built-in>/cust-… → zone ;
+          // #structure_pilier-1/2/bras/mur/cust-… → structure polygone ; #zone_<built-in>/cust-… → zone ;
           // sinon defaults.zoneType.
-          const structMatch     = _styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
+          const structMatch     = _styleUrl.match(/^#structure_(pilier-1|pilier-2|pilier-bras|mur)$/);
           const structCustMatch = _styleUrl.match(/^#structure_(cust-[A-Za-z0-9_-]+)$/);
           if (structMatch || structCustMatch) {
             const stType = structMatch ? structMatch[1] : structCustMatch[1];

@@ -7,7 +7,7 @@
 // laisse le styleUrl pendant, Google Earth retombe sur son trait par défaut et la couleur choisie est perdue.
 // Les couleurs passent par `js/styleResolver.js` et un <Style> est déclaré par type hors intégrés utilisé.
 // Trois invariants :
-//   1. les 15 styles BUILT-IN restent identiques à REFERENCE : le KML a ses propres LARGEURS (unité ≠
+//   1. les styles BUILT-IN restent identiques à REFERENCE : le KML a ses propres LARGEURS (unité ≠
 //      `weight` Leaflet : un front est à 5 ici, 10 sur la carte) et ALPHAS ; brancher naïvement le
 //      résolveur sur ces champs changerait le rendu dans Google Earth ;
 //   2. un type CUSTOM produit un style, et un front custom n'a JAMAIS de PolyStyle (le canon donne un
@@ -35,6 +35,7 @@ const REFERENCE = {
   zone_pente:        { line: "#ff4ecb", fill: "#ff4ecb", fillAlpha: 0.3,  width: 2 },
   "structure_pilier-1": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
   "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
+  "structure_pilier-bras": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
   "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },
   "structure_front-1":  { line: "#f4c542", width: 5, alpha: 1 },
   "structure_front-2":  { line: "#ff9933", width: 5, alpha: 1 },

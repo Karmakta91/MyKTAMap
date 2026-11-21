@@ -4,13 +4,15 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// structures.js — structures de session : piliers (1re / 2e masse) et murs en polygones remplis, fronts de
+// structures.js — structures de session : piliers (1re / 2e masse, à bras) et murs en polygones remplis, fronts de
 // taille, murs en ligne et arcs de soutènement en polylignes ; types custom de la légende. Clone adapté de
-// zones.js, stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé.
+// zones.js, stocké à part (`structure.json`). Multi-niveau : champ `level` posé au tracé. Le pilier à bras se pose
+// d'un seul clic (carré de 1 m, POSE_UN_CLIC), puis s'ajuste comme les autres.
 // Expose : initStructures, toggleStructureMode, fermerStructureEnCours, renderStructures, resetStructures,
 //   removeLastStructure(Point), get/setStructures, getCurrentStructure(Index), setCurrentStructureByIndex,
 //   isStructurePolylineType, KTA_STRUCTURE_TYPES_BUILTIN, ktaNiveauNouvelleStructure, ktaPolylineStructure,
-//   ktaPeindreRayures, ktaArcsAuDessus,
+//   ktaPeindreRayures, ktaArcsAuDessus, ktaPoseUnClic, ktaCarrePilierBras, ktaSegmentsCroix, ktaPeindreCroix,
+//   ktaPolygoneStructure,
 //   ktaLargeurRayePourRatio, majLargeurFronts, brancherLargeurFronts,
 //   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
 //   KtaEpaisseurTraits (réglage d'appareil : facteur d'écran des traits, jamais appliqué aux exports),
@@ -21,14 +23,16 @@
 // joue un rôle, d'obstacle (pathfinder.js > _collecterMursLigne) ; piliers, mur polygone, fronts et arcs, aucun.
 // Garde-fou : scripts/check-style-canon.js, scripts/check-api-surface.js, scripts/check-filets-donnees.js
 
-window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "mur-ligne" | "front-1" | "front-2" | "arc"
+// null | "pilier-1" | "pilier-2" | "pilier-bras" | "mur" | "mur-ligne" | "front-1" | "front-2" | "arc" | "cust-…"
+window.modeStructure = null;
 
 // Fronts de taille (limites d'exploitation d'une couche), mur en ligne (mur levé en trait, cas d'un import SIG)
 // et arc de soutènement (posé d'une paroi à l'autre, en travers de la galerie) = POLYLINES ouvertes ; les autres =
 // polygones fermés.
 const STRUCTURE_TYPES_POLYLINE = ["mur-ligne", "front-1", "front-2", "arc"];
 // Types intégrés, dans l'ordre des listes (légende, exports, filtres).
-const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "mur", "mur-ligne", "front-1", "front-2", "arc"];
+const STRUCTURE_TYPES_BUILTIN = ["pilier-1", "pilier-2", "pilier-bras", "mur", "mur-ligne", "front-1", "front-2",
+  "arc"];
 window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
 
 // Niveau d'une structure NOUVELLE (tracé à la main, détection sur l'image) ; null hors multi-niveau (aucun champ
@@ -37,6 +41,21 @@ window.KTA_STRUCTURE_TYPES_BUILTIN = STRUCTURE_TYPES_BUILTIN;
 // dessiné depuis le −1). Le reste : niveau actif. La fiche (liste Niveau) change ensuite la valeur telle quelle.
 // `opts` { multiLevel, niveau } : même règle hors plan ouvert (Générateur : case multi-niveau, niveau de l'image) ;
 // absent = le plan ouvert (APP_CONFIG).
+// Types posés d'UN clic : côté du carré en mètres réels (APP_CONFIG.scale), centré sur le clic, côtés parallèles aux
+// axes de l'image (décision produit). Aucun tracé en cours : le clic suivant pose un autre carré.
+const POSE_UN_CLIC = { "pilier-bras": 1 };
+// Type posé d'un clic ? Lu par historyManager.js (l'outil reste armé après ⏪).
+window.ktaPoseUnClic = function (type) { return Object.prototype.hasOwnProperty.call(POSE_UN_CLIC, type); };
+// Carré de `coteM` mètres (1 par défaut) centré sur (x, y) en px plan → 4 sommets, sens horaire à l'écran.
+// `pxParM` absent : l'échelle du plan ouvert. Arrondi au centième de px : un JSON lisible, un carré exact à l'œil.
+window.ktaCarrePilierBras = function (x, y, pxParM, coteM) {
+  const sc = Number(pxParM) > 0 ? Number(pxParM) : Number(window.APP_CONFIG && window.APP_CONFIG.scale);
+  if (!(sc > 0) || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const h = sc * (Number(coteM) > 0 ? Number(coteM) : 1) / 2;
+  const r = function (v) { return Math.round(v * 100) / 100; };
+  return [{ x: r(x - h), y: r(y - h) }, { x: r(x + h), y: r(y - h) }, { x: r(x + h), y: r(y + h) },
+    { x: r(x - h), y: r(y + h) }];
+};
 window.ktaNiveauNouvelleStructure = function (type, opts) {
   const c = opts || window.APP_CONFIG;
   if (!c || c.multiLevel !== true) return null;
@@ -184,6 +203,60 @@ window.ktaPolylineStructure = function (latlngs, style, opts) {
     return new _ClassePolylineRayee(latlngs, o);
   }
   return L.polyline(latlngs, o);
+};
+// ── Carré barré (style à `croix`, styleResolver.js : pilier à bras) ──────────────
+// Diagonales d'un contour de n sommets : (0, n/2) et (n/4, n/4 + n/2) en indices entiers — les deux diagonales d'un
+// quadrilatère, une croix encore lisible sur un contour retouché à plus de sommets. Moins de 4 sommets : aucune.
+window.ktaSegmentsCroix = function (n) {
+  if (!(n >= 4)) return [];
+  const m = Math.floor(n / 2), q = Math.floor(n / 4);
+  return [[0, m], [q, q + m]];
+};
+// Croix fine sur un contour déjà rempli (carte, exports PNG/PDF) : une seule loi de dessin. `pts` [{x, y}] en
+// coordonnées du contexte ; épaisseur = 0,4 × celle du contour, plancher 0,5 px : lisible à quelques pixels sans
+// noircir le carré au dézoom, où le contour lui-même s'affine (ktaBordSurfacePourLargeur).
+window.ktaPeindreCroix = function (ctx, pts, couleur, largeurContour, opacite) {
+  const a = (opacite === undefined || opacite === null) ? 1 : Number(opacite);
+  const segs = window.ktaSegmentsCroix(pts ? pts.length : 0);
+  if (!ctx || !couleur || !segs.length || !(a > 0)) return;
+  ctx.save();
+  if (ctx.setLineDash) ctx.setLineDash([]);
+  ctx.globalAlpha = a;
+  ctx.lineWidth = Math.max(0.5, (Number(largeurContour) || 1) * 0.4);
+  ctx.strokeStyle = couleur;
+  ctx.lineCap = "butt";
+  ctx.beginPath();
+  segs.forEach(function (sg) {
+    ctx.moveTo(pts[sg[0]].x, pts[sg[0]].y);
+    ctx.lineTo(pts[sg[1]].x, pts[sg[1]].y);
+  });
+  ctx.stroke();
+  ctx.restore();
+};
+let _ClassePolygoneBarre = null;
+// Polygone d'une structure : `style` résolu ; `opts` = options Leaflet. Un style à `croix` donne le polygone barré
+// (UNE couche, comme le trait rayé : filtres, registre, ordre des murs et clic n'en voient qu'une), sinon L.polygon.
+// 🩸 Canvas seulement (preferCanvas). Sommets PROJETÉS non découpés (`_rings`) : un carré à cheval sur le bord de
+// l'écran garde sa vraie croix. Sous un renderer SVG, le carré reste plein.
+window.ktaPolygoneStructure = function (latlngs, style, opts) {
+  const o = Object.assign({}, opts || {});
+  delete o.croix;
+  if (style && style.croix) {
+    if (!_ClassePolygoneBarre) {
+      _ClassePolygoneBarre = L.Polygon.extend({
+        _updatePath: function () {
+          L.Polygon.prototype._updatePath.call(this);
+          const r = this._renderer, op = this.options || {};
+          if (!op.ktaCroix || !op.stroke || !r || !r._ctx || !r._drawing) return;
+          if (!this._parts || !this._parts.length || !this._rings || !this._rings[0]) return;
+          window.ktaPeindreCroix(r._ctx, this._rings[0], op.color, op.weight, op.opacity);
+        }
+      });
+    }
+    o.ktaCroix = true;
+    return new _ClassePolygoneBarre(latlngs, o);
+  }
+  return L.polygon(latlngs, o);
 };
 // Contour d'une surface (pilier, mur) pour une largeur de front donnée : le quart d'un front, jamais plus que son
 // épaisseur d'origine, plancher 0,5 px. Un contour fixe recouvre tout le pilier au dézoom (des centaines de piliers
@@ -345,7 +418,7 @@ window.brancherLargeurFronts = function () {
 // Écran : l'ordre du renderer canvas (unique, `map._renderer`) ; exports : la même fonction sur leur liste.
 const ROLE_STRUCTURE = {
   "mur": "mur", "mur-ligne": "mur",
-  "pilier-1": "dessus", "pilier-2": "dessus", "front-1": "dessus", "front-2": "dessus"
+  "pilier-1": "dessus", "pilier-2": "dessus", "pilier-bras": "dessus", "front-1": "dessus", "front-2": "dessus"
 };
 
 // Liste de dessin (de l'arrière à l'avant) → liste où chaque mur venu APRÈS le premier pilier ou front de son
@@ -509,6 +582,23 @@ function initStructures() {
     }
     const _typeLabel = _resolveTypeLabel(_typeKey);
 
+    // Pose d'un clic (pilier à bras) : un carré fermé, aucun tracé en cours ; l'outil reste armé.
+    if (!currentStructure && POSE_UN_CLIC[_typeKey]) {
+      const pts = window.ktaCarrePilierBras(x, y, null, POSE_UN_CLIC[_typeKey]);
+      if (!pts) return;
+      const neuve = { type: _typeKey, points: pts };
+      const _nivP = window.ktaNiveauNouvelleStructure(_typeKey);
+      if (_nivP !== null) neuve.level = _nivP;
+      if (window.KtaUid) window.KtaUid.ensure(neuve, "st");
+      structuresData.push(neuve);
+      renderStructures();
+      if (window.HistoryManager && _historyBefore) {
+        window.HistoryManager.record(window.I18n.t("struct.undo.new", { type: _typeLabel }), _historyBefore,
+          "structures");
+      }
+      return;
+    }
+
     if (!currentStructure) {
       currentStructure = {
         type: window.modeStructure,
@@ -669,11 +759,12 @@ function renderStructures() {
   window.ktaRetirerCalque(structurePreviewLayer);
   structurePreviewLayer = null;
 
-  // Ordre Z (décision produit), de l'arrière à l'avant : mur < mur-ligne < pilier-2 < pilier-1 < front-2 <
-  // front-1 < arc. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon l'avancement
-  // d'exploitation est masqué ; l'arc, trait fin posé en travers, devant tout. En multi-niveau, tri primaire par
-  // `level` croissant (comme les tracés).
-  const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "front-2": 4, "front-1": 5, "arc": 6 };
+  // Ordre Z (décision produit), de l'arrière à l'avant : mur < mur-ligne < pilier-2 < pilier-1 = pilier à bras <
+  // front-2 < front-1 < arc. Stratigraphie : la 1re masse devant la 2e ; les fronts devant les piliers, sinon
+  // l'avancement d'exploitation est masqué ; l'arc, trait fin posé en travers, devant tout. En multi-niveau, tri
+  // primaire par `level` croissant (comme les tracés).
+  const ordreType = { "mur": 0, "mur-ligne": 1, "pilier-2": 2, "pilier-1": 3, "pilier-bras": 3, "front-2": 4,
+    "front-1": 5, "arc": 6 };
   const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const structuresAffichage = [...structuresData].sort(function(a, b) {
     if (_multiLevelOnSort) {
@@ -748,8 +839,8 @@ function renderStructures() {
           ktaStructNiveau: s.level
         }).addTo(target);
       } else {
-        layer = L.polygon(latlngs, Object.assign(style, { ktaStructType: s.type, ktaStructNiveau: s.level }))
-          .addTo(target);
+        layer = window.ktaPolygoneStructure(latlngs, style,
+          Object.assign({}, style, { ktaStructType: s.type, ktaStructNiveau: s.level })).addTo(target);
       }
       structureLayers.push(layer);
       // État donné par une extension (prise etatObjet) : pointillé ; sans prise, uid noté seulement.

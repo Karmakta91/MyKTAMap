@@ -119,7 +119,11 @@
       const _savedModeZone = (Array.isArray(s.zones) && typeof s.currentZoneIndex === "number" && s.currentZoneIndex >= 0)
         ? window.modeZone
         : null;
-      const _savedModeStructure = (Array.isArray(s.structures) && typeof s.currentStructureIndex === "number" && s.currentStructureIndex >= 0)
+      // Outil posé d'un clic (pilier à bras, structures.js > ktaPoseUnClic) : jamais de forme en cours, chaque ⏪ annule
+      // une création ; il reste armé, sinon la pastille reste allumée sur un outil mort.
+      const _unClic = typeof window.ktaPoseUnClic === "function" && window.ktaPoseUnClic(window.modeStructure);
+      const _savedModeStructure = (Array.isArray(s.structures) &&
+          (_unClic || (typeof s.currentStructureIndex === "number" && s.currentStructureIndex >= 0)))
         ? window.modeStructure
         : null;
       if (Array.isArray(s.roads)) {

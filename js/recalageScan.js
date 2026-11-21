@@ -719,7 +719,7 @@
             const pts = g.points.filter(valide).map(ll);
             if (pts.length < 2) return;
             const ferme = k === "zones" || (k === "structures" && pts.length >= 3
-              && (g.type === "pilier-1" || g.type === "pilier-2" || g.type === "mur"));
+              && (g.type === "pilier-1" || g.type === "pilier-2" || g.type === "pilier-bras" || g.type === "mur"));
             (ferme ? L.polygon(pts, opt) : L.polyline(pts, opt)).addTo(groupe);
             n++;
           });

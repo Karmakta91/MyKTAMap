@@ -3125,6 +3125,15 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (structures.js) : c'est la masse inférieure vue depuis le niveau actif.
       { icone: "🟠", dynamicIcon: function() { return _iconeType("structures", "pilier-2", "🟠"); }, titre: window.I18n.t("ui.struct.pilier2"), dynamicTitre: function() { return _titreType("structures", "pilier-2", window.I18n.t("ui.struct.pilier2")); }, isTypeAction: true, typeKey: "pilier-2",
         onClick: function(btn) { _activerStructure("pilier-2", btn, _iconeType("structures", "pilier-2", "🟠")); } },
+      // Pilier à bras : posé d'UN clic, carré de 1 m barré d'une croix (structures.js > POSE_UN_CLIC).
+      { icone: window.ktaIcone("m-pilier-bras"),
+        dynamicIcon: function() { return _iconeType("structures", "pilier-bras", window.ktaIcone("m-pilier-bras")); },
+        titre: window.I18n.t("ui.struct.pilierBras"),
+        dynamicTitre: function() { return _titreType("structures", "pilier-bras", window.I18n.t("ui.struct.pilierBras")); },
+        isTypeAction: true, typeKey: "pilier-bras",
+        onClick: function(btn) {
+          _activerStructure("pilier-bras", btn, _iconeType("structures", "pilier-bras", window.ktaIcone("m-pilier-bras")));
+        } },
       // Mur : rond bleu, à ne pas confondre avec le carré 🟦 de la zone eau.
       { icone: "🔵", dynamicIcon: function() { return _iconeType("structures", "mur", "🔵"); }, titre: window.I18n.t("ui.struct.mur"), dynamicTitre: function() { return _titreType("structures", "mur", window.I18n.t("ui.struct.mur")); }, isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, _iconeType("structures", "mur", "🔵")); } },
