@@ -152,3 +152,8 @@
   au mauvais niveau, sans avertir) ; un calque masqué est lu quand même. Vérifié le 21/11/2026 dans
   `tiling.js > ktaDessinerRegionPlan`. Reco : refus avec message, calques masqués ignorés.
   `qui: Claude · action: lot Dev après le lot maxbounds · fini: refus sans calque, calque masqué non lu, checkup rouge puis vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection : remplir au clic** — pot de peinture dans la fenêtre Détecter : clic dans une zone blanche cernée de
+  noir → type choisi (contour fermé), reste actif, aperçu puis un Valider ; trous du trait de 1-2 px fermés, sinon
+  refus « contour ouvert ». Décisions QCM 21/11/2026. Après le lot « image lue sur un niveau ».
+  `qui: Claude · action: brief Dev une fois les lots en cours finis · fini: remplissage, refus de fuite, checkup rouge puis vert · depuis: 21/11/2026 · taille: M`
