@@ -8,12 +8,14 @@
 // creux gris qui ne doivent pas sortir) et la
 // prête au plan en tuiles V2 (Blob dans RUNTIME_ASSETS, comme un ZIP), puis, sous chaque moteur de KTA_MOTEURS :
 //   1. entrée outil Structures : pipette (Masse A, Masse B, Front) en touchant la carte, cadre par deux coins ;
-//   2. aperçu : 16 piliers et 2 fronts, RIEN d'écrit avant « Valider » ; un toucher en retire un ;
+//   2. aperçu : 16 piliers et 2 fronts, RIEN d'écrit avant « Valider » ; un toucher en retire un ; curseur de
+//      tolérance = valeur appliquée aux masses, le front hors curseur ;
 //   3. « Valider » : 17 structures (11 pilier-1, 4 pilier-2, 2 front-1), uid + updatedAt, contour au pixel près,
 //      fronts aux bons bouts ; UNE étape ⏪ les retire toutes ;
 //   4. entrée 📊 Éditeur de données : couleurs retenues pour le plan, même parcours ; multi-niveau : pilier-2 au
 //      niveau −1, signalé masqué ; relancer sur la même zone → 0 nouveau, 18 déjà présents ;
-//   5. couleurs jamais exportées avec le profil ; Échap ferme et rend la rotation ; lecture seule : refusé.
+//   5. couleurs jamais exportées avec le profil ; Échap ferme et rend la rotation ; lecture seule : refusé ;
+//   6. plan au trait (piliers blancs cernés) : petit pilier touché près du bord = son intérieur, 17 piliers.
 // Usage : node scripts/smoke/checkup-detection.js   (SMOKE_PORT pour une copie de travail, KTA_MOTEURS)
 // Doc : docs/architecture/plans-loader.md (Détecter les structures)
 // =====================================================================
@@ -48,6 +50,7 @@ const SCENE = {
   pastille: { c: 0, r: 0 }, petit: [20, 300, 6, 6], creux: [120, 300, 80, 80, 3],
   fronts: [[[20, 400], [600, 400]], [[455, 160], [455, 380]]], epaisseur: 4,
   bande: [470, 56, 145, 8],   // bande de galerie grise soudée aux deux piliers gris du haut : jamais un pilier
+  petitBlanc: [24, 320, 9, 9],   // plan au trait seulement : petit pilier blanc cerné de 1 px, touché près du bord
   cadre: [5, 5, 620, 430]
 };
 for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) SCENE.orange.push([20 + c * 110, 20 + r * 90, 50, 40]);
@@ -86,6 +89,9 @@ async function preterScene(page, blanc) {
           k.fillStyle = "#ffffff"; k.fillRect(O.x + q[0], O.y + q[1], q[2], q[3]);
         });
         k.fillStyle = "#141414"; k.fillRect(O.x + 10, O.y + 280, 600, 2);
+        const pb = S.petitBlanc;
+        k.fillRect(O.x + pb[0] - 1, O.y + pb[1] - 1, pb[2] + 2, pb[3] + 2);
+        k.fillStyle = "#ffffff"; k.fillRect(O.x + pb[0], O.y + pb[1], pb[2], pb[3]);
         return;
       }
       k.fillStyle = "#ff9933";
@@ -142,6 +148,14 @@ async function toucher(page, x, y) {
   }, { x: x, y: y });
   await page.mouse.click(pt.x, pt.y);
   await page.waitForTimeout(250);
+}
+// Valeur affichée par le curseur de tolérance (texte à côté ET position du curseur, qui doivent concorder).
+function valeurCurseur(page) {
+  return page.evaluate(function () {
+    const i = document.querySelector('#kta-detect-bandeau [data-detect-curseur="tolerance"]');
+    const v = i && i.parentNode.querySelector(".kta-detect-valeur");
+    return i && v && Number(i.value) === Number(v.textContent) ? Number(i.value) : null;
+  });
 }
 function etat(page) { return page.evaluate(function () { return window.KtaDetectionUI.etat(); }); }
 async function bouton(page, act) {
@@ -230,6 +244,11 @@ async function suite(nav) {
   verifier(e.curseurs && e.curseurs.taille >= 30 && e.curseurs.taille <= 42 && e.curseurs.tolerance >= 22,
     "réglages déduits des touchers : taille minimale " + (e.curseurs && e.curseurs.taille) + " px, tolérance " +
     (e.curseurs && e.curseurs.tolerance), e.curseurs);
+  // Curseur de tolérance : affiche la tolérance appliquée à la Masse A (les fronts gardent la leur, hors curseur).
+  const affA = await valeurCurseur(page);
+  verifier(e.tolerances && affA === e.tolerances.a && affA === e.curseurs.tolerance,
+    "curseur de tolérance : valeur affichée (" + affA + ") = tolérance appliquée à la Masse A (" +
+    (e.tolerances && e.tolerances.a) + "), front à part (" + (e.tolerances && e.tolerances.f) + ")", e.tolerances);
   // Curseur « Taille minimale » poussé à 80 px : recalcul sur les blocs déjà lus, sans relire l'image.
   const curseur = async function (nom, v, recalculs) {
     await page.evaluate(function (a) {
@@ -270,6 +289,16 @@ async function suite(nav) {
     bilanMax);
   e2 = await curseur("tailleMax", tMax, 4);
   verifier(e2.apercu.n === 18, "curseur Taille maximale remis : 18 de nouveau", e2.apercu.n);
+  // Curseur de tolérance bougé : masses à la valeur affichée, le front garde la sienne (avant : toutes les classes
+  // prenaient la valeur du curseur, qui affichait la plus haute)
+  const tolA = e2.tolerances.a, tolF = e2.tolerances.f;
+  e2 = await curseur("tolerance", tolA + 9, 5);
+  const affBouge = await valeurCurseur(page);
+  verifier(affBouge === tolA + 9 && e2.tolerances.a === tolA + 9 && e2.tolerances.b === tolA + 9 &&
+    e2.tolerances.f === tolF, "curseur de tolérance à " + (tolA + 9) + " : masses A et B à la valeur affichée, front " +
+    "inchangé (" + e2.tolerances.f + ")", { affiche: affBouge, tolerances: e2.tolerances });
+  e2 = await curseur("tolerance", tolA, 6);
+  verifier(e2.apercu.n === 18 && e2.tolerances.a === tolA, "curseur de tolérance remis : 18 de nouveau", e2.apercu);
   const garde = await page.evaluate(function () {
     const cle = "myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId;
     try { return JSON.parse(localStorage.getItem(cle)).curseurs; }
@@ -484,12 +513,25 @@ async function suite(nav) {
   const O2 = await preterScene(page, true);
   await page.waitForTimeout(400);
   await page.evaluate(function () { window.KtaDetectionUI.ouvrir(); });
-  const qb = SCENE.orange[1], qg = SCENE.gris[3];
+  const qb = SCENE.orange[1], qg = SCENE.gris[3], pbl = SCENE.petitBlanc;
   await toucher(page, O2.x + qb[0] + qb[2] / 2, O2.y + qb[1] + qb[3] / 2);   // un pilier blanc (grand)
   await toucher(page, O2.x + qg[0] + qg[2] / 2, O2.y + qg[1] + qg[3] / 2);   // un autre (40 px)
+  // petit pilier (9 px) touché à 1 px de son bord : le trait est dans le carré 5 × 5 du doigt, l'exemple doit rester
+  // l'intérieur du pilier (aire ~81, épaisseur ~8), jamais le trait (couleur sombre, épaisseur 1 ou 2)
+  await toucher(page, O2.x + pbl[0] + 1, O2.y + pbl[1] + pbl[3] / 2);
   e = await etat(page);
-  verifier(e.exemples.a === 2, "fond blanc : la pipette sur un pilier blanc cerné donne un exemple (pas « le fond »)",
+  verifier(e.exemples.a === 3, "fond blanc : la pipette sur un pilier blanc cerné donne un exemple (pas « le fond »)",
     e.exemples);
+  const exPetit = await page.evaluate(function () {
+    try {
+      const a = JSON.parse(localStorage.getItem("myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId)).a;
+      return a[a.length - 1];
+    } catch (err) { return null; }
+  });
+  verifier(exPetit && exPetit.aire >= 60 && exPetit.aire <= 100 && exPetit.epaisseur >= 6 &&
+    exPetit.epaisseur <= 9 && Math.min.apply(null, exPetit.rgb) > 200,
+    "fond blanc : petit pilier touché près du bord → son intérieur (aire " + (exPetit && exPetit.aire) +
+    ", épaisseur " + (exPetit && exPetit.epaisseur) + "), pas le trait", exPetit);
   const c2 = SCENE.cadre;
   await bouton(page, "zone");
   await toucher(page, O2.x + c2[0], O2.y + c2[1]);
@@ -503,8 +545,12 @@ async function suite(nav) {
   const plusGrand = await page.evaluate(function () {
     return window.KtaDetectionUI.etat().curseurs.tailleMax;
   });
-  verifier(e.apercu && e.apercu.n === 16, "fond blanc : les 16 piliers, sans la masse du fond ni des galeries",
-    e.apercu);
+  verifier(e.apercu && e.apercu.n === 17,
+    "fond blanc : les 17 piliers (dont le petit), sans la masse du fond ni des galeries", e.apercu);
+  const affB = await valeurCurseur(page);
+  verifier(e.tolerances && affB === e.tolerances.a && e.tolerances.a >= 15,
+    "fond blanc : le curseur de tolérance affiche la valeur appliquée aux masses (" + affB + " = " +
+    (e.tolerances && e.tolerances.a) + "), assez haute pour garder les galeries d'un seul tenant", e.tolerances);
   verifier(plusGrand > 0 && plusGrand < 256, "fond blanc : taille maximale déduite des exemples (" + plusGrand + " px)",
     plusGrand);
   await page.keyboard.press("Escape");

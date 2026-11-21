@@ -711,111 +711,27 @@
   }
 
   // ── Un exemple touché à la pipette : sa composante, sa taille, l'étalement de sa couleur ──
-  // mesurerExemple({ data, w, h }, px, py, { seuil }) → { rgb, aire, epaisseur, etalement, ecartFond, coupe },
-  //   { fond: true, rgb } (le doigt est sur le fond) ou null (rien d'opaque sous le doigt).
-  // La composante = pixels 4-connexes à moins du seuil (ΔE) de la couleur sous le doigt (médiane 5 × 5) ; épaisseur =
-  // 2 × la plus grande distance au bord (chanfrein 3-4) ; étalement = 90e centile des ΔE à la couleur médiane.
+  // mesurerExemple({ data, w, h }, px, py, { seuil, nature }) → { rgb, aire, epaisseur, etalement, ecartFond,
+  //   ecartTrait, ecartAuDela, cerne, coupe }, { fond: true, rgb } (le doigt est sur le fond) ou null (rien d'opaque
+  //   sous le doigt). `nature` : "trait" pour un exemple de front (jamais redirigé vers la région claire voisine).
+  // La composante = pixels 4-connexes à moins du seuil (ΔE) de la couleur de départ ; épaisseur = 2 × la plus grande
+  // distance au bord (chanfrein 3-4) ; étalement = 90e centile des ΔE à la couleur médiane.
   // `ecartFond` : ΔE entre cette couleur et le fond (médiane du bord de la fenêtre).
+  // `ecartTrait` : ΔE au pourtour immédiat (la plus forte des médianes des anneaux à 1, 2 et 3 px) ; `ecartAuDela` :
+  //   ΔE à ce qu'il y a derrière (anneaux à 5–7 px) ; `cerne` : pourtour net, nettement plus loin que l'au-delà
+  //   (pilier cerné d'un trait). reglagesDepuisExemples s'en sert pour les piliers clairs cernés.
   // 🩸 Seuil = la moitié de l'écart au fond, plafonné à `seuil` (28) : un bleu clair est à ΔE 26 du blanc, un seuil
   //   fixe faisait déborder la composante sur tout le fond.
   // `coupe` : la composante touche le bord de la fenêtre lue (plus grande qu'elle) ou la remplit à moitié (fond).
-  const FOND_MIN = 10;   // ΔE au fond sous lequel le carré touché est du fond (pas d'objet sous le doigt)
-  function mesurerExemple(b, px, py, o) {
-    const W = b.w, H = b.h, d = b.data, plafond = (o && o.seuil) || 28;
-    px = Math.floor(px); py = Math.floor(py);
-    if (px < 0 || py < 0 || px >= W || py >= H) return null;
-    const cache = new Map();
-    const lab = function (i) {
-      const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
-      let v = cache.get(c);
-      if (!v) { v = rgbVersLab(d[k], d[k + 1], d[k + 2]); cache.set(c, v); }
-      return v;
-    };
-    const med = function (vals) { vals.sort(function (a, b2) { return a - b2; }); return vals[vals.length >> 1]; };
-    // fond : médiane des pixels du bord de la fenêtre
-    const rf = [], gf = [], bf = [];
-    const bord = function (i) {
-      const k = i * 4;
-      if (d[k + 3] >= 128) { rf.push(d[k]); gf.push(d[k + 1]); bf.push(d[k + 2]); }
-    };
-    for (let x = 0; x < W; x++) { bord(x); bord((H - 1) * W + x); }
-    for (let y = 1; y < H - 1; y++) { bord(y * W); bord(y * W + W - 1); }
-    const labFond = rf.length ? rgbVersLab(med(rf), med(gf), med(bf)) : null;
-    // 🩸 Couleur de l'exemple = celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le plus loin du fond)
-    //   et de ses semblables, et la composante part de CE pixel. La médiane du carré entier valait le fond sur un
-    //   trait fin ou un coin de pilier touché un peu à côté : le pixel touché était rejeté et la pipette disait
-    //   « aucune image » (mesuré : trait de 2 px, 2 touchers sur 2 ; pilier de 10 px, 12 sur 100).
-    const carre = [];
-    for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
-      for (let i = Math.max(0, px - 2); i <= Math.min(W - 1, px + 2); i++) {
-        if (d[(j * W + i) * 4 + 3] >= 128) carre.push(j * W + i);
-      }
-    }
-    if (!carre.length) return null;   // rien d'opaque sous le doigt : hors de l'image
-    let graine = carre[0], encre = -1, presG = Infinity;
-    carre.forEach(function (q) {
-      const e = labFond ? deltaE(lab(q), labFond) : 0;
-      // à encre égale, le pixel le plus proche du doigt
-      const pres = Math.abs((q % W) - px) + Math.abs(Math.floor(q / W) - py);
-      if (e > encre + 0.5 || (Math.abs(e - encre) <= 0.5 && pres < presG)) { encre = e; graine = q; presG = pres; }
-    });
-    if (labFond && encre < FOND_MIN) {
-      // 🩸 Couleur du fond sous le doigt : un pilier BLANC cerné d'un trait sur un plan blanc en est un. Objet si la
-      //   zone de cette couleur est ENFERMÉE (ne touche pas le bord de la fenêtre) ; sinon c'est le fond, on le dit.
-      const p0 = py * W + px, lab0f = lab(p0), vuF = new Uint8Array(W * H), pileF = [p0];
-      let ouverte = false, nF = 0;
-      vuF[p0] = 1;
-      while (pileF.length && !ouverte) {
-        const q = pileF.pop();
-        if (d[q * 4 + 3] < 128 || deltaE(lab(q), lab0f) > 6) continue;
-        const qx = q % W, qy = (q - qx) / W;
-        if (qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1 || ++nF > (W * H) / 2) { ouverte = true; break; }
-        [q - 1, q + 1, q - W, q + W].forEach(function (t) { if (!vuF[t]) { vuF[t] = 1; pileF.push(t); } });
-      }
-      if (ouverte) {
-        const k = graine * 4;
-        return { fond: true, rgb: [d[k], d[k + 1], d[k + 2]] };
-      }
-      graine = p0;   // objet de la couleur du fond : la composante part du pixel touché
-    }
-    const r0 = [], g0 = [], b0 = [], labG = lab(graine);
-    carre.forEach(function (q) {
-      if (deltaE(lab(q), labG) > 12) return;
-      const k = q * 4;
-      r0.push(d[k]); g0.push(d[k + 1]); b0.push(d[k + 2]);
-    });
-    const lab0 = rgbVersLab(med(r0), med(g0), med(b0));
-    const ecartFond = labFond ? deltaE(lab0, labFond) : 100;
-    const seuil = Math.max(6, Math.min(plafond, ecartFond / 2));
-    const N = W * H, vu = new Uint8Array(N), liste = [], max = Math.floor(N / 2);
-    let coupe = false;
-    const pile = [graine];
-    vu[pile[0]] = 1;
-    while (pile.length) {
-      const q = pile.pop();
-      if (d[q * 4 + 3] < 128 || deltaE(lab(q), lab0) > seuil) continue;
-      liste.push(q);
-      if (liste.length > max) { coupe = true; break; }
-      const qx = q % W, qy = (q - qx) / W;
-      if (qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) coupe = true;
-      if (qx > 0 && !vu[q - 1]) { vu[q - 1] = 1; pile.push(q - 1); }
-      if (qx < W - 1 && !vu[q + 1]) { vu[q + 1] = 1; pile.push(q + 1); }
-      if (qy > 0 && !vu[q - W]) { vu[q - W] = 1; pile.push(q - W); }
-      if (qy < H - 1 && !vu[q + W]) { vu[q + W] = 1; pile.push(q + W); }
-    }
-    if (!liste.length) return null;
-    // couleur médiane de la composante, étalement
-    const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
-    liste.forEach(function (q) { const k = q * 4; hist[0][d[k]]++; hist[1][d[k + 1]]++; hist[2][d[k + 2]]++; });
-    const medHist = function (h) {
-      let s = 0;
-      for (let v = 0; v < 256; v++) { s += h[v]; if (s * 2 >= liste.length) return v; }
-      return 255;
-    };
-    const rgb = [medHist(hist[0]), medHist(hist[1]), medHist(hist[2])];
-    const labM = rgbVersLab(rgb[0], rgb[1], rgb[2]);
-    // épaisseur : transformée de distance (chanfrein 3-4) dans la boîte de la composante
-    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  const FOND_MIN = 10;     // ΔE au fond sous lequel le carré touché est du fond (pas d'objet sous le doigt)
+  const CLAIR_TOL = 12;    // ΔE d'une région claire autour du doigt (bruit, JPEG, filigrane léger)
+  const ENCRE_ECART = 20;  // ΔE minimal entre le clair sous le doigt et l'encre voisine pour viser le clair
+  const TRAIT_FIN = 4;     // épaisseur (px) au plus d'un trait qui cerne un pilier clair
+  const CERNE_MIN = 30, CERNE_ECART = 15;   // pourtour d'un pilier cerné : ΔE ≥ 30, et 15 de plus que l'au-delà
+  // Épaisseur d'une composante (liste de pixels d'une image de largeur W) : transformée de distance (chanfrein 3-4)
+  // dans sa boîte. → { dmax (unités : 3 par pixel), dist, x0, y0, bw }.
+  function _epaisseurDe(liste, W) {
+    let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
     liste.forEach(function (q) {
       const x = q % W, y = (q - x) / W;
       if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
@@ -834,6 +750,159 @@
       dist[i] = Math.min(dist[i], dist[i + 1] + 3, dist[i + bw] + 3, dist[i + bw + 1] + 4, dist[i + bw - 1] + 4);
       if (dist[i] > dmax) dmax = dist[i];
     }
+    return { dmax: dmax, dist: dist, x0: x0, y0: y0, bw: bw };
+  }
+  const _pxEpaisseur = function (dmax) { return Math.max(1, Math.round((2 * dmax) / 3) - 1); };
+  function mesurerExemple(b, px, py, o) {
+    const W = b.w, H = b.h, d = b.data, N = W * H, plafond = (o && o.seuil) || 28, nature = o && o.nature;
+    px = Math.floor(px); py = Math.floor(py);
+    if (px < 0 || py < 0 || px >= W || py >= H) return null;
+    const cache = new Map();
+    const lab = function (i) {
+      const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
+      let v = cache.get(c);
+      if (!v) { v = rgbVersLab(d[k], d[k + 1], d[k + 2]); cache.set(c, v); }
+      return v;
+    };
+    const opaque = function (q) { return d[q * 4 + 3] >= 128; };
+    const med = function (vals) { vals.sort(function (a, b2) { return a - b2; }); return vals[vals.length >> 1]; };
+    // couleur médiane (canal par canal) des pixels de `pix` à moins de `s` de `ref`
+    const labMed = function (pix, ref, s) {
+      const r = [], g = [], bb = [];
+      pix.forEach(function (q) {
+        if (deltaE(lab(q), ref) > s) return;
+        const k = q * 4;
+        r.push(d[k]); g.push(d[k + 1]); bb.push(d[k + 2]);
+      });
+      return rgbVersLab(med(r), med(g), med(bb));
+    };
+    // Composante 4-connexe partie de `g`, pixels à moins de `s` de `ref`.
+    // `arretBord` : s'arrête dès le bord de la fenêtre (on ne veut savoir que si elle est fermée).
+    const composante = function (g, ref, s, arretBord) {
+      const vu = new Uint8Array(N), liste = [], pile = [g], max = Math.floor(N / 2);
+      let coupe = false;
+      vu[g] = 1;
+      while (pile.length) {
+        const q = pile.pop();
+        if (!opaque(q) || deltaE(lab(q), ref) > s) continue;
+        liste.push(q);
+        if (liste.length > max) { coupe = true; break; }
+        const qx = q % W, qy = (q - qx) / W;
+        if (qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) { coupe = true; if (arretBord) break; }
+        if (qx > 0 && !vu[q - 1]) { vu[q - 1] = 1; pile.push(q - 1); }
+        if (qx < W - 1 && !vu[q + 1]) { vu[q + 1] = 1; pile.push(q + 1); }
+        if (qy > 0 && !vu[q - W]) { vu[q - W] = 1; pile.push(q - W); }
+        if (qy < H - 1 && !vu[q + W]) { vu[q + W] = 1; pile.push(q + W); }
+      }
+      return { liste: liste, coupe: coupe };
+    };
+    // Pourtour d'une composante : ΔE à `ref` des pixels opaques à 1..kmax px d'elle (8-connexité), anneau par anneau.
+    const anneaux = function (liste, ref, kmax) {
+      const out = [], marque = new Uint8Array(N);
+      let front = liste;
+      liste.forEach(function (q) { marque[q] = 1; });
+      for (let k = 1; k <= kmax; k++) {
+        const suiv = [], an = [];
+        front.forEach(function (q) {
+          const qx = q % W, qy = (q - qx) / W;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const x = qx + dx, y = qy + dy, t = y * W + x;
+            if (x < 0 || y < 0 || x >= W || y >= H || marque[t]) continue;
+            marque[t] = 1; suiv.push(t);
+            if (opaque(t)) an.push(deltaE(lab(t), ref));
+          }
+        });
+        out[k] = an;
+        front = suiv;
+      }
+      return out;
+    };
+    // fond : médiane des pixels du bord de la fenêtre
+    const rf = [], gf = [], bf = [];
+    const bord = function (i) {
+      const k = i * 4;
+      if (d[k + 3] >= 128) { rf.push(d[k]); gf.push(d[k + 1]); bf.push(d[k + 2]); }
+    };
+    for (let x = 0; x < W; x++) { bord(x); bord((H - 1) * W + x); }
+    for (let y = 1; y < H - 1; y++) { bord(y * W); bord(y * W + W - 1); }
+    const labFond = rf.length ? rgbVersLab(med(rf), med(gf), med(bf)) : null;
+    // 🩸 Couleur de l'exemple = celle du pixel le plus « encré » du carré 5 × 5 sous le doigt (le plus loin du fond)
+    //   et de ses semblables, et la composante part de CE pixel. La médiane du carré entier valait le fond sur un
+    //   trait fin ou un coin de pilier touché un peu à côté : le pixel touché était rejeté et la pipette disait
+    //   « aucune image » (mesuré : trait de 2 px, 2 touchers sur 2 ; pilier de 10 px, 12 sur 100).
+    const carre = [];
+    for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
+      for (let i = Math.max(0, px - 2); i <= Math.min(W - 1, px + 2); i++) {
+        if (opaque(j * W + i)) carre.push(j * W + i);
+      }
+    }
+    if (!carre.length) return null;   // rien d'opaque sous le doigt : hors de l'image
+    let graine = carre[0], encre = -1, presG = Infinity, clair = carre[0], lumC = -1, presC = Infinity;
+    carre.forEach(function (q) {
+      const e = labFond ? deltaE(lab(q), labFond) : 0;
+      // à encre égale, le pixel le plus proche du doigt
+      const pres = Math.abs((q % W) - px) + Math.abs(Math.floor(q / W) - py);
+      if (e > encre + 0.5 || (Math.abs(e - encre) <= 0.5 && pres < presG)) { encre = e; graine = q; presG = pres; }
+      const l = lab(q)[0];
+      if (l > lumC + 0.5 || (Math.abs(l - lumC) <= 0.5 && pres < presC)) { lumC = l; clair = q; presC = pres; }
+    });
+    // Région claire autour du pixel le plus clair du carré : null si elle s'ouvre (touche le bord de la fenêtre, ou
+    // en remplit la moitié) ; sinon sa couleur et l'écart à l'encre qui l'enferme (90e centile des ΔE à 1–3 px).
+    // 🩸 Pas l'écart des pixels refusés juste au bord : adoucis par le flou, ils mettaient le seuil si bas que la
+    //   composante perdait sa rangée de bord (pilier de 8 px mesuré à 5).
+    const regionClaire = function () {
+      const labC = labMed(carre, lab(clair), CLAIR_TOL), r = composante(clair, labC, CLAIR_TOL, true);
+      if (r.coupe || !r.liste.length) return null;
+      const a = anneaux(r.liste, labC, 3), ec = a[1].concat(a[2], a[3]).sort(function (x, y) { return x - y; });
+      return { lab: labC, encre: ec.length ? ec[Math.min(ec.length - 1, Math.floor(ec.length * 0.9))] : 0 };
+    };
+    let lab0 = null, seuil = 0;
+    const viserClair = function (rc) {
+      graine = clair; lab0 = rc.lab;
+      // seuil à mi-chemin de l'encre : le pilier garde ses pixels de bord adoucis, sans jamais prendre le trait
+      seuil = Math.max(6, Math.min(plafond, rc.encre / 2));
+    };
+    if (labFond && encre < FOND_MIN) {
+      // 🩸 Couleur du fond sous le doigt : un pilier BLANC cerné d'un trait sur un plan blanc en est un. Objet si la
+      //   zone de cette couleur est ENFERMÉE (ne touche pas le bord de la fenêtre) ; sinon c'est le fond, on le dit.
+      const rc = regionClaire();
+      if (!rc) {
+        const k = graine * 4;
+        return { fond: true, rgb: [d[k], d[k + 1], d[k + 2]] };
+      }
+      viserClair(rc);
+    } else if (labFond && nature !== "trait" && graine !== clair) {
+      // 🩸 Doigt sur un petit pilier CLAIR, près du trait qui le cerne : le pixel le plus encré du carré est le trait,
+      //   et l'exemple prenait sa couleur (petite aire, taille minimale déduite de 1 ou 2 px). Si ce pixel est un
+      //   trait FIN et que le clair voisin est une région fermée, l'exemple est l'intérieur du pilier. Un pilier
+      //   coloré plein (épais) touché un peu à côté reste l'exemple : coin de pilier, pilier à pastille claire.
+      const labG = lab(graine), labC = lab(clair), ecart = deltaE(labC, labG);
+      if (labC[0] > labG[0] && ecart > ENCRE_ECART) {
+        const trait = composante(graine, labG, Math.max(6, Math.min(plafond, ecart / 2)), false);
+        if (_pxEpaisseur(_epaisseurDe(trait.liste, W).dmax) <= TRAIT_FIN) {
+          const rc = regionClaire();
+          if (rc) viserClair(rc);
+        }
+      }
+    }
+    if (!lab0) {
+      lab0 = labMed(carre, lab(graine), 12);
+      seuil = Math.max(6, Math.min(plafond, (labFond ? deltaE(lab0, labFond) : 100) / 2));
+    }
+    const ecartFond = labFond ? deltaE(lab0, labFond) : 100;
+    const comp = composante(graine, lab0, seuil, false), liste = comp.liste, coupe = comp.coupe;
+    if (!liste.length) return null;
+    // couleur médiane de la composante, étalement
+    const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+    liste.forEach(function (q) { const k = q * 4; hist[0][d[k]]++; hist[1][d[k + 1]]++; hist[2][d[k + 2]]++; });
+    const medHist = function (h) {
+      let s = 0;
+      for (let v = 0; v < 256; v++) { s += h[v]; if (s * 2 >= liste.length) return v; }
+      return 255;
+    };
+    const rgb = [medHist(hist[0]), medHist(hist[1]), medHist(hist[2])];
+    const labM = rgbVersLab(rgb[0], rgb[1], rgb[2]);
+    const ep = _epaisseurDe(liste, W), dist = ep.dist, bw = ep.bw, x0 = ep.x0, y0 = ep.y0;
     // 🩸 Étalement sur l'INTÉRIEUR (à 2 px au moins du bord, chanfrein ≥ 6) : les pixels du bord, mêlés au contour
     //   noir par le flou, gonflaient la tolérance jusqu'à souder des piliers voisins (mesuré : ΔE 29 → 98 piliers sur
     //   126, ΔE 24 → 123). Petit exemple sans intérieur : toute la composante.
@@ -844,8 +913,16 @@
     const base = dedans.length >= 10 ? dedans : liste;
     const ecarts = base.map(function (q) { return deltaE(lab(q), labM); }).sort(function (a, b2) { return a - b2; });
     const etalement = ecarts[Math.min(ecarts.length - 1, Math.floor(ecarts.length * 0.9))];
-    return { rgb: rgb, aire: liste.length, epaisseur: Math.max(1, Math.round((2 * dmax) / 3) - 1),
-             etalement: Math.round(etalement * 10) / 10, ecartFond: Math.round(ecartFond * 10) / 10, coupe: coupe };
+    // Pourtour (composante entière dans la fenêtre seulement) : trait à 1–3 px, au-delà à 5–7 px.
+    const an = coupe ? null : anneaux(liste, labM, 7);
+    const medA = function (v) { return v.length ? med(v) : 0; };
+    const ecartTrait = an ? Math.max(medA(an[1]), medA(an[2]), medA(an[3])) : 0;
+    const ecartAuDela = an ? medA(an[5].concat(an[6], an[7])) : 0;
+    const r1 = function (v) { return Math.round(v * 10) / 10; };
+    return { rgb: rgb, aire: liste.length, epaisseur: _pxEpaisseur(ep.dmax),
+             etalement: r1(etalement), ecartFond: r1(ecartFond), ecartTrait: r1(ecartTrait),
+             ecartAuDela: r1(ecartAuDela),
+             cerne: !coupe && ecartTrait >= CERNE_MIN && ecartTrait >= ecartAuDela + CERNE_ECART, coupe: coupe };
   }
 
   // Réglages déduits des exemples. exemples = { <classe>: [{ rgb, epaisseur?, etalement? }] }, natures = { <classe>:
@@ -856,8 +933,19 @@
   // 🩸 L'écart ENTRE exemples n'entre pas dans la tolérance : un pixel est comparé à l'exemple le plus proche, donc
   //   plusieurs exemples couvrent déjà leur écart. L'ajouter soudait des piliers voisins à travers le flou (mesuré :
   //   ΔE 39 → 179 piliers sur 216, ΔE 27 → 214).
-  const TOL_PLANCHER = 22, TOL_MARGE = 6, TOL_MAX = 60, TOL_PART_FOND = 0.6, TOL_MIN = 6;
+  const TOL_PLANCHER = 22, TOL_MARGE = 6, TOL_MAX = 60, TOL_PART_FOND = 0.6, TOL_MIN = 6, TOL_AU_DELA = 10;
   const TAILLE_MAX_FACTEUR = 4;
+  // ⚠️ contrat (décision produit) : pilier CLAIR CERNÉ d'un trait (plan au trait : piliers et galeries blancs, le
+  //   trait seul les sépare). Plafonner à 60 % de l'écart au fond y mettait la tolérance au niveau du bruit des
+  //   galeries (fond lu : blanc, ou gris moyen des traits) : elles se cassaient en morceaux pris pour des piliers.
+  //   Ici la tolérance englobe la couleur d'au-delà du trait (+ TOL_AU_DELA) sans approcher le trait (≤ 60 % de son
+  //   écart) : galeries et fond restent d'un seul tenant, géants, écartés par la taille maximale ; les piliers,
+  //   séparés par le trait, restent. Il faut cette place : un bleu clair cerné de bleu sur blanc (au-delà ΔE 26) ne
+  //   l'a pas, il garde le plafond du fond. Jamais pour une classe de trait (front).
+  function _clairCerne(x) {
+    return !!x.cerne && typeof x.ecartTrait === "number" && typeof x.ecartAuDela === "number" &&
+      x.ecartAuDela + TOL_AU_DELA <= x.ecartTrait * TOL_PART_FOND;
+  }
   function reglagesDepuisExemples(exemples, natures) {
     const tolerances = {};
     let taille = null, aireMaxEx = 0;
@@ -866,14 +954,17 @@
       if (!ex.length) return;
       let etal = 0;
       ex.forEach(function (x) { etal = Math.max(etal, Number(x.etalement) || 0); });
-      // 🩸 jamais au-delà de 60 % de l'écart au fond : un pilier bleu clair sur blanc (ΔE 26) ferait du fond un pilier
-      let plafondFond = TOL_MAX;
-      // (écart nul compris : pilier blanc cerné d'un trait sur un plan blanc → tolérance au plus bas)
+      // 🩸 jamais au-delà de 60 % de l'écart à ce qui touche l'exemple : un pilier bleu clair sur blanc (ΔE 26)
+      //   ferait du fond un pilier. Ce qui le touche est le fond, sauf pour un pilier clair cerné d'un trait
+      //   (_clairCerne) : c'est le trait, et la tolérance doit au contraire englober nettement la couleur d'au-delà.
+      let plafond = TOL_MAX, voulue = Math.max(TOL_PLANCHER, etal + TOL_MARGE);
       ex.forEach(function (x) {
-        if (typeof x.ecartFond === "number") plafondFond = Math.min(plafondFond, x.ecartFond * TOL_PART_FOND);
+        if (!(natures && natures[c] === "trait") && _clairCerne(x)) {
+          plafond = Math.min(plafond, x.ecartTrait * TOL_PART_FOND);
+          voulue = Math.max(voulue, x.ecartAuDela + TOL_AU_DELA);
+        } else if (typeof x.ecartFond === "number") plafond = Math.min(plafond, x.ecartFond * TOL_PART_FOND);
       });
-      const voulue = Math.max(TOL_PLANCHER, etal + TOL_MARGE);
-      tolerances[c] = Math.round(Math.max(TOL_MIN, Math.min(plafondFond, TOL_MAX, voulue)));
+      tolerances[c] = Math.round(Math.max(TOL_MIN, Math.min(plafond, TOL_MAX, voulue)));
       if (natures && natures[c] === "trait") return;
       ex.forEach(function (x) {
         if (x.epaisseur > 0 && !x.coupe && (taille === null || x.epaisseur < taille)) taille = x.epaisseur;

@@ -16,8 +16,10 @@
  * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
  * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
  * trait de la couleur des piliers ; pipette sur un trait de 2 px, un coin de pilier, le fond ; scènes « fond blanc »
- * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; recalcul sur les
- * blocs gardés sans relecture.
+ * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; plan au trait (piliers
+ * blancs cernés de 5 à 34 px, galeries blanches, chiffres et texte, filigrane, flou, bruit) : pipette au bord des
+ * petits piliers = leur intérieur, réglages déduits ≥ 90 % et ≤ 5 % de morceaux de galerie, contre-épreuves (seul
+ * pixel le plus encré, ancien plafond de tolérance) ; recalcul sur les blocs gardés sans relecture.
  * Contre-épreuves (sabotages) : sans marge, sans ouverture, sans dédoublonnage des blocs, sans comblement des trous,
  * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
  *
@@ -182,6 +184,82 @@ function sceneBlanche(pilier) {
   for (let x = 20; x < W; x += 144) img.rect(x, 0, 2, H, NOIR);
   return { img, vrais, petit: vrais.reduce((a, p) => (p.w * p.h < a.w * a.h ? p : a)),
     gros: vrais.reduce((a, p) => (p.w * p.h > a.w * a.h ? p : a)) };
+}
+// Planche « au trait » (imite un plan scanné) : réseau fermé par un mur noir, murs intérieurs qui ne ferment rien,
+// piliers BLANCS de 5 à 34 px (un tiers sous 10 px) cernés d'un trait noir de 1 à 3 px, galeries blanches entre eux,
+// intrus au trait à boucles fermées (5 chiffres, 8 lettres), filigrane gris en travers, flou 3 × 3, bruit ± 12.
+function plancheTrait() {
+  const W = 900, H = 600, f = new Float32Array(W * H * 3).fill(255), vrais = [], intrus = [];
+  const rect = (x, y, w, h, c) => {
+    for (let j = Math.max(0, y); j < Math.min(H, y + h); j++) {
+      for (let i = Math.max(0, x); i < Math.min(W, x + w); i++) {
+        const k = (j * W + i) * 3; f[k] = c[0]; f[k + 1] = c[1]; f[k + 2] = c[2];
+      }
+    }
+  };
+  const boucle = (x, y, w, h) => {
+    rect(x, y, w, 2, NOIR); rect(x, y + h - 2, w, 2, NOIR); rect(x, y, 2, h, NOIR); rect(x + w - 2, y, 2, h, NOIR);
+  };
+  let g = 7;
+  const al = () => { g = (g * 16807) % 2147483647; return g / 2147483647; };
+  rect(40, 40, 820, 2, NOIR); rect(40, 558, 820, 2, NOIR); rect(40, 40, 2, 520, NOIR); rect(858, 40, 2, 520, NOIR);
+  rect(300, 42, 2, 300, NOIR); rect(600, 260, 2, 298, NOIR); rect(42, 460, 200, 2, NOIR);
+  const chiffres = ["2,3", "5,1", "9,4", "13,2", "16,6"];
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 18; c++) {
+    const x0 = 60 + c * 44, y0 = 60 + r * 44, ic = chiffres.indexOf(c + "," + r);
+    if ((Math.abs(x0 - 300) < 30 && y0 < 350) || (Math.abs(x0 - 600) < 30 && y0 > 240) || (y0 > 440 && x0 < 250)) {
+      continue;   // près d'un mur
+    }
+    if (ic >= 0) {   // chiffre au trait : « 8 », « 0 » ou « 6 »
+      const cx = x0 + 6, cy = y0 + 2;
+      if (ic % 3 === 0) { boucle(cx, cy, 11, 11); boucle(cx, cy + 9, 11, 12); }
+      else if (ic % 3 === 1) boucle(cx, cy, 12, 20);
+      else { rect(cx, cy, 2, 20, NOIR); boucle(cx, cy + 9, 12, 11); }
+      intrus.push({ x: cx - 2, y: cy - 2, w: 18, h: 26 });
+      continue;
+    }
+    const t = al();
+    const s = t < 0.3 ? 6 + Math.round(al() * 4) : t < 0.8 ? 12 + Math.round(al() * 12) : 26 + Math.round(al() * 8);
+    const w = s, h = Math.round(s * (0.7 + al() * 0.6)), ep = 1 + Math.floor(al() * 3);
+    const x = x0 + Math.round(al() * 4), y = y0 + Math.round(al() * 4);
+    rect(x - ep, y - ep, w + 2 * ep, h + 2 * ep, NOIR); rect(x, y, w, h, BLANC);
+    vrais.push({ x, y, w, h });
+  }
+  for (let i = 0; i < 8; i++) boucle(260 + i * 16, 520, 10, 16);   // texte : lettres à boucle
+  intrus.push({ x: 256, y: 516, w: 132, h: 24 });
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    if ((i + j * 1.3) % 420 >= 26) continue;
+    const k = (j * W + i) * 3;
+    for (let c = 0; c < 3; c++) f[k + c] = f[k + c] * 0.72 + 150 * 0.28;
+  }
+  const img = image(W, H);
+  let h = 9;
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) for (let c = 0; c < 3; c++) {
+    let s = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = i + dx, y = j + dy, p = dx || dy ? 1 : 4;
+      if (x >= 0 && y >= 0 && x < W && y < H) { s += f[(y * W + x) * 3 + c] * p; n += p; }
+    }
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    img.data[(j * W + i) * 4 + c] = s / n + (h % 25) - 12;
+  }
+  return { img, vrais, intrus };
+}
+// Exemple comme dans l'app : fenêtre de 192 px autour du doigt, 640 si la composante la dépasse ou la remplit.
+function exempleFenetre(img, x, y, o) {
+  let m = null;
+  for (const n of [192, 640]) {
+    const x0 = Math.floor(x - n / 2), y0 = Math.floor(y - n / 2), data = new Uint8ClampedArray(n * n * 4);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const sx = x0 + i, sy = y0 + j;
+      if (sx < 0 || sy < 0 || sx >= img.W || sy >= img.H) continue;   // hors image : transparent
+      const s = (sy * img.W + sx) * 4, d = (j * n + i) * 4;
+      data[d] = img.data[s]; data[d + 1] = img.data[s + 1]; data[d + 2] = img.data[s + 2]; data[d + 3] = 255;
+    }
+    m = D.mesurerExemple({ data, w: n, h: n }, x - x0, y - y0, o);
+    if (!m || !(m.coupe || m.fond)) break;
+  }
+  return m;
 }
 function lancer(img, extra) {
   return D.detecter(Object.assign({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: img.W, h: img.H },
@@ -450,7 +528,7 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     const dd = D.reglagesDepuisExemples({ a: ex }, { a: "masse" });
     const avec = async (aireMax) => D.detecter({ lireBloc: lecteur(sc.img),
       region: { x: 0, y: 0, w: sc.img.W, h: sc.img.H }, limites: { w: sc.img.W, h: sc.img.H },
-      classes: [{ id: "a", couleurs: ex.map((x) => x.rgb), tolerance: dd.tolerances.a }],
+      classes: [{ id: "a", couleurs: ex.filter(Boolean).map((x) => x.rgb), tolerance: dd.tolerances.a }],
       reglages: Object.assign({ aireMax: aireMax }, D.reglagesPourTaille(dd.taille)) });
     const rMax = await avec(dd.tailleMax * dd.tailleMax), rSans = await avec(0);
     const nMax = sc.vrais.filter((p) => rMax.masses.some((m) => dans(m, p))).length;
@@ -465,6 +543,75 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
         geante(rSans) > 0);
     }
   }
+
+  // ── Plan au trait : piliers blancs cernés, galeries blanches, intrus, filigrane, flou, bruit ──
+  const pt = plancheTrait(), nPt = pt.vrais.length;
+  const centreDans = (m, v) => {
+    const cx = m.boite.x + m.boite.w / 2, cy = m.boite.y + m.boite.h / 2;
+    return cx >= v.x - 1 && cx <= v.x + v.w + 1 && cy >= v.y - 1 && cy <= v.y + v.h + 1;
+  };
+  const bilanPt = (r) => ({
+    piliers: pt.vrais.filter((v) => r.masses.some((m) => centreDans(m, v))).length,
+    intrus: r.masses.filter((m) => pt.intrus.some((v) => centreDans(m, v))).length,
+    morceaux: r.masses.filter((m) => !pt.vrais.some((v) => centreDans(m, v)) &&
+      !pt.intrus.some((v) => centreDans(m, v))).length });
+  // Pipette au bord : chaque petit pilier (≤ 10 px) touché sur sa première rangée intérieure, des 4 côtés (le trait est
+  // dans le carré 5 × 5 du doigt). Juste = épaisseur à ± 2 px de (côté − 1), la valeur d'un pilier net (chanfrein) ;
+  // ± 2 : le flou déplace la frontière d'au plus 1 px de chaque côté.
+  const petitsPt = pt.vrais.filter((v) => Math.min(v.w, v.h) <= 10);
+  const touchersBord = (o) => {
+    let justes = 0, traits = 0;
+    petitsPt.forEach((v) => {
+      [[v.x, v.y + v.h / 2], [v.x + v.w - 1, v.y + v.h / 2], [v.x + v.w / 2, v.y], [v.x + v.w / 2, v.y + v.h - 1]]
+        .forEach(([x, y]) => {
+          const m = exempleFenetre(pt.img, x, y, o);
+          if (m && !m.fond && Math.abs(m.epaisseur - (Math.min(v.w, v.h) - 1)) <= 2) justes++;
+          if (m && !m.fond && Math.min.apply(null, m.rgb) < 200) traits++;
+        });
+    });
+    return { justes, traits, n: petitsPt.length * 4 };
+  };
+  const bordNouv = touchersBord({}), bordAnc = touchersBord({ nature: "trait" });
+  t("plan au trait, pipette au bord de " + petitsPt.length + " petits piliers (4 côtés) : " + bordNouv.justes + "/" +
+    bordNouv.n + " tailles justes, " + bordNouv.traits + " exemple(s) pris sur le trait",
+    bordNouv.justes === bordNouv.n && bordNouv.traits === 0, bordNouv);
+  t("contre-épreuve : règle du seul pixel le plus encré (sans viser le clair) → trait pris " + bordAnc.traits + "/" +
+    bordAnc.n + ", tailles justes " + bordAnc.justes, bordAnc.traits > bordAnc.n / 2, bordAnc);
+  // Trois touchers comme sur le terrain : un grand au centre, le plus petit près de son bord, un moyen au centre.
+  const grandPt = pt.vrais.reduce((a, v) => (v.w * v.h > a.w * a.h ? v : a));
+  const petitPt = pt.vrais.reduce((a, v) => (Math.min(v.w, v.h) < Math.min(a.w, a.h) ? v : a));
+  const moyenPt = pt.vrais.find((v) => v.w >= 16 && v.w <= 20);
+  const touchersPt = (o) => [exempleFenetre(pt.img, grandPt.x + grandPt.w / 2, grandPt.y + grandPt.h / 2, o),
+    exempleFenetre(pt.img, petitPt.x, petitPt.y + Math.floor(petitPt.h / 2), o),
+    exempleFenetre(pt.img, moyenPt.x + moyenPt.w / 2, moyenPt.y + moyenPt.h / 2, o)];
+  const detPt = (ex, dd) => D.detecter({ lireBloc: lecteur(pt.img), region: { x: 0, y: 0, w: pt.img.W, h: pt.img.H },
+    limites: { w: pt.img.W, h: pt.img.H },
+    classes: [{ id: "a", couleurs: ex.filter(Boolean).map((x) => x.rgb), tolerance: dd.tolerances.a }],
+    reglages: Object.assign({ aireMax: dd.tailleMax * dd.tailleMax }, D.reglagesPourTaille(dd.taille)) });
+  const exPt = touchersPt({}), ddPt = D.reglagesDepuisExemples({ a: exPt.filter(Boolean) }, { a: "masse" });
+  const vraiMin = Math.min(petitPt.w, petitPt.h) - 1;
+  t("plan au trait, 3 touchers : exemples clairs cernés, taille minimale déduite " + ddPt.taille + " px (plus petit " +
+    "pilier : " + vraiMin + " ± 1), tolérance " + ddPt.tolerances.a + " (≥ 15 : englobe le blanc bruité et le " +
+    "filigrane)", exPt.every((x) => x && x.cerne) && Math.abs(ddPt.taille - vraiMin) <= 1 && ddPt.tolerances.a >= 15,
+    { exemples: exPt.map((x) => x && [x.rgb, x.aire, x.epaisseur, x.ecartTrait, x.ecartAuDela]), deduits: ddPt });
+  // Seuil des morceaux de galerie : 5 % des piliers. Hors des piliers et des intrus il ne reste que des éclats du
+  // fond aux coins de l'image (filigrane) ; l'ancien plafond en fait plus de 15 %.
+  const bPt = bilanPt(await detPt(exPt, ddPt));
+  t("plan au trait, réglages déduits SANS curseur : " + bPt.piliers + "/" + nPt + " piliers (≥ 90 %), " +
+    bPt.morceaux + " morceau(x) de galerie (≤ 5 %), intrus passés : " + bPt.intrus + " (boucles de 5 chiffres et " +
+    "8 lettres, blanches et fermées comme un pilier)",
+    bPt.piliers >= 0.9 * nPt && bPt.morceaux <= 0.05 * nPt, bPt);
+  const exPlafond = exPt.filter(Boolean).map((x) => Object.assign({}, x, { cerne: false }));
+  const ddPlafond = D.reglagesDepuisExemples({ a: exPlafond }, { a: "masse" });
+  const bPlafond = bilanPt(await detPt(exPlafond, ddPlafond));
+  t("contre-épreuve : ancien plafond (60 % de l'écart au fond, tolérance " + ddPlafond.tolerances.a + ") → " +
+    bPlafond.morceaux + " morceaux de galerie (> 5 %)", bPlafond.morceaux > 0.05 * nPt, bPlafond);
+  const exAnc = touchersPt({ nature: "trait" }).filter(Boolean).map((x) => Object.assign({}, x, { cerne: false }));
+  const ddAnc = D.reglagesDepuisExemples({ a: exAnc }, { a: "masse" });
+  const bAnc = bilanPt(await detPt(exAnc, ddAnc));
+  t("contre-épreuve : les deux anciennes règles (exemple sur le trait + ancien plafond) → taille " + ddAnc.taille +
+    " px, tolérance " + ddAnc.tolerances.a + ", " + bAnc.piliers + "/" + nPt + " piliers, " + bAnc.morceaux +
+    " morceaux", ddAnc.taille <= 2 && bAnc.morceaux > 0.05 * nPt, bAnc);
 
   // ── Recalcul sur les blocs gardés : pas de relecture de l'image ──
   let lectures = 0;

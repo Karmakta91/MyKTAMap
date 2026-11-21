@@ -28,6 +28,7 @@ window.KtaDetectionUI = (function () {
   const FENETRE_EXEMPLE = [192, 640];  // px plan lus autour d'un toucher de pipette (puis plus grand si coupé)
   const RECALCUL_MS = 200;             // curseur relâché : recalcul après ce délai sans autre mouvement
   // plafond de la taille maximale : la marge des blocs (au-delà, une masse est « trop grande pour un bloc »)
+  const TOL_CURSEUR = [6, 60];   // bornes du curseur de tolérance (6 = plancher du moteur, reglagesDepuisExemples)
   const TAILLE_MAX_PLAFOND = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
   const SURFACE_PLEINE = 4096 * 4096;   // au-delà, « Tout le plan » se calcule à mi-résolution
   // Masse A, masse B (piliers), front (trait) ; types proposés dans l'aperçu et type par défaut.
@@ -156,14 +157,14 @@ window.KtaDetectionUI = (function () {
   }
   // Exemple sous un point du plan : couleur, taille et étalement de la composante touchée (ktaDetection.js >
   // mesurerExemple), lus dans une fenêtre autour du doigt, agrandie une fois si la composante la dépasse.
-  async function _exempleEn(x, y) {
+  async function _exempleEn(x, y, nature) {
     let m = null;
     for (let k = 0; k < FENETRE_EXEMPLE.length; k++) {
       const n = FENETRE_EXEMPLE[k], x0 = Math.floor(x - n / 2), y0 = Math.floor(y - n / 2);
       const b = await _lireBloc(x0, y0, n, n, 1);
       // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour du « fond »
       if (!b.dessine) return null;
-      m = window.KtaDetection.mesurerExemple(b, x - x0, y - y0);
+      m = window.KtaDetection.mesurerExemple(b, x - x0, y - y0, { nature: nature });
       // composante coupée par la fenêtre, ou fenêtre remplie par l'objet (son bord passe pour le fond) : plus grand
       if (!m || !(m.coupe || m.fond)) break;
     }
@@ -317,7 +318,7 @@ window.KtaDetectionUI = (function () {
           _e.curseurs[nom] + '"> <span class="kta-detect-valeur">' + _e.curseurs[nom] + "</span></label>";
       };
       html = '<span class="kta-racc-info">' + _esc(_bilan()) + "</span>" +
-        '<div class="kta-racc-actions">' + cur("tolerance", 8, 60) + cur("taille", 2, 80) +
+        '<div class="kta-racc-actions">' + cur("tolerance", TOL_CURSEUR[0], TOL_CURSEUR[1]) + cur("taille", 2, 80) +
         cur("tailleMax", 4, TAILLE_MAX_PLAFOND) + "</div>" +
         '<div class="kta-racc-actions">' +
         CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(sel).join("") +
@@ -400,7 +401,7 @@ window.KtaDetectionUI = (function () {
     if (!_e || !ev || !ev.latlng) return;
     const pt = _e.ctx.depuisCarte(ev.latlng), x = pt.x, y = pt.y;
     if (_e.etape === "exemples" && _e.pipette) {
-      const c = _e.pipette, ex = await _exempleEn(x, y);
+      const c = _e.pipette, ex = await _exempleEn(x, y, _natures()[c]);
       if (!_e) return;
       if (!ex) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
       if (ex.fond) { _toast(_t("detect.toast.surFond"), "warn"); return; }   // doigt sur le fond : pas d'exemple
@@ -476,10 +477,11 @@ window.KtaDetectionUI = (function () {
     CLASSES.forEach(function (c) { ex[c] = _e.couleurs[c]; });
     return window.KtaDetection.reglagesDepuisExemples(ex, _natures());
   }
+  // Classe de masse dont le curseur « Tolérance de couleur » montre la valeur : Masse A, sinon Masse B.
+  function _masseRef(d) { return ["a", "b"].filter(function (c) { return d.tolerances[c] > 0; })[0] || null; }
   function _initCurseurs() {
-    const d = _deduits(), sauves = _e.couleurs.curseurs;
-    let tol = 0;
-    Object.keys(d.tolerances).forEach(function (c) { tol = Math.max(tol, d.tolerances[c]); });
+    const d = _deduits(), sauves = _e.couleurs.curseurs, ref = _masseRef(d);
+    const tol = ref ? d.tolerances[ref] : 0;
     // taille maximale : déduite du plus grand exemple (× 4 en aire), plafonnée à la marge des blocs (au-delà, une masse
     // est « trop grande pour un bloc » de toute façon)
     const tMax = Math.min(TAILLE_MAX_PLAFOND, d.tailleMax || TAILLE_MAX_PLAFOND);
@@ -487,11 +489,18 @@ window.KtaDetectionUI = (function () {
       : { tolerance: tol || 22, taille: d.taille || 13, tailleMax: tMax };
     _e.deduits = d;
   }
-  // Tolérance par classe : celle du curseur si l'utilisateur l'a bougé, sinon celle déduite de ses exemples.
+  // Tolérance par classe. ⚠️ contrat : le curseur affiche la tolérance RÉELLEMENT appliquée aux masses (celle de la
+  //   classe _masseRef) ; l'autre masse garde son écart déduit à elle (même valeur quand le curseur n'a pas bougé).
+  //   Les fronts gardent la leur : un exemple de Front ne change pas le curseur, le curseur ne change pas les fronts.
+  // 🩸 Le curseur montrait le maximum des classes (celle d'un Front) quand les masses tournaient bien plus bas.
   function _classes() {
-    const d = _e.deduits, choisi = !!_e.couleurs.curseurs;
+    const d = _e.deduits, ref = _masseRef(d);
     return CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(function (c) {
-      return { id: c, nature: _natures()[c], tolerance: choisi ? _e.curseurs.tolerance : (d.tolerances[c] || 22),
+      let tol = d.tolerances[c] || 22;
+      if (_natures()[c] !== "trait" && ref) {
+        tol = Math.max(TOL_CURSEUR[0], Math.min(TOL_CURSEUR[1], _e.curseurs.tolerance + tol - d.tolerances[ref]));
+      }
+      return { id: c, nature: _natures()[c], tolerance: tol,
                couleurs: _e.couleurs[c].map(function (q) { return q.rgb; }) };
     });
   }
@@ -640,6 +649,9 @@ window.KtaDetectionUI = (function () {
     return { etape: _e.etape, exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length, f: _e.couleurs.f.length },
              pipette: _e.pipette, coins: _e.coins.length, curseurs: _e.curseurs, lectures: _e.lectures,
              recalculs: _e.recalculs, recalculable: !!_e.recalculable,
+             tolerances: _e.deduits && _e.curseurs ? _classes().reduce(function (o, c) {
+               o[c.id] = c.tolerance; return o;
+             }, {}) : null,
              apercu: a ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
                            retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands,
                            ecartees: a.ecartees } : null };
