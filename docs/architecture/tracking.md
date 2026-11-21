@@ -2166,7 +2166,8 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
 - **Textures des structures et des parois** (interrupteur 🧱 de la tuile ⚙️, `config.js > getVue3DTextures`, actif
   par défaut) : parois des galeries et des tubes en pierre de taille (§ Scène galerie ; coupé : couleur de légende du
   tracé) ;
-  piliers et fronts en **roche brute** (décision produit : la masse calcaire laissée en place, jamais appareillée —
+  piliers (sauf le pilier à bras, maçonné : ci-dessous) et fronts en **roche brute** (décision produit : la masse
+  calcaire laissée en place, jamais appareillée —
   bosses à trois échelles, nuances en taches à deux échelles, strates fines par endroits, fissures en creux ;
   **traces d'outil en passes de coups parallèles**, comme le carrier les laisse (décision produit : jamais d'angle
   tiré au hasard dans une passe) — `ROCHE.pic`, cinq passes de rangées superposées de coups de pic courts, serrés
@@ -2204,6 +2205,26 @@ dans l'interface (z-index, filtres partagés, icônes) : `docs/architecture/ui.m
   pierre, remblais, éboulis) est dessinée une fois par page (`_texturesPeintes`, canvas gardés dans `_appareils`,
   ~15 à 30 ms au PC, ~100 ms au téléphone ralenti × 4), la pierre seulement à la première paroi texturée, remblais
   et éboulis à la première zone de leur type ; `KtaVue3D.textures()` rend ces temps (checkup § 24).
+- **Pilier à bras en assises** (`pilier-bras`, 🧱 activé ; `_pilierBras`, `PILIER_BRAS`) : le pilier maçonné à la
+  main n'est plus un prisme de roche comme le pilier tourné, mais une **colonne de blocs empilés** du sol au plafond,
+  dans la roche des piliers (même matériau, même texture, même nuance par structure : aucune texture de plus).
+  6 à 10 assises (0,3 m visés, hauteurs tirées à ± 22 %), un ou deux blocs par assise (partage alterné d'une assise à
+  l'autre), joints de 1,6 cm ouverts sur un **cœur sombre** en retrait de 9 cm (il ferme les joints : on ne voit jamais
+  au travers). Chaque bloc est en retrait de 1,5 à 6,5 cm, l'assise du pied et celle du plafond presque à fleur (le
+  calage, plus large), puis décalé et tourné d'un rien dans la marge que laisse son retrait : **aucun bloc ne sort du
+  carré**, aucun ne découvre le cœur ni ne mord sur son voisin. Contour de quatre sommets (le carré posé, **sommets
+  ajustés compris**) : chaque bloc est pris dans ce contour en coordonnées bilinéaires, il suit les sommets réels ;
+  autre contour : chaque assise est le contour resserré vers son centre (un bloc). Pied au fond d'un sol abaissé
+  (`_fondPied`), relevé sur une pente (`_releverPente`), prolongé dans une trémie comme un pilier
+  (`_structureSurTremie`). ⚠️ contrat : tirages de la **graine de l'uid** (`_aleaGraine`, `_hachage`), jamais
+  `Math.random` — le même pilier à chaque ouverture, à chaque reconstruction de tuile et sur chaque appareil.
+  ⚠️ contrat : l'obstacle (tracker, marche 3D, rayon de la règle du pas) reste le **carré de 1 m** (la 3D ne dessine
+  que l'intérieur). Coût : 90 à 150 triangles par pilier (le prisme : 18), dans le lot de la roche de la tuile — aucun
+  maillage, aucun appel de dessin de plus, tuilage et portée inchangés ; 300 piliers à bras : + 32 500 triangles,
+  ~ + 150 ms de construction des tuiles (PC), médiane par image + 5 % en rendu logiciel. Pas de mode économie propre
+  dans la vue : 🧱 coupé (le mode simple) rend le **prisme d'origine** à la couleur de la légende, comme tout pilier.
+  Relevé `etat().piliersBras` (uid → assises, blocs, triangles, débord, empreinte de la forme). Checkup
+  `checkup-pilier-bras-3d.js` (300 piliers, joints au rayon, deux ouvertures identiques, 🧱 coupé, temps avant/après).
 - **Textures HD** (bouton **HD** de la tuile ⚙️, sur la ligne de 🧱 ; `config.js > getVue3DTexturesHD`, réglage de
   l'appareil : **coupé par défaut au doigt** (`ktaAppareilTactile`), allumé au pointeur fin ; grisé et sans effet 🧱
   coupé, le réglage est gardé) : chaque texture dessinée (roche, parpaing, pierre, remblais, éboulis, sol, ciel)
