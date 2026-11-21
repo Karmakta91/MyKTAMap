@@ -831,6 +831,56 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     const Rpl = D.remplir(lecteurSync(pilierPlein), 55, 50);
     t("remplir : pilier plein coloré sur fond blanc → son contour, sans gonfler sur le fond",
       Rpl.points && ecart(Rpl.points, rectPts(40, 40, 30, 20)) <= 1, Rpl);
+
+    // ── Fermeture en repli : petit pilier flou (intérieur de 2 à 3 px) avalé par la fermeture ──
+    const flouter = img => {   // flou 3 × 3 (moyenne), comme un plan scanné puis agrandi
+      const src = Uint8ClampedArray.from(img.data);
+      for (let j = 0; j < img.H; j++) for (let i = 0; i < img.W; i++) for (let c = 0; c < 3; c++) {
+        let s = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const x = i + dx, y = j + dy;
+          if (x >= 0 && y >= 0 && x < img.W && y < img.H) { s += src[(y * img.W + x) * 4 + c]; n++; }
+        }
+        img.data[(j * img.W + i) * 4 + c] = s / n;
+      }
+      return img;
+    };
+    const petits = flouter(cerne(cerne(image(200, 200), 50, 40, 3, 3, 2, 0), 90, 40, 2, 4, 2, 0));
+    // contour attendu : dans l'anneau extérieur du trait (flou : 1 px de plus), autour du point touché
+    const dansAnneau = (r, x, y, w, h) => r.points && r.boite.x >= x - 3 && r.boite.y >= y - 3 &&
+      r.boite.x + r.boite.w <= x + w + 3 && r.boite.y + r.boite.h <= y + h + 3 && r.aire >= 2;
+    const Rf3 = D.remplir(lecteurSync(petits), 51, 41);
+    t("remplir : pilier flou de 3 px avalé par la fermeture → rempli sans elle (repli), dans son trait", dansAnneau(Rf3,
+      50, 40, 3, 3), Rf3);
+    const Rf2 = D.remplir(lecteurSync(petits), 90, 41);
+    t("remplir : pilier flou de 2 px × 4 → rempli par le repli", dansAnneau(Rf2, 90, 40, 2, 4), Rf2);
+    const Rf3s = D.remplir(lecteurSync(petits), 51, 41, { repli: false });
+    t("remplir : contre-épreuve sans repli → le pilier flou de 3 px est refusé (« trait »)", Rf3s.refus === "trait",
+      Rf3s);
+    const Rtr2 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 48, 55);
+    t("remplir : toucher au cœur du trait → toujours refusé, le repli ne remplit jamais le trait",
+      Rtr2.refus === "trait", Rtr2);
+
+    // ── Plafond en mètres (plan à échelle connue), sinon 512 px ──
+    t("remplir : plafond exposé (plafondRemplir)", typeof D.plafondRemplir === "function");
+    if (typeof D.plafondRemplir === "function") {
+      const sans = D.plafondRemplir(null), a10 = D.plafondRemplir(10);
+      t("remplir : sans échelle, plafond 512 × 512 px, sans côté maximal",
+        sans.aireMax === 512 * 512 && !sans.coteMax, sans);
+      t("remplir : à 10 px/m, côté maximal " + D.REMPLIR.coteMaxM + " m = " + a10.coteMax + " px",
+        a10.coteMax === D.REMPLIR.coteMaxM * 10 && a10.aireMax === a10.coteMax * a10.coteMax, a10);
+      // galerie fictive fermée : 600 × 16 px (60 m × 1,6 m à 10 px/m), aire sous le plafond mais trop longue
+      const gal = image(800, 200).anneau(98, 98, 604, 20, 2, NOIR);
+      const Rg = D.remplir(lecteurSync(gal), 300, 108, a10);
+      t("remplir : galerie fictive de 60 m (plan à 10 px/m) → refus « tropGrand »", Rg.refus === "tropGrand", Rg);
+      const Rgs = D.remplir(lecteurSync(gal), 300, 108, { aireMax: sans.aireMax });
+      t("remplir : la même galerie sans échelle passe (plafond 512² px) : c'est le côté en mètres qui la refuse",
+        !!Rgs.points, Rgs.refus);
+      // grande structure plausible : 30 × 25 m à 10 px/m
+      const gros = cerne(image(500, 400), 60, 60, 300, 250, 4, 0);
+      const Rgr = D.remplir(lecteurSync(gros), 200, 180, a10);
+      t("remplir : grande structure plausible (30 × 25 m, plan à 10 px/m) → remplie", !!Rgr.points, Rgr.refus);
+    }
   }
 
   // ── Worker : le fichier charge le moteur et répond à un message ──

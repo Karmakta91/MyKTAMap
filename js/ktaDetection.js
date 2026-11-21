@@ -19,7 +19,7 @@
 // 1 à 2 px bouchés.
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
 //   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE,
-//   remplir, REMPLIR }.
+//   remplir, REMPLIR, plafondRemplir }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -1054,8 +1054,8 @@
 
   // ── Remplir au clic : la zone du fond fermée par le trait autour d'un point ──
   // b = { data, w, h } lu à `echelle` depuis le coin plan (x0, y0) ; (px, py) = point touché, en px de bloc.
-  // o = { x0, y0, echelle, tolerance (ΔE), fermeture (rayon, px de bloc), aireMax (px de bloc), simplification,
-  //   demiTrait (px du plan) }.
+  // o = { x0, y0, echelle, tolerance (ΔE), fermeture (rayon, px de bloc), repli (défaut vrai), aireMax et coteMax
+  //   (px du plan ; plafondRemplir les donne), simplification, demiTrait (px du plan) }.
   // → { points, aire, boite } (px du plan) ou { refus: "hors" | "trait" | "ouvert" | "tropGrand" }.
   // Trait = tout pixel à plus de `tolerance` de la couleur sous le doigt, fermé d'abord (dilatation puis érosion
   //   d'un carré de rayon `fermeture`) : le rayon 1 bouche un trou de 1 à 2 px, un trou de 3 px et plus reste ouvert.
@@ -1064,13 +1064,34 @@
   // ⚠️ contrat (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin ; le contour passe
   //   en son milieu. La détection automatique (detecterBloc) garde le sien : elle n'appelle pas ce chemin.
   // ⚠️ contrat (décision produit) : une zone qui touche le bord du bloc lu (bord de l'image ou de la fenêtre lue) ou
-  //   dépasse `aireMax` n'est pas fermée : refus, jamais une zone partielle. aireMax par défaut : le quart du bloc.
+  //   dépasse `aireMax` (ou dont la boîte dépasse `coteMax` de côté) n'est pas fermée : refus, jamais une zone
+  //   partielle. aireMax par défaut : le quart du bloc ; coteMax absent : pas de limite de côté.
   // 🩸 L'érosion de _passe efface la rangée du bord du bloc (voisins hors bloc comptés vides) : le trait d'origine est
   //   rajouté après la fermeture, qui ne doit jamais RETIRER de trait.
-  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1, demiTrait: 6 });
+  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1, demiTrait: 6, coteMaxM: 40,
+                                  plafondPx: 512 });
+  // Plafond d'une zone remplie, en px du plan. ⚠️ contrat (décision produit) : plan à échelle connue (px/m) → côté de
+  //   boîte et aire bornés par REMPLIR.coteMaxM (40 m, 1 600 m²) : la plus grande structure plausible, prise large
+  //   pour ne jamais refuser un vrai pilier ; une galerie fermée s'étend bien au-delà et sort par son côté. Sans
+  //   échelle : aire de plafondPx² (512² px), sans côté maximal. → { aireMax, coteMax }.
+  function plafondRemplir(pxParM) {
+    const k = Number(pxParM);
+    if (k > 0) { const c = Math.round(REMPLIR.coteMaxM * k); return { aireMax: c * c, coteMax: c }; }
+    return { aireMax: REMPLIR.plafondPx * REMPLIR.plafondPx, coteMax: 0 };
+  }
+  // Le point touché (Lab `labG`) est-il plus clair que la médiane des pixels du trait (masque T) à ± 3 px ?
+  function _plusClairQueLeTrait(T, lab, labG, W, H, px, py) {
+    const l = [];
+    for (let j = Math.max(0, py - 3); j <= Math.min(H - 1, py + 3); j++) {
+      for (let i = Math.max(0, px - 3); i <= Math.min(W - 1, px + 3); i++) if (T[j * W + i]) l.push(lab(j * W + i)[0]);
+    }
+    if (!l.length) return false;
+    l.sort(function (a, b) { return a - b; });
+    return labG[0] > l[l.length >> 1];
+  }
   // Pixels du trait (masque F) gagnés par la zone m : ceux plus près de la zone que de l'autre côté du trait
-  // (distances 8-connexes dans le trait, égalité gagnée par la zone), à au plus `cap` px de la zone. Calcul borné à
-  // la boîte de la zone élargie de 2 × cap. → nombre de pixels ajoutés à m.
+  // (distances de chanfrein 3-4 dans le trait, égalité gagnée par la zone), à au plus `cap` px de la zone. Calcul
+  // borné à la boîte de la zone élargie de 2 × cap. → nombre de pixels ajoutés à m.
   // 🩸 Sans « autre côté » à moins de 2 × cap (pilier plein sur fond uni : tout le fond est « trait » ; aplat noir
   //   épais), rien n'est gagné : la zone garderait sinon `cap` px de fond tout autour.
   function _jusquAuMilieu(m, F, hors, W, H, bx0, by0, bx1, by1, cap) {
@@ -1121,7 +1142,8 @@
     if (px < 0 || py < 0 || px >= W || py >= H || d[(py * W + px) * 4 + 3] < 128) return { refus: "hors" };
     const tol = Number(o.tolerance) > 0 ? Number(o.tolerance) : REMPLIR.tolerance;
     const R = o.fermeture === undefined ? REMPLIR.fermeture : Math.max(0, Math.floor(o.fermeture));
-    const aireMax = Number(o.aireMax) > 0 ? Number(o.aireMax) : Math.floor(N / 4);
+    const aireMax = Number(o.aireMax) > 0 ? Number(o.aireMax) * e * e : Math.floor(N / 4);
+    const coteMax = Number(o.coteMax) > 0 ? Number(o.coteMax) * e : Infinity;
     const cache = new Map();
     const lab = function (i) {
       const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
@@ -1153,6 +1175,11 @@
       _passe(tmp, F, W, H, R, true);
       for (let i = 0; i < N; i++) if (T[i]) F[i] = 1;
     }
+    // ⚠️ contrat (décision produit) : fermeture en REPLI. Un pilier large de 2 à 3 px, ou grisé par le flou, est
+    //   avalé par la fermeture (le point touché tombe dans le trait fermé) : on recommence alors sans fermeture.
+    // 🩸 Seulement si le point touché est plus CLAIR que le trait qui l'entoure : un toucher sur le trait lui-même
+    //   (foncé, entouré de fond clair) remplirait sinon le trait comme une zone.
+    if (F[g] && !T[g] && F !== T && o.repli !== false && _plusClairQueLeTrait(T, lab, labG, W, H, px, py)) F = T;
     if (F[g]) return { refus: "trait" };
     // composante 4-connexe du fond fermé : `file` = ses pixels, `m` = son masque (contour)
     const m = new Uint8Array(N), file = new Int32Array(N);
@@ -1171,7 +1198,7 @@
       }
     }
     // 🩸 Plafond jugé APRÈS le remplissage : une fuite vers le bord est « ouverte », pas « trop grande »
-    if (n > aireMax) return { refus: "tropGrand" };
+    if (n > aireMax || x1 - x0 + 1 > coteMax || y1 - y0 + 1 > coteMax) return { refus: "tropGrand" };
     const cap = Math.max(1, Math.round((o.demiTrait === undefined ? REMPLIR.demiTrait : o.demiTrait) * e));
     if (_jusquAuMilieu(m, F, hors, W, H, x0, y0, x1, y1, cap)) {
       // boîte et premier pixel (ordre de balayage) de la zone étendue, cherchés autour de l'ancienne boîte
@@ -1202,7 +1229,7 @@
                 executeurWorker: executeurWorker, executeurLocal: executeurLocal, recalculer: recalculer,
                 mesurerExemple: mesurerExemple, reglagesDepuisExemples: reglagesDepuisExemples,
                 reglagesPourTaille: reglagesPourTaille, rgbVersLab: rgbVersLab, deltaE: deltaE,
-                remplir: remplir, REMPLIR: REMPLIR, _magasin: _magasin };
+                remplir: remplir, REMPLIR: REMPLIR, plafondRemplir: plafondRemplir, _magasin: _magasin };
   racine.KtaDetection = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : globalThis);

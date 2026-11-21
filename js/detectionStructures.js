@@ -42,13 +42,11 @@ window.KtaDetectionUI = (function () {
   const ECART_TRAIT = 3;                // px : un front détecté à moins de cet écart d'un front existant est déjà là
   const REFUS = "KtaDetectionRefus";    // nom de l'erreur levée par _lireBloc quand le contexte refuse de dessiner
   // Remplir au clic : fenêtre lue autour du toucher (px plan), puis la grande si la zone en touche le bord.
-  // ⚠️ contrat (décision produit) : plafond = (2 × marge)², soit 512 × 512 px. La détection refuse déjà une masse
-  //   plus large que la marge des blocs (256 px) ; le remplissage accepte le double en côté pour une grande structure
-  //   dessinée, et la grande fenêtre (4 × la marge) laisse une zone au plafond loin de son bord. Au-delà, c'est une
-  //   galerie ou le fond qui fuit par un trou du trait, pas une structure.
+  // Plafond : ktaDetection.js > plafondRemplir (40 m de côté sur un plan à échelle connue, sinon 512² px). La grande
+  //   fenêtre (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) laisse une zone au plafond
+  //   loin de son bord.
   const MARGE = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
-  const FENETRE_REMPLIR = [384, 4 * MARGE];
-  const AIRE_MAX_REMPLIR = (2 * MARGE) * (2 * MARGE);
+  const FENETRE_REMPLIR_MAX = 4096;
 
   const _t = function (k, v) { return window.I18n.t(k, v); };
   const _esc = function (s) { return window.ktaEsc(s); };
@@ -322,7 +320,8 @@ window.KtaDetectionUI = (function () {
         _btn("effacer", "detect.exemples.effacer") +
         _btn("zone", "detect.exemples.suivant", "kta-btn-primary") +
         '<button type="button" class="kta-btn kta-btn-ghost" data-detect="remplir">' +
-        window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" + _btn("fermer", "detect.fermer") + "</div>";
+        window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" +
+        _btn("fermer", "detect.fermer") + "</div>";
     } else if (_e.etape === "remplir") {
       const gardes = _remplisGardes().length;
       html = '<span class="kta-racc-info">' + _esc(_t("detect.remplir.aide", { n: gardes })) + "</span>" +
@@ -617,13 +616,15 @@ window.KtaDetectionUI = (function () {
   // ── Remplir au clic : chaque toucher remplit la zone fermée par le trait (ktaDetection.js > remplir) ──
   // ⚠️ contrat (décision produit) : seuls les types de structure à contour FERMÉ sont proposés (intégrés et types
   //   personnalisés de la légende, géométrie lue par structures.js > isStructurePolylineType) : jamais un front.
+  //   Un type posé d'un clic à taille fixe (structures.js > ktaPoseUnClic : pilier à bras) n'est pas proposé non plus.
   function _typesFermes() {
-    const ligne = function (t) {
-      return typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t);
+    const exclu = function (t) {
+      return (typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t)) ||
+        (typeof window.ktaPoseUnClic === "function" && window.ktaPoseUnClic(t));
     };
     const LC = window.LegendCustomization, out = [];
     (window.KTA_STRUCTURE_TYPES_BUILTIN || []).forEach(function (t) {
-      if (ligne(t)) return;
+      if (exclu(t)) return;
       let lib = null;
       try {
         if (LC && typeof LC.getLabel === "function") lib = LC.getLabel("structures", t);
@@ -632,7 +633,7 @@ window.KtaDetectionUI = (function () {
     });
     if (LC && typeof LC.listCustomEntries === "function") {
       LC.listCustomEntries("structures").forEach(function (c) {
-        if (c && c.id && c.geometry !== "polyline" && !ligne(c.id)) out.push({ id: c.id, libelle: c.label || c.id });
+        if (c && c.id && c.geometry !== "polyline" && !exclu(c.id)) out.push({ id: c.id, libelle: c.label || c.id });
       });
     }
     return out;
@@ -652,15 +653,18 @@ window.KtaDetectionUI = (function () {
     e.remplissage = true;
     try {
       let r = null;
-      for (let k = 0; k < FENETRE_REMPLIR.length; k++) {
-        const n = FENETRE_REMPLIR[k];
+      const pl = window.KtaDetection.plafondRemplir(e.ctx.pxParM ? e.ctx.pxParM() : null);
+      const fenetres = [384, Math.min(FENETRE_REMPLIR_MAX, Math.max(4 * MARGE, 2 * pl.coteMax + 64))];
+      for (let k = 0; k < fenetres.length; k++) {
+        const n = fenetres[k];
         const x0 = Math.max(0, Math.floor(x - n / 2)), y0 = Math.max(0, Math.floor(y - n / 2));
         const x1 = Math.min(W, Math.ceil(x + n / 2)), y1 = Math.min(H, Math.ceil(y + n / 2));
         const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, 1);
         if (_e !== e) return;
         // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour un fond ouvert
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-        r = window.KtaDetection.remplir(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1, aireMax: AIRE_MAX_REMPLIR });
+        r = window.KtaDetection.remplir(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1, aireMax: pl.aireMax,
+          coteMax: pl.coteMax });
         // zone fermée, ou fenêtre déjà grande comme l'image : une fenêtre plus grande n'y changerait rien
         if (r.refus !== "ouvert" || (x0 === 0 && y0 === 0 && x1 === W && y1 === H)) break;
       }
