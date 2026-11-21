@@ -157,3 +157,8 @@
   noir → type choisi (contour fermé), reste actif, aperçu puis un Valider ; trous du trait de 1-2 px fermés, sinon
   refus « contour ouvert ». Décisions QCM 21/11/2026. Après le lot « image lue sur un niveau ».
   `qui: Claude · action: brief Dev une fois les lots en cours finis · fini: remplissage, refus de fuite, checkup rouge puis vert · depuis: 21/11/2026 · taille: M`
+
+- **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
+  fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
+  fictifs : liseré noir de 2 px autour de l'image ; carrés de 3 × 3 px tous les 7 px autour d'un pilier.
+  `qui: Claude · action: topo après le lot fronts en passe mixte · fini: cadre écarté, pointillés fermés, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
