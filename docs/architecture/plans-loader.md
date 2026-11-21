@@ -814,7 +814,14 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
   de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
   règle de niveau, écriture (`poser`). Sans argument, `contextePlan()` : le plan ouvert, la session, une étape ⏪.
-  Le Générateur fournit le sien (ci-dessous). Règle de niveau commune :
+  Le Générateur fournit le sien (ci-dessous). ⚠️ **Emprise lue** (`ctx.emprise()`, relue à chaque geste ; absente =
+  `[0, largeur] × [0, hauteur]`, cas du Générateur) : niveau ≠ 0, union des calques image AFFICHÉS du niveau actif
+  (`map.js > ktaEmpriseCalques(niveau, { affiches: true })`, getBounds, coins calés compris, sans marge), en px plan,
+  bornes négatives ou au-delà de l'image possibles ; niveau 0, l'image (ses calques ne sont pas lus). Remplir,
+  « Tout le plan », le cadre (ramené dedans) et `detecter` (limites et bords du plan) s'y bornent. 🩸 Bornés à l'image
+  principale, un calque plus grand qu'elle voyait son débord refusé (« Aucune image du plan à cet endroit ») et un
+  pilier à cheval sur le bord de l'image sortait rogné net (le bord de l'image pris pour le bord du plan).
+  Règle de niveau commune :
   `structures.js > ktaNiveauNouvelleStructure(type, { multiLevel, niveau })` (absent = le plan ouvert).
 - **Dans le Générateur** (`js/detectionGenerateur.js`, `createConf.js > _detecterStructuresGenerateur`) : bouton
   « Détecter piliers et fronts » de l'étape Calques de données (mode Avancé), en Nouveau, en Modifier et dans
@@ -843,6 +850,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
   `{ masses: [{ classe, points, aire, boite }], tropGrands, ignorees, blocs }`, coordonnées en **pixels du plan**.
+  `limites` = `{ x0, y0, x1, y1 }` (emprise, bornes négatives possibles) ou `{ w, h }` (= `[0, w] × [0, h]`) ; la
+  région y est ramenée.
 - **Méthode, par bloc** : classe de couleur de chaque pixel (écart ΔE en Lab à l'exemple le plus proche, table sur
   6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
   (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
@@ -882,6 +891,7 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - 🩸 **Blocs avec marge** (`bloc` 2048, `marge` 256 px) : une masse est rendue par le bloc qui contient le coin
   haut-gauche de sa boîte ; celle qui touche le bord de la marge (pas le bord du plan) est signalée dans
   `tropGrands`, jamais coupée. La marge est lue au-delà du cadre demandé : une masse coupée par le cadre reste entière.
+  « Bord du plan » = bord des `limites` (l'emprise) : une masse qui le touche est rendue telle quelle.
 - **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
   la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
 - **Fronts** (classe `nature: "trait"`) : 🩸 un trait a souvent la couleur d'un pilier, il ne concourt donc pas
@@ -997,7 +1007,7 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     fond autour. Un pilier plein se remplit donc à son propre bord. La détection automatique (piliers et fronts)
     garde son contour, inchangé.
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
-    l'image (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
+    l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
     (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
     (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) si la zone touche son bord.
     ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM)`, décision produit) : plan à échelle connue
@@ -1023,4 +1033,6 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
 - Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
-  `scripts/smoke/checkup-remplir.js` (Remplir au clic).
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-detection-emprise.js` (calque du
+  niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
+  le bord de l'image entier, niveau 0 inchangé ; Chromium et WebKit).
