@@ -177,3 +177,8 @@
   intérieur (environ 1 px trop petite tout autour) alors que le trait fait partie du pilier (décision du 21/11/2026,
   appliquée au remplir au clic). Aligner la détection auto sur le milieu du trait.
   `qui: Claude · action: topo après le lot remplir · fini: contour au milieu du trait, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection : contours affinés** — plan de mauvaise qualité : remplir et détection auto donnent des piliers en dent
+  de scie. Lissage en mètres toujours, redressement (côtés droits, angles droits) si la forme est presque un
+  rectangle ; case « Affiner les contours » cochée par défaut dans Détecter. Décisions du 21/11/2026 : après le bump.
+  `qui: Claude · action: brief Dev après le bump · fini: pilier carré mal tracé rendu rectangle, pilier tourné lissé, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`

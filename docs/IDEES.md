@@ -6,6 +6,9 @@
 
 ## Fonctionnalités
 
+- **Affiner des structures déjà posées** — le lissage et le redressement des contours de la détection, appliqués à une
+  sélection de structures existantes (piliers tracés à la main ou détectés avant). Déclencheur : le lot « contours
+  affinés » livré et jugé utile.
 - **Détection : reconnaître un pilier par sa forme** — couleur et taille ne distinguent pas un pilier d'un trou de
   lettre, d'un massif ouvert ou d'un morceau de galerie (essai du 21/11/2026 sur un plan aux galeries contourées :
   88 % d'objets faux). Pistes : compacité, contact avec une galerie, écarter le texte. Déclencheur : un plan de
