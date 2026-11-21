@@ -12,8 +12,8 @@
 //   2. type « Mur » choisi, 3 touchers → 3 zones en aperçu, RIEN d'écrit avant « Valider » ;
 //   3. toucher dans le contour ouvert → refus affiché, rien ajouté ; toucher dans la structure existante → pas de
 //      doublon, refus affiché ;
-//   4. « Valider » → 3 structures « mur » au niveau du type (multi-niveau, niveau actif), contour intérieur à 1 px
-//      près, uid + updatedAt ; UNE étape ⏪ les retire toutes ;
+//   4. « Valider » → 3 structures « mur » au niveau du type (multi-niveau, niveau actif), contour au milieu du
+//      trait à 1 px près, uid + updatedAt ; UNE étape ⏪ les retire toutes ;
 //   5. type « Pilier 2e masse » : posé au niveau −1 (même règle que le tracé à la main).
 // Usage : NODE_PATH=<node_modules de scripts/smoke> SMOKE_PORT=8170 node scripts/smoke/checkup-remplir.js
 // Doc : docs/architecture/plans-loader.md (Détecter les structures)
@@ -41,12 +41,12 @@ function verifier(cond, msg, detail) {
   if (cond) ok(msg); else pb(msg + (detail !== undefined ? " — " + JSON.stringify(detail) : ""));
 }
 
-// Planche en pixels du plan, relative au coin O : intérieurs [x, y, w, h], trait noir de 2 px autour.
+// Planche en pixels du plan, relative au coin O : intérieurs [x, y, w, h], trait noir de `ep` px autour.
 const PLANCHE = {
   fermes: [[30, 30, 60, 40], [140, 30, 50, 50], [240, 40, 70, 35]],
   ouvert: [30, 160, 60, 40], trou: 6,          // trou dans le trait du haut : le fond fuit dehors
   existant: [140, 160, 50, 40],                // déjà une structure : jamais doublé
-  ep: 2, taille: [360, 240]
+  ep: 4, taille: [360, 240]   // trait de 4 px : le bord intérieur serait à 2 px du milieu attendu
 };
 
 async function preterPlanche(page) {
@@ -161,7 +161,11 @@ async function suite(nav) {
   }, 90000);
   await page.waitForTimeout(2000);
   const O = await preterPlanche(page);
-  if (!O) { pb("aucune zone libre de structures dans le relevé fictif pour poser la planche"); await ctx.close(); return; }
+  if (!O) {
+    pb("aucune zone libre de structures dans le relevé fictif pour poser la planche");
+    await ctx.close();
+    return;
+  }
   await page.waitForTimeout(500);
   const avant = await murs(page);
 
@@ -237,14 +241,15 @@ async function suite(nav) {
   verifier(poses.every(function (s) { return /^st_/.test(s.uid || "") && Number.isFinite(s.maj); }),
     "chaque structure a son uid et son updatedAt");
   const contours = PLANCHE.fermes.map(function (q) {
-    const x = O.x + q[0], y = O.y + q[1];
+    const e2 = PLANCHE.ep / 2, x = O.x + q[0] - e2, y = O.y + q[1] - e2;   // milieu du trait
     return poses.some(function (s) {
       const xs = s.points.map(function (p) { return p.x; }), ys = s.points.map(function (p) { return p.y; });
       return Math.abs(Math.min.apply(null, xs) - x) <= 1 && Math.abs(Math.min.apply(null, ys) - y) <= 1 &&
-        Math.abs(Math.max.apply(null, xs) - x - q[2]) <= 1 && Math.abs(Math.max.apply(null, ys) - y - q[3]) <= 1;
+        Math.abs(Math.max.apply(null, xs) - x - q[2] - 2 * e2) <= 1 &&
+        Math.abs(Math.max.apply(null, ys) - y - q[3] - 2 * e2) <= 1;
     });
   });
-  verifier(contours.every(Boolean), "contour intérieur de chaque pilier à 1 px près", contours);
+  verifier(contours.every(Boolean), "contour de chaque pilier au milieu de son trait, à 1 px près", contours);
   const hist = await page.evaluate(function () {
     const H = window.HistoryManager;
     return H && typeof H.undo === "function" ? H.undo() : "absent";

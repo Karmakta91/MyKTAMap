@@ -15,9 +15,11 @@
 // squelette d'épaisseur constante plus longs que 4 × cette épaisseur).
 // Réglages déduits des exemples touchés (mesurerExemple, reglagesDepuisExemples, reglagesPourTaille) ; recalcul sur
 // les blocs gardés par l'exécuteur, sans relire l'image (recalculer).
-// Remplir au clic (remplir) : zone du fond fermée par le trait autour d'un point, trous de 1 à 2 px bouchés.
+// Remplir au clic (remplir) : zone fermée par le trait autour d'un point, contour au milieu du trait, trous de
+// 1 à 2 px bouchés.
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
-//   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE, remplir, REMPLIR }.
+//   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE,
+//   remplir, REMPLIR }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -1052,17 +1054,66 @@
 
   // ── Remplir au clic : la zone du fond fermée par le trait autour d'un point ──
   // b = { data, w, h } lu à `echelle` depuis le coin plan (x0, y0) ; (px, py) = point touché, en px de bloc.
-  // o = { x0, y0, echelle, tolerance (ΔE), fermeture (rayon, px de bloc), aireMax (px de bloc), simplification }.
+  // o = { x0, y0, echelle, tolerance (ΔE), fermeture (rayon, px de bloc), aireMax (px de bloc), simplification,
+  //   demiTrait (px du plan) }.
   // → { points, aire, boite } (px du plan) ou { refus: "hors" | "trait" | "ouvert" | "tropGrand" }.
   // Trait = tout pixel à plus de `tolerance` de la couleur sous le doigt, fermé d'abord (dilatation puis érosion
   //   d'un carré de rayon `fermeture`) : le rayon 1 bouche un trou de 1 à 2 px, un trou de 3 px et plus reste ouvert.
-  //   La zone = composante 4-connexe du fond ainsi fermé ; son contour extérieur est le BORD INTÉRIEUR du trait
-  //   (le trait n'en fait pas partie ; un chiffre ou une pastille dedans est englobé).
+  //   La zone = composante 4-connexe du fond ainsi fermé, étendue jusqu'au MILIEU du trait (_jusquAuMilieu) ;
+  //   contour extérieur seul (un chiffre ou une pastille dedans est englobé).
+  // ⚠️ contrat (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin ; le contour passe
+  //   en son milieu. La détection automatique (detecterBloc) garde le sien : elle n'appelle pas ce chemin.
   // ⚠️ contrat (décision produit) : une zone qui touche le bord du bloc lu (bord de l'image ou de la fenêtre lue) ou
   //   dépasse `aireMax` n'est pas fermée : refus, jamais une zone partielle. aireMax par défaut : le quart du bloc.
   // 🩸 L'érosion de _passe efface la rangée du bord du bloc (voisins hors bloc comptés vides) : le trait d'origine est
   //   rajouté après la fermeture, qui ne doit jamais RETIRER de trait.
-  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1 });
+  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1, demiTrait: 6 });
+  // Pixels du trait (masque F) gagnés par la zone m : ceux plus près de la zone que de l'autre côté du trait
+  // (distances 8-connexes dans le trait, égalité gagnée par la zone), à au plus `cap` px de la zone. Calcul borné à
+  // la boîte de la zone élargie de 2 × cap. → nombre de pixels ajoutés à m.
+  // 🩸 Sans « autre côté » à moins de 2 × cap (pilier plein sur fond uni : tout le fond est « trait » ; aplat noir
+  //   épais), rien n'est gagné : la zone garderait sinon `cap` px de fond tout autour.
+  function _jusquAuMilieu(m, F, hors, W, H, bx0, by0, bx1, by1, cap) {
+    const M = 2 * cap + 1;
+    const X0 = Math.max(0, bx0 - M), Y0 = Math.max(0, by0 - M);
+    const X1 = Math.min(W - 1, bx1 + M), Y1 = Math.min(H - 1, by1 + M);
+    const bw = X1 - X0 + 1, bh = Y1 - Y0 + 1, nb = bw * bh;
+    const dIn = new Int16Array(nb).fill(-1), dOut = new Int16Array(nb).fill(-1);
+    // distance de chanfrein 3-4 (3 par pas droit, 4 en diagonale) dans le trait, par files à seaux (poids entiers)
+    const parcourir = function (dist, source, limite) {
+      const seaux = [];
+      for (let k = 0; k < nb; k++) {
+        const x = X0 + (k % bw), y = Y0 + ((k - (k % bw)) / bw);
+        if (source(y * W + x)) { dist[k] = 0; (seaux[0] = seaux[0] || []).push(k); }
+      }
+      for (let c = 0; c < seaux.length; c++) {
+        const seau = seaux[c];
+        if (!seau) continue;
+        for (let i = 0; i < seau.length; i++) {
+          const k = seau[i];
+          if (dist[k] !== c) continue;   // déjà atteint plus court
+          const kx = k % bw, ky = (k - kx) / bw;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const x = kx + dx, y = ky + dy;
+            if ((!dx && !dy) || x < 0 || y < 0 || x >= bw || y >= bh) continue;
+            const t = y * bw + x, nd = c + (dx && dy ? 4 : 3);
+            if (nd > limite || (dist[t] >= 0 && dist[t] <= nd) || !F[(Y0 + y) * W + X0 + x]) continue;
+            dist[t] = nd; (seaux[nd] = seaux[nd] || []).push(t);
+          }
+        }
+      }
+    };
+    parcourir(dIn, function (q) { return m[q] === 1; }, 3 * cap);
+    parcourir(dOut, function (q) { return !m[q] && !F[q] && !hors[q]; }, 6 * cap);
+    let ajout = 0;
+    for (let k = 0; k < nb; k++) {
+      if (dIn[k] > 0 && dOut[k] > 0 && dIn[k] <= dOut[k]) {
+        m[(Y0 + ((k - (k % bw)) / bw)) * W + X0 + (k % bw)] = 1;
+        ajout++;
+      }
+    }
+    return ajout;
+  }
   function remplir(b, px, py, o) {
     o = o || {};
     const W = b.w, H = b.h, d = b.data, N = W * H, e = o.echelle || 1;
@@ -1121,6 +1172,19 @@
     }
     // 🩸 Plafond jugé APRÈS le remplissage : une fuite vers le bord est « ouverte », pas « trop grande »
     if (n > aireMax) return { refus: "tropGrand" };
+    const cap = Math.max(1, Math.round((o.demiTrait === undefined ? REMPLIR.demiTrait : o.demiTrait) * e));
+    if (_jusquAuMilieu(m, F, hors, W, H, x0, y0, x1, y1, cap)) {
+      // boîte et premier pixel (ordre de balayage) de la zone étendue, cherchés autour de l'ancienne boîte
+      const X0 = Math.max(0, x0 - cap), Y0 = Math.max(0, y0 - cap);
+      const X1 = Math.min(W - 1, x1 + cap), Y1 = Math.min(H - 1, y1 + cap);
+      n = 0; premier = -1; x0 = W; y0 = H; x1 = -1; y1 = -1;
+      for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+        if (!m[y * W + x]) continue;
+        n++;
+        if (premier < 0) premier = y * W + x;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
     const eps = Math.max(0.5, (o.simplification === undefined ? REMPLIR.simplification : o.simplification) * e);
     const s = _simplifierFerme(_contour(m, W, H, premier % W, (premier - premier % W) / W), eps);
     if (s.length < 3) return { refus: "trait" };

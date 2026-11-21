@@ -23,7 +23,7 @@
  * blancs cernés de 5 à 34 px, galeries blanches, chiffres et texte, filigrane, flou, bruit) : pipette au bord des
  * petits piliers = leur intérieur, réglages déduits ≥ 90 % et ≤ 5 % de morceaux de galerie, contre-épreuves (seul
  * pixel le plus encré, ancien plafond de tolérance) ; recalcul sur les blocs gardés sans relecture.
- * Remplir au clic : pilier cerné droit ou oblique rempli au contour intérieur (≤ 1 px, ≤ 1,5 px en oblique),
+ * Remplir au clic : pilier cerné droit ou oblique rempli au MILIEU du trait (≤ 1 px), mur partagé coupé au milieu,
  * chiffre dedans englobé, trous de 1 et 2 px fermés, 3 et 4 px refusés, bord de l'image ou de la région lue refusé,
  * plafond (quart de la région lue, ou donné) refusé, toucher sur le trait refusé, bruit, échelle 0,5, pilier plein.
  * Contre-épreuves (sabotages) : remplissage sans fermeture (le trou de 1 px fuit), sans marge, sans ouverture,
@@ -727,9 +727,11 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
   await lancer(grand, Object.assign({ onProgres: (i, n) => vus.push(i + "/" + n) }, petitsBlocs));
   t("avancement : un appel par bloc, jusqu'à n/n", vus.length === 20 && vus[19] === "20/20", vus.slice(-1));
 
-  // ── Remplir au clic (ktaDetection.js > remplir) : zone du fond fermée par le trait ──
-  // Tolérance du contour : 1 px. La fermeture (rayon 1) ne déplace le bord intérieur d'un trait droit de rien et
-  // d'au plus 1 px sur une marche d'escalier oblique ; la simplification (1 px) reste sous cette marge.
+  // ── Remplir au clic (ktaDetection.js > remplir) : zone fermée par le trait, contour au MILIEU du trait ──
+  // Tolérance du contour : 1 px. La fermeture (rayon 1) ne déplace pas un trait droit et au plus de 1 px une marche
+  // d'escalier oblique ; le milieu d'un trait d'épaisseur impaire tombe au milieu d'un pixel (0,5 px) ; la
+  // simplification (1 px) reste sous cette marge. Traits de 4 px pour les contrôles du milieu : le bord intérieur
+  // (ancien comportement) y est à 2 px de l'attendu, au-delà de la tolérance.
   t("remplir : fonction exposée par le moteur", typeof D.remplir === "function", typeof D.remplir);
   if (typeof D.remplir === "function") {
     const distSeg = (p, a, b) => {
@@ -750,22 +752,52 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
       if (trou) img.rect(x + 10, y - ep, trou, ep, BLANC);
       return img;
     };
-    const R1 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 70, 55);
-    t("remplir : pilier cerné → son contour intérieur exact (≤ 1 px), aire 1200 px²",
-      R1.points && ecart(R1.points, rectPts(50, 40, 40, 30)) <= 1 && R1.aire === 1200, R1);
-    const obl = [[60, 40], [140, 70], [120, 150], [50, 120]], oblExt = [[54, 32], [149, 67], [126, 158], [42, 125]];
-    const io = image(250, 250).poly(oblExt, NOIR).poly(obl, BLANC);
+    // contour attendu : milieu du trait de `ep` px autour de l'intérieur (x, y, w, h)
+    const milieu = (x, y, w, h, ep) => rectPts(x - ep / 2, y - ep / 2, w + ep, h + ep);
+    // polygone convexe décalé de d px vers l'extérieur (côtés parallèles, sommets à leur intersection)
+    const decale = (pts, d) => {
+      const sens = Math.sign(pts.reduce((s, a, i) => {
+        const b = pts[(i + 1) % pts.length]; return s + a[0] * b[1] - b[0] * a[1];
+      }, 0));
+      const lignes = pts.map((a, i) => {
+        const b = pts[(i + 1) % pts.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const nx = sens * (b[1] - a[1]) / L, ny = -sens * (b[0] - a[0]) / L;
+        return [[a[0] + nx * d, a[1] + ny * d], [b[0] - a[0], b[1] - a[1]]];
+      });
+      return lignes.map((l, i) => {
+        const p = lignes[(i + lignes.length - 1) % lignes.length], det = p[1][0] * l[1][1] - p[1][1] * l[1][0];
+        const u = ((l[0][0] - p[0][0]) * l[1][1] - (l[0][1] - p[0][1]) * l[1][0]) / det;
+        return [p[0][0] + u * p[1][0], p[0][1] + u * p[1][1]];
+      });
+    };
+    const R1 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0)), 70, 55);
+    t("remplir : pilier cerné (trait 4 px) → contour au milieu du trait (≤ 1 px), aire 44 × 34 px",
+      R1.points && ecart(R1.points, milieu(50, 40, 40, 30, 4)) <= 1 && Math.abs(R1.aire - 1496) <= 30, R1);
+    const R2 = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 70, 55);
+    t("remplir : pilier cerné (trait 2 px) → contour au milieu du trait (≤ 1 px)",
+      R2.points && ecart(R2.points, milieu(50, 40, 40, 30, 2)) <= 1, R2);
+    const obl = [[60, 40], [140, 70], [120, 150], [50, 120]];
+    const io = image(250, 250).poly(decale(obl, 2), NOIR).poly(decale(obl, -2), BLANC);
     const RO = D.remplir(lecteurSync(io), 90, 90);
-    t("remplir : pilier oblique cerné → contour à ≤ 1,5 px de l'attendu (marches de pixels)",
-      RO.points && ecart(RO.points, obl) <= 1.5 && Math.abs(RO.aire - _aireP(obl)) / _aireP(obl) < 0.03, RO);
-    const RT = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0).rect(62, 50, 16, 10, NOIR)), 55, 45);
+    // 🩸 La pointe d'un coin aigu tramé perd jusqu'à un pixel en diagonale : sommets attendus à ≤ 1,5 px ; les côtés,
+    //   eux, à ≤ 1 px (chaque sommet rendu mesuré aux côtés attendus).
+    const cotesO = RO.points ? Math.max(...RO.points.map(p => auBord([p.x, p.y], obl))) : Infinity;
+    t("remplir : pilier oblique cerné (trait 4 px) → côtés au milieu du trait (≤ 1 px, coins ≤ 1,5), aire à 1 %",
+      RO.points && cotesO <= 1 && ecart(RO.points, obl) <= 1.5 && Math.abs(RO.aire - _aireP(obl)) / _aireP(obl) < 0.01,
+      RO.points && { cotes: cotesO, ecart: ecart(RO.points, obl), aire: RO.aire, attendue: _aireP(obl) });
+    const voisins = cerne(cerne(image(300, 300), 50, 40, 40, 30, 4, 0), 94, 40, 40, 30, 4, 0);
+    const RV = D.remplir(lecteurSync(voisins), 70, 55);
+    t("remplir : deux piliers séparés par un trait de 4 px → partagé en son milieu (≤ 1 px)",
+      RV.points && ecart(RV.points, milieu(50, 40, 40, 30, 4)) <= 1, RV);
+    const RT = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0).rect(62, 50, 16, 10, NOIR)), 55, 45);
     t("remplir : chiffre ou pastille dedans englobé (contour extérieur seul)",
-      RT.points && ecart(RT.points, rectPts(50, 40, 40, 30)) <= 1, RT);
+      RT.points && ecart(RT.points, milieu(50, 40, 40, 30, 4)) <= 1, RT);
     const R1p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 1)), 70, 55);
     t("remplir : trou de 1 px dans le trait fermé → rempli au même contour",
-      R1p.points && ecart(R1p.points, rectPts(50, 40, 40, 30)) <= 1, R1p);
+      R1p.points && ecart(R1p.points, milieu(50, 40, 40, 30, 2)) <= 1, R1p);
     const R2p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 2)), 70, 55);
-    t("remplir : trou de 2 px fermé → rempli", R2p.points && ecart(R2p.points, rectPts(50, 40, 40, 30)) <= 1, R2p);
+    t("remplir : trou de 2 px fermé → rempli",
+      R2p.points && ecart(R2p.points, milieu(50, 40, 40, 30, 2)) <= 1, R2p);
     const R4p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 4)), 70, 55);
     t("remplir : trou de 4 px → refus « ouvert »", R4p.refus === "ouvert", R4p);
     const R3p = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 3)), 70, 55);
@@ -787,17 +819,17 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     t("remplir : plafond donné (aireMax 1199 < 1200) → refus « tropGrand »", Rpm.refus === "tropGrand", Rpm);
     const Rtr = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0)), 49, 55);
     t("remplir : toucher sur le trait → refus « trait »", Rtr.refus === "trait", Rtr);
-    const Rbr = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 2, 0).bruit(8)), 70, 55);
+    const Rbr = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0).bruit(8)), 70, 55);
     t("remplir : bruit ± 8 (compression) → même contour (≤ 1 px)",
-      Rbr.points && ecart(Rbr.points, rectPts(50, 40, 40, 30)) <= 1, Rbr);
-    const imgE = cerne(image(400, 400), 100, 80, 60, 40, 2, 0);
+      Rbr.points && ecart(Rbr.points, milieu(50, 40, 40, 30, 4)) <= 1, Rbr);
+    const imgE = cerne(image(400, 400), 100, 80, 60, 40, 4, 0);
     const be = await lecteur(imgE)(40, 20, 200, 200, 0.5);
     const Re = D.remplir(be, (130 - 40) * 0.5, (100 - 20) * 0.5, { x0: 40, y0: 20, echelle: 0.5 });
     t("remplir : échelle 0,5 et coin de bloc → contour en pixels du plan (≤ 2 px)",
-      Re.points && ecart(Re.points, rectPts(100, 80, 60, 40)) <= 2, Re);
+      Re.points && ecart(Re.points, milieu(100, 80, 60, 40, 4)) <= 2, Re);
     const pilierPlein = image(200, 200).rect(40, 40, 30, 20, ORANGE);
     const Rpl = D.remplir(lecteurSync(pilierPlein), 55, 50);
-    t("remplir : pilier plein coloré sur fond blanc → son contour (le fond fait office de trait)",
+    t("remplir : pilier plein coloré sur fond blanc → son contour, sans gonfler sur le fond",
       Rpl.points && ecart(Rpl.points, rectPts(40, 40, 30, 20)) <= 1, Rpl);
   }
 
