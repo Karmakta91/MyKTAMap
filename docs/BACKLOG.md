@@ -147,3 +147,8 @@
   pour voir le plan ou l'autre niveau à travers, comme la transparence du fond OSM. Vérifié le 21/11/2026 : seule
   l'image du plan a une transparence, fond OSM allumé (`fondOsmPlan.js`) ; aucune sur `_ktaImageOverlays`.
   `qui: Claude · action: topo (où placer le curseur, retenu par plan) · fini: calque réglable et retenu, checkup vert · depuis: 21/11/2026 · taille: S`
+
+- **Détection : image lue sur un niveau** — un niveau sans calque image lit l'image du niveau 0 (piliers recopiés
+  au mauvais niveau, sans avertir) ; un calque masqué est lu quand même. Vérifié le 21/11/2026 dans
+  `tiling.js > ktaDessinerRegionPlan`. Reco : refus avec message, calques masqués ignorés.
+  `qui: Claude · action: lot Dev après le lot maxbounds · fini: refus sans calque, calque masqué non lu, checkup rouge puis vert · depuis: 21/11/2026 · taille: S`
