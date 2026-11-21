@@ -12,6 +12,8 @@
 //   • ✅ du panneau Tracés : termine le tracé en cours, l'outil reste armé ;
 //   • ⏪ après la fin : le tracé est rouvert, le toucher suivant le prolonge (aucun tracé neuf) ;
 //   • Structures : 3 fronts puis un mur en ligne enchaînés, ⏪ rouvre un front ;
+//   • ⏪ du PREMIER point d'un tracé, d'une ligne, d'une zone, d'un pilier : rien en données, outil armé sur le même
+//     type, le toucher suivant commence un nouvel objet ; ⏩ rend le point ; un tracé terminé avant reste terminé ;
 //   • inchangés : zone fermée sur son 1er sommet (outil armé), pilier (polygone) que le dernier point ne termine pas,
 //     pilier à bras d'un clic, jonction (multi-niveau) que le dernier point ne termine pas et que ✅ éteint.
 // Usage : node scripts/smoke/checkup-enchainer-traces.js (SMOKE_PORT pour une autre copie) · code :
@@ -284,7 +286,53 @@ async function section(nom, fn) {
     await desarmer();
     await vider();
 
-    // ── 8. Jonction (multi-niveau) inchangée ──
+    // ── 8. ⏪ du PREMIER point : le point disparaît, l'outil reste armé sur le même type ──
+    const annulerPremier = async function (nom, o) {
+      await section(nom, async function () {
+        verifier(await armer(o.groupe, o.armer), nom + " : outil armé par le panneau");
+        await clic(pt(150, o.dy));
+        const a = await etat();
+        verifier(a[o.cat].length === 1 && a[o.idx] === 0, nom + " : premier point posé", a);
+        await page.evaluate(function () { window.HistoryManager.undo(); });
+        await page.waitForTimeout(200);
+        const e = await etat();
+        verifier(e[o.cat].length === 0 && e[o.idx] === -1 && e[o.cle] === o.mode && e.arme,
+          nom + " : ⏪ du premier point, rien en données, outil armé sur le même type", e);
+        await clic(pt(150, o.dy + 40));
+        const e2 = await etat();
+        verifier(e2[o.cat].length === 1 && e2[o.cat][0].type === o.mode && e2[o.cat][0].n === 1 && e2[o.idx] === 0,
+          nom + " : le toucher suivant commence un nouvel objet du même type", e2);
+        await page.evaluate(function () { window.HistoryManager.undo(); window.HistoryManager.redo(); });
+        const e3 = await etat();
+        verifier(e3[o.cat].length === 1 && e3[o.idx] === 0 && e3[o.cle] === o.mode && e3.arme,
+          nom + " : ⏪ puis ⏩ rend le point, objet en cours, outil armé", e3);
+      });
+      await desarmer();
+      await vider();
+    };
+    await annulerPremier("tracé", { cat: "roads", idx: "road", cle: "modeRoad", mode: "principal",
+      groupe: "traces", armer: "ui.trace.principal", dy: -100 });
+    await annulerPremier("ligne de structure", { cat: "structures", idx: "structure", cle: "modeStructure",
+      mode: "front-1", groupe: "structures", armer: "ui.struct.front1", dy: -50 });
+    await annulerPremier("zone", { cat: "zones", idx: "zone", cle: "modeZone", mode: "eau",
+      groupe: "zones", armer: "ui.zone.eau", dy: 0 });
+    await annulerPremier("pilier (polygone)", { cat: "structures", idx: "structure", cle: "modeStructure",
+      mode: "pilier-1", groupe: "structures", armer: "ui.struct.pilier1", dy: 50 });
+    // Après un tracé terminé : ⏪ du premier point du suivant ne rouvre pas le précédent.
+    await section("tracé après un tracé terminé", async function () {
+      verifier(await armer("traces", "ui.trace.principal"), "outil Route principale armé par le panneau");
+      await ligne(-150, 2, true);
+      await clic(pt(150, 100));
+      await page.evaluate(function () { window.HistoryManager.undo(); });
+      await page.waitForTimeout(200);
+      const e = await etat();
+      verifier(e.roads.length === 1 && e.roads[0].n === 2 && e.road === -1 && e.modeRoad === "principal" && e.arme,
+        "⏪ du premier point du tracé suivant : le tracé terminé reste terminé, outil armé", e);
+    });
+    await desarmer();
+    await vider();
+
+    // ── 9. Jonction (multi-niveau) inchangée ──
     await section("jonction", async function () {
       const ml = await page.evaluate(function () {
         return !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) &&

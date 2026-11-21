@@ -2259,9 +2259,10 @@ function initInterface() {
       _historyUiSubBound = true;
       window.HistoryManager.onChange(function(state) {
         if (_syncHistoryUiRef) _syncHistoryUiRef(state);
-        // 🩸 Undo jusqu'à VIDER une forme en cours : _applyState remet le mode à null sans toucher
-        // au bouton, resté kta-actif (« allumé mais mort »). Bouton actif + mode éteint → on ferme.
-        // Exact car _applyState restaure le mode tant qu'il reste une forme en cours ; et
+        // 🩸 Undo qui sort du mode (rien en cours avant comme après) : _applyState remet le mode à null
+        // sans toucher au bouton, resté kta-actif (« allumé mais mort »). Bouton actif + mode éteint → on
+        // ferme. Exact car _applyState garde le mode tant qu'il reste une forme en cours, ou au ⏪ du
+        // premier point de celle en cours (historyManager.js > _creationAnnulee) ; et
         // desactiverFn ne bascule que `if (window.modeX)`, donc ne ré-arme pas l'outil.
         try {
           if (_modesActifs["road"]      && !window.modeRoad)      _fermerModeRoad();

@@ -1181,6 +1181,8 @@ Un mensaje en la parte inferior de la pantalla dice lo que se ha deshecho o rehe
 
 **Lo que se deshace**: añadir, modificar, mover y eliminar puntos; cada punto colocado en un trazado, una zona o una estructura, su cierre, su eliminación (incluido «Todos»); las conversiones.
 
+⏪ sobre el **primer punto** de un trazado, una zona o una estructura en curso lo quita sin apagar la herramienta: no queda nada en el mapa, y el siguiente toque empieza un objeto nuevo del mismo tipo.
+
 **Lo que no se deshace**: eliminar una foto, importar una sesión, el seguimiento de posición, y la medición una vez apagada la herramienta 📐.
 
 El historial se **olvida** al recargar la página o cambiar de mapa, y una nueva acción después de deshacer borra lo que quedaba por rehacer.
