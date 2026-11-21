@@ -398,3 +398,32 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 - ❌ Ré-encoder les calques image à l'embed (le verbatim EST la garantie d'alpha — cf le contre-exemple historique du tuilage V2 pré-v1.62).
 - ❌ Masquer le base par `opacity: 0` (le GPU garde les bitmaps décodées) — `removeLayer` net.
 - ❌ Bloquer la génération sur un calque opaque (3:a : l'user peut avoir une raison — on informe, on ne bloque pas).
+
+---
+
+## 🧭 Limites de la carte (`maxBounds`) — image ∪ calques de niveau
+
+`map.js > _ktaLimitesCarte` est la seule règle ; `window.ktaRecalculerLimitesCarte()` la repose sur la carte courante
+par `map.setMaxBounds` (viscosité 1.0, posée à la création).
+- **Emprise** = image du plan (niveau 0) ∪ bornes de **tous** les calques image enregistrés dans `window._ktaImageOverlays`,
+  tous niveaux, affichés ou non : rien ne saute au changement de niveau. Un calque calé (`L.imageOverlay.rotated`,
+  parallélogramme) compte ses 4 coins (`getBounds()` du plugin : 4e coin = tr + bl − tl). Un calque non calé est
+  posé sur les bornes de l'image, étiré quelles que soient ses dimensions : il ne dépasse jamais. Seul un calque calé
+  peut sortir de l'image.
+- **Marge** : 30 % du plus petit côté de l'**image**, ajoutée de chaque côté (invisible) : sans elle, l'auto-pan ne
+  recentre pas une popup près du bord. ⚠️ Sans calque calé, les limites sont exactement celles d'avant (image + marge).
+  `minZoom` ne dépend que de l'image.
+- **Quand** : à la création de la carte (registre neuf, vidé AVANT `L.map`), puis à chaque `_registerOverlay` — les
+  calques calés arrivent en **asynchrone** (dimensions naturelles d'abord) — et quand un calque enregistré est déplacé
+  en place (`reposition` du plugin, `setBounds`, enrobés à l'enregistrement). Le calage d'un niveau se fait au
+  Générateur : le plan est rechargé, rien ne recale un calque à chaud (`kta:imgLayerCalibChange` n'a pas d'écouteur).
+- 🩸 **Plan fermé pendant le chargement de ses calques calés** : `_registerOverlay` compare la carte et le registre
+  retenus à l'ouverture avec `window.map` / `window._ktaImageOverlays` ; un calque en retard est ignoré (ni registre, ni
+  carte, ni limites du plan suivant).
+- Plan orienté (`mapBearing.js`) relit `map.options.maxBounds` à chaque pas de son pan au doigt : il suit sans code à
+  lui. Le fond OSM sous le plan (même carte) ne touche pas aux limites ; la fenêtre Vue OSM est une autre carte, sans
+  limites.
+- Molette et pincement zooment autour du point visé : `maxZoom` (2) est fixe et `minZoom` ne borne que le dézoom ;
+  hors des limites, c'est le bornage de Leaflet qui ramenait la vue (rebond), rien d'autre (aucun `fitBounds` ni
+  `setView` au changement de niveau).
+- 🛡️ `scripts/smoke/checkup-maxbounds.js` (calques fabriqués sur le relevé fictif, Chromium et WebKit).
