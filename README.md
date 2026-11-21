@@ -696,6 +696,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
 | `smoke/checkup-arc.js` | Arc de soutènement en travers d'une galerie : itinéraire, pas du tracker et vue 3D passent (mur en ligne témoin arrêté), outil de dessin, trait rayé, légende, filtres, export image |
 | `smoke/checkup-pilier-bras.js` | Pilier à bras : un clic pose un carré de 1 m centré et axé au niveau actif, outil armé, ⏪, carré barré sur la carte, légende, filtres, export image, Volume exploité, itinéraire non bloqué, bloc du tracker et de la vue 3D |
+| `smoke/checkup-enchainer-traces.js` | Tracés et lignes de Structures enchaînés en retouchant le dernier point (vrais clics) : outil armé, boucle sur le 1er point, double clic sans zoom, ✅ garde l'outil, ⏪ rouvre ; zone, pilier, pilier à bras et jonction inchangés |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
 | `smoke/checkup-ajuster-zone-vaste.js` | Ajuster les sommets d'une grande forme (masse au sol, eau, côtés longs) et d'un pilier, à deux zooms, souris et doigt : sommet déplacé, sommet né sur le contour loin du milieu d'un côté |
 | `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
