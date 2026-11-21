@@ -969,6 +969,30 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   sans aperçu. 🩸 L'ancien repli sur l'image du niveau 0 recopiait ses piliers au niveau actif sans rien dire. Un
   calque masqué parmi d'autres n'est simplement pas lu. `vue3d.js > _dessinerPlanSol` garde son aiguillage, avec
   repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
+- **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11/2026) : un MODE du même bandeau (bouton
+  « Remplir au clic » de l'étape des exemples), pas un outil à part. Chaque toucher remplit la zone du fond fermée
+  par le trait autour du doigt ; le mode reste actif, les zones s'ajoutent à l'aperçu (un toucher sur l'une la retire
+  ou la remet), puis un seul « Ajouter N » les pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le
+  même chemin que la détection). Type : liste des types de structure à contour FERMÉ (intégrés et types
+  personnalisés de la légende, géométrie lue par `isStructurePolylineType` : jamais un front, un mur en ligne ni un
+  arc), celui armé dans Structures par défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
+  recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas ajoutée ; revérifié à « Ajouter »
+  au niveau du type final.
+  - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
+    la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
+    dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
+    ouvert ; composante 4-connexe du fond fermé → contour extérieur (`_contour`, `_simplifierFerme` à 1 px). La
+    zone est le **bord intérieur** du trait (le trait n'en fait pas partie) ; un chiffre ou une pastille dedans est
+    englobé. Un pilier plein coloré sur fond blanc se remplit aussi (le fond y joue le rôle du trait).
+  - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
+    l'image (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
+    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
+    (4 × la marge des blocs) si la zone touche son bord. **Plafond** : (2 × marge)² = 512 × 512 px. La détection
+    refuse déjà une masse plus large que la marge (256 px) ; le remplissage accepte le double en côté pour une grande
+    structure dessinée, et la grande fenêtre laisse une zone au plafond loin de son bord. Au-delà, c'est le fond ou
+    une galerie qui fuit par un trou du trait. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+  - Garde-fous : `check-detection.js` (contour exact à 1 px près, 1,5 px en oblique ; trous de 1 et 2 px bouchés, 3
+    et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture) · `scripts/smoke/checkup-remplir.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
@@ -980,4 +1004,5 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
-- Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours).
+- Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic).
