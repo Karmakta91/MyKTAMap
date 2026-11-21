@@ -975,13 +975,17 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   ou la remet), puis un seul « Ajouter N » les pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le
   même chemin que la détection). Type : liste des types de structure à contour FERMÉ (intégrés et types
   personnalisés de la légende, géométrie lue par `isStructurePolylineType` : jamais un front, un mur en ligne ni un
-  arc), celui armé dans Structures par défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
+  arc ; ni un type posé d'un clic à taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par
+  défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
   recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas ajoutée ; revérifié à « Ajouter »
   au niveau du type final.
   - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
     la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
     dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
-    ouvert ; composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
+    ouvert ; ⚠️ **en repli** (décision produit) : si la fermeture avale le point touché (pilier large de 2 à 3 px, ou
+    grisé par le flou) et qu'il est plus clair que le trait voisin, on recommence sans fermeture (`repli: false` :
+    contre-épreuve). 🩸 La condition « plus clair » empêche de remplir le trait lui-même quand on le touche.
+    Composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
     (`_contour`, `_simplifierFerme` à 1 px) ; un chiffre ou une pastille dedans est englobé.
   - ⚠️ **Milieu du trait** (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin.
     `_jusquAuMilieu` donne à la zone les pixels du trait plus proches d'elle que de l'autre côté du trait (distances
@@ -993,12 +997,18 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
     l'image (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
     (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
-    (4 × la marge des blocs) si la zone touche son bord. **Plafond** : (2 × marge)² = 512 × 512 px. La détection
-    refuse déjà une masse plus large que la marge (256 px) ; le remplissage accepte le double en côté pour une grande
-    structure dessinée, et la grande fenêtre laisse une zone au plafond loin de son bord. Au-delà, c'est le fond ou
-    une galerie qui fuit par un trou du trait. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+    (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) si la zone touche son bord.
+    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM)`, décision produit) : plan à échelle connue
+    (`ctx.pxParM()`, échelle écrite dans le plan) → **40 m de côté** (boîte de la zone) **et 1 600 m²** ; sans
+    échelle → 512 × 512 px d'aire, sans côté maximal. 40 m = la plus grande structure plausible prise large : un pilier
+    tourné fait quelques mètres, une masse laissée ou un massif de consolidation quelques dizaines ; une valeur
+    généreuse ne refuse jamais un vrai pilier, et une galerie fermée, longue de plusieurs dizaines de mètres, sort
+    par son côté. 🩸 512 px sans échelle reste trop large sur une petite image (une galerie fermée y passe : essai
+    sur un plan au trait de 1 170 px de large). Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
   - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
-    trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture) · `scripts/smoke/checkup-remplir.js`.
+    trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
+    pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; galerie fictive de 60 m refusée à
+    échelle connue, structure de 30 × 25 m acceptée, 512² px sans échelle) · `scripts/smoke/checkup-remplir.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
