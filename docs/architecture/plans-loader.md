@@ -989,14 +989,28 @@ les galeries → tracés » plus bas.
   repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
 - **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11/2026) : un MODE du même bandeau (bouton
   « Remplir au clic » de l'étape des exemples), pas un outil à part. Chaque toucher remplit la zone du fond fermée
-  par le trait autour du doigt ; le mode reste actif, les zones s'ajoutent à l'aperçu (un toucher sur l'une la retire
-  ou la remet), puis un seul « Ajouter N » les pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le
-  même chemin que la détection). Type : liste des types de structure à contour FERMÉ (intégrés et types
+  par le trait autour du doigt ; le mode reste actif, les zones s'ajoutent à l'aperçu, puis un seul « Ajouter N » les
+  pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le même chemin que la détection).
+  Type : liste des types de structure à contour FERMÉ (intégrés et types
   personnalisés de la légende, géométrie lue par `isStructurePolylineType` : jamais un front, un mur en ligne ni un
   arc ; ni un type posé d'un clic à taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par
   défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
   recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas ajoutée ; revérifié à « Ajouter »
   au niveau du type final.
+  - **Retirer un remplissage** (structures comme galeries, décisions de KARMA du 22/11/2026) : toucher DANS une forme
+    remplie, **Ctrl+Z** (Cmd+Z) ou le bouton **Retirer le dernier** (`undo-2`, désactivé à vide). Le remplissage
+    QUITTE l'aperçu (pas d'état « retiré » à remettre : le retoucher au même endroit le refait) ; Ctrl+Z et le bouton
+    dépilent le plus récent, un par un. Ligne d'aide sous le texte du mode ; sa moitié « Ctrl+Z retire la dernière »
+    seulement avec un pointeur fin (`(any-pointer: fine)`). `_retirerAuToucher`, `_retirerDernier`.
+  - 🩸 Le toucher est reconnu par `_onClic`, pas par la forme : en Remplir la visée (`body.kta-detect-pick-mode`)
+    rend `_modeClicCarteActif()` vrai, et `map.js > _ktaPickCaptureClick` avale alors tout clic sur la carte en
+    capture pour le ré-émettre à la carte. Un écouteur posé sur la forme ne recevrait rien, et le toucher relancerait
+    un remplissage refusé (« déjà dans l'aperçu »). Les formes de Remplir sont donc non interactives ; le même code sert
+    la carte du plan et celle du Générateur (qui n'a pas ce ré-émetteur).
+  - ⚠️ Clavier : tant que la fenêtre est ouverte, son écouteur en capture sur `document` (`_onKey`) prend Ctrl+Z,
+    Ctrl+Y et Ctrl+Maj+Z, avant celui de `historyManager.js` (bulle) : jamais d'annulation globale sous la fenêtre
+    (sans lui, Ctrl+Z défaisait le « Valider » précédent). Champ de saisie : annulation native. Fenêtre fermée :
+    Ctrl+Z revient à l'historique.
   - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
     la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
     dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
@@ -1071,7 +1085,9 @@ les galeries → tracés » plus bas.
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
 - Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
-  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-affiner-contours.js` (case Affiner
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-remplir-annuler.js` (retirer un
+  remplissage au toucher, par Ctrl+Z ou « Retirer le dernier », structures et galeries, historique global intact) ·
+  `scripts/smoke/checkup-affiner-contours.js` (case Affiner
   les contours) · `scripts/smoke/checkup-detection-emprise.js` (calque du
   niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
   le bord de l'image entier, niveau 0 inchangé ; Chromium et WebKit).
@@ -1131,8 +1147,10 @@ squelette) : compléter un plan à moitié tracé, en tracés routables, sans do
   ⚠️ L'outil ne pose AUCUN sommet sur un croisement : seuls les bouts s'accrochent (l'itinéraire, lui, relie un
   croisement strict de deux segments).
 - **Aperçu** : une polyligne par tracé (`.kta-detect-galerie`), un rond aux bouts raccordés (`.kta-detect-accroche`) ;
-  un toucher retire ou remet un tracé, gardé retiré d'un réglage à l'autre (clé : ses bouts à 2 px près). Remplir
-  s'ajoute à l'aperçu toucher après toucher ; un toucher dans une galerie déjà remplie est refusé.
+  après un cadre ou « Tout le plan », un toucher retire ou remet un tracé, gardé retiré d'un réglage à l'autre (clé :
+  ses bouts à 2 px près). Remplir s'ajoute à l'aperçu toucher après toucher (`_e.remplisG` : les axes de chaque
+  toucher) ; un toucher dans une galerie déjà remplie (rayon de ses axes, au moins 14 px d'écran autour de l'axe) la
+  retire tout entière, comme Ctrl+Z et « Retirer le dernier » (§ Remplir au clic).
 - **Hors de l'outil** (pistes dans `docs/IDEES.md`) : passage hachuré en liaison, croisements de niveaux, largeur des
   galeries.
 - Garde-fous : `check-detection.js` (planche `scripts/smoke/scene-galeries.js` : galeries grises et blanches, texte
