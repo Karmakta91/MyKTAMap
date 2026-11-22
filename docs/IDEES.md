@@ -18,6 +18,13 @@
   sommet), bande sur la carte, parois 3D et passage étroit pour l'itinéraire ; saisie manuelle possible, mais la
   lecture sur l'image (remplir la galerie → axe + largeur) conditionne l'intérêt (lot L). Contour du vide écarté.
   Déclencheur : un besoin réel au-delà de l'essai privé.
+- **Tracer les galeries depuis l'image** — un essai privé du 22/11/2026 (agent, plan aux galeries grisées entre
+  murs noirs) : masque du gris → squelette → graphe → un tracé par arête donne un réseau routable (37 km, itinéraire
+  d'un bout à l'autre), mais l'auteur a dû retoucher ~15 % des tracés. Leçons pour un vrai outil : effacer traits de
+  rappel et points de repère avant le calcul (sinon la galerie est coupée puis recousue « en étoile ») ; piliers
+  posés = obstacles à contourner ; fusionner les nœuds proches ; un seul tracé par galerie, long et simple (pas de
+  boucles dans les salles larges) ; passage étroit hachuré = liaison ; croisement de niveaux = jamais de nœud ;
+  aperçu avant création. Va avec « Largeur des galeries ». Déclencheur : un 2e plan de ce type à monter.
 - **Adresse de contact de l'installation** — `contact@myktamap.fr` est en dur (`index.html` ×2, dicos ×3, guide ×3).
   Idée : un champ ConfAdmin → `index.json > config`, repli sur l'adresse actuelle ; trancher quelles mentions
   suivent (crédit, licence, `NETWORK_AUDIT` restent). Déclencheur : une installation tierce qui le demande.
