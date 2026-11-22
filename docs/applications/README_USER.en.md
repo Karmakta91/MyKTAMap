@@ -367,7 +367,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 
 | Section | What it filters |
 |---|---|
-| 🖼️ **Image layers** | The map image and its additional layers; under each layer, an **Opacity** slider (10 to 100%) to see the plan or the other level through it, kept for this map on this device and used by the image export (no effect on detection or the 3D view) |
+| 🖼️ **Image layers** | The map image and its additional layers; under the **Show the base plan** box and under each layer, an **Opacity** slider (10 to 100%) to see the other level through it (for instance, fade the plan to line up level −1 on it), kept for this map on this device and used by the image export (no effect on detection or the 3D view) |
 | 📊 **Data layers** | The layers shipped with the map, and **Plan annotations** (everything drawn on the map: your additions and, on a shared installation, your team's; unticking it hides them without deleting anything) |
 | 🏗️ **M-LVL levels** | Multi-level maps: active level (for drawing) and visible levels — kept in sync with the Levels window |
 | 🏷️ **Point tags** | The tags actually present on the map, with their count |
@@ -880,7 +880,7 @@ The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with t
 **OpenStreetMap background under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel with four commands.
 
 - **OSM background under the map** turns it on or off. When it is on, the 🌍 button stays highlighted and the OpenStreetMap credit shows at the bottom left. Closing the panel does not turn it off.
-- **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque. Each map remembers its own (50 % the first time).
+- **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque. Each map remembers its own (50 % the first time). It adds to the base plan **Opacity** slider (≡ Filters): 50 % on each side leaves the plan at 25 %.
 - **My location**: your GPS position, once, without tracking. Refused when you are far from the map, and in incognito mode. Nothing is saved or sent.
 - **Save offline**: downloads the OpenStreetMap tiles of the whole map in advance (200 tiles at most), to have the background without a network. Progress shows in the command, then a message gives the count. Greyed out, with the reason, when offline, in incognito mode, or if the OSM View is turned off.
 

@@ -367,7 +367,7 @@ El botón **≡** arriba a la derecha del mapa abre **≡ Filtros de visualizaci
 
 | Sección | Qué filtra |
 |---|---|
-| 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales; bajo cada capa, un control **Opacidad** (10 a 100 %) para ver el plano o el otro nivel a través de ella, guardado para este mapa en este dispositivo y aplicado por la exportación de imagen (sin efecto en la detección ni en la vista 3D) |
+| 🖼️ **Capas de imagen** | La imagen del mapa y sus capas adicionales; bajo la casilla **Mostrar el plano base** y bajo cada capa, un control **Opacidad** (10 a 100 %) para ver el otro nivel a través (por ejemplo, atenuar el plano para ajustar el nivel −1 encima), guardado para este mapa en este dispositivo y aplicado por la exportación de imagen (sin efecto en la detección ni en la vista 3D) |
 | 📊 **Capas de datos** | Las capas incluidas con el mapa, y **Anotaciones del plano** (todo lo dibujado en el plano: tus añadidos y, en una instalación compartida, los de tu equipo; desmarcarla los oculta sin borrar nada) |
 | 🏗️ **Niveles M-LVL** | Mapas multinivel: nivel activo (para dibujar) y niveles visibles — sincronizado con la ventana Niveles |
 | 🏷️ **Tags de los puntos** | Los tags realmente presentes en el mapa, con su recuento |
@@ -880,7 +880,7 @@ La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetM
 **Fondo OpenStreetMap bajo el plano**: en un mapa georreferenciado, el botón **🌍** de la barra de arriba abre un pequeño panel con cuatro mandos.
 
 - **Fondo OSM bajo el plano** lo activa o lo desactiva. Activado, el botón 🌍 queda resaltado y el crédito de OpenStreetMap aparece abajo a la izquierda. Cerrar el panel no lo desactiva.
-- **Transparencia del plano**: al 0 %, el plano tapa OpenStreetMap; al 100 %, solo queda OpenStreetMap. OpenStreetMap sigue opaco. Cada mapa recuerda la suya (50 % la primera vez).
+- **Transparencia del plano**: al 0 %, el plano tapa OpenStreetMap; al 100 %, solo queda OpenStreetMap. OpenStreetMap sigue opaco. Cada mapa recuerda la suya (50 % la primera vez). Se suma al control **Opacidad** del plano base (≡ Filtros): 50 % de cada lado deja el plano al 25 %.
 - **Mi posición**: tu posición GPS, una vez, sin seguimiento. Se rechaza si estás lejos del mapa, y en modo incógnito. No se guarda ni se envía nada.
 - **Guardar sin conexión**: descarga de antemano los mosaicos de OpenStreetMap de todo el mapa (200 como máximo), para tener el fondo sin red. El progreso se ve en el mando y luego un mensaje da el recuento. En gris, con el motivo, sin conexión, en modo incógnito o si la Vista OSM está desactivada.
 

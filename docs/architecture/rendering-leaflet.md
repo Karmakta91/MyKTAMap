@@ -406,7 +406,7 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 **A — Le plan principal est filtrable comme niveau 0** (`tiling.js > _applyLevelFilterToBasePlan`, appelé par le dispatcher `appliquerFiltreNiveau` d'interfaceConfig) :
 - Règle unique `tiling.js > ktaPlanDeBaseVisible` (lue aussi par la case de ≡ Filtres) : `_ktaRuntimeFilters.planDeBase` vaut `true` / `false` → choix de l'utilisateur, qui l'emporte sur les niveaux ; `null` (défaut) → automatique : visible ssi `multiLevel !== true` OU `visibleLevels` contient 0. Case « 🖼️ Afficher le plan de base », toujours présente en tête de « Calques image », et en double dans la section Niveaux d'un plan multi-niveau (`filterPanel.js > _majCasePlanDeBase` recale les deux après chaque changement) ; cochée = fond réellement affiché, même en automatique. « Tout afficher » remet `null`. Persistée dans `runtimeFilters` de la session du plan (ancien `garderFond: true` relu comme `true`), remise à `null` avant toute restauration (`sessionPersist.js > onPlanLoaded`) pour qu'un plan sans session ne s'ouvre pas sans fond. Pastille ≡ : un fond masqué à la main compte comme un filtre actif ; masqué en automatique, il est déjà compté par les niveaux. Masquage NET (2:a). Les exports ne lisent pas cet état : ils ont leur propre choix de fond (`exporter.js`).
 - Couvre les 3 modes de rendu du base : **direct** (`window._ktaBaseLayers` — nouveau registre, les 2 sites `L.imageOverlay(url, bounds).addTo(map)` ne gardaient AUCUNE référence) · **tuiles runtime V1** (`window._baseTiles`) · **tuiles V2** (`_tilingV2State.activeOverlays` + garde `window._ktaBaseHidden` dans `_renderNiveau` — les tuiles d'un swap de zoom restent hors map mais TRACÉES dans activeOverlays pour le ré-affichage).
-- ⚠️ Tout NOUVEAU chemin de rendu du plan principal doit s'enregistrer dans un de ces 3 conteneurs, sinon il échappera au filtre.
+- ⚠️ Tout NOUVEAU chemin de rendu du plan principal doit s'enregistrer dans un de ces 3 conteneurs, sinon il échappera au filtre. Il doit aussi appeler `tiling.js > ktaAppliquerOpacitePlanDeBase` s'il pose un overlay après le chargement (cf § Opacité des images du plan).
 
 **B — Garde-fou transparence au générateur** (`createConf.js`, warning NON-bloquant 3:a) : chaque calque de niveau ≠ 0 est vérifié par CONTENU via `ktaDetecterAlpha` (v1.62.0) — JPEG = opaque d'office, PNG/WebP scannés. Opaque → toast + statut `gen.warn.layerOpaque`. Niveau 0 exclu (une légende opaque est légitime).
 
@@ -417,27 +417,39 @@ Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'im
 
 ---
 
-## 🌫️ Opacité d'un calque image
+## 🌫️ Opacité des images du plan : calques et image principale
 
-Réglée au curseur de la section « Calques image » des filtres ≡ (`filterPanel.js`, `ui.md`), pour voir le plan ou
-un autre niveau à travers.
-- **Stockage** : par calque et par plan, sur l'appareil — `myktamap_plan_prefs_<planId>.imageLayerOpacity[layerId]`
-  (0,1 à 1), même objet que `imageLayerCalibrations`. Accès par `config.js > getPlanOpaciteCalque` /
-  `setPlanOpaciteCalque` seulement : écriture qui garde les autres clés, rien d'écrit si les prefs sont illisibles ou
-  le stockage bloqué. Exportée avec le profil (préfixe `myktamap_plan_prefs_`).
-- ⚠️ **Opaque par défaut** : sans réglage, rien n'est écrit, aucun `setOpacity` n'est appelé, le rendu est celui
+Deux curseurs de la section « Calques image » des filtres ≡ (`filterPanel.js`, `ui.md`), pour voir le plan ou un
+autre niveau à travers : un sous chaque calque image, un sous la case « Afficher le plan de base » pour l'image
+principale (pas dans la copie de la case de la section Niveaux : un seul curseur, rien à recaler).
+- **Stockage** : par plan, sur l'appareil, dans `myktamap_plan_prefs_<planId>` (même objet que
+  `imageLayerCalibrations`) — `imageLayerOpacity[layerId]` pour un calque, `baseImageOpacity` pour l'image
+  principale (0,1 à 1). Accès par `config.js > getPlanOpaciteCalque` / `setPlanOpaciteCalque` et
+  `getPlanOpaciteFond` / `setPlanOpaciteFond` seulement : écriture commune (`_ecrireOpacitePlan`) qui garde les
+  autres clés, rien d'écrit si les prefs sont illisibles ou le stockage bloqué. Exportées avec le profil (préfixe
+  `myktamap_plan_prefs_`).
+- ⚠️ **Opaque par défaut** : sans réglage, rien n'est écrit, aucun style d'opacité n'est posé, le rendu est celui
   d'avant ; revenir à 100 % retire l'entrée.
-- **Pose** : `map.js > _registerOverlay` applique la pref à l'enregistrement, donc aussi aux calques calés qui
-  arrivent en asynchrone.
-- **Indépendante du fond OSM sous le plan** : `fondOsmPlan.js > _opacitePlan` ne touche que `tilePane`,
-  `_ktaBaseLayers` et `_baseTiles` ; les calques image sont dans `overlayPane` et gardent leur réglage dans les deux
-  sens.
-- **Exports** : `exporter.js` (calques cochés) dessine chaque calque avec `globalAlpha` = son opacité, restauré
-  après ; le PDF et le GeoTIFF passent par le même moteur (`MyKTAMapExporterGenererCanvas`).
+- **Pose d'un calque** : `map.js > _registerOverlay` applique la pref à l'enregistrement, donc aussi aux calques calés
+  qui arrivent en asynchrone. Les calques sont dans `overlayPane` : ni le curseur de l'image principale ni le fond OSM
+  ne les touchent.
+- **Pose de l'image principale** : une seule règle, `tiling.js > ktaAppliquerOpacitePlanDeBase` — opacité =
+  curseur × `FondOsmPlan.facteurPlan()` (1 − transparence du fond OSM s'il est allumé sur la carte courante, sinon
+  1) : 50 % ici et 50 % OSM donnent 25 %. Elle couvre les 3 sources : `tilePane` (tuiles V2), overlays de
+  `_ktaBaseLayers` (rendu direct, repli V2) et de `_baseTiles` (tuiles V1, dans `overlayPane`, d'où l'opacité posée
+  sur chaque overlay et pas sur le pane). Appelée après `chargerImage` (`map.js`), après le repli V2, par le curseur
+  et par `fondOsmPlan.js` (allumer, régler, éteindre). Un overlay déjà à la bonne valeur n'est pas retouché.
+- **Exports** : `exporter.js` dessine chaque calque coché avec `globalAlpha` = son opacité, restauré après. L'image
+  principale est peinte pleine puis l'aplat du fond d'export la recouvre à (1 − opacité) : même résultat qu'une image
+  posée à cette opacité, sans double dessin là où tuiles et image de base se superposent. Le fond OSM n'entre pas dans
+  l'export, donc seul le curseur compte. PDF, GeoTIFF, compte rendu et Secours passent par le même moteur
+  (`MyKTAMapExporterGenererCanvas`).
 - 🩸 **Détection et vue 3D lisent l'image pleine** (`tiling.js > ktaDessinerRegionPlan`, `vue3d.js >
-  _dessinerCalquesSol`) : elles dessinent `ov._rawImage || ov._image` par `drawImage`, qui ignore l'opacité CSS de
-  l'élément. Ne pas y lire l'opacité du calque.
-- 🛡️ `scripts/smoke/checkup-transparence-calques.js` (calques fabriqués sur le relevé fictif, Chromium et WebKit).
+  _dessinerCalquesSol`) : elles dessinent les images ou les tuiles par `drawImage`, qui ignore l'opacité CSS. Ne pas
+  y lire ces opacités.
+- 🛡️ `scripts/smoke/checkup-transparence-calques.js` (calques fabriqués sur le relevé fictif) et
+  `checkup-transparence-plan-de-base.js` (relevé fictif en rendu direct, tuile V1 posée par le test, plan V2 fictif) ;
+  Chromium et WebKit.
 
 ---
 

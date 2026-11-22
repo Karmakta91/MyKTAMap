@@ -367,7 +367,7 @@ Le bouton **≡** en haut à droite de la carte ouvre **≡ Filtres d'affichage*
 
 | Section | Ce qu'elle filtre |
 |---|---|
-| 🖼️ **Calques d'image** | L'image du plan et ses calques additionnels ; sous chaque calque, un curseur **Opacité** (10 à 100 %) pour voir le plan ou l'autre niveau à travers, retenu pour ce plan sur cet appareil et repris par l'export image (sans effet sur la détection ni la vue 3D) |
+| 🖼️ **Calques d'image** | L'image du plan et ses calques additionnels ; sous la case **Afficher le plan de base** et sous chaque calque, un curseur **Opacité** (10 à 100 %) pour voir l'autre niveau à travers (par exemple atténuer le plan pour caler le niveau −1 dessus), retenu pour ce plan sur cet appareil et repris par l'export image (sans effet sur la détection ni la vue 3D) |
 | 📊 **Calques de données** | Les calques livrés avec le plan, et **Annotations du plan** (tout ce qui a été dessiné sur le plan : tes ajouts et, sur une installation partagée, ceux de ton équipe ; la décocher les masque sans rien supprimer) |
 | 🏗️ **Niveaux M-LVL** | Plans multi-niveaux : niveau actif (pour dessiner) et niveaux visibles — synchronisé avec la fenêtre Niveaux |
 | 🏷️ **Tags des points** | Les tags réellement présents sur le plan, avec leur compteur |
@@ -880,7 +880,7 @@ La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec
 **Fond OpenStreetMap sous le plan** : sur un plan géoréférencé, le bouton **🌍** de la barre du haut ouvre un petit panneau à quatre commandes.
 
 - **Fond OSM sous le plan** l'allume ou l'éteint. Allumé, le bouton 🌍 reste en surbrillance et le crédit OpenStreetMap s'affiche en bas à gauche. Fermer le panneau ne l'éteint pas.
-- **Transparence du plan** : à 0 %, le plan cache la carte ; à 100 %, on ne voit plus que la carte. La carte, elle, reste opaque. Chaque plan retient la sienne (50 % la première fois).
+- **Transparence du plan** : à 0 %, le plan cache la carte ; à 100 %, on ne voit plus que la carte. La carte, elle, reste opaque. Chaque plan retient la sienne (50 % la première fois). Elle s'ajoute au curseur **Opacité** du plan de base (≡ Filtres) : 50 % de chaque côté, le plan est à 25 %.
 - **Ma position** : ta position GPS, une fois, sans suivi. Refusée si tu es loin du plan, et en mode incognito. Rien n'est enregistré ni envoyé.
 - **Enregistrer hors ligne** : télécharge à l'avance la carte OpenStreetMap de tout le plan (200 tuiles au plus), pour avoir le fond sans réseau. La progression s'affiche dans la commande, puis un message donne le compte. Grisée, avec la raison, hors connexion, en mode incognito, ou si la Vue OSM est coupée.
 

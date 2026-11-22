@@ -1078,16 +1078,20 @@ window._ktaRuntimeFilters = {
 - `applyFilters()` — force re-render via `window.appliquerFiltreRuntime`
 - `onLevelChange()` — appelée par `appliquerFiltreNiveau` quand le M-LVL change ailleurs → re-render la section M-LVL si la modale est ouverte (sync bidirectionnel)
 
-#### Section « Calques image » : case et curseur d'opacité
+#### Section « Calques image » : cases et curseurs d'opacité
 
-Chaque calque image (`PLAN_CONFIG.imageLayers`, id `id || label`) a sa ligne : la case `data-img-layer` (afficher /
-masquer, `map.addLayer` / `removeLayer`) et, dessous, un curseur « Opacité » `data-img-opacite` (10 à 100 %, pas de
-5 %, valeur affichée en %, `aria-label` au nom du calque, 28 px de haut pour le doigt). Le glissé (`input`) applique
-`overlay.setOpacity` au calque déjà posé et écrit la pref du plan (`config.js > setPlanOpaciteCalque`,
-`myktamap_plan_prefs_<planId>.imageLayerOpacity[layerId]`) ; 100 % retire l'entrée. Le curseur se rouvre sur la
-valeur retenue (`getPlanOpaciteCalque`). Il est indépendant de la transparence du fond OSM sous le plan (autre
-panneau, autre pref) : détails `rendering-leaflet.md` § Opacité d'un calque image. 🛡️
-`scripts/smoke/checkup-transparence-calques.js`.
+En tête, la case « Afficher le plan de base » (`data-plan-de-base`) et, dessous, le curseur « Opacité » de l'image
+principale (`data-plan-opacite`, classe `kta-fp-opacite-plan`). La copie de la case dans la section Niveaux n'a pas
+de curseur (`filterPanel.js > _renderCasePlanDeBase(avecCurseur)`). Puis chaque calque image
+(`PLAN_CONFIG.imageLayers`, id `id || label`) a sa ligne : la case `data-img-layer` (afficher / masquer,
+`map.addLayer` / `removeLayer`) et, dessous, son curseur `data-img-opacite`. Tous les curseurs viennent de
+`_renderCurseurOpacite` : 10 à 100 %, pas de 5 %, valeur affichée en %, `aria-label` (nom du calque, ou « plan de
+base »), 28 px de haut pour le doigt. Le glissé (`input`) écrit la pref du plan (`config.js > setPlanOpaciteCalque`
+/ `setPlanOpaciteFond`) et applique l'opacité : `overlay.setOpacity` pour un calque, `tiling.js >
+ktaAppliquerOpacitePlanDeBase` pour l'image principale (multipliée par la transparence du fond OSM s'il est
+allumé) ; 100 % retire l'entrée. Les curseurs se rouvrent sur la valeur retenue. Détails `rendering-leaflet.md`
+§ Opacité des images du plan. 🛡️ `scripts/smoke/checkup-transparence-calques.js`,
+`checkup-transparence-plan-de-base.js`.
 
 #### 64.4 Cascade re-render — `window.appliquerFiltreRuntime`
 
