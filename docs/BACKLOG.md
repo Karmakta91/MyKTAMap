@@ -36,6 +36,12 @@
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
 
+- **Détecter les galeries → tracés** — QCM 22/11 : fenêtre Détecter ouverte depuis l'outil Tracés (même principe que
+  Structures), pipette sur la couleur de galerie ET remplir au clic, axe → tracés (principal au choix) ; traits fins et
+  repères bouchés, piliers en obstacles, pas de doublon, raccord aux sommets existants. Base : `ktaDetection.js > _retirerBandes`.
+  `qui: Claude · action: brief du lot à Dev · fini: galeries grises et blanches détectées sur image fabriquée (texte et
+  trait de rappel en travers), sans doublon, checkup Chromium et WebKit · depuis: 22/11/2026 · taille: L`
+
 ## Ensuite
 
 - **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
