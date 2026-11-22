@@ -302,6 +302,8 @@
   "denylist.purged.sha256Label": "SHA-256:",
   "denylist.purged.titre.one": "{n} mapa revocado eliminado automáticamente",
   "denylist.purged.titre.plural": "{n} mapas revocados eliminados automáticamente",
+  "detect.affiner": "Afinar los contornos",
+  "detect.affiner.aide": "Suaviza el trazo irregular de un plano de mala calidad y endereza los pilares casi rectangulares (lados rectos, ángulos rectos). Un pilar redondo o irregular conserva su forma.",
   "detect.annuler": "Cancelar",
   "detect.apercu.aide": "Toca un objeto para quitarlo o volver a ponerlo.",
   "detect.apercu.bilan": "{n} encontrados · {d} ya presentes · {m} descartados por el tamaño máximo · {g} demasiado grandes para un bloque.",

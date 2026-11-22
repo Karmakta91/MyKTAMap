@@ -302,6 +302,8 @@
   "denylist.purged.sha256Label": "SHA-256 :",
   "denylist.purged.titre.one": "{n} plan révoqué automatiquement supprimé",
   "denylist.purged.titre.plural": "{n} plans révoqués automatiquement supprimés",
+  "detect.affiner": "Affiner les contours",
+  "detect.affiner.aide": "Lisse le trait irrégulier d'un plan de mauvaise qualité et redresse les piliers presque rectangulaires (côtés droits, angles droits). Un pilier rond ou irrégulier garde sa forme.",
   "detect.annuler": "Annuler",
   "detect.apercu.aide": "Touchez un objet pour le retirer ou le remettre.",
   "detect.apercu.bilan": "{n} trouvés · {d} déjà présents · {m} écartés par la taille maximale · {g} trop grands pour un bloc.",

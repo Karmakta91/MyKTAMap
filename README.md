@@ -698,6 +698,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-pilier-bras.js` | Pilier à bras : un clic pose un carré de 1 m centré et axé au niveau actif, outil armé, ⏪, carré barré sur la carte, légende, filtres, export image, Volume exploité, itinéraire non bloqué, bloc du tracker et de la vue 3D |
 | `smoke/checkup-pilier-bras-3d.js` | Pilier à bras en 3D (relevé fictif seul) : 300 modèles en assises (6 à 10, un ou deux blocs), aucun bloc hors du carré, triangles par pilier bornés, joints lus au rayon, même pilier à deux ouvertures, obstacle inchangé, bloc simple 🧱 coupé, temps de rendu avant/après, captures |
 | `smoke/checkup-enchainer-traces.js` | Tracés et lignes de Structures enchaînés en retouchant le dernier point (vrais clics) : outil armé, boucle sur le 1er point, double clic sans zoom, ✅ garde l'outil, ⏪ rouvre ; zone, pilier, pilier à bras et jonction inchangés |
+| `smoke/checkup-affiner-contours.js` | Case « Affiner les contours » de la fenêtre Détecter : cochée par défaut, retenue après rechargement, carré au trait bruité rempli en rectangle aux angles droits (case cochée) ou en dent de scie comme avant (décochée) ; Chromium et WebKit |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
 | `smoke/checkup-ajuster-zone-vaste.js` | Ajuster les sommets d'une grande forme (masse au sol, eau, côtés longs) et d'un pilier, à deux zooms, souris et doigt : sommet déplacé, sommet né sur le contour loin du milieu d'un côté |
 | `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
@@ -867,6 +868,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.30.0, branche `Karma_dev`)
+
+- **Affiner les contours dans la fenêtre Détecter** (`js/ktaDetection.js > _affiner`, `js/detectionStructures.js`, `lang/*.json`, guides, `plans-loader.md` § Détecter les structures, `check-detection.js`, `checkup-affiner-contours.js`) : sur un plan de mauvaise qualité, le trait irrégulier donnait des piliers « en dent de scie » à Remplir au clic comme à la détection. Une case **Affiner les contours**, cochée par défaut et retenue sur l'appareil, lisse chaque contour (0,25 m à l'échelle du plan, 2 px sans échelle) et redresse en rectangle, côtés et angles droits, orientation gardée, une forme presque rectangle ; un pilier rond ou irrégulier garde sa forme, lissé. Vaut aussi dans le Générateur (même parcours). Décochée : le contour d'avant, à l'identique. Planches bruitées de ± 2 px : carré et rectangle tourné redressés 40 fois sur 40, rond, pentagone et L jamais.
 
 #### v2.30.0 (21/11/2026) — pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés (branche `Karma_dev`)
 

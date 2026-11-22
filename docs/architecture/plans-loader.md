@@ -855,7 +855,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **Méthode, par bloc** : classe de couleur de chaque pixel (écart ΔE en Lab à l'exemple le plus proche, table sur
   6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
   (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
-  des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
+  des pixels (aire exacte) → Douglas-Peucker à `simplification`, ou contour affiné (réglage `affiner`, ci-dessous
+  « Affiner les contours »). Réglages par défaut en pixels du plan (13 px,
   250 px², 1,5 px, trou 700 px²), utilisés seulement sans exemple mesuré ; `depuisMetres(r, pxParM)`.
 - ⚠️ **Réglages déduits des exemples** (décision produit, après un essai sur deux vrais plans : 3 piliers sur une
   soixantaine). `mesurerExemple(bloc, x, y, { nature })` mesure la composante touchée à la pipette : couleur
@@ -998,7 +999,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     condition empêche de remplir un morceau du trait depuis un pixel sombre (toucher sur le trait, ou au bord d'un
     petit pilier flou : il faut toucher son centre clair).
     Composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
-    (`_contour`, `_simplifierFerme` à 1 px) ; un chiffre ou une pastille dedans est englobé.
+    (`_contour`, puis `_affiner` si la case « Affiner les contours » est cochée, sinon `_simplifierFerme` à 1 px) ;
+    un chiffre ou une pastille dedans est englobé.
   - ⚠️ **Milieu du trait** (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin.
     `_jusquAuMilieu` donne à la zone les pixels du trait plus proches d'elle que de l'autre côté du trait (distances
     de chanfrein 3-4 dans le trait, égalité à la zone), à au plus 6 px d'elle (`demiTrait`) ; deux piliers séparés
@@ -1021,6 +1023,34 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
     pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; galerie fictive de 60 m refusée à
     échelle connue, structure de 30 × 25 m acceptée, 512² px sans échelle) · `scripts/smoke/checkup-remplir.js`.
+- ⚠️ **Affiner les contours** (décisions de KARMA du 21/11/2026) : sur un plan de mauvaise qualité, le trait
+  irrégulier donnait des piliers « en dent de scie », une forme qui n'existe pas (le Douglas-Peucker à 1 ou 1,5 px
+  garde ce bruit). Case **Affiner les contours** du bandeau (exemples, Remplir au clic, aperçu), **cochée par
+  défaut**, retenue sur l'appareil pour tous les plans (`myktamap_detect_affiner_v1`, `"0"` = décochée ; clé globale
+  hors de la liste exportée du profil). Elle vaut pour Remplir au clic et la détection automatique, donc aussi
+  dans le Générateur (même parcours, `ctx.pxParM` du Générateur) ; changée sur l'aperçu, elle le recalcule ; les
+  zones déjà dans l'aperçu de Remplir restent telles quelles. Décochée : le contour d'avant, à l'identique.
+  - Moteur `ktaDetection.js > _affiner(contour, tol, eps)` (option `affiner` de `remplir`, réglage `affiner` de
+    `detecter`/`recalculer`, en px du plan ; absente ou nulle : `_simplifierFerme`). Tolérance
+    `toleranceAffinage(pxParM)` = **0,25 m** × l'échelle (`AFFINER.toleranceM`), **2 px** sans échelle
+    (`AFFINER.repliPx`), bornée à √aire / 6 (un petit pilier n'est pas lissé en galet). Étapes : contour
+    rééchantillonné au pas de 1 px, moyenne glissante circulaire (2 passes, demi-fenêtre = tolérance) ; puis
+    ⚠️ **redressement seulement si la forme est presque un rectangle** : orientation dominante (angles des côtés × 4,
+    pondérés par leur longueur : un rectangle tourné garde son orientation), rectangle des côtés MÉDIANS ; forme
+    lissée d'aire ≥ 0,96 × ce rectangle et à moins de max(1,5 px, 0,9 × tolérance) de lui → ses 4 coins. Sinon
+    Douglas-Peucker à max(`eps`, tolérance / 2) puis coins rendus vifs (`_coinsVifs` : chaque côté remplacé par la
+    droite ajustée sur sa partie centrale, sommet = intersection des voisines ; `_nettoyer` : sommet presque aligné
+    retiré, coin coupé entre deux côtés longs refait). Un pilier rond ou irrégulier garde sa forme, lissée.
+  - Mesures (40 planches bruitées de ± 2 px à 20 px/m, tolérance 5 px) : carré et rectangle tourné de 20° redressés
+    40 fois sur 40 (rapport ≥ 0,98, écart ≤ 0,87 × tolérance) ; rond (Ø 24 et 80 px), pentagone, L jamais redressés
+    (rond : rapport ≤ 0,95) ; trapèze aux côtés de 7° redressé 1 fois sur 40 (à 0,3 m : 19 sur 40, d'où 0,25 m).
+    Relevé réel au trait flou (≈ 4 px/m, tolérance ≈ 1 px) : marches d'escalier gommées, décrochements gardés,
+    petits piliers presque carrés redressés ; à 0,75 m, de vrais décrochements disparaissaient.
+    🩸 Limite : sous ~25 px de côté, un bruit de ± 2 px rend carré et rond indiscernables ; le petit pilier carré
+    n'est alors pas toujours redressé (lissé seulement), un rond ne l'est jamais.
+  - Garde-fous : `check-detection.js` (carré bruité → rectangle aux angles droits à 2 px, rectangle tourné, rond,
+    petit rond, pentagone, trapèze, L ; détection et recalcul ; contre-épreuves sans l'option, empreintes du contour
+    d'avant) · `scripts/smoke/checkup-affiner-contours.js` (case cochée par défaut, retenue, effet sur Remplir).
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
@@ -1033,6 +1063,7 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
 - Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
-  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-detection-emprise.js` (calque du
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-affiner-contours.js` (case Affiner
+  les contours) · `scripts/smoke/checkup-detection-emprise.js` (calque du
   niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
   le bord de l'image entier, niveau 0 inchangé ; Chromium et WebKit).

@@ -20,7 +20,8 @@
 // ⚠️ contrat (décision produit) : un niveau ≠ 0 sans image affichée (`raison` du dessin) est refusé, pipette comme
 //   calcul (_lireBloc lève REFUS) ; jamais l'image du niveau 0 à sa place.
 // Écarte ce qui recouvre déjà une structure du même niveau : relancer ne double rien. Réglages déduits des exemples ;
-// trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus.
+// trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus. Case « Affiner les
+// contours » (_affinerActif) : lissage et redressement des formes presque rectangles, Remplir comme détection.
 // Expose : window.KtaDetectionUI = { ouvrir(ctx?), fermer, etat, contextePlan, PREFIXE }.
 // Garde-fous : scripts/smoke/checkup-detection.js, checkup-detection-emprise.js, scripts/check-detection.js
 //   · Doc : plans-loader.md (Détecter).
@@ -29,6 +30,8 @@ window.KtaDetectionUI = (function () {
   "use strict";
 
   const PREFIXE = "myktamap_detect_couleurs_v1_";
+  // Case « Affiner les contours » : retenue sur l'appareil, pour tous les plans ("0" = décochée ; absente = cochée).
+  const CLE_AFFINER = "myktamap_detect_affiner_v1";
   const MAX_EXEMPLES = 6;
   const FENETRE_EXEMPLE = [192, 640];  // px plan lus autour d'un toucher de pipette (puis plus grand si coupé)
   const RECALCUL_MS = 200;             // curseur relâché : recalcul après ce délai sans autre mouvement
@@ -160,6 +163,27 @@ window.KtaDetectionUI = (function () {
   }
 
   function _aDesExemples(c) { return CLASSES.some(function (k) { return c[k].length > 0; }); }
+
+  // ── Affiner les contours (ktaDetection.js > _affiner) ──
+  // ⚠️ contrat (décision produit) : cochée par défaut ; s'applique à Remplir au clic et à la détection (recalcul de
+  //   l'aperçu quand on la change) ; ce qui est déjà dans l'aperçu de Remplir reste tel quel.
+  function _affinerActif() {
+    try { return localStorage.getItem(CLE_AFFINER) !== "0"; } catch (err) { return true; }
+  }
+  function _ecrireAffiner(actif) {
+    try { localStorage.setItem(CLE_AFFINER, actif ? "1" : "0"); } catch (err) {
+      console.warn("[Detection] case Affiner non retenue :", err && err.name);
+    }
+  }
+  // Tolérance du lissage pour le plan (px du plan), 0 = case décochée.
+  function _toleranceAffiner() {
+    return _affinerActif() ? window.KtaDetection.toleranceAffinage(_e.ctx.pxParM ? _e.ctx.pxParM() : null) : 0;
+  }
+  function _caseAffiner() {
+    return '<label class="kta-detect-type" title="' + _esc(_t("detect.affiner.aide")) + '">' +
+      '<input type="checkbox" data-detect-affiner' + (_affinerActif() ? " checked" : "") + "> " +
+      _esc(_t("detect.affiner")) + "</label>";
+  }
 
   // ── Lecture de l'image ──
   async function _lireBloc(x, y, w, h, e) {
@@ -330,7 +354,7 @@ window.KtaDetectionUI = (function () {
             '" data-detect="pipette-' + c + '">' + _esc(_t("detect.classe." + c, { n: _e.couleurs[c].length })) +
             " " + _pastilles(c) + "</button>";
         }).join("") +
-        _btn("effacer", "detect.exemples.effacer") +
+        _caseAffiner() + _btn("effacer", "detect.exemples.effacer") +
         _btn("zone", "detect.exemples.suivant", "kta-btn-primary") +
         '<button type="button" class="kta-btn kta-btn-ghost" data-detect="remplir">' +
         window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" +
@@ -342,7 +366,7 @@ window.KtaDetectionUI = (function () {
         ' <select data-detect-remplir-type>' + _typesFermes().map(function (ty) {
           return '<option value="' + _esc(ty.id) + '"' + (_e.typeRemplir === ty.id ? " selected" : "") + ">" +
             _esc(ty.libelle) + "</option>";
-        }).join("") + "</select></label>" +
+        }).join("") + "</select></label>" + _caseAffiner() +
         _btn("valider-remplir", "detect.valider", "kta-btn-primary", { n: gardes }) +
         _btn("exemples", "detect.retour") + _btn("fermer", "detect.fermer") + "</div>";
     } else if (_e.etape === "zone") {
@@ -369,7 +393,7 @@ window.KtaDetectionUI = (function () {
       };
       html = '<span class="kta-racc-info">' + _esc(_bilan()) + "</span>" +
         '<div class="kta-racc-actions">' + cur("tolerance", TOL_CURSEUR[0], TOL_CURSEUR[1]) + cur("taille", 2, 80) +
-        cur("tailleMax", 4, TAILLE_MAX_PLAFOND) + "</div>" +
+        cur("tailleMax", 4, TAILLE_MAX_PLAFOND) + _caseAffiner() + "</div>" +
         '<div class="kta-racc-actions">' +
         CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(sel).join("") +
         _btn("valider", "detect.valider", "kta-btn-primary", { n: gardes }) + _btn("zone", "detect.recommencer") +
@@ -449,6 +473,12 @@ window.KtaDetectionUI = (function () {
     _e.minuteur = setTimeout(_recalculer, RECALCUL_MS);
   }
   function _onType(ev) {
+    const af = ev.target.closest && ev.target.closest("[data-detect-affiner]");
+    if (af && _e) {
+      _ecrireAffiner(af.checked);
+      if (_e.apercu) { clearTimeout(_e.minuteur); _recalculer(); }
+      return;
+    }
     const r = ev.target.closest && ev.target.closest("[data-detect-remplir-type]");
     if (r && _e) { _e.typeRemplir = r.value; return; }
     const el = ev.target.closest && ev.target.closest("[data-detect-type]");
@@ -585,6 +615,7 @@ window.KtaDetectionUI = (function () {
   function _reglages() {
     const rg = window.KtaDetection.reglagesPourTaille(_e.curseurs.taille, _pxParM());
     rg.aireMax = _e.curseurs.tailleMax >= TAILLE_MAX_PLAFOND ? 0 : _e.curseurs.tailleMax * _e.curseurs.tailleMax;
+    rg.affiner = _toleranceAffiner();
     return Object.assign({ bloc: _e.bloc }, rg);
   }
   function _lacherExecuteur() {
@@ -687,7 +718,7 @@ window.KtaDetectionUI = (function () {
         // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour un fond ouvert
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
         r = window.KtaDetection.remplir(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1, aireMax: pl.aireMax,
-          coteMax: pl.coteMax });
+          coteMax: pl.coteMax, affiner: _toleranceAffiner() });
         // zone fermée, ou fenêtre déjà grande comme l'emprise : une fenêtre plus grande n'y changerait rien
         if (r.refus !== "ouvert" || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
       }
@@ -824,7 +855,7 @@ window.KtaDetectionUI = (function () {
     const a = _e.apercu;
     return { etape: _e.etape, exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length, f: _e.couleurs.f.length },
              pipette: _e.pipette, coins: _e.coins.length, curseurs: _e.curseurs, lectures: _e.lectures,
-             recalculs: _e.recalculs, recalculable: !!_e.recalculable,
+             recalculs: _e.recalculs, recalculable: !!_e.recalculable, affiner: _affinerActif(),
              tolerances: _e.deduits && _e.curseurs ? _classes().reduce(function (o, c) {
                o[c.id] = c.tolerance; return o;
              }, {}) : null,
@@ -833,7 +864,8 @@ window.KtaDetectionUI = (function () {
                            ecartees: a.ecartees } : null,
              remplir: _e.etape === "remplir" ? { n: _remplisGardes().length, retires: _e.remplis.length -
                _remplisGardes().length, type: _e.typeRemplir, types: _typesFermes().map(function (t) { return t.id; }),
-               enCours: !!_e.remplissage } : null };
+               enCours: !!_e.remplissage,
+               sommets: _remplisGardes().map(function (z) { return z.points.length; }) } : null };
   }
 
   return { ouvrir: ouvrir, fermer: fermer, etat: etat, contextePlan: contextePlan, PREFIXE: PREFIXE };

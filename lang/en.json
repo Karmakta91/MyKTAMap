@@ -302,6 +302,8 @@
   "denylist.purged.sha256Label": "SHA-256:",
   "denylist.purged.titre.one": "{n} revoked map automatically deleted",
   "denylist.purged.titre.plural": "{n} revoked maps automatically deleted",
+  "detect.affiner": "Refine outlines",
+  "detect.affiner.aide": "Smooths the uneven line of a poor-quality plan and straightens nearly rectangular pillars (straight sides, right angles). A round or irregular pillar keeps its shape.",
   "detect.annuler": "Cancel",
   "detect.apercu.aide": "Tap an object to remove it or put it back.",
   "detect.apercu.bilan": "{n} found · {d} already there · {m} dropped by the maximum size · {g} too large for a block.",
