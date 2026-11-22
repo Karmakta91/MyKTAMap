@@ -20318,6 +20318,11 @@ button.kta-cfg-ligne-action {
   stroke-dasharray: 4 3; }
 .kta-detect-coin { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.6; }
 .kta-detect-apercu.kta-detect-trait { fill: none; stroke: var(--kta-interaction); stroke-width: 5; stroke-linecap: round; }
+/* Détecter les galeries : titre du bandeau, tracé proposé (trait plein, jointures rondes), bout raccordé au réseau. */
+.kta-detect-titre { flex: 1 1 100%; color: var(--kta-accent-texte); font-weight: 700; font-size: 13px; }
+.kta-detect-apercu.kta-detect-galerie { stroke-linejoin: round; }
+.kta-detect-apercu.kta-detect-trait.kta-detect-retire { fill: none; }
+.kta-detect-accroche { stroke: var(--kta-sur-accent); fill: var(--kta-accent); fill-opacity: 1; stroke-width: 2; }
 /* Détection dans le Générateur (detectionGenerateur.js) : fenêtre plein écran au-dessus du Générateur (99999),
    sous-modale ; le bandeau du parcours y est posé (z-index propre, au-dessus de la mini-carte). */
 .kta-detect-gen {

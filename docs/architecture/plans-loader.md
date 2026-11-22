@@ -810,6 +810,8 @@ scale: (transform && transform.metresParPixel > 0)
 Détection des piliers (masses pleines) et des fronts (traits) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
 calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
 l'interface : outil Structures et carte de l'📊 Éditeur de données, un même parcours (`js/detectionStructures.js`).
+Les galeries ont leur fenêtre à elles, sur le même parcours et le même moteur, avec des tracés en sortie : § « Détecter
+les galeries → tracés » plus bas.
 
 - ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
   de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
@@ -845,7 +847,12 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     1 344 ; pic mémoire du navigateur 1,7 Go, dont l'image décodée (~960 Mo, comme au tuilage). 🩸 Un vrai iPhone
     plafonne bien plus bas : au-delà de ce que le tuilage du même appareil supporte, la détection échoue aussi
     (non mesuré sur appareil réel).
-  - Checkup : `scripts/smoke/checkup-detection-generateur.js` (Chromium et WebKit).
+  - **Galeries** : bouton « Détecter les galeries » à côté, mêmes modes, même fenêtre que l'outil Tracés
+    (`_detecterStructuresGenerateur("traces")`). Sortie dans un calque À PART « Tracés détectés »
+    (`traces-detectees`, format d'un calque de tracés `{ type: "roads", roads }`, `DETECT_GENRES`), mêmes règles :
+    repère, ligne marquée (`_ktaDetecte`, `_ktaDetecteGenre: "traces"`), une relance y ajoute, doublons contre les
+    tracés (`roads`) de TOUS les calques de la page. « Structures détectées » garde son nom et ses structures.
+  - Checkup : `scripts/smoke/checkup-detection-generateur.js` (piliers et galeries ; Chromium et WebKit).
 
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
@@ -1058,7 +1065,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **Doublons** : une masse qui recouvre une structure du même niveau (session ou calque), un front dont tous les
   sommets et milieux sont à moins de 3 px d'un front existant du même niveau : écartés et comptés « déjà présents ».
   Relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
-- **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>`, jamais dans la session ni dans
+- **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>` (classes `a`, `b`, `f`, et `g` des
+  galeries), jamais dans la session ni dans
   l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
@@ -1067,3 +1075,63 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   les contours) · `scripts/smoke/checkup-detection-emprise.js` (calque du
   niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
   le bord de l'image entier, niveau 0 inchangé ; Chromium et WebKit).
+
+### Détecter les galeries → tracés
+
+Décisions de KARMA du 22/11/2026 (leçons d'un essai privé où l'auteur avait dû retoucher ~15 % des tracés tirés d'un
+squelette) : compléter un plan à moitié tracé, en tracés routables, sans doublon.
+
+- ⚠️ **Fenêtre à part** (décision produit) : `KtaDetectionUI.ouvrir(ctx, { cible: "traces" })`, ouverte depuis
+  l'outil Tracés, la carte « Détecter les galeries » de l'📊 Éditeur de données et le Générateur. Titre et aide à
+  elle ; elle ne propose que la galerie (pipette, classe `g`), Remplir au clic, le cadre, « Tout le plan », deux
+  réglages et le type de tracé (principal par défaut, ou le type armé dans Tracés ; secondaire, chemin, types
+  personnalisés ; jamais la jonction ni l'itinéraire). La fenêtre des structures ne propose jamais les galeries.
+  Le contexte ajoute `niveauTrace()`, `tracesExistants()` et `poserTraces(tracés)` (mode plan : une étape ⏪ de
+  catégorie `roads` puis `setRoads`, comme `_poserSession` pour les structures ; `road.js` n'est pas touché).
+- **Deux sources, un moteur** (`ktaDetection.js`) :
+  - pipette sur la COULEUR de la galerie (galeries grisées entre des murs noirs) : `detecter` avec le réglage
+    `galerie` → `_galeriesBloc` (masque de la couleur, bouché, obstacles percés, squelette Zhang-Suen, rayon inscrit
+    à chaque sommet), axes bruts découpés au cœur de chaque bloc et gardés par la page ;
+  - REMPLIR AU CLIC dans une galerie blanche entre deux murs (couleur du fond) : `remplirGalerie`, le remplissage
+    de `remplir` (`_murs`, `_inonder`) sans plafond de taille, jusqu'aux murs, puis le même squelette. La page
+    agrandit la fenêtre lue (768, 2 048 px, puis toute l'emprise, à résolution réduite au-delà de 4 096 px) ; refus
+    « ouvert » seulement si la zone touche encore le bord de l'emprise. Un trait fin qui coupe TOUTE la galerie
+    (trait de rappel d'un mur à l'autre) est rouvert (`_rouvrirCoupures`) : pixels du trait à moins de 4 px à la
+    fois de la zone remplie et d'une zone libre FERMÉE, composante plus courte que 3 × la largeur de la galerie,
+    gardée si le nouveau remplissage reste fermé. 🩸 Un mur entre la galerie et le fond extérieur n'est jamais
+    candidat (le fond touche le bord) ; un mur fin entre deux galeries parallèles l'est, mais il est long.
+- ⚠️ **Bouchage avant le calcul** (`_boucher`, décision produit) : trous compacts plus petits que (0,6 × la largeur)²
+  (lettres, points de repère), puis fermeture de 2 px dont on ne garde que les ajouts plus courts que 4 × la
+  largeur (traits de rappel, encoches). 🩸 Sans lui, la galerie était coupée puis recousue « en étoile » ; une
+  fermeture sans la règle de longueur soudait deux galeries séparées par un mur fin. Un pilier dessiné plus large
+  que 0,6 × la galerie reste un trou : le tracé le contourne.
+- ⚠️ **Structures posées = obstacles** (`_percerObstacles`, 1,5 px de marge) : contours fermés et murs en ligne du
+  niveau visé, percés dans le masque avant le squelette ; la simplification garde un sommet plutôt que de couper un
+  obstacle. Les fronts et les arcs ne comptent pas.
+- **Réseau** (`reseauGaleries(axes, { simplification, brancheMin, doublon, existants, obstacles })`, pur, dans la
+  page : un réglage bougé recalcule sans relire l'image) : graphe (bouts à 2,5 px confondus : raccord des blocs) →
+  ergots retirés (bout libre plus court que la branche minimale ou que 2 × le rayon du carrefour : il ne sort pas de
+  la largeur de la galerie ; du plus court au plus long, degrés relus) → carrefours reliés par une arête plus courte
+  que la somme de leurs rayons fusionnés → petites boucles sans obstacle (aire < (2 × branche minimale)²) retirées →
+  enchaînement : degré 2, et à travers un carrefour sur l'arête la plus droite (déviation ≤ 35°), pour UN tracé
+  long par galerie ; les autres galeries finissent sur son sommet (sommet fixe, jamais simplifié) → doublons →
+  accroche → Douglas-Peucker entre sommets fixes. Branches plus courtes que la branche minimale retirées.
+- **Deux réglages visibles** (décision produit) : simplification (0,5 m par défaut) et branche minimale (1,5 m), en
+  mètres à l'échelle du plan, en px sans échelle (3 et 15 px ; `reglagesGaleries`).
+- ⚠️ **Réseau existant jamais modifié** (décision produit) : tracés du même niveau (session et calques, masqués
+  compris ; jonction : l'un de ses niveaux ; jamais l'itinéraire). Toute partie à moins de 6 px d'un tracé existant
+  est coupée (« déjà tracées » au bilan). Un bout à portée (max(9 px, rayon de la galerie + 6 px)) se pose
+  EXACTEMENT sur le sommet existant le plus proche, sinon exactement sur le segment (pied de T, relié par
+  l'itinéraire à distance nulle : § Enrichissement de `multilevel-pathfinding.md`) ; le point n'est jamais arrondi.
+  ⚠️ L'outil ne pose AUCUN sommet sur un croisement : seuls les bouts s'accrochent (l'itinéraire, lui, relie un
+  croisement strict de deux segments).
+- **Aperçu** : une polyligne par tracé (`.kta-detect-galerie`), un rond aux bouts raccordés (`.kta-detect-accroche`) ;
+  un toucher retire ou remet un tracé, gardé retiré d'un réglage à l'autre (clé : ses bouts à 2 px près). Remplir
+  s'ajoute à l'aperçu toucher après toucher ; un toucher dans une galerie déjà remplie est refusé.
+- **Hors de l'outil** (pistes dans `docs/IDEES.md`) : passage hachuré en liaison, croisements de niveaux, largeur des
+  galeries.
+- Garde-fous : `check-detection.js` (planche `scripts/smoke/scene-galeries.js` : galeries grises et blanches, texte
+  et traits de rappel en travers, pilier posé, tracé existant ; réseau connexe, zéro étoile, zéro doublon, pilier
+  contourné, accroche exacte ; contre-épreuves sans bouchage, sans obstacle, sans existant) ·
+  `scripts/smoke/checkup-galeries.js` (fenêtres distinctes, aperçu, réglages, Valider en une étape ⏪, Éditeur de
+  données et Remplir ; Chromium et WebKit) · `checkup-detection-generateur.js` (calque « Tracés détectés »).

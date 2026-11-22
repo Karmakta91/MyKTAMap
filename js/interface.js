@@ -2837,6 +2837,10 @@ _setGroupeModeActif("tracker", isTracking, null);
   }
 
   _sousActionsTraces.push(
+    // Détecter les galeries sur l'image du plan (js/detectionStructures.js, fenêtre dédiée aux tracés) ; même
+    // fenêtre que la carte de l'📊 Éditeur de données.
+    { icone: window.ktaIcone("search"), titre: window.I18n.t("detect.galeries.bouton"),
+      onClick: function() { if (window.KtaDetectionUI) window.KtaDetectionUI.ouvrir(null, { cible: "traces" }); } },
     // Valider : termine le tracé en cours, quel que soit son type (custom compris), et l'outil reste armé
     // (décision produit, comme celui de Structures) ; retoucher le type actif l'éteint. La jonction, saisie à part
     // avec ses deux niveaux, s'éteint. Sans isTypeAction → après le séparateur.

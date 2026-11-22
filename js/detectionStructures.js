@@ -22,9 +22,11 @@
 // Écarte ce qui recouvre déjà une structure du même niveau : relancer ne double rien. Réglages déduits des exemples ;
 // trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus. Case « Affiner les
 // contours » (_affinerActif) : lissage et redressement des formes presque rectangles, Remplir comme détection.
-// Expose : window.KtaDetectionUI = { ouvrir(ctx?), fermer, etat, contextePlan, PREFIXE }.
-// Garde-fous : scripts/smoke/checkup-detection.js, checkup-detection-emprise.js, scripts/check-detection.js
-//   · Doc : plans-loader.md (Détecter).
+// Expose : window.KtaDetectionUI = { ouvrir(ctx?, { cible }?), fermer, etat, contextePlan, PREFIXE }.
+// Fenêtre « Détecter les galeries » (ouvrir(ctx, { cible: "traces" }) : outil Tracés, Éditeur de données,
+//   Générateur) : même parcours, rien que la galerie, et des TRACÉS en sortie (section « Galeries » plus bas).
+// Garde-fous : scripts/smoke/checkup-detection.js, checkup-detection-emprise.js, checkup-galeries.js,
+//   scripts/check-detection.js · Doc : plans-loader.md (Détecter).
 
 window.KtaDetectionUI = (function () {
   "use strict";
@@ -41,6 +43,7 @@ window.KtaDetectionUI = (function () {
   const SURFACE_PLEINE = 4096 * 4096;   // au-delà, « Tout le plan » se calcule à mi-résolution
   // Masse A, masse B (piliers), front (trait) ; types proposés dans l'aperçu et type par défaut.
   const CLASSES = ["a", "b", "f"];
+  const CLASSES_RETENUES = ["a", "b", "f", "g"];   // g : couleur de galerie (fenêtre « Détecter les galeries »)
   const TYPES = { a: ["pilier-1", "pilier-2"], b: ["pilier-1", "pilier-2"], f: ["front-1", "front-2"] };
   const DEFAUT = { a: "pilier-1", b: "pilier-2", f: "front-1" };
   const ECART_TRAIT = 3;                // px : un front détecté à moins de cet écart d'un front existant est déjà là
@@ -112,7 +115,14 @@ window.KtaDetectionUI = (function () {
       sortir: function () {
         if (window.MapBearing && typeof window.MapBearing.resume === "function") window.MapBearing.resume("detection");
       },
-      poser: _poserSession
+      poser: _poserSession,
+      // Galeries : tracés de session et des calques (masqués compris, sans copie de calque en modification)
+      niveauTrace: function () { return multi ? (C.activeLevel || 0) : null; },
+      tracesExistants: function () {
+        const s = typeof window.getRoads === "function" ? window.getRoads() : [];
+        return s.concat(typeof window.getAllEmbeddedRoads === "function" ? window.getAllEmbeddedRoads() : []);
+      },
+      poserTraces: _poserTracesSession
     };
   }
   // Une étape d'historique, puis la session. Rend le nombre de structures posées mais masquées (filtres, niveau).
@@ -135,13 +145,28 @@ window.KtaDetectionUI = (function () {
     }).length;
   }
 
+  // Tracés détectés : une étape d'historique (roads), puis la session. Rend le nombre de tracés posés sur un niveau
+  // non affiché.
+  function _poserTracesSession(poses) {
+    const avant = window.HistoryManager ? window.HistoryManager.captureState("roads") : null;
+    window.setRoads(window.getRoads().concat(poses));
+    if (window.HistoryManager && avant) {
+      window.HistoryManager.record(_t("detect.galeries.historique", { n: poses.length }), avant, "roads");
+    }
+    if (window.SessionPersist && typeof window.SessionPersist.save === "function") window.SessionPersist.save();
+    const C = window.APP_CONFIG;
+    if (C.multiLevel !== true) return 0;
+    const vis = Array.isArray(C.visibleLevels) ? C.visibleLevels : [C.activeLevel || 0];
+    return poses.filter(function (r) { return vis.indexOf(Number.isInteger(r.level) ? r.level : 0) < 0; }).length;
+  }
+
   // ── Couleurs par plan (appareil) ──
   function _planId() { return _e ? _e.ctx.cle : "default"; }
   function _lireCouleurs() {
     try {
       const o = JSON.parse(localStorage.getItem(PREFIXE + _planId()) || "null");
-      const out = { a: [], b: [], f: [], curseurs: null };
-      CLASSES.forEach(function (c) {
+      const out = { a: [], b: [], f: [], g: [], curseurs: null };
+      CLASSES_RETENUES.forEach(function (c) {
         if (o && Array.isArray(o[c])) {
           // ancien format : [r, g, b] seul (sans mesure de taille)
           out[c] = o[c].map(function (q) { return Array.isArray(q) ? { rgb: q } : q; })
@@ -153,16 +178,22 @@ window.KtaDetectionUI = (function () {
                          tailleMax: Number(o.curseurs.tailleMax) > 0 ? Number(o.curseurs.tailleMax) : null };
       }
       return out;
-    } catch (err) { return { a: [], b: [], f: [], curseurs: null }; }
+    } catch (err) { return { a: [], b: [], f: [], g: [], curseurs: null }; }
   }
   function _ecrireCouleurs(c) {
     try {
-      if (!_aDesExemples(c)) localStorage.removeItem(PREFIXE + _planId());
-      else localStorage.setItem(PREFIXE + _planId(), JSON.stringify({ a: c.a, b: c.b, f: c.f, curseurs: c.curseurs }));
+      const vide = !CLASSES_RETENUES.some(function (k) { return c[k] && c[k].length > 0; });
+      if (vide) localStorage.removeItem(PREFIXE + _planId());
+      else {
+        localStorage.setItem(PREFIXE + _planId(),
+          JSON.stringify({ a: c.a, b: c.b, f: c.f, g: c.g, curseurs: c.curseurs }));
+      }
     } catch (err) { console.warn("[Detection] couleurs non retenues :", err && err.name); }
   }
 
-  function _aDesExemples(c) { return CLASSES.some(function (k) { return c[k].length > 0; }); }
+  // Classes de la fenêtre ouverte : galerie seule, ou masses et front.
+  function _classesActives() { return _galeries() ? ["g"] : CLASSES; }
+  function _aDesExemples(c) { return _classesActives().some(function (k) { return c[k].length > 0; }); }
 
   // ── Affiner les contours (ktaDetection.js > _affiner) ──
   // ⚠️ contrat (décision produit) : cochée par défaut ; s'applique à Remplir au clic et à la détection (recalcul de
@@ -346,7 +377,9 @@ window.KtaDetectionUI = (function () {
     const b = _e.bandeau;
     if (!b) return;
     let html = "";
-    if (_e.etape === "exemples") {
+    if (_galeries() && ["exemples", "remplir", "apercu"].indexOf(_e.etape) >= 0) {
+      html = _bandeauGaleries();
+    } else if (_e.etape === "exemples") {
       html = '<span class="kta-racc-info">' + _esc(_t(_e.pipette ? "detect.pipette.toucher" : "detect.exemples.aide")) +
         "</span>" + '<div class="kta-racc-actions">' +
         CLASSES.map(function (c) {
@@ -407,6 +440,14 @@ window.KtaDetectionUI = (function () {
     if (valider && _e.apercu) valider.disabled = _e.apercu.objets.length - _e.apercu.retires.size === 0;
     const validerR = b.querySelector('[data-detect="valider-remplir"]');
     if (validerR) validerR.disabled = _remplisGardes().length === 0;
+    const validerG = b.querySelector('[data-detect="valider-galeries"]');
+    if (validerG) validerG.disabled = _gardesGaleries() === 0;
+    if (_galeries()) {
+      const titre = document.createElement("span");
+      titre.className = "kta-detect-titre";
+      titre.innerHTML = window.ktaIcone("search") + " " + _esc(_t("detect.galeries.titre"));
+      b.insertBefore(titre, b.firstChild);
+    }
     _majCurseur();
   }
 
@@ -436,18 +477,24 @@ window.KtaDetectionUI = (function () {
       const c = act.slice(8);
       _e.pipette = _e.pipette === c ? null : c;
     } else if (act === "effacer") {
-      _e.couleurs = { a: [], b: [], f: [], curseurs: null }; _ecrireCouleurs(_e.couleurs); _e.pipette = null;
+      _classesActives().forEach(function (c) { _e.couleurs[c] = []; });
+      if (!_galeries()) _e.couleurs.curseurs = null;
+      _ecrireCouleurs(_e.couleurs); _e.pipette = null;
     } else if (act === "zone") {
       if (!_aDesExemples(_e.couleurs)) { _toast(_t("detect.toast.sansExemple"), "warn"); return; }
       _e.pipette = null; _e.etape = "zone"; _e.coins = []; _e.apercu = null; _viderCouche(); _lacherExecuteur();
     } else if (act === "remplir") {
       _e.pipette = null; _e.etape = "remplir"; _e.coins = []; _e.apercu = null; _e.remplis = [];
       _e.typeRemplir = _typeRemplirInitial();
+      _e.axes = [];
       _viderCouche(); _lacherExecuteur();
     } else if (act === "valider-remplir") {
       _validerRemplis(); return;
+    } else if (act === "valider-galeries") {
+      _validerGaleries(); return;
     } else if (act === "exemples") {
       _e.etape = "exemples"; _e.coins = []; _e.remplis = []; _viderCouche();
+      if (_galeries()) { _e.axes = []; _e.apercu = null; }
     } else if (act === "tout") {
       _toutLePlan(); return;
     } else if (act === "annuler") {
@@ -460,6 +507,8 @@ window.KtaDetectionUI = (function () {
   }
   // Curseurs : valeur affichée tout de suite, recalcul sur les blocs déjà lus après RECALCUL_MS sans mouvement.
   function _onCurseur(ev) {
+    const g = ev.target.closest && ev.target.closest("[data-detect-galerie-curseur]");
+    if (g && _e) { _onCurseurGalerie(g); return; }
     const el = ev.target.closest && ev.target.closest("[data-detect-curseur]");
     if (!el || !_e || !_e.apercu) return;
     const nom = el.getAttribute("data-detect-curseur");
@@ -481,6 +530,8 @@ window.KtaDetectionUI = (function () {
     }
     const r = ev.target.closest && ev.target.closest("[data-detect-remplir-type]");
     if (r && _e) { _e.typeRemplir = r.value; return; }
+    const tg = ev.target.closest && ev.target.closest("[data-detect-galerie-type]");
+    if (tg && _e) { _e.typeGalerie = tg.value; return; }
     const el = ev.target.closest && ev.target.closest("[data-detect-type]");
     if (!el || !_e || !_e.apercu) return;
     _e.apercu.types[el.getAttribute("data-detect-type")] = el.value;
@@ -499,13 +550,16 @@ window.KtaDetectionUI = (function () {
       }
       if (!_e) return;
       if (!ex) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-      if (ex.fond) { _toast(_t("detect.toast.surFond"), "warn"); return; }   // doigt sur le fond : pas d'exemple
+      if (ex.fond) {   // doigt sur le fond : pas d'exemple
+        _toast(_t(_galeries() ? "detect.galeries.toast.surFond" : "detect.toast.surFond"), "warn");
+        return;
+      }
       _e.couleurs[c] = _e.couleurs[c].concat([ex]).slice(-MAX_EXEMPLES);
       _e.couleurs.curseurs = null;   // nouvel exemple : les réglages repartent des exemples
       _ecrireCouleurs(_e.couleurs);
       _majBandeau();
     } else if (_e.etape === "remplir") {
-      _remplirEn(x, y);
+      if (_galeries()) _remplirGalerieEn(x, y); else _remplirEn(x, y);
     } else if (_e.etape === "zone") {
       _e.coins.push({ x: x, y: y });
       if (_e.coins.length < 2) { _dessinerCadre(); _majBandeau(); return; }
@@ -552,11 +606,21 @@ window.KtaDetectionUI = (function () {
       const res = await window.KtaDetection.detecter({
         lireBloc: _lireBloc, region: region, echelle: echelle,
         limites: E,
-        classes: _classes(), reglages: _reglages(), executeur: ex, garder: true,
+        classes: _galeries() ? _classesGaleries() : _classes(),
+        reglages: _galeries() ? _reglagesGaleriesBlocs() : _reglages(), executeur: ex, garder: !_galeries(),
         signal: e.ctrl.signal,
         onProgres: function (i, n) { if (_e === e) { e.progres = [i, n]; _majBandeau(); } }
       });
       if (_e !== e) return;
+      if (_galeries()) {
+        // les réglages des galeries ne relisent pas l'image : réseau recalculé sur les axes gardés ici
+        _lacherExecuteur();
+        e.axes = res.axes || [];
+        _construireReseau();
+        e.etape = "apercu";
+        _dessinerGaleries();
+        return;
+      }
       e.recalculable = !!res.recalculable;
       _construireApercu(res);
       e.etape = "apercu";
@@ -578,16 +642,17 @@ window.KtaDetectionUI = (function () {
   // ── Réglages : déduits des exemples (ktaDetection.js > reglagesDepuisExemples), sinon ceux des curseurs ──
   // ⚠️ contrat (décision produit) : chaque toucher de pipette mesure la composante touchée ; tolérance et taille
   //   minimale en découlent. Un curseur bougé l'emporte, retenu avec les couleurs du plan, jusqu'au prochain exemple.
-  function _natures() { return { a: "masse", b: "masse", f: "trait" }; }
+  function _natures() { return { a: "masse", b: "masse", f: "trait", g: "galerie" }; }
   function _pxParM() { return _e.ctx.pxParM(); }
   function _deduits() {
     const ex = {};
-    CLASSES.forEach(function (c) { ex[c] = _e.couleurs[c]; });
+    _classesActives().forEach(function (c) { ex[c] = _e.couleurs[c]; });
     return window.KtaDetection.reglagesDepuisExemples(ex, _natures());
   }
   // Classe de masse dont le curseur « Tolérance de couleur » montre la valeur : Masse A, sinon Masse B.
   function _masseRef(d) { return ["a", "b"].filter(function (c) { return d.tolerances[c] > 0; })[0] || null; }
   function _initCurseurs() {
+    if (_galeries()) { _e.deduits = _deduits(); return; }
     const d = _deduits(), sauves = _e.couleurs.curseurs, ref = _masseRef(d);
     const tol = ref ? d.tolerances[ref] : 0;
     // taille maximale : déduite du plus grand exemple (× 4 en aire), plafonnée à la marge des blocs (au-delà, une masse
@@ -786,25 +851,298 @@ window.KtaDetectionUI = (function () {
     if (masquees) _toast(_t("detect.toast.masquees", { n: masquees }), "warn");
   }
 
+  // ── Galeries → tracés (fenêtre « Détecter les galeries », cible "traces") ──
+  // ⚠️ contrat (décision produit) : fenêtre à part, ouverte depuis l'outil Tracés, l'📊 Éditeur de données et le
+  //   Générateur ; elle ne propose que la galerie (pipette), Remplir au clic, le cadre, « Tout le plan », deux
+  //   réglages (simplification, branche minimale : mètres à l'échelle du plan, sinon px) et le type de tracé ; la
+  //   fenêtre des structures ne propose jamais les galeries. Rien n'est écrit avant « Valider » ; mode plan : UNE
+  //   étape ⏪ (catégorie roads). Calcul : ktaDetection.js > reseauGaleries, sur les axes gardés ici (un réglage
+  //   bougé ne relit pas l'image) ; tracés existants du même niveau jamais modifiés, structures posées en obstacles.
+  function _galeries() { return !!_e && _e.cible === "traces"; }
+  function _pxParMG() { return _e.ctx.pxParM ? _e.ctx.pxParM() : null; }
+  function _niveauTrace() { return typeof _e.ctx.niveauTrace === "function" ? _e.ctx.niveauTrace() : null; }
+  // Tracé existant du niveau visé (jonction : l'un de ses deux niveaux) ; jamais l'itinéraire calculé.
+  function _tracesExistants(niveau) {
+    const l = typeof _e.ctx.tracesExistants === "function" ? _e.ctx.tracesExistants() : [];
+    return l.filter(function (s) {
+      if (!s || s.type === "itinerary" || !Array.isArray(s.points) || s.points.length < 2) return false;
+      if (!_e.ctx.multi || niveau === null) return true;
+      if (s.type === "jonction") return s.fromLevel === niveau || s.toLevel === niveau;
+      return (Number.isInteger(s.level) ? s.level : 0) === niveau;
+    });
+  }
+  // Structures posées du niveau, obstacles du calcul : contours fermés et murs en ligne (jamais un front ni un arc).
+  function _obstaclesGaleries(niveau) {
+    const ligne = function (t) {
+      return typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t);
+    };
+    const out = [];
+    _e.ctx.existantes().forEach(function (s) {
+      if (!s || !Array.isArray(s.points) || _autreNiveau(s, niveau)) return;
+      if (s.type === "mur-ligne" && s.points.length >= 2) out.push({ points: s.points, ferme: false });
+      else if (!ligne(s.type) && s.points.length >= 3) out.push({ points: s.points, ferme: true });
+    });
+    return out;
+  }
+  // Types de tracé proposés : principal, secondaire, chemin (libellés de la légende) et types personnalisés ; jamais
+  // la jonction (deux niveaux) ni l'itinéraire.
+  function _typesTraces() {
+    const LC = window.LegendCustomization, out = [];
+    ["principal", "secondaire", "chemin"].forEach(function (t) {
+      let lib = null;
+      try {
+        if (LC && typeof LC.getSource === "function" && LC.getSource("traces", t) !== "default") {
+          lib = LC.getLabel("traces", t);
+        }
+      } catch (err) { lib = null; }
+      out.push({ id: t, libelle: lib || _t("ui.trace." + t) });   // libellés des boutons de l'outil Tracés
+    });
+    if (LC && typeof LC.listCustomEntries === "function") {
+      LC.listCustomEntries("traces").forEach(function (c) {
+        if (c && c.id) out.push({ id: c.id, libelle: c.label || c.id });
+      });
+    }
+    return out;
+  }
+  function _classesGaleries() {
+    const d = _e.deduits || _deduits();
+    return [{ id: "g", nature: "galerie", tolerance: d.tolerances.g || 22,
+              couleurs: _e.couleurs.g.map(function (q) { return q.rgb; }) }];
+  }
+  function _reglagesGaleriesBlocs() {
+    return { bloc: _e.bloc, galerie: true, obstacles: _obstaclesGaleries(_niveauTrace()) };
+  }
+  // Curseurs : bornes [min, max, pas] en mètres (plan à l'échelle connue) ou en px.
+  const CURSEURS_G = { simplification: { m: [0.1, 3, 0.1], px: [1, 30, 1] },
+                       brancheMin: { m: [0, 10, 0.5], px: [0, 100, 1] } };
+  function _valeurCurseurG(nom) {
+    const k = _pxParMG(), v = _e.reglagesG[nom];
+    return k ? Math.round((v / k) * 10) / 10 : Math.round(v);
+  }
+  function _texteCurseurG(nom) {
+    const v = _valeurCurseurG(nom);
+    return _pxParMG() ? window.formatDistance(v, 1) : v + " px";
+  }
+  function _curseursGaleries() {
+    const u = _pxParMG() ? "m" : "px";
+    return ["simplification", "brancheMin"].map(function (nom) {
+      const b = CURSEURS_G[nom][u];
+      return '<label class="kta-detect-curseur">' + _esc(_t("detect.galeries.curseur." + nom)) +
+        ' <input type="range" data-detect-galerie-curseur="' + nom + '" min="' + b[0] + '" max="' + b[1] +
+        '" step="' + b[2] + '" value="' + _valeurCurseurG(nom) + '"> <span class="kta-detect-valeur">' +
+        _esc(_texteCurseurG(nom)) + "</span></label>";
+    }).join("");
+  }
+  function _choixTypeGalerie() {
+    return '<label class="kta-detect-type">' + _esc(_t("detect.galeries.type")) +
+      ' <select data-detect-galerie-type>' + _typesTraces().map(function (ty) {
+        return '<option value="' + _esc(ty.id) + '"' + (_e.typeGalerie === ty.id ? " selected" : "") + ">" +
+          _esc(ty.libelle) + "</option>";
+      }).join("") + "</select></label>";
+  }
+  function _gardesGaleries() {
+    const a = _galeries() ? _e.apercu : null;
+    return a && a.galeries ? a.objets.length - a.retires.size : 0;
+  }
+  function _texteGaleries() {
+    const a = _e.apercu;
+    if (_e.etape === "remplir") return _t("detect.galeries.remplir.aide", { n: _gardesGaleries() });
+    return _t("detect.galeries.bilan", { n: a ? a.objets.length : 0, d: a ? a.deja : 0, a: a ? a.accroches : 0 }) +
+      " " + _t("detect.galeries.apercu.aide");
+  }
+  function _bandeauGaleries() {
+    if (_e.etape === "exemples") {
+      return '<span class="kta-racc-info">' +
+        _esc(_t(_e.pipette ? "detect.galeries.pipette" : "detect.galeries.exemples.aide")) + "</span>" +
+        '<div class="kta-racc-actions"><button type="button" class="kta-btn ' +
+        (_e.pipette === "g" ? "kta-btn-primary" : "kta-btn-ghost") + '" data-detect="pipette-g">' +
+        _esc(_t("detect.galeries.classe", { n: _e.couleurs.g.length })) + " " + _pastilles("g") + "</button>" +
+        _btn("effacer", "detect.exemples.effacer") + _btn("zone", "detect.exemples.suivant", "kta-btn-primary") +
+        '<button type="button" class="kta-btn kta-btn-ghost" data-detect="remplir">' +
+        window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" +
+        _btn("fermer", "detect.fermer") + "</div>";
+    }
+    const retour = _e.etape === "remplir" ? _btn("exemples", "detect.retour") : _btn("zone", "detect.recommencer");
+    return '<span class="kta-racc-info">' + _esc(_texteGaleries()) + "</span>" +
+      '<div class="kta-racc-actions">' + _curseursGaleries() + _choixTypeGalerie() + "</div>" +
+      '<div class="kta-racc-actions">' +
+      _btn("valider-galeries", "detect.valider", "kta-btn-primary", { n: _gardesGaleries() }) + retour +
+      _btn("fermer", "detect.fermer") + "</div>";
+  }
+  // Après un réglage : seuls le texte et « Ajouter » changent (refaire le bandeau lâcherait le curseur tenu).
+  function _majBilanGaleries() {
+    const b = _e && _e.bandeau;
+    if (!b) return;
+    const info = b.querySelector(".kta-racc-info"), valider = b.querySelector('[data-detect="valider-galeries"]');
+    if (info) info.textContent = _texteGaleries();
+    if (valider) {
+      valider.textContent = _t("detect.valider", { n: _gardesGaleries() });
+      valider.disabled = _gardesGaleries() === 0;
+    }
+  }
+  function _onCurseurGalerie(el) {
+    const nom = el.getAttribute("data-detect-galerie-curseur"), k = _pxParMG(), v = Number(el.value);
+    _e.reglagesG[nom] = k ? v * k : v;
+    const val = el.parentNode && el.parentNode.querySelector(".kta-detect-valeur");
+    if (val) val.textContent = _texteCurseurG(nom);
+    clearTimeout(_e.minuteur);
+    const e = _e;
+    _e.minuteur = setTimeout(function () {
+      if (_e !== e || !e.apercu) return;
+      _construireReseau(); _dessinerGaleries(); _majBilanGaleries();
+    }, RECALCUL_MS);
+  }
+  // Clé d'un tracé d'un calcul à l'autre (bouts à 2 px près) : un tracé retiré le reste quand un réglage bouge.
+  function _cleTrace(t) {
+    const a = t.points[0], b = t.points[t.points.length - 1], r = function (v) { return Math.round(v / 2); };
+    return [r(a.x), r(a.y), r(b.x), r(b.y)].join(",");
+  }
+  function _construireReseau() {
+    const niv = _niveauTrace(), ancien = _e.apercu && _e.apercu.galeries ? _e.apercu : null;
+    const res = window.KtaDetection.reseauGaleries(_e.axes, {
+      simplification: _e.reglagesG.simplification, brancheMin: _e.reglagesG.brancheMin,
+      existants: _tracesExistants(niv), obstacles: _obstaclesGaleries(niv)
+    });
+    const retiresCles = ancien ? ancien.retiresCles : new Set(), retires = new Set();
+    const objets = res.traces.map(function (t, i) {
+      const cle = _cleTrace(t);
+      if (retiresCles.has(cle)) retires.add(i);
+      return { points: t.points, accroches: t.accroches, cle: cle };
+    });
+    _e.apercu = { galeries: true, objets: objets, retires: retires, retiresCles: retiresCles, deja: res.deja,
+                  accroches: res.accroches };
+  }
+  function _dessinerGaleries() {
+    _viderCouche();
+    const a = _e.apercu, c = _couche();
+    if (!a) return;
+    a.objets.forEach(function (m, i) {
+      const pol = L.polyline(m.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); }), {
+        pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false, weight: 6,
+        className: "kta-detect-apercu kta-detect-trait kta-detect-galerie" +
+          (a.retires.has(i) ? " kta-detect-retire" : "")
+      });
+      pol.on("click", function () {
+        if (a.retires.has(i)) { a.retires.delete(i); a.retiresCles.delete(m.cle); }
+        else { a.retires.add(i); a.retiresCles.add(m.cle); }
+        _dessinerGaleries();
+        _majBilanGaleries();
+      });
+      pol.addTo(c);
+      [0, 1].forEach(function (k) {
+        if (!m.accroches[k]) return;
+        const p = k ? m.points[m.points.length - 1] : m.points[0];
+        L.circleMarker(_e.ctx.versCarte(p.x, p.y), { pane: "ktaDetection", renderer: _e.rendu, radius: 5,
+          className: "kta-detect-accroche", interactive: false }).addTo(c);
+      });
+    });
+  }
+  // Toucher sur une galerie déjà remplie : sur un axe gardé, à moins de son rayon.
+  function _dejaDansAxes(x, y) {
+    return _e.axes.some(function (ax) {
+      for (let i = 1; i < ax.length; i++) {
+        const a = ax[i - 1], b = ax[i], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+        const u = L2 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0;
+        if (Math.hypot(x - a.x - u * dx, y - a.y - u * dy) <= Math.max(a.r, b.r, 1)) return true;
+      }
+      return false;
+    });
+  }
+  // Remplir au clic dans une galerie : fenêtre de plus en plus grande autour du toucher, jusqu'à l'emprise (au-delà
+  // de FENETRE_REMPLIR_MAX px de côté, lue à résolution réduite) ; refus « ouvert » seulement sur toute l'emprise.
+  async function _remplirGalerieEn(x, y) {
+    if (_e.remplissage) return;
+    const e = _e, E = _emprise();
+    if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
+    if (_dejaDansAxes(x, y)) { _toast(_t("detect.remplir.dejaListe"), "warn"); return; }
+    e.remplissage = true;
+    try {
+      const grand = Math.max(E.x1 - E.x0, E.y1 - E.y0);
+      const passes = [[768, 1], [2048, 1],
+        grand <= FENETRE_REMPLIR_MAX ? [grand, 1] : [grand, FENETRE_REMPLIR_MAX / grand]];
+      let r = null;
+      for (let k = 0; k < passes.length; k++) {
+        const n = passes[k][0], ech = passes[k][1];
+        const x0 = Math.max(E.x0, Math.floor(x - n / 2)), y0 = Math.max(E.y0, Math.floor(y - n / 2));
+        const x1 = Math.min(E.x1, Math.ceil(x + n / 2)), y1 = Math.min(E.y1, Math.ceil(y + n / 2));
+        const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, ech);
+        if (_e !== e) return;
+        if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
+        r = window.KtaDetection.remplirGalerie(b, (x - x0) * ech, (y - y0) * ech, { x0: x0, y0: y0, echelle: ech,
+          obstacles: _obstaclesGaleries(_niveauTrace()) });
+        if (r.refus !== "ouvert" || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
+      }
+      if (r.refus) {
+        _toast(_t(r.refus === "ouvert" ? "detect.galeries.remplir.ouvert" : "detect.remplir.refus." + r.refus),
+          "warn");
+        return;
+      }
+      e.axes = e.axes.concat(r.axes);
+      _construireReseau();
+      _dessinerGaleries();
+      _majBandeau();
+    } catch (err) {
+      if (_e !== e) return;
+      if (err && err.name === REFUS) _toast(_t("detect.refus." + err.raison), "warn");
+      else if (!err || err.name !== "AbortError") {
+        console.warn("[Detection] remplissage de galerie :", err);
+        _toast(_t("detect.toast.echec"), "warn");
+      }
+    } finally {
+      e.remplissage = false;
+    }
+  }
+  // Valider : les tracés gardés, du type choisi, au niveau actif (multi-niveau), écrits par UN appel au contexte.
+  function _validerGaleries() {
+    const a = _e && _e.apercu;
+    if (!a || !a.galeries || _e.ctx.refuse()) return;
+    const type = _e.typeGalerie, niv = _niveauTrace(), poses = [];
+    a.objets.forEach(function (m, i) {
+      if (a.retires.has(i)) return;
+      const r = { type: type, points: m.points.map(function (p) { return { x: p.x, y: p.y }; }) };
+      if (niv !== null) r.level = niv;
+      window.KtaUid.ensure(r, "rd");
+      window.KtaUid.touch(r);
+      poses.push(r);
+    });
+    if (!poses.length) return;
+    _lacherExecuteur();
+    const ctx = _e.ctx, masques = ctx.poserTraces(poses) || 0;
+    fermer();
+    _toast(ctx.messagePosesTraces ? ctx.messagePosesTraces(poses.length) :
+      _t("detect.galeries.poses", { n: poses.length }), "success");
+    if (masques) _toast(_t("detect.galeries.masques", { n: masques }), "warn");
+  }
+
   // ── Ouverture / fermeture ──
-  function ouvrir(contexte) {
+  function ouvrir(contexte, options) {
     if (_e) return true;
     const ctx = contexte || contextePlan();
+    const cible = options && options.cible === "traces" ? "traces" : "structures";
     if (!ctx || !window.KtaDetection) return false;
+    if (cible === "traces" && typeof ctx.poserTraces !== "function") return false;
     if (ctx.refuse()) return false;
+    // type armé dans Tracés (lu avant ctx.entrer) : type de tracé proposé par la fenêtre des galeries
+    const typeRoute = window.modeRoad || null;
     // type armé dans Structures (lu avant ctx.entrer, qui désarme les outils) : type proposé par « Remplir au clic »
     const typeOuverture = window.modeStructure || null;
     ctx.entrer();
     _e = { ctx: ctx, etape: "exemples", couleurs: null, pipette: null, coins: [], couche: null, apercu: null,
            ctrl: null, progres: [0, 1], lectures: 0, recalculs: 0, ex: null, curseurs: null,
-           remplis: [], typeRemplir: null, typeOuverture: typeOuverture, remplissage: false };
+           remplis: [], typeRemplir: null, typeOuverture: typeOuverture, remplissage: false,
+           cible: cible, axes: [], reglagesG: null, typeGalerie: null };
     _e.couleurs = _lireCouleurs();
-    if (!_aDesExemples(_e.couleurs)) _e.pipette = "a";
+    if (cible === "traces") {
+      _e.reglagesG = window.KtaDetection.reglagesGaleries(ctx.pxParM ? ctx.pxParM() : null);
+      const ids = _typesTraces().map(function (t) { return t.id; });
+      _e.typeGalerie = ids.indexOf(typeRoute) >= 0 ? typeRoute : "principal";
+    }
+    if (!_aDesExemples(_e.couleurs)) _e.pipette = cible === "traces" ? "g" : "a";
     const b = document.createElement("div");
     b.id = "kta-detect-bandeau";
     b.className = "kta-racc-bandeau kta-detect-bandeau";
     b.setAttribute("role", "region");
-    b.setAttribute("aria-label", _t("detect.titre"));
+    b.setAttribute("aria-label", _t(cible === "traces" ? "detect.galeries.titre" : "detect.titre"));
     b.addEventListener("click", _onBandeau);
     b.addEventListener("change", _onType);
     b.addEventListener("input", _onCurseur);
@@ -853,13 +1191,23 @@ window.KtaDetectionUI = (function () {
   function etat() {
     if (!_e) return null;
     const a = _e.apercu;
-    return { etape: _e.etape, exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length, f: _e.couleurs.f.length },
+    const ga = _galeries() && a ? a : null;
+    return { etape: _e.etape, cible: _e.cible,
+             exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length, f: _e.couleurs.f.length,
+                         g: _e.couleurs.g.length },
              pipette: _e.pipette, coins: _e.coins.length, curseurs: _e.curseurs, lectures: _e.lectures,
              recalculs: _e.recalculs, recalculable: !!_e.recalculable, affiner: _affinerActif(),
              tolerances: _e.deduits && _e.curseurs ? _classes().reduce(function (o, c) {
                o[c.id] = c.tolerance; return o;
              }, {}) : null,
-             apercu: a ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
+             galeries: _galeries() ? { axes: _e.axes.length, type: _e.typeGalerie, types: _typesTraces().map(
+               function (t) { return t.id; }), reglages: Object.assign({}, _e.reglagesG), enCours: !!_e.remplissage,
+               n: ga ? ga.objets.length : 0, retires: ga ? ga.retires.size : 0, deja: ga ? ga.deja : 0,
+               accroches: ga ? ga.accroches : 0,
+               traces: ga ? ga.objets.filter(function (o, i) { return !ga.retires.has(i); }).map(function (o) {
+                 return o.points;
+               }) : [] } : null,
+             apercu: a && !ga ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
                            retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands,
                            ecartees: a.ecartees } : null,
              remplir: _e.etape === "remplir" ? { n: _remplisGardes().length, retires: _e.remplis.length -

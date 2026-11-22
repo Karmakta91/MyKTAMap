@@ -4,11 +4,14 @@
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
-// detectionGenerateur.js — « Détecter piliers et fronts » dans le Générateur (createConf.js) : le parcours de
-// detectionStructures.js sur l'image SOURCE, dans une fenêtre plein écran à mini-carte CRS.Simple.
+// detectionGenerateur.js — « Détecter piliers et fronts » et « Détecter les galeries » dans le Générateur
+// (createConf.js) : le parcours de detectionStructures.js sur l'image SOURCE, dans une fenêtre plein écran à
+// mini-carte CRS.Simple.
 // Expose : window.KtaDetectionGenerateur = { ouvrir(opts) → Promise<bool> (false : rien n'a pu s'ouvrir), APERCU_MAX }.
 //   opts = { image (File | Blob), multi, pxParM (nombre | null), cle (couleurs retenues), hote (fenêtre du
-//   Générateur), existantes(img) → (Promise de) structures déjà là en px SOURCE, poser(structures en px SOURCE) }.
+//   Générateur), existantes(img) → (Promise de) structures déjà là en px SOURCE, poser(structures en px SOURCE),
+//   cible ("traces" : fenêtre « Détecter les galeries »), existantesTraces(img) → (Promise de) tracés déjà là en px
+//   SOURCE, poserTraces(tracés en px SOURCE) }.
 // ⚠️ contrat : coordonnées en pixels de l'image SOURCE, non rognée ; l'appelant les met dans le repère du plan.
 // 🩸 Image décodée UNE fois (un élément Image, comme le tuilage), lue par drawImage bloc par bloc, rectangle source
 //   ramené dans l'image (Safari refuse un rectangle qui déborde). Aucun canvas pleine taille.
@@ -56,13 +59,15 @@ window.KtaDetectionGenerateur = (function () {
     const img = dec.img, W = img.naturalWidth, H = img.naturalHeight;
     const urlApercu = await _apercu(img);
     const existantes = opts.existantes ? ((await opts.existantes(img)) || []) : [];
+    const traces = opts.cible === "traces" && opts.existantesTraces ? ((await opts.existantesTraces(img)) || []) : [];
+    const titre = opts.cible === "traces" ? "detect.galeries.titre" : "gen.detect.titre";
 
     const ov = document.createElement("div");
     ov.className = "kta-detect-gen";
     ov.setAttribute("role", "dialog");
-    ov.setAttribute("aria-label", _t("gen.detect.titre"));
+    ov.setAttribute("aria-label", _t(titre));
     ov.innerHTML = '<div class="kta-readme-modal-header"><span class="kta-readme-modal-titre">' +
-      window.ktaIcone("search") + " " + window.ktaEsc(_t("gen.detect.titre")) + "</span>" +
+      window.ktaIcone("search") + " " + window.ktaEsc(_t(titre)) + "</span>" +
       '<button type="button" class="kta-panneau-close" data-detect-gen="fermer" aria-label="' +
       window.ktaEsc(_t("detect.fermer")) + '">✕</button></div><div class="kta-detect-gen-carte"></div>';
     document.body.appendChild(ov);
@@ -111,9 +116,14 @@ window.KtaDetectionGenerateur = (function () {
       entrer: function () {},
       sortir: toutFermer,
       poser: function (poses) { opts.poser(poses); return 0; },
-      messagePoses: function (n) { return _t("gen.detect.verses", { n: n }); }
+      messagePoses: function (n) { return _t("gen.detect.verses", { n: n }); },
+      // galeries : niveau 0 du plan généré (multi-niveau), sinon aucun champ de niveau
+      niveauTrace: function () { return opts.multi ? 0 : null; },
+      tracesExistants: function () { return traces; },
+      poserTraces: opts.poserTraces ? function (poses) { opts.poserTraces(poses); return 0; } : undefined,
+      messagePosesTraces: function (n) { return _t("gen.detect.galeries.verses", { n: n }); }
     };
-    if (!window.KtaDetectionUI.ouvrir(ctx)) { toutFermer(); return false; }
+    if (!window.KtaDetectionUI.ouvrir(ctx, { cible: opts.cible })) { toutFermer(); return false; }
     return ferme;
   }
 

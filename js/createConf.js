@@ -513,6 +513,9 @@ function afficherPlanner() {
             <button class="kta-btn kta-btn-ghost kta-planner-import-zip-btn" id="pl_detectStructures" type="button">
               ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.btn")}
             </button>
+            <button class="kta-btn kta-btn-ghost kta-planner-import-zip-btn" id="pl_detectGaleries" type="button">
+              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.galeries.bouton")}
+            </button>
             <div id="pl_detect_status" class="kta-tx-ok" style="display:none; margin-top:8px; font-size:12px;"></div>
           </div>
 
@@ -1047,6 +1050,8 @@ function afficherPlanner() {
   // Détecter piliers et fronts sur l'image source (js/detectionGenerateur.js).
   const detectBtn = document.getElementById("pl_detectStructures");
   if (detectBtn) detectBtn.addEventListener("click", function() { _detecterStructuresGenerateur(); });
+  const galeriesBtn = document.getElementById("pl_detectGaleries");
+  if (galeriesBtn) galeriesBtn.addEventListener("click", function() { _detecterStructuresGenerateur("traces"); });
 
   // Importer un calque de données ZIP (données + photos) exporté par la conversion session→data.
   const importZipBtn = document.getElementById("pl_importDataZip");
@@ -2511,7 +2516,18 @@ function _ajouterDataLayer(prefill) {
 //   de l'image SOURCE sur une ligne marquée (item._ktaDetecte), et _genererZip les décale du rognage réel, hors de la
 //   question du rognage (elles ne sont pas « saisies » par l'utilisateur).
 // Doublons : contre les structures de TOUS les calques de la page, ramenées en px source par le rognage prévu.
+// « Détecter les galeries » : même règles, calque à part « Tracés détectés » (DETECT_CALQUE_TRACES, format d'un
+// calque de tracés : { type: "roads", roads }), doublons contre les tracés de tous les calques.
 const DETECT_CALQUE = "structures-detectees";
+const DETECT_CALQUE_TRACES = "traces-detectees";
+// genre → id du calque, libellé, clé des objets dans le fichier, contenu vide, texte d'état
+const DETECT_GENRES = {
+  structures: { id: DETECT_CALQUE, libelle: "gen.detect.calque", cle: "structures", statut: "gen.detect.statut",
+                vide: function() { return { type: "structures", version: 1, data: [], structures: [] }; } },
+  traces: { id: DETECT_CALQUE_TRACES, libelle: "gen.detect.galeries.calque", cle: "roads",
+            statut: "gen.detect.galeries.statut",
+            vide: function() { return { type: "roads", version: 1, data: [], roads: [] }; } }
+};
 
 // Fichier qu'une ligne de calque de données écrira (même ordre que _genererZip).
 function _fichierLigneCalque(item) {
@@ -2528,7 +2544,9 @@ function _rognagePrevu(img, fichier) {
   const alpha = typeof window.ktaDetecterAlpha === "function" && window.ktaDetecterAlpha(img, fichier && fichier.type);
   return alpha ? null : _detectContentBBox(img);
 }
-async function _structuresDesCalques(rog) {
+// Objets de la clé `cle` ("structures" ou "roads") de tous les calques de la page, en px source.
+async function _structuresDesCalques(rog, cle) {
+  const champ = cle || "structures";
   const out = [];
   for (const item of document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item")) {
     const f = _fichierLigneCalque(item);
@@ -2536,47 +2554,53 @@ async function _structuresDesCalques(rog) {
     let d;
     try { d = JSON.parse(await f.text()); } catch (e) { continue; }   // calque non JSON : rien à comparer
     const dx = (item._ktaDetecte || !rog) ? 0 : rog.x, dy = (item._ktaDetecte || !rog) ? 0 : rog.y;
-    (Array.isArray(d.structures) ? d.structures : []).forEach(function(s) {
+    (Array.isArray(d[champ]) ? d[champ] : []).forEach(function(s) {
       if (!s || !Array.isArray(s.points)) return;
-      out.push({ type: s.type, level: s.level,
+      out.push({ type: s.type, level: s.level, fromLevel: s.fromLevel, toLevel: s.toLevel,
                  points: s.points.map(function(p) { return { x: p.x + dx, y: p.y + dy }; }) });
     });
   }
   return out;
 }
-// Verse les structures validées (px source) dans le calque « Structures détectées », créé au besoin.
-async function _verserDetectees(poses, rog) {
+// Verse les objets validés (px source) dans le calque détecté du genre (« Structures détectées » ou « Tracés
+// détectés »), créé au besoin ; une relance y ajoute.
+async function _verserDetectees(poses, rog, genre) {
+  const G = DETECT_GENRES[genre] || DETECT_GENRES.structures, g = DETECT_GENRES[genre] ? genre : "structures";
   const nouveau = _plannerMode !== "modifier";
   const list = document.getElementById("pl_dataLayers_list");
   const idDe = function(it) {
     return ((document.getElementById(it.dataset.layerId + "_id") || {}).value || "").trim();
   };
   const lignes = list ? Array.prototype.slice.call(list.querySelectorAll(".kta-planner-layer-item")) : [];
-  let item = lignes.find(function(it) { return nouveau ? !!it._ktaDetecte : idDe(it) === DETECT_CALQUE; });
+  let item = lignes.find(function(it) {
+    return nouveau ? !!it._ktaDetecte && (it._ktaDetecteGenre || "structures") === g : idDe(it) === G.id;
+  });
   if (!item) {
     const pris = new Set(lignes.map(idDe));
-    let id = DETECT_CALQUE, n = 2;
-    while (pris.has(id)) id = DETECT_CALQUE + "-" + (n++);
-    item = _ajouterDataLayer({ id: id, label: window.I18n.t("gen.detect.calque"), visible: true,
+    let id = G.id, n = 2;
+    while (pris.has(id)) id = G.id + "-" + (n++);
+    item = _ajouterDataLayer({ id: id, label: window.I18n.t(G.libelle), visible: true,
                                file: "data/" + id + ".json" });
     if (!item) return;   // 10 calques au plus : _ajouterDataLayer l'a dit
-    if (nouveau) item._ktaDetecte = true;
+    if (nouveau) { item._ktaDetecte = true; item._ktaDetecteGenre = g; }
   }
   const dx = (!nouveau && rog) ? rog.x : 0, dy = (!nouveau && rog) ? rog.y : 0;
   const neuves = poses.map(function(s) {
     return Object.assign({}, s, { points: s.points.map(function(p) { return { x: p.x - dx, y: p.y - dy }; }) });
   });
-  let contenu = { type: "structures", version: 1, data: [], structures: [] };
+  let contenu = G.vide();
   const f = _fichierLigneCalque(item);
   if (f) {
     try {
       const d = JSON.parse(await f.text());
       if (d && typeof d === "object") {
-        contenu = Object.assign(contenu, d, { structures: Array.isArray(d.structures) ? d.structures : [] });
+        const garde = {};
+        garde[G.cle] = Array.isArray(d[G.cle]) ? d[G.cle] : [];
+        contenu = Object.assign(contenu, d, garde);
       }
     } catch (e) { /* fichier illisible : remplacé par le calque détecté */ }
   }
-  contenu.structures = contenu.structures.concat(neuves);
+  contenu[G.cle] = contenu[G.cle].concat(neuves);
   const lid = item.dataset.layerId, nom = idDe(item) + ".json";
   _plannerOrigAssets[nom] = _fichierJsonMaj(nom, contenu);
   item.dataset.ktaFichier = nom;
@@ -2587,12 +2611,14 @@ async function _verserDetectees(poses, rog) {
   if (etiquette) etiquette.textContent = "📄 " + nom;
   const st = document.getElementById("pl_detect_status");
   if (st) {
-    st.textContent = window.I18n.t("gen.detect.statut",
-      { n: neuves.length, total: contenu.structures.length, calque: idDe(item) });
+    st.textContent = window.I18n.t(G.statut,
+      { n: neuves.length, total: contenu[G.cle].length, calque: idDe(item) });
     st.style.display = "";
   }
 }
-async function _detecterStructuresGenerateur() {
+// `genre` : absent = piliers et fronts ; "traces" = galeries (fenêtre « Détecter les galeries »).
+async function _detecterStructuresGenerateur(genre) {
+  const traces = genre === "traces";
   _plannerErreur("");
   if (!window.KtaDetectionGenerateur) return;
   const vierge = document.querySelector('input[name="pl_image_mode"][value="vierge"]');
@@ -2614,6 +2640,13 @@ async function _detecterStructuresGenerateur() {
     existantes: function(img) { rog = _rognagePrevu(img, image); return _structuresDesCalques(rog); },
     poser: function(poses) {
       _verserDetectees(poses, rog).catch(function(err) { console.warn("[Planner] calque détecté :", err); });
+    },
+    cible: traces ? "traces" : undefined,
+    existantesTraces: function() { return _structuresDesCalques(rog, "roads"); },
+    poserTraces: function(poses) {
+      _verserDetectees(poses, rog, "traces").catch(function(err) {
+        console.warn("[Planner] tracés détectés :", err);
+      });
     }
   });
   if (!ok) _plannerErreur(window.I18n.t("gen.detect.echec"));
