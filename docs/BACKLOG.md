@@ -149,21 +149,6 @@
 
 ## Entrant
 
-- **Transparence des calques image** — un curseur par calque image (filtres ou Réglages, et pendant son calage)
-  pour voir le plan ou l'autre niveau à travers, comme la transparence du fond OSM. Vérifié le 21/11/2026 : seule
-  l'image du plan a une transparence, fond OSM allumé (`fondOsmPlan.js`) ; aucune sur `_ktaImageOverlays`.
-  `qui: Claude · action: topo (où placer le curseur, retenu par plan) · fini: calque réglable et retenu, checkup vert · depuis: 21/11/2026 · taille: S`
-
-- **Détection : image lue sur un niveau** — un niveau sans calque image lit l'image du niveau 0 (piliers recopiés
-  au mauvais niveau, sans avertir) ; un calque masqué est lu quand même. Vérifié le 21/11/2026 dans
-  `tiling.js > ktaDessinerRegionPlan`. Reco : refus avec message, calques masqués ignorés.
-  `qui: Claude · action: lot Dev après le lot maxbounds · fini: refus sans calque, calque masqué non lu, checkup rouge puis vert · depuis: 21/11/2026 · taille: S`
-
-- **Détection : remplir au clic** — pot de peinture dans la fenêtre Détecter : clic dans une zone blanche cernée de
-  noir → type choisi (contour fermé), reste actif, aperçu puis un Valider ; trous du trait de 1-2 px fermés, sinon
-  refus « contour ouvert ». Décisions QCM 21/11/2026. Après le lot « image lue sur un niveau ».
-  `qui: Claude · action: brief Dev une fois les lots en cours finis · fini: remplissage, refus de fuite, checkup rouge puis vert · depuis: 21/11/2026 · taille: M`
-
 - **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
   fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
   fictifs : liseré noir de 2 px autour de l'image ; carrés de 3 × 3 px tous les 7 px autour d'un pilier.
