@@ -19,9 +19,12 @@
 // 1 à 2 px bouchés.
 // Affiner les contours (option `affiner` de remplir et des réglages, _affiner) : lissage en mètres, redressement en
 // rectangle des formes presque rectangles.
+// Galeries → tracés (section « Galeries ») : axes du masque d'une galerie (pipette : réglage `galerie` de detecter ;
+// remplirGalerie), bouché puis percé des structures posées, et reseauGaleries (un tracé par galerie, accroché).
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
 //   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE,
-//   remplir, REMPLIR, plafondRemplir, toleranceAffinage, AFFINER }.
+//   remplir, REMPLIR, plafondRemplir, toleranceAffinage, AFFINER, reseauGaleries, remplirGalerie,
+//   reglagesGaleries, GALERIES }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -373,6 +376,7 @@
   // bloc) dont il rend les masses ; `bords` = { g, h, d, b } vrai quand le côté du bloc est le bord du plan.
   // → { masses: [{ classe, points, aire, boite }], tropGrands: [{ classe, boite }], ignorees }
   function detecterBloc(o) {
+    if (o.reglages && o.reglages.galerie) return _galeriesBloc(o);
     const W = o.w, H = o.h, N = W * H, d = o.data, e = o.echelle || 1;
     const R = Math.max(1, Math.floor((o.reglages.ouverture * e) / 2));
     const aireMin = o.reglages.aireMin * e * e, eps = Math.max(0.5, o.reglages.simplification * e);
@@ -659,7 +663,12 @@
       }
       return [t0, t1];
     };
-    const at = function (a, b, t) { return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]; };
+    // troisième valeur (rayon d'une galerie, _axesMasque) interpolée comme les coordonnées
+    const at = function (a, b, t) {
+      const p = [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+      if (a.length > 2) p.push(a[2] + t * (b[2] - a[2]));
+      return p;
+    };
     const out = [];
     let cur = null;
     for (let i = 1; i < pts.length; i++) {
@@ -801,7 +810,7 @@
     for (let y = reg.y; y < reg.y + reg.h; y += pas) {
       for (let x = reg.x; x < reg.x + reg.w; x += pas) blocs.push([x, y]);
     }
-    const res = { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [], blocs: blocs.length };
+    const res = { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [], axes: [], blocs: blocs.length };
     for (let i = 0; i < blocs.length; i++) {
       if (opts.signal && opts.signal.aborted) throw Object.assign(new Error("annulé"), { name: "AbortError" });
       const cx = blocs[i][0], cy = blocs[i][1];
@@ -821,6 +830,7 @@
       res.ignorees += r.ignorees;
       res.ecartees += r.ecartees || 0;
       if (r.traits) res.traits.push.apply(res.traits, r.traits);
+      if (r.axes) res.axes.push.apply(res.axes, r.axes);
       if (r.garde) gardes++;
       if (opts.onProgres) opts.onProgres(i + 1, blocs.length);
     }
@@ -864,13 +874,15 @@
   }
   // Fusion des résultats de blocs (même règle que detecter).
   function _fusion(resultats, e) {
-    const res = { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [], blocs: resultats.length };
+    const res = { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [], axes: [],
+                  blocs: resultats.length };
     resultats.forEach(function (r) {
       res.masses.push.apply(res.masses, r.masses);
       res.tropGrands.push.apply(res.tropGrands, r.tropGrands);
       res.ignorees += r.ignorees;
       res.ecartees += r.ecartees || 0;
       if (r.traits) res.traits.push.apply(res.traits, r.traits);
+      if (r.axes) res.axes.push.apply(res.axes, r.axes);
     });
     res.traits = _raccorder(res.traits, Math.max(1.5, 2 / (e || 1)));
     return res;
@@ -1321,15 +1333,13 @@
     }
     return ajout;
   }
-  function remplir(b, px, py, o) {
-    o = o || {};
-    const W = b.w, H = b.h, d = b.data, N = W * H, e = o.echelle || 1;
+  // Trait autour d'un point touché (masque T, fermé en F) ; → { F, hors, g } ou { refus: "hors" | "trait" }.
+  function _murs(b, px, py, o) {
+    const W = b.w, H = b.h, d = b.data, N = W * H;
     px = Math.floor(px); py = Math.floor(py);
     if (px < 0 || py < 0 || px >= W || py >= H || d[(py * W + px) * 4 + 3] < 128) return { refus: "hors" };
     const tol = Number(o.tolerance) > 0 ? Number(o.tolerance) : REMPLIR.tolerance;
     const R = o.fermeture === undefined ? REMPLIR.fermeture : Math.max(0, Math.floor(o.fermeture));
-    const aireMax = Number(o.aireMax) > 0 ? Number(o.aireMax) * e * e : Math.floor(N / 4);
-    const coteMax = Number(o.coteMax) > 0 ? Number(o.coteMax) * e : Infinity;
     const cache = new Map();
     const lab = function (i) {
       const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
@@ -1367,13 +1377,17 @@
     //   (foncé) ou sur un pixel sombre du bord remplirait sinon un morceau du trait comme une zone.
     if (F[g] && !T[g] && F !== T && o.repli !== false && _coteClair(lab, labG, W, H, px, py)) F = T;
     if (F[g]) return { refus: "trait" };
-    // composante 4-connexe du fond fermé : `file` = ses pixels, `m` = son masque (contour)
-    const m = new Uint8Array(N), file = new Int32Array(N);
+    return { F: F, hors: hors, g: g };
+  }
+  // Composante 4-connexe du fond fermé F partie de g → { m (masque), n, premier, x0, y0, x1, y1 } ; null si elle
+  // touche le bord du bloc ou un pixel hors image (zone ouverte).
+  function _inonder(F, hors, W, H, g) {
+    const N = W * H, m = new Uint8Array(N), file = new Int32Array(N);
     let lu = 0, n = 0, premier = g, x0 = W, y0 = H, x1 = -1, y1 = -1;
     file[n++] = g; m[g] = 1;
     while (lu < n) {
       const q = file[lu++], qx = q % W, qy = (q - qx) / W;
-      if (hors[q] || qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) return { refus: "ouvert" };
+      if (hors[q] || qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) return null;
       if (q < premier) premier = q;
       if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
       const vois = [q - 1, q + 1, q - W, q + W];
@@ -1383,6 +1397,19 @@
         m[t] = 1; file[n++] = t;
       }
     }
+    return { m: m, n: n, premier: premier, x0: x0, y0: y0, x1: x1, y1: y1 };
+  }
+  function remplir(b, px, py, o) {
+    o = o || {};
+    const W = b.w, H = b.h, N = W * H, e = o.echelle || 1;
+    const aireMax = Number(o.aireMax) > 0 ? Number(o.aireMax) * e * e : Math.floor(N / 4);
+    const coteMax = Number(o.coteMax) > 0 ? Number(o.coteMax) * e : Infinity;
+    const mu = _murs(b, px, py, o);
+    if (mu.refus) return mu;
+    const F = mu.F, hors = mu.hors, z = _inonder(F, hors, W, H, mu.g);
+    if (!z) return { refus: "ouvert" };
+    const m = z.m;
+    let n = z.n, premier = z.premier, x0 = z.x0, y0 = z.y0, x1 = z.x1, y1 = z.y1;
     // 🩸 Plafond jugé APRÈS le remplissage : une fuite vers le bord est « ouverte », pas « trop grande »
     if (n > aireMax || x1 - x0 + 1 > coteMax || y1 - y0 + 1 > coteMax) return { refus: "tropGrand" };
     const cap = Math.max(1, Math.round((o.demiTrait === undefined ? REMPLIR.demiTrait : o.demiTrait) * e));
@@ -1412,12 +1439,639 @@
     };
   }
 
+  // ── Galeries → tracés (fenêtre « Détecter les galeries ») ──
+  // Deux sources, un moteur : pipette sur la couleur de la galerie (classe de nature "galerie", réglage `galerie`
+  // de detecter → _galeriesBloc) ou remplissage au clic jusqu'aux murs (remplirGalerie). Les deux rendent des AXES
+  // bruts (squelette du masque, rayon inscrit à chaque sommet) ; reseauGaleries en fait des tracés.
+  // ⚠️ contrat (décision produit) : avant le squelette, le masque est BOUCHÉ (_boucher : lettres, points de repère,
+  //   traits de rappel dans la galerie), puis les structures posées y sont percées (_percerObstacles) : le tracé les
+  //   contourne. Un seul tracé par galerie, long et simple ; branches courtes retirées ; deux réglages seulement
+  //   (simplification, branche minimale), en mètres à l'échelle du plan (reglagesGaleries).
+  // ⚠️ contrat (décision produit) : réseau existant jamais modifié ; une partie à moins de `doublon` px d'un tracé
+  //   existant est coupée ; un bout se pose EXACTEMENT sur un sommet existant à portée, sinon exactement sur le
+  //   segment (pied de T de l'itinéraire). Aucun sommet n'est posé sur un croisement.
+  const GALERIES = Object.freeze({ simplificationM: 0.5, brancheMinM: 1.5, repliSimplification: 3, repliBranche: 15,
+                                   doublon: 6, fermeture: 2, longueurBouchage: 4, longueurCoupure: 3, trouLargeur: 0.6,
+                                   angleSuite: 35, ergot: 2, fusion: 2.5 });
+  // Réglages par défaut en px du plan pour une échelle en px/m (absente : repli en px).
+  function reglagesGaleries(pxParM) {
+    const k = Number(pxParM);
+    if (k > 0) {
+      return { simplification: Math.round(GALERIES.simplificationM * k * 10) / 10,
+               brancheMin: Math.round(GALERIES.brancheMinM * k * 10) / 10 };
+    }
+    return { simplification: GALERIES.repliSimplification, brancheMin: GALERIES.repliBranche };
+  }
+  // Largeur typique d'une galerie du masque (px de bloc) : 2 × le 95e centile de la distance au bord.
+  function _largeurMasque(m, W, H, dist) {
+    const d = dist || _distance(m, W, H);
+    let max = 0, n = 0;
+    for (let i = 0; i < W * H; i++) if (d[i] > max) max = d[i];
+    if (!max) return 0;
+    const hist = new Uint32Array(max + 1);
+    for (let i = 0; i < W * H; i++) if (d[i]) { hist[d[i]]++; n++; }
+    let s = 0;
+    for (let v = 1; v <= max; v++) { s += hist[v]; if (s >= 0.95 * n) return (2 * v) / 3; }
+    return (2 * max) / 3;
+  }
+  // Composantes 8-connexes d'un masque → [{ px: [indices], x0, y0, x1, y1 }].
+  function _composantes8(c, W, H) {
+    const vu = new Uint8Array(W * H), out = [];
+    for (let p = 0; p < W * H; p++) {
+      if (!c[p] || vu[p]) continue;
+      const px = [p];
+      vu[p] = 1;
+      let x0 = W, y0 = H, x1 = -1, y1 = -1;
+      for (let k = 0; k < px.length; k++) {
+        const q = px[k], qx = q % W, qy = (q - qx) / W;
+        if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const x = qx + dx, y = qy + dy, t = y * W + x;
+          if (x < 0 || y < 0 || x >= W || y >= H || !c[t] || vu[t]) continue;
+          vu[t] = 1; px.push(t);
+        }
+      }
+      out.push({ px: px, x0: x0, y0: y0, x1: x1, y1: y1 });
+    }
+    return out;
+  }
+  // Boucher le masque d'une galerie : trous compacts plus petits que (trouLargeur × largeur)² (lettres, points),
+  // puis fermeture de rayon `fermeture` dont on ne garde que les ajouts COURTS (≤ longueurBouchage × largeur).
+  // 🩸 Un trait de rappel en travers d'une galerie est court (la largeur de la galerie) ; un mur fin entre deux
+  //   galeries parallèles court tout du long : la fermeture le comblait et soudait les deux galeries.
+  // 🩸 Un pilier dessiné, plus large que 0,6 × la galerie, reste un trou : le tracé le contourne.
+  function _boucher(m, W, H, e) {
+    const w = _largeurMasque(m, W, H);
+    if (!(w > 0)) return;
+    const N = W * H, cote = GALERIES.trouLargeur * w;
+    _comblerTrous(m, W, H, Math.round(cote * cote));
+    const R = Math.max(1, Math.round(GALERIES.fermeture * e)), tmp = new Uint8Array(N), c = new Uint8Array(N);
+    _passe(m, tmp, W, H, R, false);
+    _passe(tmp, c, W, H, R, true);
+    for (let i = 0; i < N; i++) c[i] = c[i] && !m[i] ? 1 : 0;
+    const L = GALERIES.longueurBouchage * w;
+    _composantes8(c, W, H).forEach(function (k) {
+      if (Math.max(k.x1 - k.x0 + 1, k.y1 - k.y0 + 1) <= L) k.px.forEach(function (q) { m[q] = 1; });
+    });
+  }
+  // Structures posées percées dans le masque (px du plan → px de bloc), avec 1,5 px de marge :
+  // obstacles = [{ points: [{x,y}], ferme }] (ferme : polygone ; sinon ligne).
+  function _percerObstacles(m, W, H, obstacles, x0, y0, e) {
+    (obstacles || []).forEach(function (ob) {
+      const P = (ob && ob.points || []).map(function (p) { return [(p.x - x0) * e, (p.y - y0) * e]; });
+      if (P.length < 2) return;
+      const ferme = ob.ferme !== false && P.length >= 3, marge = Math.max(1, 1.5 * e);
+      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+      P.forEach(function (p) {
+        if (p[0] < bx0) bx0 = p[0]; if (p[0] > bx1) bx1 = p[0]; if (p[1] < by0) by0 = p[1]; if (p[1] > by1) by1 = p[1];
+      });
+      const X0 = Math.max(0, Math.floor(bx0 - marge)), X1 = Math.min(W - 1, Math.ceil(bx1 + marge));
+      const Y0 = Math.max(0, Math.floor(by0 - marge)), Y1 = Math.min(H - 1, Math.ceil(by1 + marge));
+      const n = ferme ? P.length : P.length - 1;
+      for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+        const cx = x + 0.5, cy = y + 0.5;
+        let dedans = false, dmin = Infinity;
+        for (let i = 0; i < n; i++) {
+          const a = P[i], b = P[(i + 1) % P.length];
+          if (ferme && (a[1] > cy) !== (b[1] > cy) && cx < (b[0] - a[0]) * (cy - a[1]) / (b[1] - a[1]) + a[0]) {
+            dedans = !dedans;
+          }
+          const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+          const u = L2 ? Math.max(0, Math.min(1, ((cx - a[0]) * dx + (cy - a[1]) * dy) / L2)) : 0;
+          const dd = Math.hypot(cx - a[0] - u * dx, cy - a[1] - u * dy);
+          if (dd < dmin) dmin = dd;
+        }
+        if (dedans || dmin <= marge) m[y * W + x] = 0;
+      }
+    });
+  }
+  // Squelette du masque → axes [[{ x, y, r }]] en px du plan (r = rayon inscrit), découpés au cœur du bloc.
+  function _axesMasque(m, W, H, x0, y0, e, coeur) {
+    const dist = _distance(m, W, H), S = new Uint8Array(m);
+    _squelette(S, W, H);
+    const r1 = function (v) { return Math.round(v * 100) / 100; };
+    const out = [];
+    _chemins(S, W, H).forEach(function (t) {
+      const pts = t.ch.map(function (i) { const x = i % W; return [x + 0.5, (i - x) / W + 0.5, dist[i] / 3]; });
+      _decouper(_dp(pts, 0.75), coeur).forEach(function (mor) {
+        out.push(mor.map(function (q) { return { x: r1(x0 + q[0] / e), y: r1(y0 + q[1] / e), r: r1(q[2] / e) }; }));
+      });
+    });
+    return out;
+  }
+  // Un bloc en mode galerie (detecterBloc avec reglages.galerie) : masque de la couleur de la galerie, bouché,
+  // obstacles percés, axes.
+  function _galeriesBloc(o) {
+    const W = o.w, H = o.h, N = W * H, d = o.data, e = o.echelle || 1, rg = o.reglages;
+    const cl = o.classes.filter(function (c) { return c.nature === "galerie"; });
+    const classer = _tableClasses(cl.length ? cl : o.classes), m = new Uint8Array(N);
+    for (let i = 0, k = 0; i < N; i++, k += 4) m[i] = d[k + 3] >= 128 && classer(d[k], d[k + 1], d[k + 2]) ? 1 : 0;
+    if (rg.boucher !== false) _boucher(m, W, H, e);
+    _percerObstacles(m, W, H, rg.obstacles, o.x0, o.y0, e);
+    return { masses: [], tropGrands: [], ignorees: 0, ecartees: 0, traits: [],
+             axes: _axesMasque(m, W, H, o.x0, o.y0, e, o.coeur || { x: 0, y: 0, w: W, h: H }) };
+  }
+
+  // Remplir au clic dans une galerie de la couleur du fond, jusqu'aux murs, puis son axe.
+  // b, px, py : comme remplir ; o = { x0, y0, echelle, tolerance, fermeture, obstacles, boucher, rouvrir }.
+  // → { axes, aire } ou { refus: "hors" | "trait" | "ouvert" }. Pas de plafond de taille : une galerie s'étend
+  //   loin, seule une zone qui touche le bord du bloc lu (ouverte) est refusée.
+  function remplirGalerie(b, px, py, o) {
+    o = o || {};
+    const W = b.w, H = b.h, e = o.echelle || 1, x0 = o.x0 || 0, y0 = o.y0 || 0;
+    const mu = _murs(b, px, py, o);
+    if (mu.refus) return mu;
+    let z = _inonder(mu.F, mu.hors, W, H, mu.g);
+    if (!z) return { refus: "ouvert" };
+    if (o.rouvrir !== false) z = _rouvrirCoupures(mu, z, W, H, e);
+    if (o.boucher !== false) _boucher(z.m, W, H, e);
+    _percerObstacles(z.m, W, H, o.obstacles, x0, y0, e);
+    return { axes: _axesMasque(z.m, W, H, x0, y0, e, { x: 0, y: 0, w: W, h: H }), aire: z.n / (e * e) };
+  }
+  // Traits fins qui coupent TOUTE la galerie (trait de rappel d'un mur à l'autre) : le remplissage s'y arrête.
+  // Candidats = pixels du trait à moins de TRAIT_FIN px à la fois de la zone remplie et d'une zone libre FERMÉE
+  // (qui ne touche pas le bord du bloc : un mur entre la galerie et le fond extérieur n'est jamais candidat) ;
+  // par composante, la plus courte d'abord, ouverte si elle ne dépasse pas longueurCoupure × la largeur et que le
+  // nouveau remplissage reste fermé.
+  // 🩸 Un mur fin entre deux galeries parallèles est candidat aussi, mais long : jamais ouvert.
+  function _rouvrirCoupures(mu, z, W, H, e) {
+    const N = W * H, cap = Math.max(2, Math.round(TRAIT_FIN * e)), hors = mu.hors;
+    let F = mu.F;
+    for (let tour = 0; tour < 8; tour++) {
+      const m = z.m, lib = new Int32Array(N), bordLib = [0];
+      let nl = 0;
+      for (let p = 0; p < N; p++) {   // zones libres 4-connexes, marquées si elles touchent le bord
+        if (lib[p] || F[p] || m[p] || hors[p]) continue;
+        nl++; bordLib.push(0);
+        const file = [p];
+        lib[p] = nl;
+        for (let k = 0; k < file.length; k++) {
+          const q = file[k], qx = q % W, qy = (q - qx) / W;
+          if (qx === 0 || qy === 0 || qx === W - 1 || qy === H - 1) bordLib[nl] = 1;
+          const vois = [qx > 0 ? q - 1 : -1, qx < W - 1 ? q + 1 : -1, qy > 0 ? q - W : -1, qy < H - 1 ? q + W : -1];
+          for (let j = 0; j < 4; j++) {
+            const t = vois[j];
+            if (t < 0 || lib[t] || F[t] || m[t] || hors[t]) continue;
+            lib[t] = nl; file.push(t);
+          }
+        }
+      }
+      const dIn = _distDansTrait(F, W, H, function (q) { return m[q] === 1; }, 3 * cap);
+      const dOut = _distDansTrait(F, W, H, function (q) { return lib[q] > 0 && !bordLib[lib[q]]; }, 3 * cap);
+      const c = new Uint8Array(N);
+      for (let p = 0; p < N; p++) {
+        if (F[p] && dIn[p] > 0 && dOut[p] > 0 && dIn[p] + dOut[p] <= 3 * (cap + 1)) c[p] = 1;
+      }
+      const L = GALERIES.longueurCoupure * _largeurMasque(m, W, H);
+      const comps = _composantes8(c, W, H).filter(function (k) {
+        return Math.max(k.x1 - k.x0 + 1, k.y1 - k.y0 + 1) <= L;
+      }).sort(function (a, b) { return a.px.length - b.px.length; });
+      let ouvert = false;
+      for (let i = 0; i < comps.length && !ouvert; i++) {
+        const F2 = new Uint8Array(F);
+        comps[i].px.forEach(function (q) { F2[q] = 0; });
+        const z2 = _inonder(F2, hors, W, H, mu.g);
+        if (z2 && z2.n > z.n) { F = F2; z = z2; ouvert = true; }
+      }
+      if (!ouvert) break;
+    }
+    return z;
+  }
+  // Distance de chanfrein 3-4 DANS le trait F depuis les pixels `source` (0 à la source, -1 au-delà de `limite`).
+  function _distDansTrait(F, W, H, source, limite) {
+    const N = W * H, dist = new Int32Array(N).fill(-1), seaux = [[]];
+    for (let q = 0; q < N; q++) if (source(q)) { dist[q] = 0; seaux[0].push(q); }
+    for (let c = 0; c < seaux.length; c++) {
+      const seau = seaux[c];
+      if (!seau) continue;
+      for (let i = 0; i < seau.length; i++) {
+        const q = seau[i];
+        if (dist[q] !== c) continue;
+        const qx = q % W, qy = (q - qx) / W;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const x = qx + dx, y = qy + dy;
+          if ((!dx && !dy) || x < 0 || y < 0 || x >= W || y >= H) continue;
+          const t = y * W + x, nd = c + (dx && dy ? 4 : 3);
+          if (!F[t] || nd > limite || (dist[t] >= 0 && dist[t] <= nd)) continue;
+          dist[t] = nd; (seaux[nd] = seaux[nd] || []).push(t);
+        }
+      }
+    }
+    return dist;
+  }
+
+  // ── Réseau : axes bruts → tracés ──
+  // reseauGaleries(axes, o) ; o = { simplification, brancheMin (px du plan), doublon (px, défaut 6),
+  //   existants: [{ points }] (tracés du même niveau), obstacles: [{ points, ferme }] }.
+  // → { traces: [{ points: [{x,y}], accroches: [debut, fin] }], deja (parties coupées en doublon), accroches }.
+  // Étapes : graphe (bouts à moins de `fusion` px confondus : raccord des blocs), ergots et branches courtes,
+  //   nœuds proches fusionnés, petites boucles sans obstacle, enchaînement (degré 2, et à travers un carrefour sur
+  //   l'arête la plus droite), doublons, accroche, simplification qui ne coupe aucun obstacle.
+  function reseauGaleries(axes, o) {
+    o = o || {};
+    const eps = o.simplification > 0 ? o.simplification : GALERIES.repliSimplification;
+    const bmin = o.brancheMin >= 0 ? o.brancheMin : GALERIES.repliBranche;
+    const doublon = o.doublon > 0 ? o.doublon : GALERIES.doublon;
+    const obst = _preparerObstacles(o.obstacles);
+    const existants = (o.existants || []).filter(function (s) {
+      return s && Array.isArray(s.points) && s.points.length >= 2;
+    });
+    const g = _graphe(axes || []);
+    _elaguer(g, bmin);
+    _fusionnerNoeuds(g);
+    _elaguer(g, bmin);
+    _petitesBoucles(g, bmin, obst);
+    _elaguer(g, bmin);
+    const coupe = _sansDoublons(_enchainer(g), existants, doublon);
+    let accroches = 0;
+    const traces = [];
+    coupe.traces.forEach(function (t) {
+      const acc = [_accrocher(t.pts, 0, existants, doublon), _accrocher(t.pts, t.pts.length - 1, existants, doublon)];
+      const pts = _simplifierFixe(t.pts, t.fixes, eps, obst);
+      let L = 0;
+      for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      if (pts.length < 2 || (L < bmin && !(acc[0] && acc[1])) || L < 0.5) return;
+      if (acc[0]) accroches++;
+      if (acc[1]) accroches++;
+      traces.push({ points: pts.map(function (p) {
+        return p.exact ? { x: p.x, y: p.y } : { x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 };
+      }), accroches: acc });
+    });
+    return { traces: traces, deja: coupe.deja, accroches: accroches };
+  }
+  function _preparerObstacles(liste) {
+    return (liste || []).filter(function (ob) { return ob && Array.isArray(ob.points) && ob.points.length >= 2; })
+      .map(function (ob) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        ob.points.forEach(function (p) {
+          if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+        });
+        return { pts: ob.points, ferme: ob.ferme !== false && ob.points.length >= 3, x0: x0, y0: y0, x1: x1, y1: y1 };
+      });
+  }
+  function _longueur(pts) {
+    let L = 0;
+    for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    return L;
+  }
+  // Graphe { noeuds: [{ x, y, r, inc: Set(arêtes) }], aretes: [{ a, b, pts, vivante }] }.
+  function _graphe(axes) {
+    const noeuds = [], aretes = [], grille = new Map(), tol = GALERIES.fusion, C = 8;
+    const noeud = function (p) {
+      const cx = Math.floor(p.x / C), cy = Math.floor(p.y / C);
+      let best = -1, dmin = tol;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        (grille.get((cx + dx) + "," + (cy + dy)) || []).forEach(function (i) {
+          const d = Math.hypot(noeuds[i].x - p.x, noeuds[i].y - p.y);
+          if (d <= dmin) { dmin = d; best = i; }
+        });
+      }
+      if (best >= 0) { noeuds[best].r = Math.max(noeuds[best].r, p.r || 0); return best; }
+      noeuds.push({ x: p.x, y: p.y, r: p.r || 0, inc: new Set() });
+      const k = cx + "," + cy;
+      (grille.get(k) || grille.set(k, []).get(k)).push(noeuds.length - 1);
+      return noeuds.length - 1;
+    };
+    axes.forEach(function (ax) {
+      if (!Array.isArray(ax) || ax.length < 2) return;
+      const a = noeud(ax[0]), b = noeud(ax[ax.length - 1]);
+      if (a === b && _longueur(ax) < 3 * tol) return;   // éclat d'un carrefour du squelette
+      const id = aretes.length;
+      aretes.push({ a: a, b: b, pts: ax.slice(), vivante: true });
+      noeuds[a].inc.add(id); noeuds[b].inc.add(id);
+    });
+    const g = { noeuds: noeuds, aretes: aretes };
+    for (let i = 0; i < noeuds.length; i++) _fondre(g, i);
+    return g;
+  }
+  function _degre(g, n) {
+    let d = 0;
+    g.noeuds[n].inc.forEach(function (id) { const a = g.aretes[id]; d += a.a === a.b ? 2 : 1; });
+    return d;
+  }
+  function _retirer(g, id) {
+    const a = g.aretes[id];
+    a.vivante = false;
+    g.noeuds[a.a].inc.delete(id); g.noeuds[a.b].inc.delete(id);
+  }
+  // Points d'une arête orientés depuis le nœud n (bouts remplacés par la position des nœuds).
+  function _depuis(g, a, n) {
+    const p = a.a === n ? a.pts.slice() : a.pts.slice().reverse();
+    const na = g.noeuds[a.a === n ? a.a : a.b], nb = g.noeuds[a.a === n ? a.b : a.a];
+    p[0] = { x: na.x, y: na.y, r: na.r }; p[p.length - 1] = { x: nb.x, y: nb.y, r: nb.r };
+    return p;
+  }
+  // Nœud de degré 2 entre deux arêtes distinctes : les deux arêtes n'en font qu'une.
+  function _fondre(g, n) {
+    const inc = Array.from(g.noeuds[n].inc);
+    if (inc.length !== 2) return false;
+    const e1 = g.aretes[inc[0]], e2 = g.aretes[inc[1]];
+    if (e1.a === e1.b || e2.a === e2.b) return false;
+    const u = e1.a === n ? e1.b : e1.a, v = e2.a === n ? e2.b : e2.a;
+    const p1 = _depuis(g, e1, u), p2 = _depuis(g, e2, n);
+    _retirer(g, inc[0]); _retirer(g, inc[1]);
+    const id = g.aretes.length;
+    g.aretes.push({ a: u, b: v, pts: p1.concat(p2.slice(1)), vivante: true });
+    g.noeuds[u].inc.add(id); g.noeuds[v].inc.add(id);
+    return true;
+  }
+  // Ergots (bout libre sur un carrefour, plus court que brancheMin ou que `ergot` × le rayon du carrefour : il ne
+  // sort pas de la largeur de la galerie) et morceaux isolés courts ; du plus court au plus long, degrés relus à
+  // chaque retrait (deux ergots d'un même carrefour : le second devient la suite de la galerie).
+  function _elaguer(g, bmin) {
+    for (let tour = 0; tour < 50; tour++) {
+      const ids = [];
+      g.aretes.forEach(function (a, id) { if (a.vivante && a.a !== a.b) ids.push([_longueur(a.pts), id]); });
+      ids.sort(function (x, y) { return x[0] - y[0]; });
+      let change = false;
+      ids.forEach(function (c) {
+        const a = g.aretes[c[1]];
+        if (!a.vivante) return;
+        const da = _degre(g, a.a), db = _degre(g, a.b), L = c[0];
+        let retirer = false;
+        if (da === 1 && db === 1) retirer = L < bmin;
+        else if (da === 1 || db === 1) {
+          const j = da === 1 ? a.b : a.a;
+          if (_degre(g, j) >= 3) retirer = L < Math.max(bmin, GALERIES.ergot * g.noeuds[j].r);
+        }
+        if (!retirer) return;
+        _retirer(g, c[1]);
+        change = true;
+        _fondre(g, a.a); _fondre(g, a.b);
+      });
+      if (!change) break;
+    }
+  }
+  // Deux carrefours reliés par une arête plus courte que la somme de leurs rayons : un seul carrefour (milieu).
+  function _fusionnerNoeuds(g) {
+    for (let tour = 0; tour < 50; tour++) {
+      let change = false;
+      g.aretes.forEach(function (a, id) {
+        if (!a.vivante || a.a === a.b) return;
+        const A = g.noeuds[a.a], B = g.noeuds[a.b];
+        if (_degre(g, a.a) < 3 || _degre(g, a.b) < 3) return;
+        if (_longueur(a.pts) > Math.max(A.r + B.r, 3)) return;
+        _retirer(g, id);
+        A.x = (A.x + B.x) / 2; A.y = (A.y + B.y) / 2; A.r = Math.max(A.r, B.r);
+        Array.from(B.inc).forEach(function (k) {
+          const e = g.aretes[k];
+          if (e.a === a.b) e.a = a.a;
+          if (e.b === a.b) e.b = a.a;
+          B.inc.delete(k); A.inc.add(k);
+        });
+        change = true;
+      });
+      if (!change) break;
+    }
+    for (let i = 0; i < g.noeuds.length; i++) _fondre(g, i);
+  }
+  function _dansPolygone(p, pts) {
+    let d = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) d = !d;
+    }
+    return d;
+  }
+  function _aireXY(pts) {
+    let s = 0;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j].x + pts[i].x) * (pts[j].y - pts[i].y);
+    return Math.abs(s / 2);
+  }
+  // Boucle (arête sur elle-même, ou deux arêtes entre les mêmes nœuds) qui n'entoure aucun obstacle et d'aire sous
+  // (2 × brancheMin)² : un détour du squelette autour d'un reste de bruit ; la plus longue des deux part.
+  function _petitesBoucles(g, bmin, obst) {
+    const vide = function (poly) {
+      return !obst.some(function (ob) { return _dansPolygone(ob.pts[0], poly); }) && _aireXY(poly) < 4 * bmin * bmin;
+    };
+    g.aretes.forEach(function (a, id) {
+      if (a.vivante && a.a === a.b && vide(a.pts)) { _retirer(g, id); _fondre(g, a.a); }
+    });
+    const paires = new Map();
+    g.aretes.forEach(function (a, id) {
+      if (!a.vivante || a.a === a.b) return;
+      const k = Math.min(a.a, a.b) + "," + Math.max(a.a, a.b);
+      (paires.get(k) || paires.set(k, []).get(k)).push(id);
+    });
+    paires.forEach(function (ids) {
+      while (ids.length > 1) {
+        const e1 = g.aretes[ids[0]], e2 = g.aretes[ids[1]];
+        if (!vide(_depuis(g, e1, e1.a).concat(_depuis(g, e2, e1.b)))) break;
+        const plusLongue = _longueur(e1.pts) >= _longueur(e2.pts) ? 0 : 1;
+        const id = ids.splice(plusLongue, 1)[0], a = g.aretes[id];
+        _retirer(g, id); _fondre(g, a.a); _fondre(g, a.b);
+      }
+    });
+  }
+  // Tracés : chaque carrefour apparie ses arêtes par la suite la plus droite (déviation ≤ angleSuite) ; un tracé
+  // suit les arêtes appariées de bout en bout. → [{ pts: [{x,y,r}], fixes: Set(indices) }] (fixes : carrefours,
+  // jamais retirés par la simplification ni déplacés : une autre galerie y finit).
+  function _enchainer(g) {
+    const partenaire = new Map(), cle = function (id, n) { return id + ":" + n; };
+    g.noeuds.forEach(function (N, n) {
+      const inc = [];
+      N.inc.forEach(function (id) {
+        const a = g.aretes[id];
+        if (!a.vivante) return;
+        // une boucle arrive deux fois au nœud : par son début (bout 0) et par sa fin (bout 1)
+        const bouts = a.a === a.b ? [0, 1] : [a.a === n ? 0 : 1];
+        bouts.forEach(function (b) {
+          const p = b === 0 ? a.pts : a.pts.slice().reverse(), L = _longueur(p);
+          const cible = Math.min(L / 2, Math.max(2 * N.r, 6));
+          let s = 0, q = p[p.length - 1];
+          for (let i = 1; i < p.length; i++) {
+            s += Math.hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y);
+            if (s >= cible) { q = p[i]; break; }
+          }
+          inc.push({ k: id + ":" + b, ang: Math.atan2(q.y - N.y, q.x - N.x) });
+        });
+      });
+      if (inc.length < 3 && !(inc.length === 2 && N.inc.size === 1)) return;
+      const cand = [];
+      for (let i = 0; i < inc.length; i++) for (let j = i + 1; j < inc.length; j++) {
+        let d = Math.abs(inc[i].ang - inc[j].ang);
+        if (d > Math.PI) d = 2 * Math.PI - d;
+        const dev = Math.PI - d;   // 0 : les deux arêtes se prolongent en ligne droite
+        if (dev <= (GALERIES.angleSuite * Math.PI) / 180) cand.push([dev, i, j]);
+      }
+      cand.sort(function (x, y) { return x[0] - y[0]; });
+      const pris = new Set();
+      cand.forEach(function (c) {
+        if (pris.has(c[1]) || pris.has(c[2])) return;
+        pris.add(c[1]); pris.add(c[2]);
+        partenaire.set(inc[c[1]].k, inc[c[2]].k); partenaire.set(inc[c[2]].k, inc[c[1]].k);
+      });
+    });
+    const utilisee = new Set(), traces = [];
+    const marcher = function (id, b) {
+      const pts = [], fixes = new Set([0]);
+      let cur = id, bout = b;
+      while (cur !== null && !utilisee.has(cur)) {
+        utilisee.add(cur);
+        const a = g.aretes[cur], depuis = bout === 0 ? a.a : a.b;
+        let p = _depuis(g, a, depuis);
+        if (a.a === a.b && bout === 1) p = p.reverse();
+        if (pts.length) { fixes.add(pts.length - 1); p = p.slice(1); }
+        Array.prototype.push.apply(pts, p);
+        const suite = partenaire.get(cle(cur, 1 - bout));
+        if (!suite) break;
+        const s = suite.split(":");
+        cur = Number(s[0]); bout = Number(s[1]);
+      }
+      fixes.add(pts.length - 1);
+      traces.push({ pts: pts, fixes: fixes });
+    };
+    g.aretes.forEach(function (a, id) {
+      if (!a.vivante || utilisee.has(id)) return;
+      // départ par un bout sans partenaire : le tracé le plus long possible
+      if (!partenaire.has(cle(id, 0))) marcher(id, 0);
+      else if (!partenaire.has(cle(id, 1))) marcher(id, 1);
+    });
+    g.aretes.forEach(function (a, id) { if (a.vivante && !utilisee.has(id)) marcher(id, 0); });   // cycles
+    return traces;
+  }
+  // Grille des segments existants (cellules de 32 px) → candidats d'un point à distance ≤ rayon.
+  function _grilleExistants(existants) {
+    const C = 32, g = new Map(), segs = [];
+    existants.forEach(function (s) {
+      for (let i = 1; i < s.points.length; i++) {
+        const a = s.points[i - 1], b = s.points[i], id = segs.length;
+        segs.push([a, b]);
+        for (let y = Math.floor(Math.min(a.y, b.y) / C); y <= Math.floor(Math.max(a.y, b.y) / C); y++) {
+          for (let x = Math.floor(Math.min(a.x, b.x) / C); x <= Math.floor(Math.max(a.x, b.x) / C); x++) {
+            const k = x + "," + y;
+            (g.get(k) || g.set(k, []).get(k)).push(id);
+          }
+        }
+      }
+    });
+    return {
+      segs: segs,
+      autour: function (p, r) {
+        const vus = new Set();
+        for (let y = Math.floor((p.y - r) / C); y <= Math.floor((p.y + r) / C); y++) {
+          for (let x = Math.floor((p.x - r) / C); x <= Math.floor((p.x + r) / C); x++) {
+            (g.get(x + "," + y) || []).forEach(function (id) { vus.add(id); });
+          }
+        }
+        return Array.from(vus).map(function (id) { return segs[id]; });
+      }
+    };
+  }
+  function _projSeg(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+    const u = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L)) : 0;
+    const q = { x: a.x + u * dx, y: a.y + u * dy };
+    return { q: q, d: Math.hypot(p.x - q.x, p.y - q.y) };
+  }
+  // Parties d'un tracé à moins de `doublon` px d'un tracé existant : coupées (tracé densifié au pas de 2 px).
+  // → { traces, deja (parties coupées) }.
+  function _sansDoublons(traces, existants, doublon) {
+    if (!existants.length) return { traces: traces, deja: 0 };
+    const G = _grilleExistants(existants), out = [];
+    let deja = 0;
+    traces.forEach(function (t) {
+      const P = [], F = [];   // points densifiés, fixe ou non
+      for (let i = 0; i < t.pts.length; i++) {
+        if (i) {
+          const a = t.pts[i - 1], b = t.pts[i], n = Math.floor(Math.hypot(b.x - a.x, b.y - a.y) / 2);
+          for (let k = 1; k < n; k++) {
+            P.push({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n, r: a.r + ((b.r - a.r) * k) / n });
+            F.push(false);
+          }
+        }
+        P.push(t.pts[i]); F.push(t.fixes.has(i));
+      }
+      const pris = P.map(function (p) {
+        return G.autour(p, doublon).some(function (s) { return _projSeg(p, s[0], s[1]).d <= doublon; });
+      });
+      let cur = null;
+      for (let i = 0; i <= P.length; i++) {
+        if (i < P.length && !pris[i]) {
+          if (!cur) cur = { pts: [], fixes: new Set() };
+          if (F[i]) cur.fixes.add(cur.pts.length);
+          cur.pts.push(P[i]);
+          continue;
+        }
+        if (i < P.length && (i === 0 || !pris[i - 1])) deja++;
+        if (cur && cur.pts.length >= 2) {
+          cur.fixes.add(0); cur.fixes.add(cur.pts.length - 1);
+          out.push(cur);
+        }
+        cur = null;
+      }
+    });
+    return { traces: out, deja: deja };
+  }
+  // Bout k d'un tracé posé sur l'existant à portée (max(1,5 × doublon, rayon + doublon)) : sommet existant, sinon
+  // projection sur le segment le plus proche. Le point devient `exact` (jamais arrondi). → vrai si accroché.
+  function _accrocher(pts, k, existants, doublon) {
+    if (!existants.length) return false;
+    const p = pts[k], tol = Math.max(1.5 * doublon, (p.r || 0) + doublon);
+    let best = null;
+    existants.forEach(function (s) {
+      s.points.forEach(function (q) {
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (d <= tol && (!best || d < best.d)) best = { d: d, x: q.x, y: q.y };
+      });
+    });
+    if (!best) {
+      existants.forEach(function (s) {
+        for (let i = 1; i < s.points.length; i++) {
+          const r = _projSeg(p, s.points[i - 1], s.points[i]);
+          if (r.d <= tol && (!best || r.d < best.d)) best = { d: r.d, x: r.q.x, y: r.q.y };
+        }
+      });
+    }
+    if (!best) return false;
+    pts[k] = { x: best.x, y: best.y, r: p.r, exact: true };
+    return true;
+  }
+  function _segCoupeObstacle(a, b, obst) {
+    const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+    const sens = function (p, q, r) { return Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)); };
+    return obst.some(function (ob) {
+      if (ob.x1 < x0 || ob.x0 > x1 || ob.y1 < y0 || ob.y0 > y1) return false;
+      const P = ob.pts, n = ob.ferme ? P.length : P.length - 1;
+      for (let i = 0; i < n; i++) {
+        const c = P[i], d = P[(i + 1) % P.length];
+        if (sens(a, b, c) !== sens(a, b, d) && sens(c, d, a) !== sens(c, d, b)) return true;
+      }
+      return ob.ferme && _dansPolygone({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, P);
+    });
+  }
+  // Douglas-Peucker entre deux sommets fixes ; un segment qui couperait un obstacle garde son point le plus loin.
+  function _simplifierFixe(pts, fixes, eps, obst) {
+    const garder = new Uint8Array(pts.length), bornes = [];
+    for (let i = 0; i < pts.length; i++) {
+      if (i === 0 || i === pts.length - 1 || fixes.has(i)) { garder[i] = 1; bornes.push(i); }
+    }
+    for (let k = 1; k < bornes.length; k++) {
+      const pile = [[bornes[k - 1], bornes[k]]];
+      while (pile.length) {
+        const s = pile.pop(), a = s[0], b = s[1];
+        if (b - a < 2) continue;
+        const A = pts[a], B = pts[b], L = Math.hypot(B.x - A.x, B.y - A.y);
+        let m = (a + b) >> 1, dm = -1;
+        for (let i = a + 1; i < b; i++) {
+          const d = L ? Math.abs((B.x - A.x) * (A.y - pts[i].y) - (A.x - pts[i].x) * (B.y - A.y)) / L
+            : Math.hypot(pts[i].x - A.x, pts[i].y - A.y);
+          if (d > dm) { dm = d; m = i; }
+        }
+        if (dm > eps || _segCoupeObstacle(A, B, obst)) { garder[m] = 1; pile.push([a, m], [m, b]); }
+      }
+    }
+    return pts.filter(function (_, i) { return garder[i]; });
+  }
+
   const api = { detecter: detecter, detecterBloc: detecterBloc, depuisMetres: depuisMetres, REGLAGES: REGLAGES,
                 executeurWorker: executeurWorker, executeurLocal: executeurLocal, recalculer: recalculer,
                 mesurerExemple: mesurerExemple, reglagesDepuisExemples: reglagesDepuisExemples,
                 reglagesPourTaille: reglagesPourTaille, rgbVersLab: rgbVersLab, deltaE: deltaE,
                 remplir: remplir, REMPLIR: REMPLIR, plafondRemplir: plafondRemplir,
-                toleranceAffinage: toleranceAffinage, AFFINER: AFFINER, _magasin: _magasin };
+                toleranceAffinage: toleranceAffinage, AFFINER: AFFINER, _magasin: _magasin,
+                reseauGaleries: reseauGaleries, remplirGalerie: remplirGalerie, reglagesGaleries: reglagesGaleries,
+                GALERIES: GALERIES };
   racine.KtaDetection = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : globalThis);

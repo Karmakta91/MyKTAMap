@@ -321,6 +321,83 @@ const _aireP = p => Math.abs(p.reduce((s, a, i) => {
 }, 0)) / 2;
 const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
 
+// ── Galeries → tracés ── (mesures du réseau : scripts/smoke/scene-galeries.js > mesurerReseau)
+async function verifierGaleries() {
+  const sceneGaleries = require(path.join(__dirname, "smoke", "scene-galeries.js"));
+  const sc = sceneGaleries(), mesurerReseau = sceneGaleries.mesurerReseau;
+  const img = { W: sc.W, H: sc.H, data: sc.data };
+  const api = ["reseauGaleries", "remplirGalerie", "reglagesGaleries"].filter(k => typeof D[k] !== "function");
+  t("galeries : API exposée (reseauGaleries, remplirGalerie, reglagesGaleries)", !api.length, api);
+  if (api.length) return;
+  const rg = D.reglagesGaleries(10);   // 10 px/m : simplification 0,5 m, branche minimale 1,5 m
+  t("galeries : réglages en mètres → px (branche 1,5 m = 15 px à 10 px/m), repli sans échelle",
+    rg.brancheMin === 15 && rg.simplification === 5 && D.reglagesGaleries(null).brancheMin > 0, rg);
+  const obstacles = [{ points: sc.pilier, ferme: true }];
+  const gris = extra => D.detecter({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: 320, h: sc.H },
+    limites: { w: sc.W, h: sc.H }, classes: [{ id: "g", nature: "galerie", couleurs: [sc.gris], tolerance: 20 }],
+    reglages: Object.assign({ galerie: true, obstacles: obstacles, bloc: 256, marge: 64 }, extra || {}) });
+  const res = await gris();
+  t("galeries (pipette) : des axes bruts rendus par les blocs", Array.isArray(res.axes) && res.axes.length > 0,
+    res.axes && res.axes.length);
+  const opts = Object.assign({ existants: [sc.existant], obstacles: obstacles }, rg);
+  const R = D.reseauGaleries(res.axes || [], opts), m = mesurerReseau(R.traces, sc);
+  t("galeries grises : 4 à 7 tracés longs (un par galerie), aucun sous 1,5 m", m.n >= 4 && m.n <= 7 && !m.courts, m);
+  t("galeries grises : zéro étoile (aucun bout au texte ni au trait de rappel, degré ≤ 4)", !m.coupes &&
+    m.degreMax <= 4, m);
+  t("galeries grises : réseau connexe avec le tracé existant", m.composantes === 1, m);
+  t("galeries grises : zéro doublon du tracé existant", m.doublons === 0, m);
+  t("galeries grises : pilier posé contourné (aucun segment ne le coupe)", m.pilier === 0, m);
+  t("galeries grises : bouts accrochés EXACTEMENT au sommet existant du carrefour (≥ 2)", m.raccordExact >= 2, m);
+  // le tracé coupe la verticale x = X à une ordonnée qui vérifie `ok`
+  const traverse = (tr, X, ok) => tr.points.some((p, i) => i > 0 && (p.x - X) * (tr.points[i - 1].x - X) <= 0 &&
+    p.x !== tr.points[i - 1].x && ok(p.y + (X - p.x) * (tr.points[i - 1].y - p.y) / (tr.points[i - 1].x - p.x)));
+  const verticale = R.traces.find(tr => tr.points.some(p => Math.abs(p.x - 152) < 4 && p.y < 110) &&
+    tr.points.some(p => Math.abs(p.x - 152) < 4 && p.y > 318));
+  t("galeries grises : la galerie verticale est UN tracé, du carrefour à la galerie basse", !!verticale);
+  t("galeries grises : boucle autour du pilier gardée (le tracé passe des deux côtés)",
+    R.traces.some(tr => traverse(tr, 246, y => y < 185) && traverse(tr, 246, y => y > 215)));
+  t("galeries grises : existant jamais modifié", sc.existant.points.length === 2 &&
+    sc.existant.points[1].x === 152 && sc.existant.points[1].y === 92);
+  // contre-épreuves : sans bouchage, le trait de rappel coupe la galerie ; sans obstacles, le pilier est traversé
+  const sansBouchage = D.reseauGaleries((await gris({ boucher: false })).axes || [], opts);
+  t("contre-épreuve : sans bouchage, des bouts au trait de rappel ou au texte",
+    mesurerReseau(sansBouchage.traces, sc).coupes > 0, mesurerReseau(sansBouchage.traces, sc));
+  const sansObs = D.reseauGaleries((await gris({ obstacles: [] })).axes || [],
+    Object.assign({}, opts, { obstacles: [] }));
+  t("contre-épreuve : sans obstacle, un tracé traverse le pilier", mesurerReseau(sansObs.traces, sc).pilier > 0,
+    mesurerReseau(sansObs.traces, sc));
+  const sansExistant = D.reseauGaleries(res.axes || [], Object.assign({}, opts, { existants: [] }));
+  t("contre-épreuve : sans existant, des doublons (la moitié gauche est retracée)",
+    mesurerReseau(sansExistant.traces, sc).doublons > 0);
+  const fin = D.reseauGaleries(res.axes || [], Object.assign({}, opts, { simplification: 0.6 }));
+  const nb = r => r.traces.reduce((s, tr) => s + tr.points.length, 0);
+  t("galeries : simplification plus fine → plus de sommets, pilier toujours contourné",
+    nb(fin) > nb(R) && mesurerReseau(fin.traces, sc).pilier === 0, [nb(fin), nb(R)]);
+  const branche = D.reseauGaleries(res.axes || [], Object.assign({}, opts, { brancheMin: 400 }));
+  t("galeries : branche minimale énorme → les impasses disparaissent", branche.traces.length < R.traces.length,
+    [branche.traces.length, R.traces.length]);
+
+  // Remplir au clic dans une galerie blanche (couleur du fond) entre deux traits
+  const b = { data: sc.data, w: sc.W, h: sc.H };
+  const rb = D.remplirGalerie(b, sc.clicBlanc.x, sc.clicBlanc.y, { x0: 0, y0: 0, echelle: 1 });
+  t("remplir galerie blanche : axes rendus (pas de refus)", rb && !rb.refus && rb.axes.length > 0, rb && rb.refus);
+  if (rb && rb.axes) {
+    const Rb = D.reseauGaleries(rb.axes, Object.assign({}, rg, { existants: [], obstacles: [] }));
+    const mb = mesurerReseau(Rb.traces, Object.assign({}, sc, { existant: { points: [{ x: -99, y: -99 },
+      { x: -98, y: -99 }] } }));
+    t("remplir galerie blanche : 2 tracés en T, connexes, sans bout au texte ni au trait de rappel",
+      Rb.traces.length === 2 && mb.composantes === 2 && !mb.coupes, { n: Rb.traces.length, mb });
+    t("remplir galerie blanche : la branche verticale passe le trait de rappel (jusqu'à y > 280)",
+      Rb.traces.some(tr => tr.points.some(p => p.y > 280)));
+    t("remplir galerie blanche : rien hors des murs (x 330..570, y 100..300)", Rb.traces.every(tr =>
+      tr.points.every(p => p.x >= 330 && p.x <= 570 && p.y >= 100 && p.y <= 300)));
+  }
+  const ro = D.remplirGalerie(b, 600, 360, { x0: 0, y0: 0, echelle: 1 });
+  t("remplir galerie : toucher sur le fond ouvert → refus « ouvert »", ro && ro.refus === "ouvert", ro);
+  const rt = D.remplirGalerie(b, 452, 220, { x0: 0, y0: 0, echelle: 1 });
+  t("remplir galerie : toucher sur le trait de rappel → refus « trait »", rt && rt.refus === "trait", rt && rt.refus);
+}
+
 (async function main() {
   // ── Couleurs ──
   t("ΔE : une couleur est à 0 d'elle-même", D.deltaE(D.rgbVersLab(10, 200, 30), D.rgbVersLab(10, 200, 30)) === 0);
@@ -1092,6 +1169,9 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
     t("région plus grande que les limites : ramenée dedans, mêmes 2 masses", rc.masses.length === 2 &&
       rc.blocs === rl.blocs, { n: rc.masses.length, blocs: [rc.blocs, rl.blocs] });
   }
+
+  // ── Galeries → tracés (planche scripts/smoke/scene-galeries.js) ──
+  await verifierGaleries();
 
   // ── Pas de DOM dans le moteur ──
   const moteur = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8")
