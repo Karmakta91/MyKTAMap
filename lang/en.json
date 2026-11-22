@@ -336,6 +336,7 @@
   "detect.galeries.pipette": "Tap the inside of a gallery on the map.",
   "detect.galeries.poses": "{n} path(s) added. A single “Undo” removes them all.",
   "detect.galeries.remplir.aide": "Tap the inside of each gallery: its centre line is added to the preview ({n} paths). Tap a path to remove it or put it back.",
+  "detect.galeries.remplir.large": "Area much wider than a gallery (probably the background around the map): tap the inside of a gallery.",
   "detect.galeries.remplir.ouvert": "Open gallery (it reaches the background or the edge of the image): draw it by hand.",
   "detect.galeries.titre": "Detect galleries",
   "detect.galeries.toast.surFond": "That is the background: tap the inside of a coloured gallery, or use Fill on tap.",

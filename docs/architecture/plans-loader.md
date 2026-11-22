@@ -1095,7 +1095,10 @@ squelette) : compléter un plan à moitié tracé, en tracés routables, sans do
   - REMPLIR AU CLIC dans une galerie blanche entre deux murs (couleur du fond) : `remplirGalerie`, le remplissage
     de `remplir` (`_murs`, `_inonder`) sans plafond de taille, jusqu'aux murs, puis le même squelette. La page
     agrandit la fenêtre lue (768, 2 048 px, puis toute l'emprise, à résolution réduite au-delà de 4 096 px) ; refus
-    « ouvert » seulement si la zone touche encore le bord de l'emprise. Un trait fin qui coupe TOUTE la galerie
+    « ouvert » seulement si la zone touche encore le bord de l'emprise ; refus « large » quand la largeur médiane
+    de la zone dépasse 8 m (80 px sans échelle) : 🩸 sur un plan dans un cadre, toucher le fond entre le plan et le
+    cadre remplissait tout le fond, galeries ouvertes comprises (essai sur un relevé réel au trait). Un trait fin qui
+    coupe TOUTE la galerie
     (trait de rappel d'un mur à l'autre) est rouvert (`_rouvrirCoupures`) : pixels du trait à moins de 4 px à la
     fois de la zone remplie et d'une zone libre FERMÉE, composante plus courte que 3 × la largeur de la galerie,
     gardée si le nouveau remplissage reste fermé. 🩸 Un mur entre la galerie et le fond extérieur n'est jamais
@@ -1112,7 +1115,9 @@ squelette) : compléter un plan à moitié tracé, en tracés routables, sans do
   page : un réglage bougé recalcule sans relire l'image) : graphe (bouts à 2,5 px confondus : raccord des blocs) →
   ergots retirés (bout libre plus court que la branche minimale ou que 2 × le rayon du carrefour : il ne sort pas de
   la largeur de la galerie ; du plus court au plus long, degrés relus) → carrefours reliés par une arête plus courte
-  que la somme de leurs rayons fusionnés → petites boucles sans obstacle (aire < (2 × branche minimale)²) retirées →
+  que la somme de leurs rayons fusionnés, sans s'éloigner de plus du plus grand rayon de leur place d'origine (🩸
+  fusionnées de proche en proche, les grappes d'une zone bruitée dérivaient et partaient en étoile à travers les
+  murs) → petites boucles sans obstacle (aire < (2 × branche minimale)²) retirées →
   enchaînement : degré 2, et à travers un carrefour sur l'arête la plus droite (déviation ≤ 35°), pour UN tracé
   long par galerie ; les autres galeries finissent sur son sommet (sommet fixe, jamais simplifié) → doublons →
   accroche → Douglas-Peucker entre sommets fixes. Branches plus courtes que la branche minimale retirées.

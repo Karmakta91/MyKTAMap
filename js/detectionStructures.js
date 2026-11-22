@@ -1069,12 +1069,13 @@ window.KtaDetectionUI = (function () {
         if (_e !== e) return;
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
         r = window.KtaDetection.remplirGalerie(b, (x - x0) * ech, (y - y0) * ech, { x0: x0, y0: y0, echelle: ech,
-          obstacles: _obstaclesGaleries(_niveauTrace()) });
+          obstacles: _obstaclesGaleries(_niveauTrace()), pxParM: _pxParMG() });
         if (r.refus !== "ouvert" || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
       }
       if (r.refus) {
-        _toast(_t(r.refus === "ouvert" ? "detect.galeries.remplir.ouvert" : "detect.remplir.refus." + r.refus),
-          "warn");
+        const cle = r.refus === "ouvert" || r.refus === "large" ? "detect.galeries.remplir." + r.refus
+          : "detect.remplir.refus." + r.refus;
+        _toast(_t(cle), "warn");
         return;
       }
       e.axes = e.axes.concat(r.axes);

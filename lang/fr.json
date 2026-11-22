@@ -336,6 +336,7 @@
   "detect.galeries.pipette": "Touchez l'intérieur d'une galerie sur la carte.",
   "detect.galeries.poses": "{n} tracé(s) ajouté(s). Un seul « Annuler » les retire tous.",
   "detect.galeries.remplir.aide": "Touchez l'intérieur de chaque galerie : son axe s'ajoute à l'aperçu ({n} tracés). Touchez un tracé pour le retirer ou le remettre.",
+  "detect.galeries.remplir.large": "Zone bien plus large qu'une galerie (sans doute le fond autour du plan) : touchez l'intérieur d'une galerie.",
   "detect.galeries.remplir.ouvert": "Galerie ouverte (elle rejoint le fond ou le bord de l'image) : tracez-la à la main.",
   "detect.galeries.titre": "Détecter les galeries",
   "detect.galeries.toast.surFond": "Là, c'est le fond : touchez l'intérieur d'une galerie de couleur, ou utilisez Remplir au clic.",

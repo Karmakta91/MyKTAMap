@@ -392,6 +392,16 @@ async function verifierGaleries() {
     t("remplir galerie blanche : rien hors des murs (x 330..570, y 100..300)", Rb.traces.every(tr =>
       tr.points.every(p => p.x >= 330 && p.x <= 570 && p.y >= 100 && p.y <= 300)));
   }
+  // plan dans un cadre : toucher le fond entre le plan et le cadre n'est pas remplir une galerie
+  const cadre = image(400, 300).anneau(10, 10, 380, 280, 3, NOIR).anneau(150, 120, 100, 40, 3, NOIR);
+  const rc = D.remplirGalerie({ data: cadre.data, w: cadre.W, h: cadre.H }, 60, 60, { x0: 0, y0: 0, echelle: 1 });
+  t("remplir galerie : fond enfermé par le cadre du plan → refus « large » (sans échelle)", rc && rc.refus === "large",
+    rc && (rc.refus || rc.aire));
+  const rc2 = D.remplirGalerie({ data: cadre.data, w: cadre.W, h: cadre.H }, 60, 60,
+    { x0: 0, y0: 0, echelle: 1, pxParM: 4 });
+  t("remplir galerie : idem à 4 px/m (au-delà de 8 m de large)", rc2 && rc2.refus === "large", rc2 && rc2.refus);
+  const rg2 = D.remplirGalerie(b, sc.clicBlanc.x, sc.clicBlanc.y, { x0: 0, y0: 0, echelle: 1, pxParM: 10 });
+  t("remplir galerie : une galerie de 2,4 m (10 px/m) passe", rg2 && !rg2.refus, rg2 && rg2.refus);
   const ro = D.remplirGalerie(b, 600, 360, { x0: 0, y0: 0, echelle: 1 });
   t("remplir galerie : toucher sur le fond ouvert → refus « ouvert »", ro && ro.refus === "ouvert", ro);
   const rt = D.remplirGalerie(b, 452, 220, { x0: 0, y0: 0, echelle: 1 });

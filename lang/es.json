@@ -336,6 +336,7 @@
   "detect.galeries.pipette": "Toque el interior de una galería en el mapa.",
   "detect.galeries.poses": "{n} trazado(s) añadido(s). Un solo «Deshacer» los quita todos.",
   "detect.galeries.remplir.aide": "Toque el interior de cada galería: su eje se añade a la vista previa ({n} trazados). Toque un trazado para quitarlo o volver a ponerlo.",
+  "detect.galeries.remplir.large": "Zona mucho más ancha que una galería (seguramente el fondo alrededor del mapa): toque el interior de una galería.",
   "detect.galeries.remplir.ouvert": "Galería abierta (llega al fondo o al borde de la imagen): trácela a mano.",
   "detect.galeries.titre": "Detectar galerías",
   "detect.galeries.toast.surFond": "Eso es el fondo: toque el interior de una galería de color, o use Rellenar al tocar.",

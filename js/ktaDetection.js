@@ -1452,7 +1452,7 @@
   //   segment (pied de T de l'itinéraire). Aucun sommet n'est posé sur un croisement.
   const GALERIES = Object.freeze({ simplificationM: 0.5, brancheMinM: 1.5, repliSimplification: 3, repliBranche: 15,
                                    doublon: 6, fermeture: 2, longueurBouchage: 4, longueurCoupure: 3, trouLargeur: 0.6,
-                                   angleSuite: 35, ergot: 2, fusion: 2.5 });
+                                   angleSuite: 35, ergot: 2, fusion: 2.5, largeurMaxM: 8, largeurMaxPx: 80 });
   // Réglages par défaut en px du plan pour une échelle en px/m (absente : repli en px).
   function reglagesGaleries(pxParM) {
     const k = Number(pxParM);
@@ -1473,6 +1473,14 @@
     let s = 0;
     for (let v = 1; v <= max; v++) { s += hist[v]; if (s >= 0.95 * n) return (2 * v) / 3; }
     return (2 * max) / 3;
+  }
+  // Largeur médiane d'une zone (px de bloc) : 2 × la distance médiane au bord de ses pixels.
+  function _largeurMediane(m, W, H) {
+    const d = _distance(m, W, H), v = [];
+    for (let i = 0; i < W * H; i++) if (d[i]) v.push(d[i]);
+    if (!v.length) return 0;
+    v.sort(function (a, b) { return a - b; });
+    return (2 * v[v.length >> 1]) / 3;
   }
   // Composantes 8-connexes d'un masque → [{ px: [indices], x0, y0, x1, y1 }].
   function _composantes8(c, W, H) {
@@ -1573,9 +1581,13 @@
   }
 
   // Remplir au clic dans une galerie de la couleur du fond, jusqu'aux murs, puis son axe.
-  // b, px, py : comme remplir ; o = { x0, y0, echelle, tolerance, fermeture, obstacles, boucher, rouvrir }.
-  // → { axes, aire } ou { refus: "hors" | "trait" | "ouvert" }. Pas de plafond de taille : une galerie s'étend
-  //   loin, seule une zone qui touche le bord du bloc lu (ouverte) est refusée.
+  // b, px, py : comme remplir ; o = { x0, y0, echelle, tolerance, fermeture, obstacles, boucher, rouvrir, pxParM }.
+  // → { axes, aire } ou { refus: "hors" | "trait" | "ouvert" | "large" }. Pas de plafond de taille : une galerie
+  //   s'étend loin, seule une zone qui touche le bord du bloc lu (ouverte) est refusée.
+  // ⚠️ contrat (décision produit) : refus « large » quand la largeur MÉDIANE de la zone (2 × la distance médiane au
+  //   bord) dépasse largeurMaxM (plan à l'échelle connue) ou largeurMaxPx (sans échelle). 🩸 Sur un plan dans un
+  //   cadre, toucher le fond entre le plan et le cadre remplissait tout le fond, galeries ouvertes comprises : des
+  //   carrefours au rayon immense se fusionnaient en étoiles à travers les murs (essai sur un relevé réel au trait).
   function remplirGalerie(b, px, py, o) {
     o = o || {};
     const W = b.w, H = b.h, e = o.echelle || 1, x0 = o.x0 || 0, y0 = o.y0 || 0;
@@ -1584,6 +1596,8 @@
     let z = _inonder(mu.F, mu.hors, W, H, mu.g);
     if (!z) return { refus: "ouvert" };
     if (o.rouvrir !== false) z = _rouvrirCoupures(mu, z, W, H, e);
+    const k = Number(o.pxParM), max = k > 0 ? GALERIES.largeurMaxM * k : GALERIES.largeurMaxPx;
+    if (_largeurMediane(z.m, W, H) / e > max) return { refus: "large" };
     if (o.boucher !== false) _boucher(z.m, W, H, e);
     _percerObstacles(z.m, W, H, o.obstacles, x0, y0, e);
     return { axes: _axesMasque(z.m, W, H, x0, y0, e, { x: 0, y: 0, w: W, h: H }), aire: z.n / (e * e) };
@@ -1803,7 +1817,11 @@
     }
   }
   // Deux carrefours reliés par une arête plus courte que la somme de leurs rayons : un seul carrefour (milieu).
+  // 🩸 Le carrefour fusionné reste à moins du plus grand rayon de la place d'origine de chacun (ancre) : fusionnées
+  //   de proche en proche, les grappes de petits carrefours d'une zone bruitée dérivaient de plusieurs dizaines de px
+  //   et leurs arêtes partaient en étoile à travers les murs (essai sur un relevé réel au trait).
   function _fusionnerNoeuds(g) {
+    g.noeuds.forEach(function (N) { if (N.ax === undefined) { N.ax = N.x; N.ay = N.y; } });
     for (let tour = 0; tour < 50; tour++) {
       let change = false;
       g.aretes.forEach(function (a, id) {
@@ -1811,8 +1829,10 @@
         const A = g.noeuds[a.a], B = g.noeuds[a.b];
         if (_degre(g, a.a) < 3 || _degre(g, a.b) < 3) return;
         if (_longueur(a.pts) > Math.max(A.r + B.r, 3)) return;
+        const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, rmax = Math.max(A.r, B.r, 3);
+        if (Math.hypot(mx - A.ax, my - A.ay) > rmax || Math.hypot(mx - B.ax, my - B.ay) > rmax) return;
         _retirer(g, id);
-        A.x = (A.x + B.x) / 2; A.y = (A.y + B.y) / 2; A.r = Math.max(A.r, B.r);
+        A.x = mx; A.y = my; A.r = Math.max(A.r, B.r);
         Array.from(B.inc).forEach(function (k) {
           const e = g.aretes[k];
           if (e.a === a.b) e.a = a.a;
