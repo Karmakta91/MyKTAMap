@@ -36,12 +36,6 @@
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
   · taille: S`
 
-- **Détecter les galeries → tracés** — QCM 22/11 : fenêtre Détecter ouverte depuis l'outil Tracés (même principe que
-  Structures), pipette sur la couleur de galerie ET remplir au clic, axe → tracés (principal au choix) ; traits fins et
-  repères bouchés, piliers en obstacles, pas de doublon, raccord aux sommets existants. Base : `ktaDetection.js > _retirerBandes`.
-  `qui: Claude · action: brief du lot à Dev · fini: galeries grises et blanches détectées sur image fabriquée (texte et
-  trait de rappel en travers), sans doublon, checkup Chromium et WebKit · depuis: 22/11/2026 · taille: L`
-
 ## Ensuite
 
 - **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
@@ -143,6 +137,11 @@
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
 
 ## Entrant
+
+- **Télécharger le plan : structures en ligne à la loi du terrain** — `utils.js > telechargerPlan` dessine les structures
+  en ligne (mur-ligne, front, arc) à `style.weight`, alors que l'export avancé et le PDF suivent la loi du terrain
+  (`exporter.js > _largeurLigneStructExp`). Vu au lot exports lisibles, 22/11/2026.
+  `qui: Claude · action: aligner telechargerPlan sur la loi du terrain · fini: même épaisseur que l'export avancé, checkup · depuis: 22/11/2026 · taille: XS`
 
 - **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
   fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
