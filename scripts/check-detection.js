@@ -113,6 +113,45 @@ function lecteur(img) {
 // Image entière en bloc (mesure d'un exemple).
 function lecteurSync(img) { return { data: img.data, w: img.W, h: img.H }; }
 
+// Bord bruité d'un polygone (plan de mauvaise qualité) : chaque bord du trait (ou de la masse) s'écarte du bord idéal
+// de ± amp px, valeur tirée tous les `pas` px le long du contour (graine fixe : planche reproductible).
+// mode "trait" : trait de `ep` px centré sur le contour ; mode "masse" : intérieur plein jusqu'au bord bruité.
+function bordBruite(img, poly, mode, couleur, o) {
+  const ep = o.ep || 6, amp = o.amp === undefined ? 2 : o.amp, pas = o.pas || 3, graine = o.graine || 7;
+  const n = poly.length, cumul = [];
+  let tot = 0;
+  for (let i = 0; i < n; i++) {
+    cumul.push(tot);
+    const a = poly[i], b = poly[(i + 1) % n];
+    tot += Math.hypot(b[0] - a[0], b[1] - a[1]);
+  }
+  const hasard = k => {
+    let g = (k * 2654435761 + graine * 97) >>> 0;
+    g = Math.imul(g ^ (g >>> 13), 1274126177) >>> 0;
+    return ((g ^ (g >>> 16)) >>> 0) / 4294967296;
+  };
+  const bruit = (s, c) => Math.round((hasard(Math.floor(s / pas) * 2 + c) * 2 - 1) * amp);
+  const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]), M = ep + amp + 2;
+  for (let y = Math.floor(Math.min(...ys) - M); y <= Math.max(...ys) + M; y++) {
+    for (let x = Math.floor(Math.min(...xs) - M); x <= Math.max(...xs) + M; x++) {
+      const cx = x + 0.5, cy = y + 0.5;
+      let best = Infinity, s = 0, dedans = false;
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const a = poly[i], b = poly[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+        const u = Math.max(0, Math.min(1, ((cx - a[0]) * dx + (cy - a[1]) * dy) / L2));
+        const d = Math.hypot(cx - a[0] - u * dx, cy - a[1] - u * dy);
+        if (d < best) { best = d; s = cumul[i] + u * Math.sqrt(L2); }
+        const [xi, yi] = poly[i], [xj, yj] = poly[j];
+        if ((yi > cy) !== (yj > cy) && cx < (xj - xi) * (cy - yi) / (yj - yi) + xi) dedans = !dedans;
+      }
+      const sd = dedans ? -best : best;
+      const plein = mode === "masse" ? sd <= bruit(s, 1) : sd >= -ep / 2 + bruit(s, 0) && sd <= ep / 2 + bruit(s, 1);
+      if (plein) img.px(x, y, couleur);
+    }
+  }
+  return img;
+}
+
 // Scène brune (imite un plan peu détaillé, non calibré) : beaucoup de piliers de 6 à 12 px, des moyens, quelques
 // gros, contour noir, dégradé de couleur, filigrane clair semi-transparent, bruit ± 20, flou 3 × 3.
 function sceneBrune() {
@@ -881,6 +920,128 @@ const proche = (a, b, tol) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
       const Rgr = D.remplir(lecteurSync(gros), 200, 180, a10);
       t("remplir : grande structure plausible (30 × 25 m, plan à 10 px/m) → remplie", !!Rgr.points, Rgr.refus);
     }
+
+    // ── Affiner les contours (trait bruité de ± 2 px, plan fictif à 20 px/m : tolérance 0,25 m = 5 px) ──
+    // Lissage toujours ; redressement en rectangle (côtés droits, angles droits) seulement pour une forme presque
+    // rectangle. Sans l'option : le résultat d'avant, à l'identique (empreintes relevées sur le moteur d'avant).
+    const EMPREINTE_REMPLIR = "33:503648", EMPREINTE_DETECTION = "68:2206263";
+    const rectP = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    const tourne = (pts, deg, cx, cy) => {
+      const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+      return pts.map(p => [cx + (p[0] - cx) * c - (p[1] - cy) * s, cy + (p[0] - cx) * s + (p[1] - cy) * c]);
+    };
+    const cercle = (cx, cy, r, n) => Array.from({ length: n }, (_, i) =>
+      [cx + r * Math.cos(2 * Math.PI * i / n), cy + r * Math.sin(2 * Math.PI * i / n)]);
+    // virage total ÷ 2π : 1 pour un contour convexe sans dent, bien plus pour un contour en dent de scie
+    const virage = pts => {
+      let s = 0;
+      for (let i = 0, n = pts.length; i < n; i++) {
+        const a = pts[(i + n - 1) % n], b = pts[i], c = pts[(i + 1) % n];
+        let d = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x);
+        while (d > Math.PI) d -= 2 * Math.PI;
+        while (d < -Math.PI) d += 2 * Math.PI;
+        s += Math.abs(d);
+      }
+      return s / (2 * Math.PI);
+    };
+    // plus grand écart d'un angle à 90° (degrés), et orientation du premier côté (degrés, modulo 90)
+    const ecartAngleDroit = pts => Math.max(...pts.map((b, i) => {
+      const a = pts[(i + pts.length - 1) % pts.length], c = pts[(i + 1) % pts.length];
+      const u = [a.x - b.x, a.y - b.y], v = [c.x - b.x, c.y - b.y];
+      const cos = (u[0] * v[0] + u[1] * v[1]) / (Math.hypot(u[0], u[1]) * Math.hypot(v[0], v[1]));
+      return Math.abs(Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI - 90);
+    }));
+    const orientation = pts => {
+      const a = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) * 180 / Math.PI;
+      return ((a % 90) + 90) % 90;
+    };
+    const empreinte = pts => pts.length + ":" + Math.round(pts.reduce((s, p, i) => s + (i + 1) * (p.x * 3 + p.y * 7),
+      0) * 10) / 10;
+    const tolA = typeof D.toleranceAffinage === "function" ? D.toleranceAffinage(20) : 5;
+    t("affiner : tolérance exposée (toleranceAffinage), 0,25 m à 20 px/m = 5 px",
+      typeof D.toleranceAffinage === "function" && Math.abs(D.toleranceAffinage(20) - 5) < 1e-9,
+      typeof D.toleranceAffinage === "function" ? D.toleranceAffinage(20) : "absente");
+    t("affiner : sans échelle, repli en px (AFFINER.repliPx)", typeof D.toleranceAffinage === "function" &&
+      !!D.AFFINER && D.toleranceAffinage(null) === D.AFFINER.repliPx && D.AFFINER.repliPx > 0,
+      D.AFFINER || null);
+    const planche = (poly, o) => lecteurSync(bordBruite(image(200, 200), poly, "trait", NOIR, o || {}));
+    const carre = rectP(60, 60, 80, 80);
+    [7, 11, 23].forEach(g => {
+      const b = planche(carre, { graine: g });
+      const Ra = D.remplir(b, 100, 100, { affiner: tolA }), Rs = D.remplir(b, 100, 100);
+      t("affiner : carré au trait bruité ± 2 px (graine " + g + ") → rectangle, angles droits (± 1°), à 2 px du " +
+        "carré", Ra.points && Ra.points.length === 4 && ecartAngleDroit(Ra.points) <= 1 && ecart(Ra.points, carre) <= 2,
+        Ra.points ? { n: Ra.points.length, angle: ecartAngleDroit(Ra.points), ecart: ecart(Ra.points, carre) } : Ra);
+      t("affiner : contre-épreuve sans l'option → le même carré sort en dent de scie (> 8 sommets, virage > 2)",
+        Rs.points && Rs.points.length > 8 && virage(Rs.points) > 2, Rs.points && Rs.points.length);
+    });
+    const oblique = tourne(rectP(60, 70, 90, 60), 20, 105, 100);
+    const Rob = D.remplir(planche(oblique), 105, 100, { affiner: tolA });
+    t("affiner : rectangle tourné de 20°, trait bruité → rectangle tourné (20 ± 1,5°), angles droits, à 2,5 px",
+      Rob.points && Rob.points.length === 4 && ecartAngleDroit(Rob.points) <= 1 &&
+      Math.abs(orientation(Rob.points) - 20) <= 1.5 && ecart(Rob.points, oblique) <= 2.5,
+      Rob.points ? { n: Rob.points.length, o: orientation(Rob.points), ecart: ecart(Rob.points, oblique) } : Rob);
+    const disque = cercle(100, 100, 40, 72);
+    const Rdi = D.remplir(planche(disque), 100, 100, { affiner: tolA });
+    const Rdis = D.remplir(planche(disque), 100, 100);
+    t("affiner : pilier rond au trait bruité → pas un rectangle (≥ 8 sommets), lissé (virage ≤ 1,05), aire à 4 %",
+      Rdi.points && Rdi.points.length >= 8 && virage(Rdi.points) <= 1.05 &&
+      Math.abs(Rdi.aire - Math.PI * 1600) <= 0.04 * Math.PI * 1600,
+      Rdi.points ? { n: Rdi.points.length, v: virage(Rdi.points), aire: Rdi.aire } : Rdi);
+    t("affiner : contre-épreuve sans l'option → le rond en dent de scie (virage > 2)",
+      Rdis.points && virage(Rdis.points) > 2, Rdis.points && virage(Rdis.points));
+    const petitRond = cercle(100, 100, 12, 40);
+    const Rpr = D.remplir(planche(petitRond), 100, 100, { affiner: tolA });
+    t("affiner : petit pilier rond (Ø 24 px) → pas un rectangle", Rpr.points && Rpr.points.length > 4,
+      Rpr.points && Rpr.points.length);
+    const penta = [[60, 70], [140, 60], [150, 120], [100, 150], [55, 130]];
+    const Rpe = D.remplir(planche(penta), 100, 100, { affiner: tolA });
+    t("affiner : pilier irrégulier (pentagone) → garde sa forme (≥ 5 sommets, à 3 px), lissé (virage ≤ 1,05)",
+      Rpe.points && Rpe.points.length >= 5 && ecart(Rpe.points, penta) <= 3 && virage(Rpe.points) <= 1.05,
+      Rpe.points ? { n: Rpe.points.length, e: ecart(Rpe.points, penta), v: virage(Rpe.points) } : Rpe);
+    const trapeze = [[60, 60], [140, 60], [150, 140], [50, 140]];
+    const Rtz = D.remplir(planche(trapeze), 100, 100, { affiner: tolA });
+    t("affiner : trapèze (côtés à 7°) → pas redressé en rectangle (un angle à plus de 4° du droit), à 3 px",
+      Rtz.points && ecartAngleDroit(Rtz.points) > 4 && ecart(Rtz.points, trapeze) <= 3,
+      Rtz.points ? { n: Rtz.points.length, a: ecartAngleDroit(Rtz.points), e: ecart(Rtz.points, trapeze) } : Rtz);
+    const enL = [[50, 50], [150, 50], [150, 100], [100, 100], [100, 150], [50, 150]];
+    const RL = D.remplir(planche(enL), 70, 70, { affiner: tolA });
+    t("affiner : pilier en L → garde son angle rentrant (≥ 6 sommets, à 3 px)",
+      RL.points && RL.points.length >= 6 && ecart(RL.points, enL) <= 3,
+      RL.points ? { n: RL.points.length, e: ecart(RL.points, enL) } : RL);
+    // case décochée : le résultat d'avant, inchangé
+    const bC = planche(carre), R0 = D.remplir(bC, 100, 100), R00 = D.remplir(bC, 100, 100, { affiner: 0 });
+    t("affiner : option absente ou à 0 → même résultat", JSON.stringify(R0) === JSON.stringify(R00));
+    t("affiner : option absente → contour d'avant à l'identique (empreinte " + EMPREINTE_REMPLIR + ")",
+      R0.points && empreinte(R0.points) === EMPREINTE_REMPLIR, R0.points && empreinte(R0.points));
+    const Rcp = D.remplir(lecteurSync(cerne(image(300, 300), 50, 40, 40, 30, 4, 0)), 70, 55, { affiner: tolA });
+    t("affiner : pilier cerné net → toujours au milieu du trait (≤ 1 px)",
+      Rcp.points && ecart(Rcp.points, milieu(50, 40, 40, 30, 4)) <= 1, Rcp);
+
+    // détection automatique : même moteur, masses au bord bruité
+    const ORANGE_A = [{ id: "a", couleurs: [ORANGE], tolerance: 14 }];
+    const masse = poly => bordBruite(image(200, 200), poly, "masse", ORANGE, {});
+    const det = async (img, rg) => (await D.detecter({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: 200, h: 200 },
+      limites: { w: 200, h: 200 }, classes: ORANGE_A, reglages: Object.assign({ aireMin: 100, ouverture: 3 }, rg) }))
+      .masses;
+    const Dc = await det(masse(carre), { affiner: tolA }), Dcs = await det(masse(carre), {});
+    t("affiner (détection) : masse carrée au bord bruité → rectangle, angles droits, à 2 px du carré",
+      Dc.length === 1 && Dc[0].points.length === 4 && ecartAngleDroit(Dc[0].points) <= 1 &&
+      ecart(Dc[0].points, carre) <= 2, Dc.map(m => ({ n: m.points.length, e: ecart(m.points, carre) })));
+    t("affiner (détection) : option absente → contour d'avant à l'identique (empreinte " + EMPREINTE_DETECTION + ")",
+      Dcs.length === 1 && empreinte(Dcs[0].points) === EMPREINTE_DETECTION, Dcs.map(m => empreinte(m.points)));
+    const Dd = await det(masse(disque), { affiner: tolA });
+    t("affiner (détection) : masse ronde au bord bruité → pas un rectangle, lissée (virage ≤ 1,05)",
+      Dd.length === 1 && Dd[0].points.length >= 8 && virage(Dd[0].points) <= 1.05,
+      Dd.map(m => ({ n: m.points.length, v: virage(m.points) })));
+    const exA = D.executeurLocal();
+    await D.detecter({ lireBloc: lecteur(masse(carre)), region: { x: 0, y: 0, w: 200, h: 200 },
+      limites: { w: 200, h: 200 }, classes: ORANGE_A, reglages: { aireMin: 100, ouverture: 3 }, executeur: exA,
+      garder: true });
+    const Drc = await D.recalculer(exA, { classes: ORANGE_A, reglages: { aireMin: 100, ouverture: 3, affiner: tolA } });
+    exA.fermer();
+    t("affiner (détection) : recalcul sur les blocs gardés avec l'option → rectangle (case cochée après coup)",
+      Drc.masses.length === 1 && Drc.masses[0].points.length === 4, Drc.masses.map(m => m.points.length));
   }
 
   // ── Worker : le fichier charge le moteur et répond à un message ──

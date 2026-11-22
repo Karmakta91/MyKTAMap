@@ -17,9 +17,11 @@
 // les blocs gardés par l'exécuteur, sans relire l'image (recalculer).
 // Remplir au clic (remplir) : zone fermée par le trait autour d'un point, contour au milieu du trait, trous de
 // 1 à 2 px bouchés.
+// Affiner les contours (option `affiner` de remplir et des réglages, _affiner) : lissage en mètres, redressement en
+// rectangle des formes presque rectangles.
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
 //   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE,
-//   remplir, REMPLIR, plafondRemplir }.
+//   remplir, REMPLIR, plafondRemplir, toleranceAffinage, AFFINER }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -201,10 +203,170 @@
     return a.concat(b.slice(1, -1));
   }
 
-  function _aire(pts) {
+  function _aireSignee(pts) {
     let s = 0;
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j][0] + pts[i][0]) * (pts[j][1] - pts[i][1]);
-    return Math.abs(s) / 2;
+    return s / 2;
+  }
+  function _aire(pts) { return Math.abs(_aireSignee(pts)); }
+
+  // ── Affiner un contour (case « Affiner les contours » de la fenêtre Détecter) ──
+  // ⚠️ contrat (décision produit) : lissage toujours, à une tolérance en MÈTRES (toleranceM, convertie par l'échelle
+  //   du plan ; repliPx sans échelle) ; redressement en rectangle (côtés droits, angles droits, orientation gardée)
+  //   seulement pour une forme presque rectangle. Un pilier rond ou irrégulier garde sa forme, lissée.
+  // Mesures (planches de check-detection.js, relevé réel au trait flou) : 0,2 à 0,3 m redressent un carré au trait
+  //   bruité de ± 2 px à 20 px/m sans rien changer d'autre ; 0,75 m efface déjà de vrais décrochements.
+  // Forme presque rectangle : aire lissée ≥ rapportRect × celle du rectangle des côtés médians, et aucun point lissé
+  //   à plus de max(ecartRectMin px, ecartRect × tolérance) de ce rectangle. Mesuré sur 40 planches bruitées : carré
+  //   ≥ 0,98 et ≤ 0,87 × tolérance ; rond ≤ 0,95 ; trapèze aux côtés de 7° : 0,87 à 1,34 × tolérance.
+  // 🩸 Sous 25 px de côté, un bruit de ± 2 px rend carré et rond indiscernables : le petit pilier carré n'est alors
+  //   pas toujours redressé (lissé seulement), jamais un rond redressé.
+  // 🩸 Tolérance bornée à √aire / plafondForme : sans cela un petit pilier serait lissé en galet.
+  const AFFINER = Object.freeze({ toleranceM: 0.25, repliPx: 2, plafondForme: 6, passes: 2, rapportRect: 0.96,
+                                  ecartRect: 0.9, ecartRectMin: 1.5 });
+  // Tolérance du lissage en px du plan pour une échelle en px/m (absente ou nulle : repli en px).
+  function toleranceAffinage(pxParM) {
+    const k = Number(pxParM);
+    return k > 0 ? AFFINER.toleranceM * k : AFFINER.repliPx;
+  }
+  // Contour [[x, y]] (px de bloc) → contour affiné ; `tol` = tolérance (px de bloc), `eps` = simplification d'avant,
+  // plancher de celle qui suit le lissage.
+  function _affiner(pts, tol, eps) {
+    const P = [], n = pts.length;
+    for (let i = 0; i < n; i++) {   // rééchantillonné au pas de 1 px : la moyenne glissante porte sur une longueur
+      const a = pts[i], b = pts[(i + 1) % n], k = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])));
+      for (let j = 0; j < k; j++) P.push([a[0] + ((b[0] - a[0]) * j) / k, a[1] + ((b[1] - a[1]) * j) / k]);
+    }
+    const N = P.length, signe = Math.sign(_aireSignee(pts));
+    const t = Math.min(tol, Math.sqrt(_aire(pts)) / AFFINER.plafondForme);
+    const h = Math.min(Math.max(1, Math.round(t)), Math.floor((N - 1) / 4));
+    if (h < 1) return _simplifierFerme(pts, eps);
+    let S = P;
+    for (let passe = 0; passe < AFFINER.passes; passe++) {   // moyenne glissante circulaire sur 2h + 1 points
+      const T = new Array(N);
+      let sx = 0, sy = 0;
+      for (let k = -h; k <= h; k++) { const q = S[(k + N) % N]; sx += q[0]; sy += q[1]; }
+      for (let i = 0; i < N; i++) {
+        T[i] = [sx / (2 * h + 1), sy / (2 * h + 1)];
+        const sort = S[(i - h + N) % N], entre = S[(i + h + 1) % N];
+        sx += entre[0] - sort[0]; sy += entre[1] - sort[1];
+      }
+      S = T;
+    }
+    // orientation dominante (côtés pondérés par leur longueur, angle × 4 : les quatre côtés d'un rectangle votent
+    // ensemble), puis rectangle des côtés médians dans ce repère
+    let c4 = 0, s4 = 0;
+    for (let i = 0; i < N; i++) {
+      const a = S[i], b = S[(i + 1) % N], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+      if (!L) continue;
+      const f = 4 * Math.atan2(dy, dx);
+      c4 += L * Math.cos(f); s4 += L * Math.sin(f);
+    }
+    const th = Math.atan2(s4, c4) / 4, cs = Math.cos(th), sn = Math.sin(th);
+    const R = S.map(function (p) { return [p[0] * cs + p[1] * sn, -p[0] * sn + p[1] * cs]; });
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    R.forEach(function (p) {
+      if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+    });
+    const cotes = [[], [], [], []];
+    R.forEach(function (p) {
+      const d = [p[0] - x0, x1 - p[0], p[1] - y0, y1 - p[1]];
+      let k = 0;
+      for (let j = 1; j < 4; j++) if (d[j] < d[k]) k = j;
+      cotes[k].push(k < 2 ? p[0] : p[1]);
+    });
+    const med = function (v) { v.sort(function (a, b) { return a - b; }); return v.length ? v[v.length >> 1] : NaN; };
+    const X0 = med(cotes[0]), X1 = med(cotes[1]), Y0 = med(cotes[2]), Y1 = med(cotes[3]);
+    if (X1 - X0 > 0 && Y1 - Y0 > 0) {
+      let ecart = 0;
+      R.forEach(function (p) {
+        const dedans = p[0] >= X0 && p[0] <= X1 && p[1] >= Y0 && p[1] <= Y1;
+        const d = dedans ? Math.min(p[0] - X0, X1 - p[0], p[1] - Y0, Y1 - p[1])
+          : Math.hypot(Math.max(X0 - p[0], 0, p[0] - X1), Math.max(Y0 - p[1], 0, p[1] - Y1));
+        if (d > ecart) ecart = d;
+      });
+      if (ecart <= Math.max(AFFINER.ecartRectMin, AFFINER.ecartRect * t) &&
+          _aire(S) >= AFFINER.rapportRect * (X1 - X0) * (Y1 - Y0)) {
+        const coins = [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]].map(function (p) {
+          return [p[0] * cs - p[1] * sn, p[0] * sn + p[1] * cs];
+        });
+        return Math.sign(_aireSignee(coins)) === signe ? coins : coins.reverse();
+      }
+    }
+    return _coinsVifs(S, _simplifierFerme(S, Math.max(eps, 0.5 * t)), h, t);
+  }
+  // 🩸 La moyenne glissante arrondit les coins (jusqu'à la tolérance) : chaque côté simplifié est remplacé par la
+  //   droite ajustée sur sa partie centrale lissée (2h points écartés de chaque bout), et chaque sommet par
+  //   l'intersection des deux droites voisines. Côtés presque alignés (< 15°) ou intersection à plus de 2 × la
+  //   tolérance du sommet : le sommet simplifié reste.
+  function _coinsVifs(S, V, h, t) {
+    const N = S.length, n = V.length;
+    if (n < 3) return V;
+    const rang = new Map();
+    S.forEach(function (p, i) { rang.set(p, i); });
+    const idx = V.map(function (p) { return rang.get(p); });
+    if (idx.some(function (i) { return i === undefined; })) return V;
+    const droites = idx.map(function (a, k) {
+      const b = idx[(k + 1) % n], long = (b - a + N) % N || N, m = Math.min(2 * h, Math.floor(long / 4));
+      let cx = 0, cy = 0, c = 0;
+      const pts = [];
+      for (let j = m; j <= long - m; j++) { const q = S[(a + j) % N]; pts.push(q); cx += q[0]; cy += q[1]; c++; }
+      cx /= c; cy /= c;
+      let xx = 0, yy = 0, xy = 0;
+      pts.forEach(function (q) { const dx = q[0] - cx, dy = q[1] - cy; xx += dx * dx; yy += dy * dy; xy += dx * dy; });
+      const ang = 0.5 * Math.atan2(2 * xy, xx - yy);
+      return { x: cx, y: cy, ux: Math.cos(ang), uy: Math.sin(ang) };
+    });
+    const vifs = V.map(function (v, k) {
+      const p = _croiser(droites[(k + n - 1) % n], droites[k]);
+      return p && Math.hypot(p[0] - v[0], p[1] - v[1]) <= 2 * t ? p : v;
+    });
+    return _nettoyer(vifs, t);
+  }
+  // Intersection de deux droites { x, y, ux, uy } ; null si elles font moins de 15° entre elles.
+  function _croiser(d1, d2) {
+    const det = d1.ux * d2.uy - d1.uy * d2.ux;
+    if (Math.abs(det) < Math.sin(Math.PI / 12)) return null;
+    const u = ((d2.x - d1.x) * d2.uy - (d2.y - d1.y) * d2.ux) / det;
+    return [d1.x + u * d1.ux, d1.y + u * d1.uy];
+  }
+  // Sommets superflus après _coinsVifs : sommet presque aligné (virage < 12°) retiré ; côté court (< 2 × tolérance)
+  // entre deux côtés au moins deux fois plus longs = coin coupé, remplacé par l'intersection des côtés voisins quand
+  // elle tombe à moins de 2 × la tolérance de ses deux bouts.
+  // 🩸 Sans la condition des côtés longs, un petit pilier rond (côtés tous courts) finissait en quadrilatère.
+  function _nettoyer(V, t) {
+    const droite = function (a, b) {
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      return { x: a[0], y: a[1], ux: (b[0] - a[0]) / L, uy: (b[1] - a[1]) / L };
+    };
+    const virage = function (a, b, c) {
+      let d = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]);
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      return Math.abs(d);
+    };
+    let P = V.slice();
+    for (let tour = 0; tour < 4 * V.length && P.length > 3; tour++) {
+      const n = P.length;
+      let fait = false;
+      for (let k = 0; k < n && !fait; k++) {
+        const a = P[(k + n - 1) % n], b = P[k], c = P[(k + 1) % n];
+        if (Math.hypot(c[0] - b[0], c[1] - b[1]) < 0.5 || virage(a, b, c) < Math.PI / 15) { P.splice(k, 1); fait = true; }
+      }
+      for (let k = 0; k < P.length && !fait && P.length > 4; k++) {
+        const m = P.length, a = P[(k + m - 1) % m], b = P[k], c = P[(k + 1) % m], d = P[(k + 2) % m];
+        const court = Math.hypot(c[0] - b[0], c[1] - b[1]);
+        if (court >= 2 * t || Math.hypot(b[0] - a[0], b[1] - a[1]) < 2 * court ||
+            Math.hypot(d[0] - c[0], d[1] - c[1]) < 2 * court) continue;
+        const p = _croiser(droite(a, b), droite(c, d));
+        if (!p || Math.hypot(p[0] - b[0], p[1] - b[1]) > 2 * t || Math.hypot(p[0] - c[0], p[1] - c[1]) > 2 * t) continue;
+        P[k] = p;
+        P.splice((k + 1) % m, 1);
+        fait = true;
+      }
+      if (!fait) break;
+    }
+    return P;
   }
 
   // Un bloc : { data, w, h } lu à `echelle` depuis le coin plan (x0, y0) ; `coeur` = rectangle du bloc (en px de
@@ -214,6 +376,8 @@
     const W = o.w, H = o.h, N = W * H, d = o.data, e = o.echelle || 1;
     const R = Math.max(1, Math.floor((o.reglages.ouverture * e) / 2));
     const aireMin = o.reglages.aireMin * e * e, eps = Math.max(0.5, o.reglages.simplification * e);
+    // `affiner` : tolérance du lissage (px du plan, toleranceAffinage) ; absente ou nulle : contour d'avant
+    const affiner = o.reglages.affiner > 0 ? o.reglages.affiner * e : 0;
     // aire maximale (curseur « Taille maximale ») : une masse plus grande est écartée et comptée à part — fond ou
     // galeries de la couleur de piliers clairs cernés d'un trait (les piliers, séparés par le trait, restent)
     const aireMax = o.reglages.aireMax > 0 ? o.reglages.aireMax * e * e : Infinity;
@@ -266,7 +430,8 @@
         const coupee = (x0 === 0 && !bords.g) || (y0 === 0 && !bords.h) || (x1 === W - 1 && !bords.d) ||
           (y1 === H - 1 && !bords.b);
         if (coupee) { tropGrands.push({ classe: clMasses[c - 1].id, boite: boite }); continue; }
-        const s = _simplifierFerme(_contour(m, W, H, p % W, (p - p % W) / W), eps);
+        const cont = _contour(m, W, H, p % W, (p - p % W) / W);
+        const s = affiner ? _affiner(cont, affiner, eps) : _simplifierFerme(cont, eps);
         if (s.length < 3) { ignorees++; continue; }
         masses.push({
           classe: clMasses[c - 1].id,
@@ -1070,7 +1235,8 @@
   // ── Remplir au clic : la zone du fond fermée par le trait autour d'un point ──
   // b = { data, w, h } lu à `echelle` depuis le coin plan (x0, y0) ; (px, py) = point touché, en px de bloc.
   // o = { x0, y0, echelle, tolerance (ΔE), fermeture (rayon, px de bloc), repli (défaut vrai), aireMax et coteMax
-  //   (px du plan ; plafondRemplir les donne), simplification, demiTrait (px du plan) }.
+  //   (px du plan ; plafondRemplir les donne), simplification, demiTrait (px du plan), affiner (tolérance du lissage,
+  //   px du plan, toleranceAffinage ; absente ou nulle : contour d'avant) }.
   // → { points, aire, boite } (px du plan) ou { refus: "hors" | "trait" | "ouvert" | "tropGrand" }.
   // Trait = tout pixel à plus de `tolerance` de la couleur sous le doigt, fermé d'abord (dilatation puis érosion
   //   d'un carré de rayon `fermeture`) : le rayon 1 bouche un trou de 1 à 2 px, un trou de 3 px et plus reste ouvert.
@@ -1233,7 +1399,8 @@
       }
     }
     const eps = Math.max(0.5, (o.simplification === undefined ? REMPLIR.simplification : o.simplification) * e);
-    const s = _simplifierFerme(_contour(m, W, H, premier % W, (premier - premier % W) / W), eps);
+    const cont = _contour(m, W, H, premier % W, (premier - premier % W) / W);
+    const s = Number(o.affiner) > 0 ? _affiner(cont, Number(o.affiner) * e, eps) : _simplifierFerme(cont, eps);
     if (s.length < 3) return { refus: "trait" };
     const ox = o.x0 || 0, oy = o.y0 || 0;
     return {
@@ -1249,7 +1416,8 @@
                 executeurWorker: executeurWorker, executeurLocal: executeurLocal, recalculer: recalculer,
                 mesurerExemple: mesurerExemple, reglagesDepuisExemples: reglagesDepuisExemples,
                 reglagesPourTaille: reglagesPourTaille, rgbVersLab: rgbVersLab, deltaE: deltaE,
-                remplir: remplir, REMPLIR: REMPLIR, plafondRemplir: plafondRemplir, _magasin: _magasin };
+                remplir: remplir, REMPLIR: REMPLIR, plafondRemplir: plafondRemplir,
+                toleranceAffinage: toleranceAffinage, AFFINER: AFFINER, _magasin: _magasin };
   racine.KtaDetection = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : globalThis);
