@@ -20318,6 +20318,8 @@ button.kta-cfg-ligne-action {
   stroke-dasharray: 4 3; }
 .kta-detect-coin { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.6; }
 .kta-detect-apercu.kta-detect-trait { fill: none; stroke: var(--kta-interaction); stroke-width: 5; stroke-linecap: round; }
+/* Remplir au clic : ligne d'aide « toucher pour retirer » sous le texte du mode (detectionStructures.js > _aideRetirer). */
+.kta-detect-aide-retirer { flex: 1 1 100%; text-align: center; color: var(--kta-texte-3); font-size: 12px; }
 /* Détecter les galeries : titre du bandeau, tracé proposé (trait plein, jointures rondes), bout raccordé au réseau. */
 .kta-detect-titre { flex: 1 1 100%; color: var(--kta-accent-texte); font-weight: 700; font-size: 13px; }
 .kta-detect-apercu.kta-detect-galerie { stroke-linejoin: round; }

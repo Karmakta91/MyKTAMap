@@ -7,7 +7,8 @@
 // detectionStructures.js — « Détecter » piliers et fronts sur une image : exemples à la pipette, cadre (deux coins)
 // ou tout le plan, calcul par js/ktaDetection.js (worker), aperçu superposé, « Valider ». Ouvert depuis l'outil
 // Structures et l'📊 Éditeur de données (un seul parcours, décision produit). Mode « Remplir au clic » : chaque
-// toucher remplit la zone fermée par le trait (ktaDetection.js > remplir), aperçu cumulé, même « Valider ».
+// toucher remplit la zone fermée par le trait (ktaDetection.js > remplir), aperçu cumulé, même « Valider » ; un
+// toucher sur une forme, Ctrl+Z ou « Retirer le dernier » la retire (section « Retirer un remplissage »).
 // ⚠️ contrat : tout ce qui touche au plan passe par un CONTEXTE (ouvrir(ctx) ; absent = contextePlan(), le plan
 //   ouvert) — sa forme : au-dessus de contextePlan.
 // ⚠️ contrat (décision produit) : rien n'est écrit avant « Valider » ; en mode plan, UNE étape ⏪ pour tout annuler
@@ -54,6 +55,7 @@ window.KtaDetectionUI = (function () {
   //   loin de son bord.
   const MARGE = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
   const FENETRE_REMPLIR_MAX = 4096;
+  const TOUCHE_RETIRER_PX = 14;   // Remplir, galeries : rayon d'écran minimal autour d'un axe pour retirer au toucher
 
   const _t = function (k, v) { return window.I18n.t(k, v); };
   const _esc = function (s) { return window.ktaEsc(s); };
@@ -334,15 +336,16 @@ window.KtaDetectionUI = (function () {
     L.circleMarker(_e.ctx.versCarte(p.x, p.y), { pane: "ktaDetection", renderer: _e.rendu, radius: 6,
       className: "kta-detect-coin", interactive: false }).addTo(c);
   }
+  // 🩸 Non interactif : en Remplir, la visée (body.kta-detect-pick-mode) arme map.js > _ktaPickCaptureClick, qui avale
+  //   le clic en capture et le ré-émet à la carte ; un écouteur posé sur la forme ne reçoit jamais rien. Le toucher
+  //   sur une forme est reconnu par _onClic (_retirerAuToucher), sur la carte du plan comme dans le Générateur.
   function _dessinerRemplis() {
     _viderCouche();
     const c = _couche();
     _e.remplis.forEach(function (z) {
-      const pol = L.polygon(z.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); }), {
-        pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false,
-        className: "kta-detect-apercu kta-detect-rempli" + (z.retire ? " kta-detect-retire" : "") });
-      pol.on("click", function () { z.retire = !z.retire; _dessinerRemplis(); _majBandeau(); });
-      pol.addTo(c);
+      L.polygon(z.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); }), {
+        pane: "ktaDetection", renderer: _e.rendu, interactive: false,
+        className: "kta-detect-apercu kta-detect-rempli" }).addTo(c);
     });
   }
   function _dessinerApercu() {
@@ -395,7 +398,7 @@ window.KtaDetectionUI = (function () {
     } else if (_e.etape === "remplir") {
       const gardes = _remplisGardes().length;
       html = '<span class="kta-racc-info">' + _esc(_t("detect.remplir.aide", { n: gardes })) + "</span>" +
-        '<div class="kta-racc-actions"><label class="kta-detect-type">' + _esc(_t("detect.remplir.type")) +
+        _aideRetirer() + '<div class="kta-racc-actions">' + _btnRetirerDernier() + '<label class="kta-detect-type">' + _esc(_t("detect.remplir.type")) +
         ' <select data-detect-remplir-type>' + _typesFermes().map(function (ty) {
           return '<option value="' + _esc(ty.id) + '"' + (_e.typeRemplir === ty.id ? " selected" : "") + ">" +
             _esc(ty.libelle) + "</option>";
@@ -442,6 +445,8 @@ window.KtaDetectionUI = (function () {
     if (validerR) validerR.disabled = _remplisGardes().length === 0;
     const validerG = b.querySelector('[data-detect="valider-galeries"]');
     if (validerG) validerG.disabled = _gardesGaleries() === 0;
+    const retirer = b.querySelector('[data-detect="retirer-dernier"]');
+    if (retirer) retirer.disabled = _nbRemplissages() === 0;
     if (_galeries()) {
       const titre = document.createElement("span");
       titre.className = "kta-detect-titre";
@@ -486,15 +491,17 @@ window.KtaDetectionUI = (function () {
     } else if (act === "remplir") {
       _e.pipette = null; _e.etape = "remplir"; _e.coins = []; _e.apercu = null; _e.remplis = [];
       _e.typeRemplir = _typeRemplirInitial();
-      _e.axes = [];
+      _e.axes = []; _e.remplisG = [];
       _viderCouche(); _lacherExecuteur();
     } else if (act === "valider-remplir") {
       _validerRemplis(); return;
+    } else if (act === "retirer-dernier") {
+      _retirerDernier(); return;
     } else if (act === "valider-galeries") {
       _validerGaleries(); return;
     } else if (act === "exemples") {
       _e.etape = "exemples"; _e.coins = []; _e.remplis = []; _viderCouche();
-      if (_galeries()) { _e.axes = []; _e.apercu = null; }
+      if (_galeries()) { _e.axes = []; _e.remplisG = []; _e.apercu = null; }
     } else if (act === "tout") {
       _toutLePlan(); return;
     } else if (act === "annuler") {
@@ -559,6 +566,7 @@ window.KtaDetectionUI = (function () {
       _ecrireCouleurs(_e.couleurs);
       _majBandeau();
     } else if (_e.etape === "remplir") {
+      if (_retirerAuToucher(x, y)) return;
       if (_galeries()) _remplirGalerieEn(x, y); else _remplirEn(x, y);
     } else if (_e.etape === "zone") {
       _e.coins.push({ x: x, y: y });
@@ -763,7 +771,79 @@ window.KtaDetectionUI = (function () {
     return ids.indexOf(_e.typeOuverture) >= 0 ? _e.typeOuverture : (ids[0] || null);
   }
   function _remplisGardes() {
-    return (_e && _e.remplis ? _e.remplis : []).filter(function (z) { return !z.retire; });
+    return _e && _e.remplis ? _e.remplis : [];
+  }
+
+  // ── Retirer un remplissage : toucher sur la forme, Ctrl+Z (Cmd+Z) ou « Retirer le dernier » ──
+  // ⚠️ contrat (décision produit) : un remplissage retiré QUITTE l'aperçu (pas d'état « retiré » à remettre) ; le
+  //   retoucher au même endroit le refait. Ctrl+Z et le bouton dépilent le plus récent, un par un. Tant que la
+  //   fenêtre est ouverte, Ctrl+Z est à elle (_onKey) : jamais HistoryManager ni le ⏪ global.
+  // Galeries : un remplissage = les axes d'un toucher (_e.remplisG) ; _e.axes en est la concaténation.
+  function _nbRemplissages() {
+    if (!_e || _e.etape !== "remplir") return 0;
+    return _galeries() ? _e.remplisG.length : _e.remplis.length;
+  }
+  function _retirerRemplissage(i) {
+    if (_galeries()) {
+      _e.remplisG.splice(i, 1);
+      _e.axes = [].concat.apply([], _e.remplisG.map(function (g) { return g.axes; }));
+      _construireReseau(); _dessinerGaleries();
+    } else {
+      _e.remplis.splice(i, 1);
+      _dessinerRemplis();
+    }
+    _majBandeau();
+  }
+  function _retirerDernier() {
+    const n = _nbRemplissages();
+    if (n) _retirerRemplissage(n - 1);
+    return n > 0;
+  }
+  // px plan pour TOUCHE_RETIRER_PX d'écran, au zoom de la carte du contexte
+  function _tolTouche(x, y) {
+    const m = _e.ctx.carte;
+    try {
+      const a = m.latLngToContainerPoint(_e.ctx.versCarte(x, y));
+      const b = m.latLngToContainerPoint(_e.ctx.versCarte(x + 100, y));
+      const k = Math.hypot(b.x - a.x, b.y - a.y) / 100;
+      return k > 0 ? TOUCHE_RETIRER_PX / k : 0;
+    } catch (err) { return 0; }
+  }
+  // Structures : toucher DANS la forme (jamais autour : le pilier voisin, mur commun, ne se remplirait plus).
+  //   Galeries : dans la galerie remplie (rayon de ses axes), au moins TOUCHE_RETIRER_PX d'écran autour de l'axe.
+  //   Le plus récent d'abord. → true si un remplissage a été retiré.
+  function _retirerAuToucher(x, y) {
+    const p = { x: x, y: y };
+    if (!_galeries()) {
+      for (let i = _e.remplis.length - 1; i >= 0; i--) {
+        if (_dedans(p, _e.remplis[i].points)) { _retirerRemplissage(i); return true; }
+      }
+      return false;
+    }
+    const tol = _tolTouche(x, y);
+    for (let i = _e.remplisG.length - 1; i >= 0; i--) {
+      const pris = _e.remplisG[i].axes.some(function (ax) {
+        for (let j = 1; j < ax.length; j++) {
+          if (_distSeg(p, ax[j - 1], ax[j]) <= Math.max(ax[j - 1].r || 0, ax[j].r || 0, tol)) return true;
+        }
+        return ax.length === 1 && Math.hypot(x - ax[0].x, y - ax[0].y) <= Math.max(ax[0].r || 0, tol);
+      });
+      if (pris) { _retirerRemplissage(i); return true; }
+    }
+    return false;
+  }
+  // Ligne d'aide et bouton du mode Remplir. La moitié clavier n'est montrée qu'avec un pointeur fin (souris,
+  //   pavé) : un téléphone sans clavier n'en a pas l'usage.
+  function _aideRetirer() {
+    const fin = !!(window.matchMedia && window.matchMedia("(any-pointer: fine)").matches);
+    const mac = /Mac|iPhone|iPad/.test((navigator.platform || "") + " " + (navigator.userAgent || ""));
+    let t = _t(_galeries() ? "detect.galeries.remplir.retirer" : "detect.remplir.retirer");
+    if (fin) t += " · " + _t("detect.remplir.retirerClavier", { touche: mac ? "Cmd+Z" : "Ctrl+Z" });
+    return '<span class="kta-detect-aide-retirer">' + _esc(t) + "</span>";
+  }
+  function _btnRetirerDernier() {
+    return '<button type="button" class="kta-btn kta-btn-ghost" data-detect="retirer-dernier">' +
+      window.ktaIcone("undo-2") + " " + _esc(_t("detect.remplir.retirerDernier")) + "</button>";
   }
   async function _remplirEn(x, y) {
     if (_e.remplissage) return;   // une lecture à la fois : un double toucher ne remplit pas deux fois
@@ -792,7 +872,7 @@ window.KtaDetectionUI = (function () {
       if (_dejaPresente(r, _existantes(niv))) { _toast(_t("detect.remplir.deja"), "warn"); return; }
       const dejaListe = _remplisGardes().map(function (z) { return { points: z.points, c: _centre(z.points) }; });
       if (_dejaPresente(r, dejaListe)) { _toast(_t("detect.remplir.dejaListe"), "warn"); return; }
-      e.remplis.push({ points: r.points, retire: false });
+      e.remplis.push({ points: r.points });
       _dessinerRemplis();
       _majBandeau();
     } catch (err) {
@@ -962,10 +1042,11 @@ window.KtaDetectionUI = (function () {
         window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" +
         _btn("fermer", "detect.fermer") + "</div>";
     }
-    const retour = _e.etape === "remplir" ? _btn("exemples", "detect.retour") : _btn("zone", "detect.recommencer");
-    return '<span class="kta-racc-info">' + _esc(_texteGaleries()) + "</span>" +
+    const remplir = _e.etape === "remplir";
+    const retour = remplir ? _btn("exemples", "detect.retour") : _btn("zone", "detect.recommencer");
+    return '<span class="kta-racc-info">' + _esc(_texteGaleries()) + "</span>" + (remplir ? _aideRetirer() : "") +
       '<div class="kta-racc-actions">' + _curseursGaleries() + _choixTypeGalerie() + "</div>" +
-      '<div class="kta-racc-actions">' +
+      '<div class="kta-racc-actions">' + (remplir ? _btnRetirerDernier() : "") +
       _btn("valider-galeries", "detect.valider", "kta-btn-primary", { n: _gardesGaleries() }) + retour +
       _btn("fermer", "detect.fermer") + "</div>";
   }
@@ -1016,13 +1097,15 @@ window.KtaDetectionUI = (function () {
     _viderCouche();
     const a = _e.apercu, c = _couche();
     if (!a) return;
+    // en Remplir, un toucher retire le remplissage entier (_onClic > _retirerAuToucher) : tracés non interactifs
+    const remplir = _e.etape === "remplir";
     a.objets.forEach(function (m, i) {
       const pol = L.polyline(m.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); }), {
-        pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false, weight: 6,
+        pane: "ktaDetection", renderer: _e.rendu, bubblingMouseEvents: false, weight: 6, interactive: !remplir,
         className: "kta-detect-apercu kta-detect-trait kta-detect-galerie" +
           (a.retires.has(i) ? " kta-detect-retire" : "")
       });
-      pol.on("click", function () {
+      if (!remplir) pol.on("click", function () {
         if (a.retires.has(i)) { a.retires.delete(i); a.retiresCles.delete(m.cle); }
         else { a.retires.add(i); a.retiresCles.add(m.cle); }
         _dessinerGaleries();
@@ -1078,6 +1161,7 @@ window.KtaDetectionUI = (function () {
         _toast(_t(cle), "warn");
         return;
       }
+      e.remplisG.push({ axes: r.axes });
       e.axes = e.axes.concat(r.axes);
       _construireReseau();
       _dessinerGaleries();
@@ -1131,7 +1215,7 @@ window.KtaDetectionUI = (function () {
     _e = { ctx: ctx, etape: "exemples", couleurs: null, pipette: null, coins: [], couche: null, apercu: null,
            ctrl: null, progres: [0, 1], lectures: 0, recalculs: 0, ex: null, curseurs: null,
            remplis: [], typeRemplir: null, typeOuverture: typeOuverture, remplissage: false,
-           cible: cible, axes: [], reglagesG: null, typeGalerie: null };
+           cible: cible, axes: [], remplisG: [], reglagesG: null, typeGalerie: null };
     _e.couleurs = _lireCouleurs();
     if (cible === "traces") {
       _e.reglagesG = window.KtaDetection.reglagesGaleries(ctx.pxParM ? ctx.pxParM() : null);
@@ -1154,17 +1238,34 @@ window.KtaDetectionUI = (function () {
     _majBandeau();
     return true;
   }
-  function _onKey(ev) {
-    if (ev.key !== "Escape" || !_e) return;
-    // une fenêtre AFFICHÉE au-dessus garde son Échap (une fenêtre masquée reste parfois dans le DOM)
-    // 🩸 Sauf la fenêtre qui porte le bandeau et celles que le contexte déclare sous le parcours (`ctx.hotes` : le
-    //   Générateur, lui-même une fenêtre), sinon l'Échap n'y fermerait jamais le parcours.
+  // Une fenêtre AFFICHÉE au-dessus du parcours (une fenêtre masquée reste parfois dans le DOM).
+  // 🩸 Sauf la fenêtre qui porte le bandeau et celles que le contexte déclare sous le parcours (`ctx.hotes` : le
+  //   Générateur, lui-même une fenêtre), sinon l'Échap n'y fermerait jamais le parcours.
+  function _fenetreDessus() {
     const hotes = _e.ctx.hotes || [];
     const fenetres = document.querySelectorAll(".kta-readme-modal-overlay, [aria-modal='true']");
-    const dessus = Array.prototype.some.call(fenetres, function (el) {
+    return Array.prototype.some.call(fenetres, function (el) {
       return el.getClientRects().length > 0 && !el.contains(_e.bandeau) && hotes.indexOf(el) < 0;
     });
-    if (dessus) return;
+  }
+  // ⚠️ contrat : écouteur en CAPTURE sur document, posé à l'ouverture : il passe avant celui de historyManager.js
+  //   (document, bulle), que stopPropagation coupe. Ctrl+Z / Cmd+Z retire le dernier remplissage ; Ctrl+Y et
+  //   Ctrl+Maj+Z sont avalés aussi (rien à refaire ici, et le ↪ global écrirait sous la fenêtre). Un champ de saisie
+  //   garde son annulation native ; une fenêtre au-dessus : touche avalée, rien retiré.
+  function _onKey(ev) {
+    if (!_e) return;
+    const k = (ev.key || "").toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (k === "z" || k === "y")) {
+      const ae = document.activeElement, tag = ae && ae.tagName;
+      const saisie = tag === "TEXTAREA" || (ae && ae.isContentEditable) ||
+        (tag === "INPUT" && ["range", "checkbox", "radio", "button", "submit"].indexOf(ae.type) < 0);
+      if (saisie) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (k === "z" && !ev.shiftKey && !_fenetreDessus()) _retirerDernier();
+      return;
+    }
+    if (ev.key !== "Escape" || _fenetreDessus()) return;
     ev.stopPropagation();
     fermer();
   }
@@ -1203,6 +1304,7 @@ window.KtaDetectionUI = (function () {
              }, {}) : null,
              galeries: _galeries() ? { axes: _e.axes.length, type: _e.typeGalerie, types: _typesTraces().map(
                function (t) { return t.id; }), reglages: Object.assign({}, _e.reglagesG), enCours: !!_e.remplissage,
+               remplis: _e.remplisG.length,
                n: ga ? ga.objets.length : 0, retires: ga ? ga.retires.size : 0, deja: ga ? ga.deja : 0,
                accroches: ga ? ga.accroches : 0,
                traces: ga ? ga.objets.filter(function (o, i) { return !ga.retires.has(i); }).map(function (o) {
@@ -1211,8 +1313,7 @@ window.KtaDetectionUI = (function () {
              apercu: a && !ga ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
                            retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands,
                            ecartees: a.ecartees } : null,
-             remplir: _e.etape === "remplir" ? { n: _remplisGardes().length, retires: _e.remplis.length -
-               _remplisGardes().length, type: _e.typeRemplir, types: _typesFermes().map(function (t) { return t.id; }),
+             remplir: _e.etape === "remplir" ? { n: _remplisGardes().length, type: _e.typeRemplir, types: _typesFermes().map(function (t) { return t.id; }),
                enCours: !!_e.remplissage,
                sommets: _remplisGardes().map(function (z) { return z.points.length; }) } : null };
   }

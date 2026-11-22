@@ -15,7 +15,8 @@
 //   4. réglage « Branche minimale » au maximum → moins de tracés, sans relire l'image ; type « secondaire » ;
 //   5. « Valider » → tracés de session (type, uid, niveau), existant intact ; UNE étape ⏪ les retire tous ;
 //   6. 📊 Éditeur de données → carte « Détecter les galeries » → Remplir au clic dans la galerie blanche : 2 tracés
-//      en T, le trait de rappel franchi, rien hors des murs ; toucher sur le fond ouvert → refus affiché.
+//      en T, le trait de rappel franchi, rien hors des murs ; la galerie remplie, touchée, quitte l'aperçu puis
+//      revient au toucher suivant ; toucher sur le fond ouvert → refus affiché.
 // Usage : NODE_PATH=<node_modules de scripts/smoke> SMOKE_PORT=8190 node scripts/smoke/checkup-galeries.js
 // Doc : docs/architecture/plans-loader.md (Détecter les structures, galeries)
 // =====================================================================
@@ -315,10 +316,13 @@ async function suite(nav) {
     tb.every(function (t) { return t.points.every(function (p) {
       return p.x >= 330 && p.x <= 570 && p.y >= 100 && p.y <= 300;
     }); }), "le trait de rappel est franchi, rien hors des murs");
+  // toucher la galerie remplie la retire (checkup-remplir-annuler.js) ; la retoucher la remplit de nouveau
   await toucher(page, O.x + SC.clicBlanc.x + 30, O.y + SC.clicBlanc.y);
-  const msgDeja = await texte(page, "detect.remplir.dejaListe");
-  verifier((await toasts(page)).indexOf(msgDeja) >= 0 && (await etat(page)).galeries.n === 2,
-    "galerie déjà remplie : rien ajouté, refus affiché");
+  e = await etat(page);
+  verifier(e.galeries.n === 0 && e.galeries.remplis === 0, "galerie déjà remplie, touchée : elle quitte l'aperçu",
+    e.galeries);
+  await toucher(page, O.x + SC.clicBlanc.x, O.y + SC.clicBlanc.y);
+  verifier((await etat(page)).galeries.n === 2, "retouchée : remplie de nouveau (2 tracés)");
   await toucher(page, O.x + 600, O.y + 370);
   const msgOuvert = await texte(page, "detect.galeries.remplir.ouvert");
   verifier((await toasts(page)).indexOf(msgOuvert) >= 0 && (await etat(page)).galeries.n === 2,
