@@ -313,6 +313,11 @@
 .kta-fp-plan-de-base {
   margin: 6px 0;
 }
+/* Curseur de l image principale, juste sous sa case : decale sous le libelle de la case, marge avant les calques. */
+.kta-fp-opacite.kta-fp-opacite-plan {
+  padding-left: 27px;
+  margin: -2px 0 8px;
+}
 .kta-fp-sublabel {
   display: block;
   font-size: 11px;

@@ -958,6 +958,7 @@
   "filter.planDeBaseAide": "By default, follows level 0. Once you tick or untick it, your choice wins; “Show all” sets it back to automatic.",
   "filter.opacite": "Opacity",
   "filter.opaciteAria": "Opacity of layer {calque}",
+  "filter.opacitePlanAria": "Opacity of the base plan",
   "filter.opaciteValeur": "{pct}%",
   "filter.levels.allBtn": "All",
   "filter.levels.chip": "Lvl {lvl}",

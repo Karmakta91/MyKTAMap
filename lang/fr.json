@@ -958,6 +958,7 @@
   "filter.planDeBaseAide": "Par défaut, suit le niveau 0. Cochée ou décochée à la main, elle l’emporte ; « Tout afficher » la remet en automatique.",
   "filter.opacite": "Opacité",
   "filter.opaciteAria": "Opacité du calque {calque}",
+  "filter.opacitePlanAria": "Opacité du plan de base",
   "filter.opaciteValeur": "{pct} %",
   "filter.levels.allBtn": "Tous",
   "filter.levels.chip": "Niv {lvl}",

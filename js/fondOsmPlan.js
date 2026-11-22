@@ -9,11 +9,12 @@
 // =====================================================================
 // Une L.GridLayer en canvas dans le pane `ktaFondOsm` (sous `tilePane`) : chaque tuile de la carte du plan dessine
 // les tuiles OSM qui la couvrent, posées par setTransform (affine des 3 coins de la tuile, calage
-// KmzExport.buildTransformCalib → Web Mercator). Pas de seconde carte. La transparence est celle de l'image du plan
-// (tilePane + overlays du fond), le fond OSM reste opaque. Panneau : interrupteur, transparence, « Ma position ».
+// KmzExport.buildTransformCalib → Web Mercator). Pas de seconde carte. La transparence est celle de l'image du plan,
+// multipliée par le curseur des filtres (tiling.js > ktaAppliquerOpacitePlanDeBase) ; le fond OSM reste opaque.
+// Panneau : interrupteur, transparence, « Ma position ».
 // Quatrième commande : « Enregistrer hors ligne » (emprise du plan dans OsmTilesCache, même code que l'accueil).
 // Expose : window.FondOsmPlan = { basculerPanneau, fermerPanneau, allumer, eteindre, maPosition, majBouton, regler,
-//   enregistrerHorsLigne, retirer, transferer, PREFIXE, etat }.
+//   facteurPlan, enregistrerHorsLigne, retirer, transferer, PREFIXE, etat }.
 // ⚠️ Interrupteur éteint à chaque plan ouvert ; transparence retenue PAR PLAN (décision produit) ; la fenêtre Vue
 //   OSM ne s'ouvre plus du bouton.
 // 🔒 Réseau : seulement tile.openstreetmap.org, OSM autorisé (OsmView.isOptedIn), hors incognito ; hors ligne, les
@@ -280,15 +281,14 @@
     return p;
   }
 
-  // Image du plan : tilePane (tuiles V2) et overlays du fond (rendu direct, tuiles V1, repli V2). 1 = opaque.
-  function _opacitePlan(a) {
-    const map = window.map;
-    if (!map) return;
-    const tp = map.getPane("tilePane");
-    if (tp) tp.style.opacity = a >= 1 ? "" : String(a);
-    const poser = function(l) { if (l && typeof l.setOpacity === "function") { try { l.setOpacity(a); } catch(e) {} } };
-    (window._ktaBaseLayers || []).forEach(poser);
-    (window._baseTiles || []).forEach(function(t) { poser(t && t.overlay); });
+  // Part du fond dans l'opacité de l'image du plan : 1 − transparence s'il est allumé sur la carte courante, sinon 1.
+  // ⚠️ Multipliée par le curseur des filtres : tiling.js > ktaAppliquerOpacitePlanDeBase est la seule à poser
+  // l'opacité (tilePane, rendu direct, tuiles V1, repli V2).
+  function facteurPlan() {
+    return (_allume && _carte && _carte === window.map) ? 1 - _transparence / 100 : 1;
+  }
+  function _opacitePlan() {
+    if (typeof window.ktaAppliquerOpacitePlanDeBase === "function") window.ktaAppliquerOpacitePlanDeBase();
   }
 
   function _attribution(map, visible) {
@@ -325,7 +325,7 @@
     _carte = map;
     _allume = true;
     _transparence = _lireTransparence();
-    _opacitePlan(1 - _transparence / 100);
+    _opacitePlan();
     _attribution(map, true);
     if (!_enLigne() && !_horsLigneDit) { _horsLigneDit = true; _toast(_t("fondosm.horsLigne")); }
     console.log("[FondOsmPlan] fond allumé");
@@ -345,7 +345,7 @@
     _enVol.clear();
     _images.clear();
     _ancetres.clear();
-    if (_carte && _carte === window.map) _opacitePlan(1);
+    if (_carte && _carte === window.map) _opacitePlan();
     _attribution(null, false);
     _carte = null;
     _transfo = null;
@@ -582,7 +582,7 @@
     const v = Math.max(0, Math.min(100, Math.round(Number(pourcent) || 0)));
     _transparence = v;
     _ecrireTransparence(v);
-    if (_allume) _opacitePlan(1 - v / 100);
+    if (_allume) _opacitePlan();
     _majPanneau();
   }
 
@@ -714,6 +714,7 @@
     maPosition:      maPosition,
     majBouton:       majBouton,
     regler:          regler,
+    facteurPlan:     facteurPlan,
     enregistrerHorsLigne: enregistrerHorsLigne,
     retirer:         retirer,
     transferer:      transferer,

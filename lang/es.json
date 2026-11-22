@@ -958,6 +958,7 @@
   "filter.planDeBaseAide": "Por defecto, sigue al nivel 0. Si la marcas o desmarcas, tu elección manda; «Mostrar todo» la vuelve a automática.",
   "filter.opacite": "Opacidad",
   "filter.opaciteAria": "Opacidad de la capa {calque}",
+  "filter.opacitePlanAria": "Opacidad del plano base",
   "filter.opaciteValeur": "{pct} %",
   "filter.levels.allBtn": "Todos",
   "filter.levels.chip": "Niv {lvl}",

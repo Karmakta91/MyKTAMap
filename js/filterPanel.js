@@ -486,7 +486,9 @@
   function _planDeBaseVisible() {
     return typeof window.ktaPlanDeBaseVisible === "function" ? window.ktaPlanDeBaseVisible() : true;
   }
-  function _renderCasePlanDeBase() {
+  // `avecCurseur` : curseur d'opacité de l'image principale sous la case. Posé dans la section des calques image
+  // seulement, à côté des curseurs des calques : un seul curseur, rien à recaler entre deux copies.
+  function _renderCasePlanDeBase(avecCurseur) {
     const vis = _planDeBaseVisible();
     return '<div class="kta-fp-chips-grid kta-fp-plan-de-base">' +
              '<label class="kta-fp-chip ' + (vis ? "" : "kta-fp-chip-off") + '" title="' +
@@ -494,7 +496,9 @@
                '<input type="checkbox" data-plan-de-base' + (vis ? " checked" : "") + '>' +
                '<span class="kta-fp-chip-label">' + window.ktaIcone("image") + ' ' + _escHtml(window.I18n.t("filter.planDeBase")) + '</span>' +
              '</label>' +
-           '</div>';
+           '</div>' +
+           (avecCurseur ? _renderCurseurOpacite("data-plan-opacite", "", _opaciteFond(),
+             window.I18n.t("filter.opacitePlanAria"), " kta-fp-opacite-plan") : "");
   }
   function _majCasePlanDeBase(scope) {
     if (!scope) return;
@@ -509,8 +513,39 @@
   function _opaciteCalque(layerId) {
     return typeof window.getPlanOpaciteCalque === "function" ? window.getPlanOpaciteCalque(null, layerId) : 1;
   }
+  function _opaciteFond() {
+    return typeof window.getPlanOpaciteFond === "function" ? window.getPlanOpaciteFond(null) : 1;
+  }
   function _texteOpacite(pct) {
     return window.I18n.t("filter.opaciteValeur", { pct: pct });
+  }
+  // Curseur d'opacité (10 à 100 %, pas de 5 %) : `attr` le désigne à la délégation, `valeurAttr` est l'id du calque
+  // (vide pour l'image principale), `opacite` la valeur retenue (0,1 à 1).
+  function _renderCurseurOpacite(attr, valeurAttr, opacite, aria, classe) {
+    const pct = Math.round(opacite * 100);
+    return '<label class="kta-fp-opacite' + (classe || "") + '">' +
+             '<span class="kta-fp-opacite-libelle">' + window.ktaIcone("blend") + ' ' +
+               _escHtml(window.I18n.t("filter.opacite")) + '</span>' +
+             '<input type="range" min="10" max="100" step="5" value="' + pct + '" ' +
+               attr + '="' + _escAttr(valeurAttr) + '" ' +
+               'aria-label="' + _escAttr(aria) + '" ' +
+               'aria-valuetext="' + _escAttr(_texteOpacite(pct)) + '">' +
+             '<span class="kta-fp-opacite-valeur" aria-hidden="true">' + _escHtml(_texteOpacite(pct)) + '</span>' +
+           '</label>';
+  }
+  function _majValeurCurseur(input, pct) {
+    const texte = _texteOpacite(pct);
+    input.setAttribute("aria-valuetext", texte);
+    const lbl = input.closest(".kta-fp-opacite");
+    const val = lbl && lbl.querySelector(".kta-fp-opacite-valeur");
+    if (val) val.textContent = texte;
+  }
+  // Curseur de l'image principale : pref du plan, puis opacité reposée (× fond OSM s'il est allumé).
+  function _reglerOpaciteFond(input) {
+    const pct = Math.max(10, Math.min(100, Number.parseInt(input.value, 10) || 100));
+    if (typeof window.setPlanOpaciteFond === "function") window.setPlanOpaciteFond(null, pct / 100);
+    if (typeof window.ktaAppliquerOpacitePlanDeBase === "function") window.ktaAppliquerOpacitePlanDeBase();
+    _majValeurCurseur(input, pct);
   }
   // Curseur d'opacité d'un calque image : appliquée à l'overlay s'il est déjà posé (un calque calé peut arriver
   // après l'ouverture du panneau : map.js > _registerOverlay relira la pref) puis retenue pour le plan.
@@ -523,16 +558,12 @@
       try { entry.overlay.setOpacity(pct / 100); } catch(_) {}
     }
     if (typeof window.setPlanOpaciteCalque === "function") window.setPlanOpaciteCalque(null, id, pct / 100);
-    const texte = _texteOpacite(pct);
-    input.setAttribute("aria-valuetext", texte);
-    const lbl = input.closest(".kta-fp-opacite");
-    const val = lbl && lbl.querySelector(".kta-fp-opacite-valeur");
-    if (val) val.textContent = texte;
+    _majValeurCurseur(input, pct);
   }
 
   function _renderImageLayersSection() {
     const pc = window.PLAN_CONFIG;
-    const caseFond = _renderCasePlanDeBase();
+    const caseFond = _renderCasePlanDeBase(true);
     if (!pc || !Array.isArray(pc.imageLayers) || pc.imageLayers.length === 0) {
       return caseFond + '<div class="kta-fp-section-empty">' +
                _escHtml(window.I18n.t("filter.empty.imageLayers")) + '</div>';
@@ -548,22 +579,14 @@
                         })()
                       : (lc.visible !== false);
       const label = lc.label || lc.id || window.I18n.t("filter.layer.default", { idx: idx });
-      const pct = Math.round(_opaciteCalque(layerId) * 100);
       html += '<div class="kta-fp-calque-image">' +
                 '<label class="kta-fp-row-cb">' +
                   '<input type="checkbox" data-img-layer="' + _escAttr(layerId) + '"' + (visible ? " checked" : "") + '>' +
                   '<span>' + window.ktaIcone("image") + ' ' + _escHtml(label) + '</span>' +
                 '</label>' +
                 // Opacité retenue par calque et par plan (config.js > setPlanOpaciteCalque) ; 100 % = rendu d'origine.
-                '<label class="kta-fp-opacite">' +
-                  '<span class="kta-fp-opacite-libelle">' + window.ktaIcone("blend") + ' ' +
-                    _escHtml(window.I18n.t("filter.opacite")) + '</span>' +
-                  '<input type="range" min="10" max="100" step="5" value="' + pct + '" ' +
-                    'data-img-opacite="' + _escAttr(layerId) + '" ' +
-                    'aria-label="' + _escAttr(window.I18n.t("filter.opaciteAria", { calque: label })) + '" ' +
-                    'aria-valuetext="' + _escAttr(_texteOpacite(pct)) + '">' +
-                  '<span class="kta-fp-opacite-valeur" aria-hidden="true">' + _escHtml(_texteOpacite(pct)) + '</span>' +
-                '</label>' +
+                _renderCurseurOpacite("data-img-opacite", layerId, _opaciteCalque(layerId),
+                  window.I18n.t("filter.opaciteAria", { calque: label })) +
               '</div>';
     });
     html += '</div>';
@@ -760,10 +783,13 @@
 
     // Délégation sur `overlay` pour les sections Image / Data / Tags / Tout afficher / Tout masquer : 2 listeners
     // (change, click) qui dispatchent par e.target.dataset, comme la section niveaux.
-    // Opacité d'un calque image : suivie pendant le glissé (`input`), pas seulement au lâcher.
+    // Opacité d'un calque image ou de l'image principale : suivie pendant le glissé (`input`), pas seulement au
+    // lâcher.
     overlay.addEventListener("input", function(e) {
       const t = e.target;
-      if (t && t.matches && t.matches('[data-img-opacite]')) _reglerOpaciteCalque(t);
+      if (!t || !t.matches) return;
+      if (t.matches('[data-img-opacite]')) _reglerOpaciteCalque(t);
+      else if (t.matches('[data-plan-opacite]')) _reglerOpaciteFond(t);
     });
     overlay.addEventListener("change", function(e) {
       const t = e.target;

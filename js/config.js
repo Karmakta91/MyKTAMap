@@ -1788,24 +1788,51 @@ function getPlanOpaciteCalque(planId, layerId) {
   const t = _readPlanPrefs(pid).imageLayerOpacity;
   return (t && typeof t === "object" && layerId in t) ? _opaciteCalqueValide(t[layerId]) : 1;
 }
+// Écriture commune aux deux opacités : `modifier(prefs)` change l'objet en place ; rien n'est créé pour une valeur
+// opaque sur un plan sans prefs.
+function _ecrireOpacitePlan(pid, opaque, modifier) {
+  let prefs;
+  try {
+    const raw = localStorage.getItem(_planPrefsKey(pid));
+    if (!raw && opaque) return true;
+    prefs = raw ? JSON.parse(raw) : {};
+  } catch (e) { return false; }
+  if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return false;
+  modifier(prefs);
+  _writePlanPrefs(pid, prefs);
+  return true;
+}
 function setPlanOpaciteCalque(planId, layerId, valeur) {
   if (!layerId) return false;
   const pid = planId || window._currentLoadedPlanId || "default";
   const v = _opaciteCalqueValide(valeur);
-  let prefs;
-  try {
-    const raw = localStorage.getItem(_planPrefsKey(pid));
-    if (!raw && v >= 1) return true;
-    prefs = raw ? JSON.parse(raw) : {};
-  } catch (e) { return false; }
-  if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) return false;
-  const t = (prefs.imageLayerOpacity && typeof prefs.imageLayerOpacity === "object") ? prefs.imageLayerOpacity : {};
-  if (v >= 1) delete t[layerId];
-  else t[layerId] = v;
-  if (Object.keys(t).length) prefs.imageLayerOpacity = t;
-  else delete prefs.imageLayerOpacity;
-  _writePlanPrefs(pid, prefs);
-  return true;
+  return _ecrireOpacitePlan(pid, v >= 1, function(prefs) {
+    const t = (prefs.imageLayerOpacity && typeof prefs.imageLayerOpacity === "object") ? prefs.imageLayerOpacity : {};
+    if (v >= 1) delete t[layerId];
+    else t[layerId] = v;
+    if (Object.keys(t).length) prefs.imageLayerOpacity = t;
+    else delete prefs.imageLayerOpacity;
+  });
 }
 window.getPlanOpaciteCalque = getPlanOpaciteCalque;
 window.setPlanOpaciteCalque = setPlanOpaciteCalque;
+
+// ── Opacité de l'image principale (curseur sous « Afficher le plan de base », js/filterPanel.js) ──────────────
+// Pref `baseImageOpacity` = 0.1 à 1, même objet et mêmes règles que les calques : absente → 1, 100 % la retire,
+// rien d'écrit sans réglage. Appliquée par tiling.js > ktaAppliquerOpacitePlanDeBase (multipliée par la transparence
+// du fond OSM sous le plan) et lue par l'export ; jamais par la détection ni la vue 3D.
+function getPlanOpaciteFond(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  return ("baseImageOpacity" in prefs) ? _opaciteCalqueValide(prefs.baseImageOpacity) : 1;
+}
+function setPlanOpaciteFond(planId, valeur) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const v = _opaciteCalqueValide(valeur);
+  return _ecrireOpacitePlan(pid, v >= 1, function(prefs) {
+    if (v >= 1) delete prefs.baseImageOpacity;
+    else prefs.baseImageOpacity = v;
+  });
+}
+window.getPlanOpaciteFond = getPlanOpaciteFond;
+window.setPlanOpaciteFond = setPlanOpaciteFond;

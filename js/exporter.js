@@ -1782,9 +1782,11 @@
     //   "transparent" → rien, image de base et calques ignorés → PNG alpha
     const bg = opts.bg || "image";
     const skipBaseImage = (bg !== "image");
+    // Fond « image » : sous un plan transparent, le fond choisi pour le plan, sinon blanc.
+    const couleurFondExport = (bg === "image" && typeof window.ktaCouleurFondPlan === "function" &&
+      window.ktaCouleurFondPlan()) || "#ffffff";
     if (bg === "image" || bg === "white") {
-      // Fond « image » : sous un plan transparent, le fond choisi pour le plan, sinon blanc.
-      ctx.fillStyle = (bg === "image" && typeof window.ktaCouleurFondPlan === "function" && window.ktaCouleurFondPlan()) || "#ffffff";
+      ctx.fillStyle = couleurFondExport;
       ctx.fillRect(0, 0, W, H);
     } else if (bg === "black") {
       ctx.fillStyle = "#000000";
@@ -1897,6 +1899,17 @@
             ctx.drawImage(baseImg, 0, 0, W, H);
           }
         } catch(e) { console.warn("[Export] base image :", e); }
+      }
+      // Opacité de l'image principale réglée dans les filtres (config.js > getPlanOpaciteFond), comme à l'écran mais
+      // sans le fond OSM, absent de l'export. Peindre l'aplat du fond par-dessus à (1 − opacité) revient à poser
+      // l'image à cette opacité sur l'aplat, même là où tuiles et image de base se sont superposées.
+      const opaciteFond = typeof window.getPlanOpaciteFond === "function" ? window.getPlanOpaciteFond(null) : 1;
+      if (opaciteFond < 1) {
+        ctx.save();
+        ctx.globalAlpha = 1 - opaciteFond;
+        ctx.fillStyle = couleurFondExport;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
       }
     }
     if (region) { ctx.save(); ctx.translate(-region.x * scale, -region.y * scale); }
