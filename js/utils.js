@@ -3393,8 +3393,9 @@ async function telechargerPlan() {
       drawMarkerImage(img, point.x, point.y, 50, 50, 25, 25);
     }
 
-    // ── polygones (zones) ──
-    function drawPolygon(points, style) {
+    // ── polygones (zones, structures fermées) ──
+    // `structure` : contour à la loi des structures, sinon (zone) `style.weight`.
+    function drawPolygon(points, style, structure) {
       if (!points || points.length < 3) return;
 
       ctx.save();
@@ -3411,9 +3412,10 @@ async function telechargerPlan() {
 
       ctx.strokeStyle = style.color || "#888888";
       ctx.lineWidth   = style.weight || 2;
-      // 🩸 Carré barré (pilier à bras, 1 m) : contour à la loi de l'écran à l'échelle 1 (le quart du front), sinon
-      // contour et croix noircissent le carré entier.
-      if (style.croix && typeof window.ktaBordSurfacePourLargeur === "function" &&
+      // 🩸 Structure fermée (pilier, pilier à bras, mur, perso fermée) : contour à la loi de l'écran à l'échelle 1
+      // (le quart du front, jamais plus que `weight`) ; à `weight`, un pilier de 1 m sur un relevé à quelques px/m
+      // sortait entièrement noir. Les zones gardent leur contour.
+      if (structure && typeof window.ktaBordSurfacePourLargeur === "function" &&
           typeof window.ktaLargeurFrontPourRatio === "function") {
         ctx.lineWidth = window.ktaBordSurfacePourLargeur(ctx.lineWidth, window.ktaLargeurFrontPourRatio(1));
       }
@@ -3512,7 +3514,7 @@ async function telechargerPlan() {
               if (!s.points || s.points.length < minPts) return;
               _poser(function () {
                 if (isPolyline) drawPolyline(s.points, style);
-                else drawPolygon(s.points, style);
+                else drawPolygon(s.points, style, true);
               }, s);
               if (typeof _diag.embStructs !== "number") _diag.embStructs = 0;
               _diag.embStructs++;
@@ -3590,7 +3592,7 @@ async function telechargerPlan() {
           if (!s.points || s.points.length < minPts) return;
           _poser(function () {
             if (isPolyline) drawPolyline(s.points, style);
-            else drawPolygon(s.points, style);
+            else drawPolygon(s.points, style, true);
           }, s);
         });
       }

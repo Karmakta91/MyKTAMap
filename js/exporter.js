@@ -2096,11 +2096,12 @@
     }
 
     // ── Helpers polygones / polylignes ──
-    // Contour d'une surface. 🩸 Carré barré (pilier à bras, 1 m) : la loi de l'écran (structures.js >
-    // ktaBordSurfacePourLargeur, le quart du front) ; à `weight × scale`, contour et croix noircissaient le carré
-    // entier. Les autres surfaces gardent leur contour d'export.
+    // Contour d'une STRUCTURE fermée (piliers, pilier à bras, mur, structure perso fermée) : la loi de l'écran
+    // (structures.js > ktaBordSurfacePourLargeur, le quart du front, jamais plus que `weight × scale`).
+    // 🩸 À `weight × scale`, un pilier de 1 m sur un relevé à quelques px/m sortait entièrement noir, à toute
+    // résolution (contour et carré grandissent ensemble). Les zones gardent `weight × scale` (_drawPolygon).
     function _contourSurfaceExp(style) {
-      if (!style.croix || typeof window.ktaBordSurfacePourLargeur !== "function") return style.weight * scale;
+      if (typeof window.ktaBordSurfacePourLargeur !== "function") return style.weight * scale;
       return window.ktaBordSurfacePourLargeur(style.weight * scale, _largeurFrontExp(style));
     }
     // Croix d'un style barré (pilier à bras), après le contour, à son épaisseur (structures.js > ktaPeindreCroix).
@@ -2109,7 +2110,8 @@
       window.ktaPeindreCroix(ctx, points.map(function (p) { return { x: sc(p.x), y: sc(p.y) }; }), style.color,
         _contourSurfaceExp(style), style.opacity);
     }
-    function _drawPolygon(points, style) {
+    // `structure` : contour à la loi des structures (_contourSurfaceExp) ; sinon (zone de calque) `weight × scale`.
+    function _drawPolygon(points, style, structure) {
       if (!points || points.length < 3) return;
       ctx.save();
       ctx.beginPath();
@@ -2122,7 +2124,7 @@
       ctx.globalAlpha = style.fillOpacity;
       ctx.fill();
       ctx.strokeStyle = style.color;
-      ctx.lineWidth = _contourSurfaceExp(style);
+      ctx.lineWidth = structure ? _contourSurfaceExp(style) : style.weight * scale;
       ctx.globalAlpha = style.opacity;
       ctx.lineJoin = "round";
       ctx.stroke();
@@ -2296,7 +2298,7 @@
           if (!st.points || st.points.length < minPts) continue;
           _poser(function () {
             if (isPolyline) _drawPolyline(st.points, s, _largeurLigneStructExp(s));
-            else _drawPolygon(st.points, s);
+            else _drawPolygon(st.points, s, true);
           }, st);
           if (typeof _diagAdv.embStructs !== "number") _diagAdv.embStructs = 0;
           _diagAdv.embStructs++;
