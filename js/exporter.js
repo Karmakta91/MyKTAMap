@@ -2527,9 +2527,7 @@
     if (region) ctx.restore();
     if (opts.legende) {
       // Ligne « Point précis » seulement si l'export en a peint au moins un.
-      const legPrecis = Object.assign({}, opts.legende, {
-        contenu: Object.assign({}, opts.legende.contenu, { precis: nbPrecisPeints > 0 })
-      });
+      const legPrecis = { ...opts.legende, contenu: { ...opts.legende.contenu, precis: nbPrecisPeints > 0 } };
       await _dessinerLegende(ctx, legPrecis, W, H, scale, iconCache, tagsUtilises);
     }
 
@@ -2692,7 +2690,9 @@
       // Point précis (contenu.precis : l'export en a peint) : une ligne en fin des icônes, pastille de la carte.
       if (leg.contenu.precis === true) {
         const lignePrecis = { label: window.I18n.t("imgexport.legLabel.precis"), precis: true };
-        if (entrees.length > 0) entrees[entrees.length - 1].lignes.push(lignePrecis);
+        // 🩸 Pas de `.at(-1)` : absent des Safari iOS anciens encore servis.
+        const derniere = entrees.slice(-1)[0];
+        if (derniere) derniere.lignes.push(lignePrecis);
         else entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: [lignePrecis] });
       }
 
