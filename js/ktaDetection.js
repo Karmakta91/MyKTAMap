@@ -278,7 +278,7 @@
       for (let j = 1; j < 4; j++) if (d[j] < d[k]) k = j;
       cotes[k].push(k < 2 ? p[0] : p[1]);
     });
-    const med = function (v) { v.sort(function (a, b) { return a - b; }); return v.length ? v[v.length >> 1] : NaN; };
+    const med = function (v) { v.sort(function (a, b) { return a - b; }); return v.length ? v[v.length >> 1] : Number.NaN; };
     const X0 = med(cotes[0]), X1 = med(cotes[1]), Y0 = med(cotes[2]), Y1 = med(cotes[3]);
     if (X1 - X0 > 0 && Y1 - Y0 > 0) {
       let ecart = 0;
