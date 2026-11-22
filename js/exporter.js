@@ -903,10 +903,15 @@
       }).join("");
     }
 
+    // Points précis (poiPrecis.js) : pointillé et carré de la carte, sans son seuil de zoom ; cochée par défaut.
+    const nbPrecis = window.KtaPoiPrecis
+      ? sessionPoints.filter(function (p) { return !!window.KtaPoiPrecis.lire(p); }).length : 0;
+
     const Ti = window.I18n.t;
     cont.innerHTML =
       row("points",  Ti("imgexport.ann.points"),          nbPoints,  true) +
       pointsTagsHtml +
+      row("precis",  window.ktaIcone("crosshair") + " " + Ti("imgexport.ann.precis"), nbPrecis, true) +
 
       row("roads",   Ti("imgexport.ann.roads"),           nbRoads,   true) +
       rowSub("roads_principal",  _lp("traces", "principal", Ti("imgexport.roadType.principal")),  roadsByType.principal,  true) +
@@ -1318,7 +1323,7 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       etat.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
+    ["points","roads","zones","structures","mesure","tracker","precis"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       etat.ann[k] = cb ? cb.checked : false;
     });
@@ -1614,7 +1619,7 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       opts.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
+    ["points","roads","zones","structures","mesure","tracker","precis"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       opts.ann[k] = cb ? cb.checked : false;
     });
@@ -2434,6 +2439,18 @@
       });
     }
 
+    // ── Points précis (poiPrecis.js > peindre), sous les icônes comme sur la carte ──
+    // ⚠️ contrat : seulement si `opts.ann.precis === true` (case de l'export avancé et du PDF) ; un autre appelant
+    // de MyKTAMapExporterGenererCanvas (cartes du Secours…) ne les reçoit pas sans le demander.
+    let nbPrecisPeints = 0;
+    if (opts.ann.precis === true && window.KtaPoiPrecis && typeof window.KtaPoiPrecis.peindre === "function") {
+      const coulPrecis = window.KtaPoiPrecis.couleurs();
+      const versCanvas = function (x, y) { return { x: sc(x), y: sc(y) }; };
+      for (const p of deferredMarkers) {
+        if (window.KtaPoiPrecis.peindre(ctx, p, versCanvas, scale, coulPrecis)) nbPrecisPeints++;
+      }
+    }
+
     // ── Marqueurs différés (icônes), en dernier : ZONE → TRAIT → CERCLE → ICÔNE ──
     for (const p of deferredMarkers) {
       const img = await getIconUrl(p);
@@ -2509,9 +2526,15 @@
     // ── Légende intégrée ──
     if (region) ctx.restore();
     if (opts.legende) {
-      await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache, tagsUtilises);
+      // Ligne « Point précis » seulement si l'export en a peint au moins un.
+      const legPrecis = Object.assign({}, opts.legende, {
+        contenu: Object.assign({}, opts.legende.contenu, { precis: nbPrecisPeints > 0 })
+      });
+      await _dessinerLegende(ctx, legPrecis, W, H, scale, iconCache, tagsUtilises);
     }
 
+    // Lu par pdfExport.js (ligne de légende du PDF, dessinée à part).
+    canvas._ktaPrecisPeints = nbPrecisPeints;
     return canvas;
   }
 
@@ -2665,6 +2688,13 @@
         lignesAutres.push({ label: _iconLabel(tag), iconUrl: url });
       });
       if (lignesAutres.length > 0) entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: lignesAutres });
+
+      // Point précis (contenu.precis : l'export en a peint) : une ligne en fin des icônes, pastille de la carte.
+      if (leg.contenu.precis === true) {
+        const lignePrecis = { label: window.I18n.t("imgexport.legLabel.precis"), precis: true };
+        if (entrees.length > 0) entrees[entrees.length - 1].lignes.push(lignePrecis);
+        else entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: [lignePrecis] });
+      }
 
       // Entrées custom « icones » (plan + session), si visibles et pourvues d'une iconUrl.
       if (LC) {
@@ -2974,7 +3004,9 @@
         for (const l of sec.lignes) {
           const yLine = cyLocal + (lh - ic) / 2;
 
-          if (l.iconUrl) {
+          if (l.precis && window.KtaPoiPrecis && typeof window.KtaPoiPrecis.peindrePastille === "function") {
+            window.KtaPoiPrecis.peindrePastille(ctx, xCol, yLine, ic, ic);
+          } else if (l.iconUrl) {
             if (!iconCache[l.iconUrl]) {
               try {
                 iconCache[l.iconUrl] = await new Promise(function(res, rej) {
@@ -3046,7 +3078,8 @@
   // Construit les options complètes de _genererCanvasExport depuis des options simplifiées (pas de second
   // pipeline de rendu). Forme (tout optionnel sauf ann) :
   //   {
-  //     ann:         { points, roads, zones, structures, pointsTags, roadsTypes, zonesTypes, structuresTypes, levels },
+  //     ann:         { points, roads, zones, structures, precis, pointsTags, roadsTypes, zonesTypes, structuresTypes,
+  //                    levels }   (precis : true pour peindre les points précis ; canvas._ktaPrecisPeints = combien)
   //     scale:       1     // 1 = natif, 0.5 = ½, 2 = HD
   //     bg:          "image"|"white"|"black"|"transparent"
   //     imageLayers: { id: bool, ... }
@@ -3138,7 +3171,7 @@
   //   2. _dessinerLegende en haut-gauche, petite marge (ombre, bordure) ;
   //   3. elle rend {boiteW, boiteH, bx, by, policePx} ;
   //   4. canvas final aux dimensions exactes (crop), `_ktaPolicePx` = taille du texte en px du canvas.
-  // legContenu : { icones, traces, zones, structures, track, meta }
+  // legContenu : { icones, traces, zones, structures, track, meta, precis } (precis : ligne « Point précis »)
   // colonnes : nombre (2 par défaut) ou liste de nombres (1 à 4) → un canvas par nombre, tags collectés une fois.
   // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère) ; avec une liste,
   // Promise<Array<{ colonnes, canvas }>> (vide si aucun contenu).

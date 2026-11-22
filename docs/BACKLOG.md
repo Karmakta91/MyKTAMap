@@ -71,11 +71,6 @@
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
-- **Point précis à l'export image / PDF** — pointillé doré + carré (chatière : trait début→fin) dessinés par l'export
-  comme sur la carte. Recos du topo 06/11 : export avancé et PDF, case « 🎯 Points précis » cochée, sans le seuil de
-  zoom, ligne de légende ; KMZ / GPX / GeoJSON inchangés (icône). Recos validées par KARMA le 12/11/2026.
-  `qui: Claude · action: coder les 4 recos (export avancé et PDF) · fini: point précis dessiné à l'export, checkup
-  · depuis: 06/11/2026 · taille: S`
 - **Jonctions qui traversent un mur, mode strict par plan** — les liens de jonction imparfaite
   (`pathfinder.js > _enrichirGrapheAvecCroisements`) ignorent murs en ligne et zones inaccessibles ; idée KARMA d'un
   mode strict par plan (tolérance 0). ⚠️ D'abord rejouer l'itinéraire réel : suit-il un VRAI tracé à travers le mur ?

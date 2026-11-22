@@ -111,6 +111,9 @@
     const roads      = C("roads");
     const zones      = C("zones");
     const structures = C("structures");
+    // Points précis (poiPrecis.js) : dessinés comme sur la carte, sans son seuil de zoom ; case cochée par défaut.
+    const nbPrecis = window.KtaPoiPrecis
+      ? points.filter(function (p) { return !!window.KtaPoiPrecis.lire(p); }).length : 0;
 
     // Calques du plan, listés comme dans l'export PNG avancé.
     const cfg          = window.PLAN_CONFIG || {};
@@ -156,6 +159,7 @@
           '<div class="kta-ses-section">' +
             '<div class="kta-ses-section-title">' + window.ktaIcone("pencil") + " " + T("pdfexport.annotations.titre") + '</div>' +
             _cbRow("pdf_inc_points",     window.ktaIcone("map-pin") + " " + T("pdfexport.annotations.points"),     points.length,     true) +
+            _cbRow("pdf_inc_precis",     window.ktaIcone("crosshair") + " " + T("pdfexport.annotations.precis"),   nbPrecis,          true) +
             _cbRow("pdf_inc_roads",      window.ktaIcone("m-galerie") + " " + T("pdfexport.annotations.roads"),      roads.length,      true) +
             _cbRow("pdf_inc_zones",      window.ktaIcone("m-zone") + " " + T("pdfexport.annotations.zones"),      zones.length,      true) +
             _cbRow("pdf_inc_structures", window.ktaIcone("m-pilier") + " " + T("pdfexport.annotations.structures"), structures.length, true) +
@@ -378,6 +382,7 @@
       incRoads:      _cbVal("pdf_inc_roads"),
       incZones:      _cbVal("pdf_inc_zones"),
       incStructures: _cbVal("pdf_inc_structures"),
+      incPrecis:     _cbVal("pdf_inc_precis"),
       incBaseImage:  _cbVal("pdf_inc_baseimage"),
       imageLayers:   imageLayers,
       dataLayers:    dataLayers,
@@ -440,6 +445,8 @@
     if (!canvas) {
       throw new Error(window.I18n.t("pdfexport.erreur.canvasEchec"));
     }
+    // Ligne « Point précis » de la légende seulement si le plan en porte au moins un (exporter.js).
+    const precisPeints = canvas._ktaPrecisPeints > 0;
     // Qualité demandée réduite par la limite de canvas de l'appareil (iPhone : 16,7 Mpx) : on dit ce qui sort.
     if (canvas._ktaPlafonne && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(window.I18n.t("pdfexport.plafond", {
@@ -495,7 +502,7 @@
 
     // 5. Légende : image PNG (helper canvas) posée sur le plan au coin demandé.
     if (opts.incLegende) {
-      await _dessinerLegendeOverlay(pdf, opts, imgX, imgY, imgW, imgH);
+      await _dessinerLegendeOverlay(pdf, opts, imgX, imgY, imgW, imgH, precisPeints);
     }
 
     // 6. Crédit dans la marge basse
@@ -522,6 +529,7 @@
       roads:      opts.incRoads,
       zones:      opts.incZones,
       structures: opts.incStructures,
+      precis:     opts.incPrecis === true,
       // Tous les sous-types (pas de sous-cases dans la modale PDF).
       pointsTags:      null,  // null = tous
       roadsTypes:      { principal: true, secondaire: true, chemin: true, jonction: true, itinerary: true },
@@ -638,7 +646,7 @@
     return meilleur;
   }
 
-  async function _dessinerLegendeOverlay(pdf, opts, planX, planY, planW, planH) {
+  async function _dessinerLegendeOverlay(pdf, opts, planX, planY, planW, planH, precis) {
     if (typeof window.MyKTAMapExporterGenererCanvasLegende !== "function") {
       console.warn("[PdfExport] Helper légende indispo — overlay skip.");
       return;
@@ -652,7 +660,8 @@
           zones:      opts.incZones,
           structures: opts.incStructures,
           track:      false,
-          meta:       false   // déjà dans le header PDF
+          meta:       false,  // déjà dans le header PDF
+          precis:     precis === true
         },
         size:     opts.legSize  || "standard",
         style:    opts.legStyle || "print",

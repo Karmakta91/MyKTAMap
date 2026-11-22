@@ -2740,6 +2740,8 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   (`opts.icone`). Sans point précis, ou passage entre niveaux : l'icône, comme avant.
 - **3D** : en vue d'édition, la fiche 3D d'un POI de session propose aussi 🎯 (et ✏️ Modifier, 📍 Déplacer) ; un
   toucher au sol y sert le même mode (`tracking.md` § Vue 3D).
+- **Exports** : KMZ, GPX, GeoJSON gardent l'icône ; l'export image avancé et le PDF peignent le même dessin
+  (`KtaPoiPrecis.peindre`, géométrie `DESSIN` partagée avec la carte), sans le seuil de zoom (`exports.md` § Point précis).
 
 Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
 § 39.

@@ -592,6 +592,29 @@ d'origine, plancher 0,5 px ; le remplissage ne change pas.
   terrain ci-dessus (`_largeurLigneStructExp`). ⚠️ « Télécharger le plan » les dessine encore à `style.weight`
   (`drawPolyline`), sans la loi du terrain.
 
+#### 69.4 Point précis d'un POI : dessiné par l'export image avancé et le PDF
+
+Le pointillé doré de l'icône au point précis, le segment d'une chatière et le petit carré à chaque point
+(`ui.md` § Point précis) sortent dans l'export image avancé et le PDF comme sur la carte (décisions de KARMA du
+12/11/2026) :
+- **Une seule loi de dessin** : `poiPrecis.js > peindre(ctx, point, versCanvas, u)` (canvas), géométrie
+  `KtaPoiPrecis.DESSIN` (trait 2, tirets 4 4, segment 3, carré 9, liseré 1) partagée avec `_construire` (carte) ;
+  `u` = résolution (les icônes font 50 px à l'écran comme à l'export : le dessin garde sa proportion). Couleurs =
+  valeurs calculées des jetons `--kta-accent` / `--kta-sur-accent` (`couleurs()`), aucune table locale.
+- **Sans le seuil de zoom** de la carte (`SEUIL_PX_PAR_M`) : un export n'a pas de zoom, tout point précis d'un POI
+  exporté est peint, sous les icônes (après les cercles d'intersection), POI de session et de calque, filtres de
+  tag et de niveau compris (la liste des marqueurs différés).
+- **Case « Points précis »** (`ann_precis` dans l'export avancé, `pdf_inc_precis` dans le PDF ; icône `crosshair`,
+  cochée par défaut, grisée sans point précis). ⚠️ contrat : `MyKTAMapExporterGenererCanvas` ne peint que si
+  `ann.precis === true` ; les autres appelants (cartes du Secours…) n'en reçoivent pas sans le demander.
+- **Légende** : une ligne « Point précis » (`imgexport.legLabel.precis`, pastille `KtaPoiPrecis.peindrePastille`) en
+  fin des icônes, seulement si l'export en a peint au moins un (`contenu.precis`) ; le PDF lit
+  `canvas._ktaPrecisPeints` et le passe à sa légende dessinée à part.
+- **Hors périmètre** : KMZ, GPX, GeoJSON (l'icône, décision produit) et « Télécharger le plan » (export rapide).
+
+🛡️ `scripts/smoke/checkup-export-point-precis.js` (par les fenêtres, Chromium et WebKit : doré au pointillé, au
+carré, au segment et aux bouts de la chatière ; rien case décochée ; ligne de légende).
+
 ---
 
 ### 54. GpxIO — Import + Export GPX (depuis v1.14.0)
