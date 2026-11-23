@@ -506,7 +506,8 @@ docs/                   ← Documentation du projet, jamais servie (sauf docs/ap
                           commit-msg (data/ hors Git, docs d'un bump, noms réels) ; activer : git config core.hooksPath .githooks
 .github/                ← workflows/ci.yml (syntaxe, commits reçus, pre-commit complet), docker.yml (image ghcr sur tag),
                           release.yml (release GitHub au bump sur main), smoke.yml (smoke à la demande),
-                          sonde-integrite.yml (code servi = dépôt, toutes les heures) ; dependabot.yml (veille des dépendances)
+                          sonde-integrite.yml (code servi = dépôt et échéance des certificats TLS, toutes les heures) ;
+                          dependabot.yml (veille des dépendances)
 .claude/                ← Réglages de l'IA de code : hooks guard-git.js (git interdits) et check-syntax.js (node -c après
                           chaque écriture), skills add-icon-tag / add-zone-type / release
 .design-sync/           ← Synchronisation de la charte avec le projet de maquettes (jetons seuls)
@@ -640,6 +641,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
 | `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
 | `release/sonar-scan.ps1` | Analyse SonarQube locale et verdict de la porte qualité (marche 1ter de la porte de release) |
+| `release/sonde-certificats.sh` | Échec si un certificat TLS des cinq domaines expire dans moins de `SEUIL_JOURS` jours (défaut 20 ; workflow `sonde-integrite.yml`, job `certificats`) |
 | `release/sonde-integrite.js` | Compare le code servi par un site au dépôt (workflow `sonde-integrite.yml`) |
 
 **`smoke/` — harnais navigateur** (Playwright, `npm install` dans `scripts/smoke/` ; jamais dans les hooks) — mode
@@ -879,6 +881,10 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### Pas encore publié (après v2.31.0, branche `Karma_dev`)
+
+- 🚦 **Outillage : alerte d'échéance des certificats TLS** (`scripts/release/sonde-certificats.sh`, `.github/workflows/sonde-integrite.yml` job `certificats`, `infra-versioning.md`) : toutes les heures, la sonde lit la date d'expiration des certificats de myktamap.fr, www, dev, pro et doc ; à moins de 20 jours (`SEUIL_JOURS`), le run échoue et GitHub prévient par e-mail. Un domaine injoignable en TLS n'est qu'un avertissement. Raison : certbot renouvelle à 30 jours, un échec silencieux ne se verrait sinon qu'à la coupure. Même script à la main depuis le poste.
 
 #### v2.31.0 (23/11/2026) — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles (branche `Karma_dev`)
 
