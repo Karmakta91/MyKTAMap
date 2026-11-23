@@ -38,6 +38,11 @@
 
 ## Ensuite
 
+- **Remplir au clic : front de taille** — QCM 23/11/2026 : un clic SUR le trait du front le suit jusqu'à ses bouts et
+  pose une structure front ; dans la fenêtre Détecter des structures, « Remplir » suit le type choisi (pilier = forme
+  fermée, front = trait suivi) ; arrêt au carrefour, un 2e clic prolonge et raccorde. Contournement : tracé puis conversion.
+  `qui: Claude · action: lot après remplir-exclusif (moteur des galeries à réutiliser) · fini: front posé d'un clic,
+  arrêt au carrefour, raccord au 2e clic, checkup rouge puis vert · depuis: 23/11/2026 · taille: M`
 - **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
   pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
   haut. Sans rampe placée, talus 30° automatique inchangé. Priorité KARMA (« un gros plus »), juste après talus honnête.
