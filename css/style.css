@@ -2479,6 +2479,16 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   background: var(--kta-light-bg-deep);
   border-color: #d97706;
 }
+/* Action « Ouvrir / Enregistrer » ou « Télécharger » (utils.js > ktaActionPdf) : compacte sur la barre de l'iframe. */
+.kta-histoire-pdf-actions .kta-pdf-action {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+.kta-pdf-action { text-decoration: none; }
+.kta-histoire-pdf-introuvable {
+  padding: 24px;
+  text-align: center;
+}
 .kta-histoire-pdf-empty,
 .kta-histoire-pdf-fallback {
   padding: 24px;
@@ -17645,6 +17655,7 @@ html.kta-theme-light .kta-jrn-trace-wrap { background: rgba(255, 255, 255, 0.55)
 }
 .kta-jrn-recit-rendu h1, .kta-jrn-recit-rendu h2, .kta-jrn-recit-rendu h3 { color: var(--kta-texte); }
 .kta-jrn-recit-pdfmeta { font-size: 11.5px; color: var(--kta-texte-3); margin: 10px 0 5px; }
+.kta-jrn-recit-pdfactions { margin: 0 0 8px; }
 .kta-jrn-recit-iframe {
   width: 100%;
   height: 48vh;

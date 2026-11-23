@@ -919,7 +919,7 @@ Jusqu'à **10 documents PDF par plan** : rapport, plan papier scanné, article, 
 - **📥 Importer un PDF** en ajoute un ; **🗑️ Retirer** supprime celui affiché. La liste apparaît dès qu'il y en a plusieurs.
 - Les documents livrés avec le plan (📕) passent en tête de liste. Ils sont copiés sur ton appareil à la première ouverture ; si tu les retires, ils reviennent à la prochaine ouverture du plan.
 - Avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**.
-- Sur iPhone, **↗️ Ouvrir dans un onglet** affiche le document en plein écran.
+- **Ouvrir / Enregistrer** passe le document à ton appareil : aperçu, **Enregistrer dans Fichiers**, Livres… (sur iPhone, c'est ainsi qu'il s'affiche). Si l'appareil ne sait pas partager un fichier, un lien **Télécharger le PDF** le remplace. Sur ordinateur et Android, le document s'affiche aussi dans la fenêtre, avec **↗️ Ouvrir dans un onglet**.
 - Tes documents se consultent aussi depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
 
 **Export** : la note et les documents partent avec l'export de session et sont **ajoutés** au plan à la réimportation (rien n'est écrasé). L'export **anonymisé** les laisse de côté. Tout reste sur ton appareil.

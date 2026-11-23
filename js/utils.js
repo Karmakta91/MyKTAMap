@@ -416,6 +416,68 @@ window.ktaEstIos = function() {
   } catch (e) { return false; }
 };
 
+// ── Documents PDF (Mode Histoire, Carnet) : type, nom, contenu, et action « Ouvrir / Enregistrer » ──────────
+// 🩸 Un Blob sans type `application/pdf` (fichier extrait d'un ZIP, copie ancienne) : iframe qui télécharge au lieu
+// d'afficher, fichier enregistré sans extension. Toujours passer par ktaBlobPdf avant createObjectURL.
+window.ktaNomPdf = function(nom) {
+  let n = String(nom || "").split("/").pop().replace(/[\\:*?"<>|\u0000-\u001f]/g, "_").trim() || "document";
+  if (!/\.pdf$/i.test(n)) n += ".pdf";
+  return n;
+};
+window.ktaBlobPdf = function(blob) {
+  if (!blob) return blob;
+  return blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
+};
+// ⚠️ contrat : Promise<boolean>, vrai si les octets commencent par « %PDF ». Une page 404 ou l'index.html du Service
+// Worker servis à la place d'un document échouent ici au lieu de partir en téléchargement.
+window.ktaContenuPdf = function(blob) {
+  if (!blob || !blob.size) return Promise.resolve(false);
+  return new Response(blob.slice(0, 5)).text()
+    .then(function(t) { return t.indexOf("%PDF") === 0; })
+    .catch(function() { return false; });
+};
+// Élément d'action pour un PDF déjà en mémoire : bouton de partage si l'appareil sait partager ce fichier (iPhone :
+// aperçu, Enregistrer dans Fichiers, Livres), sinon lien de téléchargement. `url` = blob: URL typée du même
+// document (créée et révoquée par l'appelant).
+// ⚠️ navigator.share exige le geste : le File est construit AVANT le clic, rien d'asynchrone avant share().
+window.ktaActionPdf = function(blob, nom, url) {
+  const t = function(k) { return window.I18n ? window.I18n.t(k) : k; };
+  const nomPdf = window.ktaNomPdf(nom);
+  const habiller = function(el, icone, cle) {
+    el.className = "kta-btn kta-btn-primary kta-pdf-action";
+    el.innerHTML = window.ktaIcone(icone) + " ";
+    el.appendChild(document.createTextNode(t(cle)));
+  };
+  let fichier = null;
+  try { fichier = new File([window.ktaBlobPdf(blob)], nomPdf, { type: "application/pdf" }); } catch (e) { fichier = null; }
+  let partageable = false;
+  try {
+    partageable = !!fichier && typeof navigator.share === "function" &&
+                  typeof navigator.canShare === "function" && navigator.canShare({ files: [fichier] });
+  } catch (e) { partageable = false; }
+  const lien = document.createElement("a");
+  habiller(lien, "arrow-down-to-line", "histoire.pdf.telecharger");
+  lien.href = url;
+  lien.download = nomPdf;
+  if (!partageable) return lien;
+  const bouton = document.createElement("button");
+  bouton.type = "button";
+  habiller(bouton, "arrow-up-from-line", "histoire.pdf.partager");
+  bouton.setAttribute("data-kta-pdf-partager", "1");
+  bouton.title = nomPdf;
+  bouton.addEventListener("click", function() {
+    navigator.share({ files: [fichier], title: nomPdf }).catch(function(err) {
+      if (err && err.name === "AbortError") return;   // feuille fermée par l'utilisateur : ni erreur ni toast
+      console.warn("[PDF] partage impossible, téléchargement :", err);
+      lien.style.display = "none";
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+    });
+  });
+  return bouton;
+};
+
 // Appareil tactile = pointeur principal grossier, quelle que soit l'orientation (un téléphone en paysage
 // dépasse 768 px ; un PC tactile garde la souris). Consommateur : plancher de dézoom anti-crash (map.js).
 window.ktaAppareilTactile = function() {

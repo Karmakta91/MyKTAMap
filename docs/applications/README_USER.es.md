@@ -919,7 +919,7 @@ Hasta **10 documentos PDF por mapa**: informe, mapa en papel escaneado, artícul
 - **📥 Importar un PDF** añade uno; **🗑️ Quitar** elimina el que se muestra. La lista aparece en cuanto hay varios.
 - Los documentos incluidos con el mapa (📕) van al principio de la lista. Se copian en tu dispositivo la primera vez que lo abres; si los quitas, vuelven la próxima vez que se abra el mapa.
 - Aviso a partir de **25 MB** acumulados, rechazo a partir de **100 MB**.
-- En iPhone, **↗️ Abrir en una pestaña** muestra el documento a pantalla completa.
+- **Abrir / Guardar** pasa el documento a tu dispositivo: vista previa, **Guardar en Archivos**, Libros… (en iPhone, así es como se muestra). Si el dispositivo no puede compartir un archivo, lo sustituye un enlace **Descargar el PDF**. En ordenador y Android, el documento también se muestra en la ventana, con **↗️ Abrir en una pestaña**.
 - Tus documentos también se consultan desde **📔 Mi cuaderno → 📖 Relatos**, sin cargar el mapa.
 
 **Exportación**: la nota y los documentos se van con la exportación de sesión y se **añaden** al mapa al reimportarla (no se sobrescribe nada). La exportación **anonimizada** los deja fuera. Todo se queda en tu dispositivo.

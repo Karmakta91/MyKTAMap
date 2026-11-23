@@ -852,14 +852,24 @@
         _histGet(d.id).then(function(rec) {
           if (!rec || !rec.blob) { _toast(_t("jrn.recits.pdfIntrouvable"), "warn"); return; }
           if (_recitUrl) { try { URL.revokeObjectURL(_recitUrl); } catch(e) {} }
-          _recitUrl = URL.createObjectURL(rec.blob);
+          // Blob retypé : une copie du ZIP peut être en application/octet-stream (iframe qui télécharge).
+          const blob = window.ktaBlobPdf(rec.blob);
+          _recitUrl = URL.createObjectURL(blob);
           const vue = document.getElementById("kta-jrn-recit-pdfbox");
           if (!vue) return;
           const vieux = vue.querySelector("iframe");
           if (vieux) { try { vieux.src = ""; } catch(e) {} }
           vue.innerHTML = '<div class="kta-jrn-recit-pdfmeta">' + _esc(rec.name || "histoire.pdf") +
                             ' · ' + Math.round((rec.size || 0) / 1024) + ' Ko</div>' +
-                          '<iframe class="kta-jrn-recit-iframe" src="' + _recitUrl + '" title="PDF"></iframe>';
+                          '<div class="kta-jrn-recit-pdfactions"></div>';
+          vue.querySelector(".kta-jrn-recit-pdfactions").appendChild(window.ktaActionPdf(blob, rec.name, _recitUrl));
+          // iPhone : pas d'iframe (une seule page rendue) — l'action ouvre le PDF par la feuille de partage.
+          if (window.ktaEstIos()) return;
+          const ifr = document.createElement("iframe");
+          ifr.className = "kta-jrn-recit-iframe";
+          ifr.src = _recitUrl;
+          ifr.title = "PDF";
+          vue.appendChild(ifr);
           // La fiche ne s'élargit (2 colonnes sur PC) QUE quand un PDF est ouvert.
           const boite = document.getElementById("kta-jrn-recit-boite");
           if (boite) boite.classList.add("kta-jrn-recit-avecpdf");

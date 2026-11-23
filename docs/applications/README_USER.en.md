@@ -919,7 +919,7 @@ Up to **10 PDF documents per map**: report, scanned paper map, article, topo sur
 - **📥 Import a PDF** adds one; **🗑️ Remove** deletes the one shown. The list appears as soon as there are several.
 - Documents shipped with the map (📕) come first in the list. They are copied to your device the first time you open it; if you remove them, they come back the next time the map is opened.
 - Warning beyond **25 MB** in total, refusal beyond **100 MB**.
-- On iPhone, **↗️ Open in a tab** shows the document full screen.
+- **Open / Save** hands the document to your device: preview, **Save to Files**, Books… (on iPhone, this is how it is shown). If the device cannot share a file, a **Download the PDF** link replaces it. On computers and Android, the document also shows in the window, with **↗️ Open in a tab**.
 - Your documents can also be viewed from **📔 My logbook → 📖 Stories**, without loading the map.
 
 **Export**: the note and the documents go with the session export and are **added** to the map on re-import (nothing is overwritten). The **anonymized** export leaves them out. Everything stays on your device.
