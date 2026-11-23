@@ -1970,7 +1970,8 @@ Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `
 Tuile de l'accueil de l'Éditeur juste après Vérifier le plan, **plan affiché seulement**, et bouton du groupe 🏛️
 Structures (icône `search`, avant ✅ Fermer) : les deux ouvrent `window.KtaDetectionUI.ouvrir()`, un seul parcours
 (décision produit). Bandeau `#kta-detect-bandeau` (`.kta-racc-bandeau`) en trois étapes (exemples à la pipette,
-zone, aperçu) ; aperçu dans le pane `ktaDetection` (renderer SVG propre, classes `.kta-detect-*` en jetons de la
+zone, aperçu), posé en colonne (`.kta-detect-bandeau`) : largeur de sa plus longue rangée de boutons, plafond
+`min(900px, 100vw - 32px)`, plancher 420 px, lignes de texte repliées dessous sans pousser la largeur ; aperçu dans le pane `ktaDetection` (renderer SVG propre, classes `.kta-detect-*` en jetons de la
 charte ; la pastille d'exemple prend la couleur lue sur le plan), trois curseurs (tolérance, tailles minimale et
 maximale). Pendant la pipette et le cadre, réticule rouge de précision (`body.kta-detect-pick-mode`, ajoutée au
 sélecteur du « Curseur de précision » de `css/style.css` : une classe propre, `kta-precision-mode` étant recalculée

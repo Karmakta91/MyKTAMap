@@ -101,7 +101,8 @@ async function preterPlanche(page) {
     window.KtaUid.ensure(pilier, "st");
     window.setStructures(window.getStructures().concat([pilier]));
     window.map.fitBounds(L.latLngBounds([window.convertCoord(O.x - 20, O.y - 20),
-      window.convertCoord(O.x + sc.W + 20, O.y + sc.H + 20)]), { animate: false });
+      window.convertCoord(O.x + sc.W + 20, O.y + sc.H + 20)]),
+      { animate: false, paddingBottomRight: [0, 280] });   // le bandeau du bas ne couvre aucun point touché
     if (window.HistoryManager && typeof window.HistoryManager.reset === "function") window.HistoryManager.reset();
     return O;
   });

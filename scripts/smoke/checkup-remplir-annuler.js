@@ -8,8 +8,9 @@
 // blanches fermées entre deux traits noirs) et la prête au plan en tuiles V2 (Blob dans RUNTIME_ASSETS), puis, sous
 // chaque moteur de KTA_MOTEURS (Chromium et WebKit par défaut), pour les structures puis pour les galeries :
 //   1. un remplissage validé (UNE étape ⏪ dans l'historique global) ;
-//   2. fenêtre rouverte en Remplir : ligne d'aide, bouton « Retirer le dernier » (icône SVG) désactivé à vide ;
-//      Ctrl+Z ne défait PAS le Valider précédent (HistoryManager intact) ; le bouton retire le dernier remplissage ;
+//   2. fenêtre rouverte en Remplir : ligne d'aide, bandeau à la largeur de ses boutons (pas de l'écran), bouton
+//      « Retirer le dernier » (icône SVG) désactivé à vide ; Ctrl+Z ne défait PAS le Valider précédent
+//      (HistoryManager intact) ; le bouton retire le dernier remplissage ;
 //   3. trois remplissages ; un toucher sur le 2e le retire (il quitte l'aperçu, aucun remplissage relancé) ;
 //      Ctrl+Z retire le 3e ; « Valider » n'écrit que le 1er ;
 //   4. fenêtre fermée : Ctrl+Z revient à l'historique global (il retire le dernier Valider).
@@ -147,6 +148,20 @@ function boutonRetirer(page) {
     return b ? { svg: !!b.querySelector("svg"), actif: !b.disabled } : null;
   });
 }
+// Largeur du bandeau : celle de sa plus longue rangée de boutons (padding et bordures compris), jamais l'écran entier
+// (🩸 en ligne + width: max-content, les lignes de texte en flex-basis 100 % le poussaient à 100vw - 32 px).
+function largeurBandeau(page) {
+  return page.evaluate(function () {
+    const b = document.getElementById("kta-detect-bandeau");
+    if (!b) return null;
+    const rangees = Array.prototype.map.call(b.querySelectorAll(".kta-racc-actions"), function (a) {
+      return a.getBoundingClientRect().width;
+    });
+    const aide = b.querySelector(".kta-detect-aide-retirer").getBoundingClientRect(), r = b.getBoundingClientRect();
+    return { w: Math.round(r.width), rangee: Math.round(Math.max.apply(null, rangees)), vw: window.innerWidth,
+      centreAide: Math.round(Math.abs(aide.left + aide.width / 2 - (r.left + r.width / 2))) };
+  });
+}
 function nombre(e, galeries) {
   if (!e) return -1;
   return galeries ? (e.galeries ? e.galeries.n : -1) : (e.remplir ? e.remplir.n : -1);
@@ -199,6 +214,9 @@ async function parcours(page, O, galeries) {
   });
   const aideAttendue = await texte(page, galeries ? "detect.galeries.remplir.retirer" : "detect.remplir.retirer");
   verifier(aide && aide.indexOf(aideAttendue) === 0, nom + " : ligne d'aide « " + aideAttendue + " … »", aide);
+  const lb = await largeurBandeau(page);
+  verifier(lb && lb.w <= lb.rangee + 40 && lb.w <= Math.min(900, lb.vw - 32) && lb.centreAide <= 2,
+    nom + " : bandeau à la largeur de ses boutons, aide centrée (pas toute la largeur de l'écran)", lb);
   let bt = await boutonRetirer(page);
   verifier(bt && bt.svg && !bt.actif, nom + " : bouton « Retirer le dernier » (icône SVG), désactivé à vide", bt);
   await page.keyboard.press("Control+z");
