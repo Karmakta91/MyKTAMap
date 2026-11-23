@@ -1209,10 +1209,16 @@ window.KtaDetectionUI = (function () {
   }
 
   // ── Ouverture / fermeture ──
+  // ⚠️ contrat (décision produit) : un seul détecteur ouvert. Le même (cible et carte) rouvert reste tel quel ; un
+  //   autre ferme d'abord celui-ci par fermer(), le chemin d'Échap et de la croix (aperçu non validé jeté, rien
+  //   écrit ; ce qui a été validé reste). Au Générateur, fermer() rend aussi sa fenêtre (ctx.sortir).
   function ouvrir(contexte, options) {
-    if (_e) return true;
     const ctx = contexte || contextePlan();
     const cible = options && options.cible === "traces" ? "traces" : "structures";
+    if (_e) {
+      if (_e.cible === cible && ctx && _e.ctx.carte === ctx.carte) return true;
+      fermer();
+    }
     if (!ctx || !window.KtaDetection) return false;
     if (cible === "traces" && typeof ctx.poserTraces !== "function") return false;
     if (ctx.refuse()) return false;

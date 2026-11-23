@@ -1083,6 +1083,12 @@ les galeries → tracés » plus bas.
   - Garde-fous : `check-detection.js` (carré bruité → rectangle aux angles droits à 2 px, rectangle tourné, rond,
     petit rond, pentagone, trapèze, L ; détection et recalcul ; contre-épreuves sans l'option, empreintes du contour
     d'avant) · `scripts/smoke/checkup-affiner-contours.js` (case cochée par défaut, retenue, effet sur Remplir).
+- ⚠️ **Un seul détecteur ouvert** (décision de KARMA du 23/11/2026) : ouvrir « Détecter » (structures) ferme
+  « Détecter les galeries », et l'inverse, comme un outil en désarme un autre (`detectionStructures.js > ouvrir`).
+  Le détecteur fermé passe par `fermer()`, le chemin d'Échap et de la croix : aperçu non validé jeté sans
+  confirmation, rien écrit ; ce qui a été validé reste. Le même détecteur (même cible, même carte) rouvert reste tel
+  quel, aperçu compris. Au Générateur, `fermer()` rend aussi la fenêtre du premier (`ctx.sortir`). Checkup :
+  `checkup-detecteur-unique.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
@@ -1099,6 +1105,7 @@ les galeries → tracés » plus bas.
   `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-remplir-annuler.js` (retirer un
   remplissage au toucher, par Ctrl+Z ou « Retirer le dernier », structures et galeries, historique global intact) ·
   `scripts/smoke/checkup-remplir-exclusif.js` (un seul mode de clic entre la fenêtre et les outils de la carte) ·
+  `scripts/smoke/checkup-detecteur-unique.js` (ouvrir un détecteur ferme l'autre, plan et Générateur) ·
   `scripts/smoke/checkup-affiner-contours.js` (case Affiner
   les contours) · `scripts/smoke/checkup-detection-emprise.js` (calque du
   niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
