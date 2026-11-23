@@ -31,6 +31,11 @@
 
 ## Maintenant
 
+- **Certificats TLS : renouvellement de dev et pro** — contrôlés le 23/11/2026 : tous valides (TLS 1.3), mais dev et pro
+  expirent le 03/01/2027 sans avoir jamais été renouvelés (certbot agit à 30 jours, vers le 04/12). Sur le VPS :
+  `certbot certificates`, minuteur certbot, `certbot renew --dry-run`. Idée liée : alerte d'échéance dans la sonde.
+  `qui: KARMA · action: dry-run certbot sur le VPS, puis Claude recontrôle les dates le 05/12 · fini: dev et pro à une nouvelle
+  échéance (avril 2027) · depuis: 23/11/2026 · taille: XS`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
