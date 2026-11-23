@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.30.0` (21/11/2026)
+## 📦 Version courante — `v2.31.0` (23/11/2026)
 
-> 🏛️ **v2.30.0 — Pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés** : nouvelle structure **pilier à bras** posée d'un seul toucher (carré de 1 m barré d'une croix ; en 3D, une colonne de blocs en assises). Dans 🔎 Détecter, **🪣 Remplir au clic** dessine un pilier blanc cerné de noir d'un toucher ; la détection lit le niveau actif seulement (refus d'un niveau sans image) et tout son calque, même plus grand que l'image du plan ; les fronts fins ne disparaissent plus près des piliers clairs. Un curseur **Opacité** sous chaque calque image (filtres ≡). On **enchaîne les tracés** sans éteindre l'outil (⏪ et ⏩ le gardent allumé). Un niveau calé hors de l'image se zoome jusqu'à ses bords ; la sélection par zone prend les niveaux visibles. Détail : journal ci-dessous.
+> 🛣️ **v2.31.0 — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles** : **Détecter les galeries** (outil 🛣️ Tracés, Éditeur de données, Générateur) trace l'axe des galeries de l'image en tracés, un par galerie, piliers contournés, bouts accrochés exactement au réseau existant. **🪣 Remplir au clic** suit aussi le trait d'un **front de taille** (arrêt au carrefour, un deuxième toucher prolonge), accepte les massifs jusqu'à 80 m, retire une erreur d'un toucher ou de Ctrl+Z, et **affine les contours** (lissage en mètres, quasi-rectangles redressés) ; un seul détecteur et un seul mode de clic à la fois. Curseur **Opacité** pour l'image principale du plan. L'export image et le PDF dessinent les **points précis** et gardent les **petits piliers** lisibles. 🚨 Une **alerte d'urgence passe devant** une alerte d'information. Détail : journal ci-dessous.
 
 ---
 
@@ -880,7 +880,9 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Pas encore publié (après v2.30.0, branche `Karma_dev`)
+#### v2.31.0 (23/11/2026) — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles (branche `Karma_dev`)
+
+> Écart avec la prod v2.30.0.
 
 - **🪣 Remplir au clic sur un front de taille** (`js/ktaDetection.js > suivreTrait`, `js/detectionStructures.js > _suivreEn` / `_typesRemplir`, `lang/*.json`, guides, `plans-loader.md` § Remplir au clic, `check-detection.js`, `checkup-remplir-front.js`) : pour poser un front d'un plan au trait, il fallait « Détecter les galeries » en Remplir sur le front puis convertir le tracé, et corriger des carrefours parasites. Dans la fenêtre Détecter, « Remplir au clic » suit maintenant le type choisi : un type à contour fermé remplit comme avant, un type en ligne (front, mur en ligne, arc) suit le trait touché jusqu'à ses deux bouts et s'arrête au premier carrefour. Un toucher plus loin prolonge, et le bout du nouveau morceau s'accroche exactement sur le front posé (ou de l'aperçu), jamais modifié. Un trait de rappel fin en travers n'arrête pas le suivi ; un front qui touche un pilier plein s'arrête à son bord ; un front déjà posé n'est pas doublé. Affiner les contours, retirer au toucher, Ctrl+Z et « Retirer le dernier » valent aussi pour les fronts. Planche fabriquée : front droit, coudé, carrefours en T et en X, pilier, trait de rappel ; raccord exact au toucher suivant.
 - **Ctrl+Z va à l'outil de dessin quand « Détecter » est en pause** (`js/detectionStructures.js > _onKey`, `plans-loader.md` § Remplir au clic, `checkup-remplir-exclusif.js`) : visée en pause parce qu'un outil (tracé, zone, structure, mesure, point) a pris les clics de la carte, Ctrl/Cmd+Z, Ctrl+Y et Ctrl+Maj+Z ne sont plus captés par la fenêtre et annulent le dernier point du tracé en cours ; les remplissages restent. Visée active, ou en pause sans outil armé : Ctrl+Z retire toujours le dernier remplissage, jamais l'historique global.
@@ -10326,6 +10328,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🏛️ **v2.30.0 — Pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés** : nouvelle structure **pilier à bras** posée d'un seul toucher (carré de 1 m barré d'une croix ; en 3D, une colonne de blocs en assises). Dans 🔎 Détecter, **🪣 Remplir au clic** dessine un pilier blanc cerné de noir d'un toucher ; la détection lit le niveau actif seulement (refus d'un niveau sans image) et tout son calque, même plus grand que l'image du plan ; les fronts fins ne disparaissent plus près des piliers clairs. Un curseur **Opacité** sous chaque calque image (filtres ≡). On **enchaîne les tracés** sans éteindre l'outil (⏪ et ⏩ le gardent allumé). Un niveau calé hors de l'image se zoome jusqu'à ses bords ; la sélection par zone prend les niveaux visibles. Détail : journal ci-dessous.
 
 > 🔒 **v2.29.1 — nginx corrigé dans l'image Docker (CVE-2026-123007, CVE-2026-123633), Vérifier le plan qui corrige en un geste et prévient à l'ouverture, Volume exploité immédiat et sur deux colonnes** : l'image Docker auto-hébergée passe à nginx 1.31.9 (failles HTTP/2 permettant d'exécuter du code à distance), version désormais figée et suivie par Dependabot ; myktamap.fr était déjà corrigé côté serveur. **Vérifier le plan** gagne les objets en double, contours qui se recoupent, objets hors image ou sur un niveau inconnu, types absents de la légende ; il **corrige en un geste** ce qui est sûr (un seul Ctrl+Z), retient les **galeries condamnées**, et signale les problèmes **bloquants** dès l'ouverture du plan et à la fin du Générateur (pastille + un toast). **⛏️ Volume exploité** s'ouvre aussitôt (« Calcul en cours… »), calcule jusqu'à des dizaines de fois plus vite, et se range sur deux colonnes sur grand écran. Le ✂️ coupe aussi les structures en ligne ; « Mettre à jour le plan » ne montre plus la fenêtre de session après le retrait. Détail : journal ci-dessous.
 

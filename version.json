@@ -1,8 +1,8 @@
 {
-  "version": "v2.30.0",
-  "released": "2026-11-21",
+  "version": "v2.31.0",
+  "released": "2026-11-23",
   "notes": [
-    "🏛️ Nouvelle structure « pilier à bras » posée d'un seul toucher (carré de 1 m barré d'une croix, colonne de blocs en 3D) ; 🪣 Remplir au clic dans Détecter : un toucher dans un pilier cerné de noir le dessine.",
-    "🌫️ Opacité réglable pour chaque calque image dans les filtres ≡ ; on enchaîne les tracés sans éteindre l'outil ; un niveau calé plus grand que le plan se zoome et se détecte jusqu'au bord."
+    "🛣️ Détecter les galeries : depuis l'outil Tracés, l'app trace l'axe des galeries de l'image en tracés raccordés au réseau ; 🪣 Remplir au clic suit aussi le trait d'un front de taille, accepte les gros massifs et retire une erreur d'un toucher ou de Ctrl+Z.",
+    "🌫️ Opacité réglable de l'image principale du plan, contours de piliers affinés, points précis et petits piliers lisibles dans l'export image et le PDF ; 🚨 une alerte d'urgence passe devant les autres."
   ]
 }
