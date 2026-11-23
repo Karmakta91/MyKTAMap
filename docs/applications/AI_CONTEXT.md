@@ -637,7 +637,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 1. Identifie ce qui pèse : taille image base, nombre de calques, nombre de routes, nombre de points.
 2. Solutions par ordre d'impact :
-   - **Convertis en V2 tuilé** : 🏗️ Générateur → uploader l'image (ou le ZIP V1 existant) → cocher 🧱 **Convertir en V2 tuile (performance)** → 📦 Générer. Solution la plus efficace pour les gros plans : runtime tuilé Google Maps-like, seules les tuiles proches de l'écran en mémoire au lieu de l'image entière. ⚠️ Génération **lourde** (CPU + RAM), faire la conversion sur PC plutôt que mobile (cf modal d'avertissement à la coche).
+   - **Convertis en V2 tuilé** : 🏗️ Générateur → uploader l'image (ou le ZIP V1 existant) → cocher 🧱 **Convertir en V2 tuile (recommandé)** → 📦 Générer. Indispensable à la Vue OSM et au plan sur la carte OSM de l'accueil (un plan V1 n'y apparaît pas). Solution la plus efficace pour les gros plans : runtime tuilé Google Maps-like, seules les tuiles proches de l'écran en mémoire au lieu de l'image entière. ⚠️ Génération **lourde** (CPU + RAM), faire la conversion sur PC plutôt que mobile (cf modal d'avertissement à la coche).
    - **Réduis l'image base** (≤ 8000 px, JPEG qualité 85 au lieu de PNG).
    - **Diminue le nombre de calques image** (fusionne les légendes dans l'image base si possible).
    - **Intègre les routes dans l'image** si tu as > 200 tracés (deviennent statiques, plus interactives mais ne consomment plus de mémoire vive).
@@ -672,7 +672,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 2. Ouvrir le 🏗️ Générateur de plan.
 3. **Mode Nouveau** : uploader ton image principale + remplir le formulaire → la case 🧱 Convertir en V2 tuile apparaît automatiquement.<br>
    **Mode Modifier existant** : uploader ton ZIP V1 → la case 🧱 est dispo.
-4. Cocher **☑️ 🧱 Convertir en V2 tuile (performance)** → modal d'avertissement (CPU/RAM/durée + PC vs mobile) → **J'ai compris — Continuer**.
+4. Cocher **☑️ 🧱 Convertir en V2 tuile (recommandé)** → modal d'avertissement (CPU/RAM/durée + PC vs mobile) → **J'ai compris — Continuer**.
 5. Compléter le reste du formulaire si nécessaire (nom, version, calques, tracking, etc.).
 6. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)" (1-5 min selon image).
 7. ZIP téléchargé avec suffixe `_v2`. Le réimporter depuis l'accueil → le mode V2 s'active automatiquement (badge violet `V2` sur la ligne du plan). Un plan V2 utilise toujours ses tuiles (pas de retour au mode V1 par un réglage).

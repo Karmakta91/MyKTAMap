@@ -2054,7 +2054,7 @@ Good to know: holes in polygons are ignored; beyond 20,000 objects a warning is 
 
 #### 🧱 Convert to V2 tiles
 
-For a heavy map (image over 50 MB or over 8,000 px), the **🧱 Convert to V2 tiles (performance)** box cuts the image into **tiles**: the app then only loads the pieces on screen, which greatly reduces memory use.
+The **🧱 Convert to V2 tiles (recommended)** box cuts the image into **tiles**: the app then only loads the pieces on screen. It is **recommended for every map**: without it, **OSM View** does not open and the map does not appear on the home OpenStreetMap map. On a heavy map (image over 50 MB or over 8,000 px), it also greatly reduces memory use.
 
 1. Choose a main image, or load the ZIP of the map to convert.
 2. Tick it and read the warning: the conversion is heavy.

@@ -2054,7 +2054,7 @@ A tener en cuenta: los huecos de los polígonos se ignoran; por encima de 20 000
 
 #### 🧱 Convertir a teselas V2
 
-Para un mapa pesado (imagen de más de 50 MB o de más de 8000 px), la casilla **🧱 Convertir a teselas V2 (rendimiento)** corta la imagen en **teselas**: la app ya solo carga los trozos visibles, lo que reduce mucho la memoria utilizada.
+La casilla **🧱 Convertir a teselas V2 (recomendado)** corta la imagen en **teselas**: la app ya solo carga los trozos visibles. Se **recomienda para todo mapa**: sin ella, la **Vista OSM** no se abre y el mapa no aparece en el mapa OpenStreetMap de inicio. En un mapa pesado (imagen de más de 50 MB o de más de 8000 px), además reduce mucho la memoria utilizada.
 
 1. Elige una imagen principal, o carga el ZIP del mapa que vas a convertir.
 2. Márcala y lee el aviso: la conversión es pesada.

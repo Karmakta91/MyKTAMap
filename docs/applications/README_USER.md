@@ -2055,7 +2055,7 @@ Dépose ton export **sur la zone « 📦 Ajouter un plan » de l'accueil** ou da
 
 #### 🧱 Convertir en V2 tuilé
 
-Pour un plan lourd (image de plus de 50 Mo ou de plus de 8 000 px), la case **🧱 Convertir en V2 tuile (performance)** découpe l'image en **tuiles** : l'app ne charge plus que les morceaux affichés, ce qui réduit fortement la mémoire utilisée.
+La case **🧱 Convertir en V2 tuile (recommandé)** découpe l'image en **tuiles** : l'app ne charge plus que les morceaux affichés. Elle est **recommandée pour tout plan** : sans elle, la **Vue OSM** ne s'ouvre pas et le plan n'apparaît pas sur la carte OpenStreetMap de l'accueil. Sur un plan lourd (image de plus de 50 Mo ou de plus de 8 000 px), elle réduit en plus fortement la mémoire utilisée.
 
 1. Choisis une image principale, ou charge le ZIP du plan à convertir.
 2. Coche-la et lis l'avertissement : la conversion est lourde.
