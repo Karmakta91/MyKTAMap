@@ -987,18 +987,54 @@ les galeries → tracés » plus bas.
   sans aperçu. 🩸 L'ancien repli sur l'image du niveau 0 recopiait ses piliers au niveau actif sans rien dire. Un
   calque masqué parmi d'autres n'est simplement pas lu. `vue3d.js > _dessinerPlanSol` garde son aiguillage, avec
   repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
-- **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11/2026) : un MODE du même bandeau (bouton
-  « Remplir au clic » de l'étape des exemples), pas un outil à part. Chaque toucher remplit la zone du fond fermée
-  par le trait autour du doigt ; le mode reste actif, les zones s'ajoutent à l'aperçu, puis un seul « Ajouter N » les
-  pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le même chemin que la détection).
-  Type : liste des types de structure à contour FERMÉ (intégrés et types
-  personnalisés de la légende, géométrie lue par `isStructurePolylineType` : jamais un front, un mur en ligne ni un
-  arc ; ni un type posé d'un clic à taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par
-  défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
-  recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas ajoutée ; revérifié à « Ajouter »
-  au niveau du type final.
+- **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11 et du 23/11/2026) : un MODE du même bandeau
+  (bouton « Remplir au clic » de l'étape des exemples), pas un outil à part. ⚠️ Le geste suit le **type choisi**
+  (décision produit, sans bouton à part) : type à contour FERMÉ (pilier, mur…) → chaque toucher remplit la zone du
+  fond fermée par le trait autour du doigt ; type EN LIGNE (front, mur en ligne, arc) → chaque toucher SUR le trait le
+  suit (§ Front de taille ci-dessous). Le mode reste actif, les objets s'ajoutent à l'aperçu, puis un seul « Ajouter
+  N » les pose tous en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le même chemin que la détection).
+  Types : liste en deux groupes, « Remplir une forme fermée » et « Suivre un trait » (`_typesRemplir` : intégrés et
+  types personnalisés de la légende, géométrie lue par `isStructurePolylineType` ; jamais un type posé d'un clic à
+  taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par défaut ; niveau par
+  `ktaNiveauNouvelleStructure`. Zones et fronts se mêlent dans un même aperçu : « Ajouter » pose les zones au dernier
+  type fermé choisi et les fronts au dernier type en ligne choisi (`_choisirTypeRemplir`), chacun au niveau de son
+  type. Doublons : une zone qui recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas
+  ajoutée ; revérifié à « Ajouter » au niveau du type final.
+  - **Front de taille : suivre le trait** (décisions de KARMA du 23/11/2026) : un toucher SUR le trait le suit dans
+    les deux sens jusqu'à ses bouts ou au **premier carrefour** (là où un autre trait le croise), jamais au-delà ;
+    un toucher plus loin prolonge, et le bout du nouveau morceau s'accroche EXACTEMENT sur le sommet (sinon le
+    segment) du front posé ou de l'aperçu, qui n'est jamais modifié (comme les galeries : rond de raccord dans
+    l'aperçu). Ce qui double un front du même niveau (posé ou dans l'aperçu) est coupé ; un front tout entier déjà là
+    est refusé (« déjà posé ») ; revérifié à « Ajouter » (`ECART_TRAIT`, 3 px). 🩸 Contournement d'avant (« Détecter
+    les galeries » en Remplir sur le front, puis conversion en front) : des carrefours parasites à corriger ; ici le
+    carrefour arrête le suivi par construction.
+  - Moteur `ktaDetection.js > suivreTrait(bloc, x, y, o)` (pur, testé en Node) : fond = médiane d'un anneau à 12 px
+    du doigt (élargi tant qu'il a la couleur du pixel touché : un pilier plein touché en son cœur) ; encre = pixel le
+    plus loin du fond à ± 3 px du doigt ; masque = couleur de l'encre à la tolérance près (moitié de l'écart au fond,
+    plancher ΔE 20), fermé de 1 px. Avant le squelette (Zhang-Suen, celui de la détection auto), sur la seule
+    composante touchée : ⚠️ **masses** de la couleur du trait retirées (ouverture d'un carré plus large que le trait
+    touché, dilatée de 1 px) : un front qui touche un pilier plein s'arrête à son bord ; ⚠️ **traits fins** retirés
+    (pixels du squelette où le trait fait au plus la moitié de son épaisseur médiane autour du doigt) : un trait de
+    rappel fin en travers ne fait pas de carrefour. Puis le graphe des galeries (`_graphe`, `_elaguer` : ergots plus
+    courts que l'épaisseur ; `_fusionnerNoeuds` : un X du squelette = deux nœuds voisins), l'arête la plus proche du
+    doigt, et `reseauGaleries` pour les doublons, l'accroche et la simplification (1 px). « Affiner les contours » :
+    `_affinerLigne` (moyenne glissante de demi-fenêtre la tolérance en mètres, simplification à sa moitié, coins
+    vifs) ; un bout au carrefour ne bouge jamais (raccord exact), un bout libre est ramené sur la droite de son
+    extrémité. Refus : « fond » (toucher sur le fond), « masse » (masse pleine, ou trait plus court que 3 × son
+    épaisseur), « deja ». Fenêtre lue (`_suivreEn`) : 512, puis 2 048, puis 4 096 px tant qu'un bout s'arrête au bord
+    de la fenêtre ; au-delà, le front s'arrête au bord lu (toast : un toucher plus loin le prolonge et raccorde),
+    jamais de lecture à résolution réduite (le trait aminci passerait sous le seuil des traits fins).
+  - Limites : un trait en travers aussi épais que le front est un vrai carrefour ; un front aminci de plus de moitié
+    (trait abîmé) est coupé là ; un trait de rappel de 1 px sur un front de 2 px ne se distingue pas (carrefour).
+  - Garde-fous : `check-detection.js` (planche : front droit, coudé, carrefours en T et en X, front qui touche un
+    pilier plein, trait de rappel de 1 px en travers, bruit ± 8 ; raccord exact au toucher suivant, existant jamais
+    modifié, doublon refusé ; affiner sur un bord dentelé ; échelle 0,5 ; contre-épreuves sans retrait des masses,
+    sans filtre des traits fins, sans existant) · `scripts/smoke/checkup-remplir-front.js` (un toucher pose un front,
+    arrêt au carrefour, raccord exact au 2e toucher, retirer par toucher, Ctrl+Z et « Retirer le dernier », Valider,
+    doublon refusé, type pilier inchangé ; Chromium et WebKit).
   - **Retirer un remplissage** (structures comme galeries, décisions de KARMA du 22/11/2026) : toucher DANS une forme
-    remplie, **Ctrl+Z** (Cmd+Z) ou le bouton **Retirer le dernier** (`undo-2`, désactivé à vide). Le remplissage
+    remplie ou SUR un front suivi (à moins de 14 px d'écran ou de sa demi-épaisseur), **Ctrl+Z** (Cmd+Z) ou le
+    bouton **Retirer le dernier** (`undo-2`, désactivé à vide). Le remplissage
     QUITTE l'aperçu (pas d'état « retiré » à remettre : le retoucher au même endroit le refait) ; Ctrl+Z et le bouton
     dépilent le plus récent, un par un. Ligne d'aide sous le texte du mode ; sa moitié « Ctrl+Z retire la dernière »
     seulement avec un pointeur fin (`(any-pointer: fine)`). `_retirerAuToucher`, `_retirerDernier`.
@@ -1112,7 +1148,8 @@ les galeries → tracés » plus bas.
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
 - Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
-  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-remplir-annuler.js` (retirer un
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-remplir-front.js` (Remplir sur un
+  front : suivi du trait, arrêt au carrefour, raccord exact) · `scripts/smoke/checkup-remplir-annuler.js` (retirer un
   remplissage au toucher, par Ctrl+Z ou « Retirer le dernier », structures et galeries, historique global intact) ·
   `scripts/smoke/checkup-remplir-exclusif.js` (un seul mode de clic entre la fenêtre et les outils de la carte) ·
   `scripts/smoke/checkup-detecteur-unique.js` (ouvrir un détecteur ferme l'autre, plan et Générateur) ·

@@ -7,8 +7,9 @@
 // detectionStructures.js — « Détecter » piliers et fronts sur une image : exemples à la pipette, cadre (deux coins)
 // ou tout le plan, calcul par js/ktaDetection.js (worker), aperçu superposé, « Valider ». Ouvert depuis l'outil
 // Structures et l'📊 Éditeur de données (un seul parcours, décision produit). Mode « Remplir au clic » : chaque
-// toucher remplit la zone fermée par le trait (ktaDetection.js > remplir), aperçu cumulé, même « Valider » ; un
-// toucher sur une forme, Ctrl+Z ou « Retirer le dernier » la retire (section « Retirer un remplissage »).
+// toucher remplit la zone fermée par le trait (ktaDetection.js > remplir) ou, pour un type en ligne (front), suit le
+// trait touché jusqu'à ses bouts ou au premier carrefour (ktaDetection.js > suivreTrait) ; aperçu cumulé, même
+// « Valider » ; un toucher sur une forme ou un front, Ctrl+Z ou « Retirer le dernier » le retire.
 // ⚠️ contrat : tout ce qui touche au plan passe par un CONTEXTE (ouvrir(ctx) ; absent = contextePlan(), le plan
 //   ouvert) — sa forme : au-dessus de contextePlan.
 // ⚠️ contrat (décision produit) : rien n'est écrit avant « Valider » ; en mode plan, UNE étape ⏪ pour tout annuler
@@ -27,7 +28,7 @@
 // Fenêtre « Détecter les galeries » (ouvrir(ctx, { cible: "traces" }) : outil Tracés, Éditeur de données,
 //   Générateur) : même parcours, rien que la galerie, et des TRACÉS en sortie (section « Galeries » plus bas).
 // Garde-fous : scripts/smoke/checkup-detection.js, checkup-detection-emprise.js, checkup-galeries.js,
-//   scripts/check-detection.js · Doc : plans-loader.md (Détecter).
+//   checkup-remplir-front.js, scripts/check-detection.js · Doc : plans-loader.md (Détecter).
 
 window.KtaDetectionUI = (function () {
   "use strict";
@@ -58,6 +59,7 @@ window.KtaDetectionUI = (function () {
   const MARGE = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
   const FENETRE_REMPLIR_MAX = 4096;
   const TOUCHE_RETIRER_PX = 14;   // Remplir, galeries : rayon d'écran minimal autour d'un axe pour retirer au toucher
+  const FENETRES_FRONT = [512, 2048, 4096];   // Remplir sur un front : fenêtres lues (px plan) tant qu'un bout touche le bord
 
   const _t = function (k, v) { return window.I18n.t(k, v); };
   const _esc = function (s) { return window.ktaEsc(s); };
@@ -346,9 +348,22 @@ window.KtaDetectionUI = (function () {
     _viderCouche();
     const c = _couche();
     _e.remplis.forEach(function (z) {
-      L.polygon(z.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); }), {
-        pane: "ktaDetection", renderer: _e.rendu, interactive: false,
-        className: "kta-detect-apercu kta-detect-rempli" }).addTo(c);
+      if (!z.lignes) {
+        L.polygon(z.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); }), {
+          pane: "ktaDetection", renderer: _e.rendu, interactive: false,
+          className: "kta-detect-apercu kta-detect-rempli" }).addTo(c);
+        return;
+      }
+      z.lignes.forEach(function (l) {   // front suivi : trait, et un rond à chaque bout raccordé à un front
+        const ll = l.points.map(function (p) { return _e.ctx.versCarte(p.x, p.y); });
+        L.polyline(ll, { pane: "ktaDetection", renderer: _e.rendu, interactive: false, weight: 6,
+          className: "kta-detect-apercu kta-detect-rempli kta-detect-trait" }).addTo(c);
+        [0, 1].forEach(function (k) {
+          if (!l.accroches || !l.accroches[k]) return;
+          L.circleMarker(ll[k ? ll.length - 1 : 0], { pane: "ktaDetection", renderer: _e.rendu, radius: 5,
+            interactive: false, className: "kta-detect-accroche" }).addTo(c);
+        });
+      });
     });
   }
   function _dessinerApercu() {
@@ -399,14 +414,19 @@ window.KtaDetectionUI = (function () {
         window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" +
         _btn("fermer", "detect.fermer") + "</div>";
     } else if (_e.etape === "remplir") {
-      const gardes = _remplisGardes().length;
-      html = '<span class="kta-racc-info">' + _esc(_t("detect.remplir.aide", { n: gardes })) + "</span>" +
-        _aideRetirer() + _htmlPause() + '<div class="kta-racc-actions">' + _btnRetirerDernier() +
-        '<label class="kta-detect-type">' + _esc(_t("detect.remplir.type")) +
-        ' <select data-detect-remplir-type>' + _typesFermes().map(function (ty) {
+      const gardes = _nbStructuresRemplies(), types = _typesRemplir();
+      const groupe = function (ligne) {
+        return '<optgroup label="' + _esc(_t(ligne ? "detect.remplir.groupe.ligne" : "detect.remplir.groupe.ferme")) +
+          '">' + types.filter(function (ty) { return ty.ligne === ligne; }).map(function (ty) {
           return '<option value="' + _esc(ty.id) + '"' + (_e.typeRemplir === ty.id ? " selected" : "") + ">" +
             _esc(ty.libelle) + "</option>";
-        }).join("") + "</select></label>" + _caseAffiner() +
+        }).join("") + "</optgroup>";
+      };
+      html = '<span class="kta-racc-info">' +
+        _esc(_t(_estLigne(_e.typeRemplir) ? "detect.remplir.aideTrait" : "detect.remplir.aide", { n: gardes })) +
+        "</span>" + _aideRetirer() + _htmlPause() + '<div class="kta-racc-actions">' + _btnRetirerDernier() +
+        '<label class="kta-detect-type">' + _esc(_t("detect.remplir.type")) +
+        ' <select data-detect-remplir-type>' + groupe(false) + groupe(true) + "</select></label>" + _caseAffiner() +
         _btn("valider-remplir", "detect.valider", "kta-btn-primary", { n: gardes }) +
         _btn("exemples", "detect.retour") + _btn("fermer", "detect.fermer") + "</div>";
     } else if (_e.etape === "zone") {
@@ -446,7 +466,7 @@ window.KtaDetectionUI = (function () {
     const valider = b.querySelector('[data-detect="valider"]');
     if (valider && _e.apercu) valider.disabled = _e.apercu.objets.length - _e.apercu.retires.size === 0;
     const validerR = b.querySelector('[data-detect="valider-remplir"]');
-    if (validerR) validerR.disabled = _remplisGardes().length === 0;
+    if (validerR) validerR.disabled = _nbStructuresRemplies() === 0;
     const validerG = b.querySelector('[data-detect="valider-galeries"]');
     if (validerG) validerG.disabled = _gardesGaleries() === 0;
     const retirer = b.querySelector('[data-detect="retirer-dernier"]');
@@ -499,7 +519,7 @@ window.KtaDetectionUI = (function () {
       _e.pipette = null; _e.etape = "zone"; _e.coins = []; _e.apercu = null; _viderCouche(); _lacherExecuteur();
     } else if (act === "remplir") {
       _e.pipette = null; _e.etape = "remplir"; _e.coins = []; _e.apercu = null; _e.remplis = [];
-      _e.typeRemplir = _typeRemplirInitial();
+      _choisirTypeRemplir(_typeRemplirInitial());
       _e.axes = []; _e.remplisG = [];
       _viderCouche(); _lacherExecuteur();
     } else if (act === "valider-remplir") {
@@ -545,7 +565,7 @@ window.KtaDetectionUI = (function () {
       return;
     }
     const r = ev.target.closest && ev.target.closest("[data-detect-remplir-type]");
-    if (r && _e) { _e.typeRemplir = r.value; return; }
+    if (r && _e) { _choisirTypeRemplir(r.value); _majBandeau(); return; }
     const tg = ev.target.closest && ev.target.closest("[data-detect-galerie-type]");
     if (tg && _e) { _e.typeGalerie = tg.value; return; }
     const el = ev.target.closest && ev.target.closest("[data-detect-type]");
@@ -576,7 +596,9 @@ window.KtaDetectionUI = (function () {
       _majBandeau();
     } else if (_e.etape === "remplir") {
       if (_retirerAuToucher(x, y)) return;
-      if (_galeries()) _remplirGalerieEn(x, y); else _remplirEn(x, y);
+      if (_galeries()) _remplirGalerieEn(x, y);
+      else if (_estLigne(_e.typeRemplir)) _suivreEn(x, y);
+      else _remplirEn(x, y);
     } else if (_e.etape === "zone") {
       _e.coins.push({ x: x, y: y });
       if (_e.coins.length < 2) { _dessinerCadre(); _majBandeau(); return; }
@@ -749,38 +771,72 @@ window.KtaDetectionUI = (function () {
                   ecartees: res.ecartees || 0 };
   }
 
-  // ── Remplir au clic : chaque toucher remplit la zone fermée par le trait (ktaDetection.js > remplir) ──
-  // ⚠️ contrat (décision produit) : seuls les types de structure à contour FERMÉ sont proposés (intégrés et types
-  //   personnalisés de la légende, géométrie lue par structures.js > isStructurePolylineType) : jamais un front.
-  //   Un type posé d'un clic à taille fixe (structures.js > ktaPoseUnClic : pilier à bras) n'est pas proposé non plus.
-  function _typesFermes() {
-    const exclu = function (t) {
-      return (typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t)) ||
-        (typeof window.ktaPoseUnClic === "function" && window.ktaPoseUnClic(t));
+  // ── Remplir au clic : chaque toucher remplit la zone fermée par le trait (ktaDetection.js > remplir) ou suit le
+  //    trait d'un front (ktaDetection.js > suivreTrait) ──
+  // ⚠️ contrat (décision produit) : le geste suit le TYPE choisi, sans bouton à part. Type à contour fermé (pilier,
+  //   mur…) : la zone fermée autour du doigt. Type en ligne (front, mur en ligne, arc ; géométrie lue par
+  //   structures.js > isStructurePolylineType, types personnalisés de la légende compris) : le trait touché, suivi
+  //   jusqu'à ses bouts ou au premier carrefour. Un type posé d'un clic à taille fixe (structures.js > ktaPoseUnClic :
+  //   pilier à bras) n'est jamais proposé.
+  // ⚠️ contrat (décision produit) : zones et fronts peuvent se mêler dans un même aperçu ; « Valider » pose les zones
+  //   au dernier type FERMÉ choisi et les fronts au dernier type EN LIGNE choisi (_choisirTypeRemplir), chacun au
+  //   niveau de son type.
+  function _typesRemplir() {
+    const ligne = function (t) {
+      return typeof window.isStructurePolylineType === "function" && window.isStructurePolylineType(t);
     };
+    const unClic = function (t) { return typeof window.ktaPoseUnClic === "function" && window.ktaPoseUnClic(t); };
     const LC = window.LegendCustomization, out = [];
     (window.KTA_STRUCTURE_TYPES_BUILTIN || []).forEach(function (t) {
-      if (exclu(t)) return;
+      if (unClic(t)) return;
       let lib = null;
       try {
         if (LC && typeof LC.getLabel === "function") lib = LC.getLabel("structures", t);
       } catch (err) { lib = null; }
-      out.push({ id: t, libelle: lib || _t("struct.label." + t) });
+      out.push({ id: t, libelle: lib || _t("struct.label." + t), ligne: !!ligne(t) });
     });
     if (LC && typeof LC.listCustomEntries === "function") {
       LC.listCustomEntries("structures").forEach(function (c) {
-        if (c && c.id && c.geometry !== "polyline" && !exclu(c.id)) out.push({ id: c.id, libelle: c.label || c.id });
+        if (!c || !c.id || unClic(c.id)) return;
+        out.push({ id: c.id, libelle: c.label || c.id, ligne: c.geometry === "polyline" || !!ligne(c.id) });
       });
     }
     return out;
   }
+  function _estLigne(type) {
+    return _typesRemplir().some(function (t) { return t.id === type && t.ligne; });
+  }
   function _typeRemplirInitial() {
-    const ids = _typesFermes().map(function (t) { return t.id; });
+    const ids = _typesRemplir().map(function (t) { return t.id; });
     if (ids.indexOf(_e.typeRemplir) >= 0) return _e.typeRemplir;
     return ids.indexOf(_e.typeOuverture) >= 0 ? _e.typeOuverture : (ids[0] || null);
   }
+  // Type choisi : celui des touchers suivants, et celui que prendront à « Valider » les remplissages de sa géométrie.
+  function _choisirTypeRemplir(type) {
+    const types = _typesRemplir(), premier = function (ligne) {
+      const t = types.filter(function (x) { return x.ligne === ligne; })[0];
+      return t ? t.id : null;
+    };
+    _e.typeRemplir = type;
+    if (_estLigne(type)) _e.typeLigne = type; else _e.typeFerme = type;
+    if (!_e.typeLigne) _e.typeLigne = premier(true);
+    if (!_e.typeFerme) _e.typeFerme = premier(false);
+  }
   function _remplisGardes() {
     return _e && _e.remplis ? _e.remplis : [];
+  }
+  // Structures que « Valider » posera : une par zone, une par morceau de front suivi.
+  function _nbStructuresRemplies() {
+    return _remplisGardes().reduce(function (n, z) { return n + (z.lignes ? z.lignes.length : 1); }, 0);
+  }
+  // Fronts du niveau `niveau` contre lesquels un front suivi est dédoublonné et raccordé : posés (session, calques)
+  //   et déjà dans l'aperçu.
+  function _frontsRaccord(niveau) {
+    const out = _existantsTraits(niveau).map(function (s) { return { points: s.points }; });
+    _remplisGardes().forEach(function (z) {
+      (z.lignes || []).forEach(function (l) { out.push({ points: l.points }); });
+    });
+    return out;
   }
 
   // ── Retirer un remplissage : toucher sur la forme, Ctrl+Z (Cmd+Z) ou « Retirer le dernier » ──
@@ -823,13 +879,22 @@ window.KtaDetectionUI = (function () {
   //   Le plus récent d'abord. → true si un remplissage a été retiré.
   function _retirerAuToucher(x, y) {
     const p = { x: x, y: y };
+    const tol = _tolTouche(x, y);
     if (!_galeries()) {
+      // front suivi : à moins de max(TOUCHE_RETIRER_PX d'écran, demi-épaisseur du trait + 1 px) de l'un de ses morceaux
+      const surFront = function (z) {
+        const lim = Math.max(tol, (z.ep || 0) / 2 + 1);
+        return z.lignes.some(function (l) {
+          for (let j = 1; j < l.points.length; j++) if (_distSeg(p, l.points[j - 1], l.points[j]) <= lim) return true;
+          return false;
+        });
+      };
       for (let i = _e.remplis.length - 1; i >= 0; i--) {
-        if (_dedans(p, _e.remplis[i].points)) { _retirerRemplissage(i); return true; }
+        const z = _e.remplis[i];
+        if (z.lignes ? surFront(z) : _dedans(p, z.points)) { _retirerRemplissage(i); return true; }
       }
       return false;
     }
-    const tol = _tolTouche(x, y);
     for (let i = _e.remplisG.length - 1; i >= 0; i--) {
       const pris = _e.remplisG[i].axes.some(function (ax) {
         for (let j = 1; j < ax.length; j++) {
@@ -882,7 +947,9 @@ window.KtaDetectionUI = (function () {
       if (r.refus) { _toast(_t("detect.remplir.refus." + r.refus), "warn"); return; }
       const niv = e.ctx.niveau(e.typeRemplir);
       if (_dejaPresente(r, _existantes(niv))) { _toast(_t("detect.remplir.deja"), "warn"); return; }
-      const dejaListe = _remplisGardes().map(function (z) { return { points: z.points, c: _centre(z.points) }; });
+      const dejaListe = _remplisGardes().filter(function (z) { return !z.lignes; }).map(function (z) {
+        return { points: z.points, c: _centre(z.points) };
+      });
       if (_dejaPresente(r, dejaListe)) { _toast(_t("detect.remplir.dejaListe"), "warn"); return; }
       e.remplis.push({ points: r.points });
       _dessinerRemplis();
@@ -898,18 +965,68 @@ window.KtaDetectionUI = (function () {
       e.remplissage = false;
     }
   }
-  // Valider : les zones gardées, du type choisi, au niveau de ce type ; une zone qui recouvre une structure du
-  // niveau final (le type a pu changer depuis le toucher) n'est pas recréée.
+  // Front : le trait touché, suivi jusqu'à ses bouts ou au premier carrefour (ktaDetection.js > suivreTrait), dans
+  //   une fenêtre de plus en plus grande tant qu'un bout s'arrête à son bord (FENETRES_FRONT, pleine résolution).
+  // ⚠️ contrat (décision produit) : un bout s'accroche exactement sur un front posé ou de l'aperçu (même niveau),
+  //   jamais modifié ; ce qui le double est coupé, un front tout entier déjà là est refusé.
+  // 🩸 Au-delà de la plus grande fenêtre, le front s'arrête au bord lu (toast) : un toucher plus loin le prolonge et
+  //   raccorde ; une lecture à résolution réduite amincirait le trait sous le seuil des traits fins.
+  async function _suivreEn(x, y) {
+    if (_e.remplissage) return;
+    const e = _e, E = _emprise();
+    if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
+    e.remplissage = true;
+    try {
+      let r = null;
+      const existants = _frontsRaccord(e.ctx.niveau(e.typeRemplir));
+      for (let k = 0; k < FENETRES_FRONT.length; k++) {
+        const n = FENETRES_FRONT[k];
+        const x0 = Math.max(E.x0, Math.floor(x - n / 2)), y0 = Math.max(E.y0, Math.floor(y - n / 2));
+        const x1 = Math.min(E.x1, Math.ceil(x + n / 2)), y1 = Math.min(E.y1, Math.ceil(y + n / 2));
+        const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, 1);
+        if (_e !== e) return;
+        if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
+        r = window.KtaDetection.suivreTrait(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1,
+          affiner: _toleranceAffiner(), existants: existants });
+        if (r.refus || !r.bord || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
+      }
+      if (r.refus) {
+        _toast(_t(r.refus === "deja" ? "detect.remplir.frontDeja" : "detect.remplir.refus." + r.refus), "warn");
+        return;
+      }
+      e.remplis.push({ lignes: r.traces.map(function (t) { return { points: t.points, accroches: t.accroches }; }),
+                       ep: r.epaisseur, bouts: r.bouts });
+      _dessinerRemplis();
+      _majBandeau();
+      if (r.bord) _toast(_t("detect.remplir.frontBord"), "info");
+    } catch (err) {
+      if (_e !== e) return;
+      if (err && err.name === REFUS) _toast(_t("detect.refus." + err.raison), "warn");
+      else if (!err || err.name !== "AbortError") {
+        console.warn("[Detection] suivi du front :", err);
+        _toast(_t("detect.toast.echec"), "warn");
+      }
+    } finally {
+      e.remplissage = false;
+    }
+  }
+  // Valider : les zones au dernier type fermé choisi, les fronts au dernier type en ligne choisi, chacun au niveau
+  // de son type ; ce qui recouvre (zone) ou double (front, ECART_TRAIT) une structure de ce niveau n'est pas recréé.
   function _validerRemplis() {
     if (_e.ctx.refuse()) return;
-    const type = _e.typeRemplir, niv = _e.ctx.niveau(type), existantes = _existantes(niv), poses = [];
-    _remplisGardes().forEach(function (z) {
-      if (_dejaPresente(z, existantes)) return;
-      const s = { type: type, points: z.points.map(function (p) { return { x: p.x, y: p.y }; }) };
+    const poses = [], tf = _e.typeFerme, tl = _e.typeLigne;
+    const nf = _e.ctx.niveau(tf), nl = _e.ctx.niveau(tl), existantes = _existantes(nf), fronts = _existantsTraits(nl);
+    const poser = function (type, niv, points) {
+      const s = { type: type, points: points.map(function (p) { return { x: p.x, y: p.y }; }) };
       if (niv !== null) s.level = niv;
       window.KtaUid.ensure(s, "st");
       window.KtaUid.touch(s);
       poses.push(s);
+    };
+    _remplisGardes().forEach(function (z) {
+      if (z.lignes) {
+        z.lignes.forEach(function (l) { if (!_traitDejaPresent(l, fronts)) poser(tl, nl, l.points); });
+      } else if (!_dejaPresente(z, existantes)) poser(tf, nf, z.points);
     });
     if (!poses.length) { _toast(_t("detect.remplir.deja"), "warn"); return; }
     _poserEtFermer(poses);
@@ -1233,7 +1350,8 @@ window.KtaDetectionUI = (function () {
     ctx.entrer();
     _e = { ctx: ctx, etape: "exemples", couleurs: null, pipette: null, coins: [], couche: null, apercu: null,
            ctrl: null, progres: [0, 1], lectures: 0, recalculs: 0, ex: null, curseurs: null,
-           remplis: [], typeRemplir: null, typeOuverture: typeOuverture, remplissage: false,
+           remplis: [], typeRemplir: null, typeFerme: null, typeLigne: null, typeOuverture: typeOuverture,
+           remplissage: false,
            cible: cible, axes: [], remplisG: [], reglagesG: null, typeGalerie: null, pause: false };
     _e.couleurs = _lireCouleurs();
     if (cible === "traces") {
@@ -1371,9 +1489,15 @@ window.KtaDetectionUI = (function () {
              apercu: a && !ga ? { n: a.objets.length, traits: a.objets.filter(function (o) { return o.trait; }).length,
                            retires: a.retires.size, deja: a.deja, tropGrands: a.tropGrands,
                            ecartees: a.ecartees } : null,
-             remplir: _e.etape === "remplir" ? { n: _remplisGardes().length, type: _e.typeRemplir, types: _typesFermes().map(function (t) { return t.id; }),
+             remplir: _e.etape === "remplir" ? { n: _remplisGardes().length, type: _e.typeRemplir,
+               types: _typesRemplir().map(function (t) { return t.id; }),
+               lignes: _typesRemplir().filter(function (t) { return t.ligne; }).map(function (t) { return t.id; }),
+               typeFerme: _e.typeFerme, typeLigne: _e.typeLigne, structures: _nbStructuresRemplies(),
                enCours: !!_e.remplissage,
-               sommets: _remplisGardes().map(function (z) { return z.points.length; }) } : null };
+               sommets: _remplisGardes().map(function (z) { return z.lignes ? z.lignes[0].points.length : z.points.length; }),
+               fronts: [].concat.apply([], _remplisGardes().map(function (z) {
+                 return (z.lignes || []).map(function (l) { return { points: l.points, accroches: l.accroches }; });
+               })), bouts: _remplisGardes().map(function (z) { return z.bouts || null; }) } : null };
   }
 
   return { ouvrir: ouvrir, fermer: fermer, etat: etat, contextePlan: contextePlan, PREFIXE: PREFIXE };
