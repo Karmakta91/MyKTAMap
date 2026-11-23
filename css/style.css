@@ -6191,6 +6191,16 @@ html.kta-theme-light .kta-cfg-input option {
   color: var(--kta-tuilage-v2);
   font-weight: 600;
 }
+/* Avertissement téléphone de la case V2 : visible sans survol (l'infobulle ne s'ouvre pas au doigt). */
+.kta-planner-tiling-v2-row .kta-planner-v2-mobile {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+/* Étoile des étapes faisables aussi dans l'app (note en tête du Générateur). */
+.kta-planner-etoile {
+  font-weight: 700;
+  cursor: help;
+}
 .kta-planner-tiling-v2-row em {
   color: var(--kta-texte-3);
   font-style: italic;

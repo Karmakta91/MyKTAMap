@@ -215,9 +215,9 @@ function afficherPlanner() {
           <button type="button" class="kta-planner-mode-btn" data-mode="simple" role="tab">${window.ktaIcone("zap") + " " + window.I18n.t("gen.mode.simple")}</button>
           <button type="button" class="kta-planner-mode-btn" data-mode="avance" role="tab">${window.ktaIcone("settings") + " " + window.I18n.t("gen.mode.avance")}</button>
         </div>
-        <!-- Vide depuis l'allègement des textes : garde sa rangée pleine largeur
+        <!-- Note des étapes étoilées (faisables aussi dans l'app) ; garde sa rangée pleine largeur
              (cf. style.css « LE TROU ») et sert d'ancre à la barre d'étapes. -->
-        <p class="kta-planner-mode-hint" id="kta-planner-mode-hint"></p>
+        <p class="kta-planner-mode-hint" id="kta-planner-mode-hint" data-planner-advanced="1">${window.I18n.t("gen.apres.note")}</p>
 
         <!-- 🧹 v1.29.0-fix3 (KARMA "doublon") — Boutons "Importer depuis KMZ"
              et "Importer depuis GPX" RETIRÉS. La drop zone ZIP ci-dessous
@@ -404,6 +404,7 @@ function afficherPlanner() {
               <input type="checkbox" id="pl_tilingV2">
               <span>
                 <strong>${window.ktaIcone("grid-2x2") + " " + window.I18n.t("gen.v2.label")}</strong>
+                <span class="kta-tx-warn kta-planner-v2-mobile" title="${window.I18n.t("gen.v2.mobileTitle")}">${window.ktaIcone("smartphone") + " " + window.I18n.t("gen.v2.mobile")}</span>
                 <em>${window.I18n.t("gen.v2.hint")}</em>
               </span>
             </label>
@@ -508,7 +509,7 @@ function afficherPlanner() {
           </div>
           <div class="kta-planner-import-zip-box">
             <div class="kta-planner-import-zip-titre">
-              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.boxTitre")}
+              ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.boxTitre")} <span class="kta-tx-accent kta-planner-etoile" title="${window.I18n.t("gen.apres.etoile")}">*</span>
             </div>
             <button class="kta-btn kta-btn-ghost kta-planner-import-zip-btn" id="pl_detectStructures" type="button">
               ${window.ktaIcone("search") + " " + window.I18n.t("gen.detect.btn")}
@@ -599,7 +600,7 @@ function afficherPlanner() {
              on restore la session. Subtil mais évite de modifier le
              module legendCustomization.js pour cette release. -->
         <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
-          <div class="kta-aide-section-titre">${window.ktaIcone("list") + " " + window.I18n.t("gen.legende.titre")}</div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("list") + " " + window.I18n.t("gen.legende.titre")} <span class="kta-tx-accent kta-planner-etoile" title="${window.I18n.t("gen.apres.etoile")}">*</span></div>
           <p class="kta-planner-info">${window.I18n.t("gen.legende.info")}</p>
           <div id="pl_legend_status" class="kta-planner-legend-status">${window.I18n.t("gen.legende.aucune")}</div>
           <div class="kta-planner-legend-actions">
@@ -617,7 +618,7 @@ function afficherPlanner() {
              KmzExport.setCalibration => auto-rempli dans Export externe
              ET dans Reglages > Georeferencement (mode map). -->
         <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
-          <div class="kta-aide-section-titre">${window.ktaIcone("globe") + " " + window.I18n.t("gen.georef.titre")} <span class="kta-planner-hint">${window.I18n.t("gen.commun.optionnel")}</span></div>
+          <div class="kta-aide-section-titre">${window.ktaIcone("globe") + " " + window.I18n.t("gen.georef.titre")} <span class="kta-tx-accent kta-planner-etoile" title="${window.I18n.t("gen.apres.etoile")}">*</span> <span class="kta-planner-hint">${window.I18n.t("gen.commun.optionnel")}</span></div>
           <div class="kta-kmz-section" style="margin:8px 0;">
             <div class="kta-kmz-section-titre">${window.ktaIcone("map-pin") + " " + window.I18n.t("gen.georef.pointA")}</div>
             <div class="kta-kmz-pt-grille">
@@ -4621,6 +4622,7 @@ function _afficherImporterKmz(prefilledFile) {
               <input type="checkbox" id="kta-kmz-imp-v2">
               <span>
                 <strong>${window.ktaIcone("grid-2x2") + " " + window.I18n.t("gen.v2.label")}</strong>
+                <span class="kta-tx-warn kta-planner-v2-mobile" title="${window.I18n.t("gen.v2.mobileTitle")}">${window.ktaIcone("smartphone") + " " + window.I18n.t("gen.v2.mobile")}</span>
                 <em>${window.I18n.t("gen.v2.hint")}</em>
               </span>
             </label>
@@ -5183,6 +5185,7 @@ function _afficherImporterGpx(prefilledFile) {
               <input type="checkbox" id="kta-gpx-imp-v2">
               <span>
                 <strong>${window.ktaIcone("grid-2x2") + " " + window.I18n.t("gen.v2.label")}</strong>
+                <span class="kta-tx-warn kta-planner-v2-mobile" title="${window.I18n.t("gen.v2.mobileTitle")}">${window.ktaIcone("smartphone") + " " + window.I18n.t("gen.v2.mobile")}</span>
                 <em>${window.I18n.t("gen.gpx.v2Hint")}</em>
               </span>
             </label>
