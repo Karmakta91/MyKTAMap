@@ -343,6 +343,8 @@
   "detect.galeries.toast.surFond": "That is the background: tap the inside of a coloured gallery, or use Fill on tap.",
   "detect.galeries.type": "Path type",
   "detect.historique": "Detected structures ({n})",
+  "detect.pause.aide": "A drawing tool has taken over map taps: nothing is lost.",
+  "detect.pause.cadre": "Resume the frame",
   "detect.pipette.toucher": "Tap an object of this colour on the map.",
   "detect.recommencer": "Another area",
   "detect.refus.calques-masques": "The image layers of this level are hidden (filters or shown levels): nothing to detect.",

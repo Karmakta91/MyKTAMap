@@ -343,6 +343,8 @@
   "detect.galeries.toast.surFond": "Là, c'est le fond : touchez l'intérieur d'une galerie de couleur, ou utilisez Remplir au clic.",
   "detect.galeries.type": "Type de tracé",
   "detect.historique": "Structures détectées ({n})",
+  "detect.pause.aide": "Un outil de dessin a pris les clics de la carte : rien n'est perdu.",
+  "detect.pause.cadre": "Reprendre le cadre",
   "detect.pipette.toucher": "Touchez un objet de cette couleur sur la carte.",
   "detect.recommencer": "Autre zone",
   "detect.refus.calques-masques": "Les calques image de ce niveau sont masqués (filtres ou niveaux affichés) : rien à détecter.",

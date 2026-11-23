@@ -37,7 +37,8 @@ window.KtaDetectionUI = (function () {
   const CLE_AFFINER = "myktamap_detect_affiner_v1";
   const MAX_EXEMPLES = 6;
   const FENETRE_EXEMPLE = [192, 640];  // px plan lus autour d'un toucher de pipette (puis plus grand si coupé)
-  const RECALCUL_MS = 200;             // curseur relâché : recalcul après ce délai sans autre mouvement
+  const RECALCUL_MS = 200;
+  const MODE_CLIC = "detection";       // nom au registre des modes clic-carte (interface.js > ktaInscrireModeClic)             // curseur relâché : recalcul après ce délai sans autre mouvement
   // plafond de la taille maximale : la marge des blocs (au-delà, une masse est « trop grande pour un bloc »)
   const TOL_CURSEUR = [6, 60];   // bornes du curseur de tolérance (6 = plancher du moteur, reglagesDepuisExemples)
   const TAILLE_MAX_PLAFOND = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
@@ -63,6 +64,7 @@ window.KtaDetectionUI = (function () {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") window.OOMGuard.showToast(msg, type);
   };
   let _e = null;   // parcours ouvert : { ctx, etape, couleurs, pipette, coins, couche, bandeau, apercu, ctrl }
+  let _inscrit = false;   // visée inscrite au registre des modes clic-carte (_majModeClic)
 
   // ── Contexte du plan ouvert (session, carte du plan, image par tiling.js) ──
   // Forme d'un contexte : { carte (L.Map, CRS.Simple), largeur, hauteur (px de l'image lue), versCarte(x, y) → LatLng,
@@ -398,7 +400,8 @@ window.KtaDetectionUI = (function () {
     } else if (_e.etape === "remplir") {
       const gardes = _remplisGardes().length;
       html = '<span class="kta-racc-info">' + _esc(_t("detect.remplir.aide", { n: gardes })) + "</span>" +
-        _aideRetirer() + '<div class="kta-racc-actions">' + _btnRetirerDernier() + '<label class="kta-detect-type">' + _esc(_t("detect.remplir.type")) +
+        _aideRetirer() + _htmlPause() + '<div class="kta-racc-actions">' + _btnRetirerDernier() +
+        '<label class="kta-detect-type">' + _esc(_t("detect.remplir.type")) +
         ' <select data-detect-remplir-type>' + _typesFermes().map(function (ty) {
           return '<option value="' + _esc(ty.id) + '"' + (_e.typeRemplir === ty.id ? " selected" : "") + ">" +
             _esc(ty.libelle) + "</option>";
@@ -407,7 +410,7 @@ window.KtaDetectionUI = (function () {
         _btn("exemples", "detect.retour") + _btn("fermer", "detect.fermer") + "</div>";
     } else if (_e.etape === "zone") {
       html = '<span class="kta-racc-info">' + _esc(_t(_e.coins.length ? "detect.zone.second" : "detect.zone.aide")) +
-        "</span>" + '<div class="kta-racc-actions">' + _btn("tout", "detect.zone.tout", "kta-btn-primary") +
+        "</span>" + _htmlPause() + '<div class="kta-racc-actions">' + _btn("tout", "detect.zone.tout", "kta-btn-primary") +
         _btn("exemples", "detect.retour") + _btn("fermer", "detect.fermer") + "</div>";
     } else if (_e.etape === "calcul") {
       html = '<span class="kta-racc-info">' + _esc(_t("detect.calcul", { i: _e.progres[0], n: _e.progres[1] })) +
@@ -478,7 +481,12 @@ window.KtaDetectionUI = (function () {
     if (!el || !_e) return;
     const act = el.getAttribute("data-detect");
     if (act === "fermer") { fermer(); return; }
-    if (act.indexOf("pipette-") === 0) {
+    if (["reprendre", "zone", "remplir", "exemples", "tout"].indexOf(act) >= 0 || act.indexOf("pipette-") === 0) {
+      _e.pause = false;
+    }
+    if (act === "reprendre") {
+      // rien d'autre : _majBandeau relance la visée, qui désarme l'outil (_majModeClic)
+    } else if (act.indexOf("pipette-") === 0) {
       const c = act.slice(8);
       _e.pipette = _e.pipette === c ? null : c;
     } else if (act === "effacer") {
@@ -546,7 +554,7 @@ window.KtaDetectionUI = (function () {
 
   // ── Carte : pipette et coins du cadre ──
   async function _onClic(ev) {
-    if (!_e || !ev || !ev.latlng) return;
+    if (!_e || !ev || !ev.latlng || _e.pause) return;   // en pause : le clic est à l'outil armé
     const pt = _e.ctx.depuisCarte(ev.latlng), x = pt.x, y = pt.y;
     if (_e.etape === "exemples" && _e.pipette) {
       const c = _e.pipette;
@@ -1045,6 +1053,7 @@ window.KtaDetectionUI = (function () {
     const remplir = _e.etape === "remplir";
     const retour = remplir ? _btn("exemples", "detect.retour") : _btn("zone", "detect.recommencer");
     return '<span class="kta-racc-info">' + _esc(_texteGaleries()) + "</span>" + (remplir ? _aideRetirer() : "") +
+      _htmlPause() +
       '<div class="kta-racc-actions">' + _curseursGaleries() + _choixTypeGalerie() + "</div>" +
       '<div class="kta-racc-actions">' + (remplir ? _btnRetirerDernier() : "") +
       _btn("valider-galeries", "detect.valider", "kta-btn-primary", { n: _gardesGaleries() }) + retour +
@@ -1215,7 +1224,7 @@ window.KtaDetectionUI = (function () {
     _e = { ctx: ctx, etape: "exemples", couleurs: null, pipette: null, coins: [], couche: null, apercu: null,
            ctrl: null, progres: [0, 1], lectures: 0, recalculs: 0, ex: null, curseurs: null,
            remplis: [], typeRemplir: null, typeOuverture: typeOuverture, remplissage: false,
-           cible: cible, axes: [], remplisG: [], reglagesG: null, typeGalerie: null };
+           cible: cible, axes: [], remplisG: [], reglagesG: null, typeGalerie: null, pause: false };
     _e.couleurs = _lireCouleurs();
     if (cible === "traces") {
       _e.reglagesG = window.KtaDetection.reglagesGaleries(ctx.pxParM ? ctx.pxParM() : null);
@@ -1286,15 +1295,50 @@ window.KtaDetectionUI = (function () {
   // de la croix (hotspot 14,14) est le pixel lu. ⚠️ Classe PROPRE au parcours : kta-precision-mode est recalculée par
   // interface.js > _initPrecisionCursor à chaque écriture d'un flag window.modeX, elle effacerait la nôtre.
   function _majCurseur() {
-    const viser = !!_e && ((_e.etape === "exemples" && !!_e.pipette) || _e.etape === "zone" || _e.etape === "remplir");
+    const viser = !!_e && !_e.pause &&
+      ((_e.etape === "exemples" && !!_e.pipette) || _e.etape === "zone" || _e.etape === "remplir");
     document.body.classList.toggle("kta-detect-pick-mode", viser);
+    _majModeClic(viser);
+  }
+  // ── Un seul mode de clic à la fois ──
+  // ⚠️ contrat : sur la carte du plan, la visée (pipette, cadre, Remplir) est inscrite au registre des outils
+  //   (interface.js > ktaInscrireModeClic). Armer un outil de dessin, de mesure ou un point la met en pause
+  //   (_mettreEnPause) ; viser de nouveau désarme l'outil (_desactiverTousLesModes). La fenêtre, les remplissages et
+  //   l'aperçu restent. Ailleurs (Générateur, sa propre carte) : rien d'inscrit, aucun outil n'y prend les clics.
+  // 🩸 `_inscrit` est écrit AVANT _desactiverTousLesModes : sinon la pause rappelée par le registre réinscrirait.
+  function _majModeClic(viser) {
+    const tenir = viser && !!_e && _e.ctx.carte === window.map;
+    if (tenir === _inscrit) return;
+    _inscrit = tenir;
+    if (!tenir) {
+      if (typeof window.ktaRetirerModeClic === "function") window.ktaRetirerModeClic(MODE_CLIC);
+      return;
+    }
+    if (typeof window._desactiverTousLesModes === "function") window._desactiverTousLesModes();
+    if (typeof window.ktaInscrireModeClic === "function") window.ktaInscrireModeClic(MODE_CLIC, _mettreEnPause);
+  }
+  // Un outil s'arme : pipette lâchée ; cadre et Remplir en pause (coins, remplissages et aperçu gardés).
+  function _mettreEnPause() {
+    if (!_e) return;
+    _e.pipette = null;
+    if (_e.etape === "zone" || _e.etape === "remplir") _e.pause = true;
+    _majBandeau();
+  }
+  // Ligne et bouton « reprendre » d'une visée en pause (cadre, Remplir), sinon rien.
+  function _htmlPause() {
+    const remplir = _e.etape === "remplir";
+    if (!_e.pause || (!remplir && _e.etape !== "zone")) return "";
+    return '<span class="kta-detect-aide-retirer kta-detect-pause">' + _esc(_t("detect.pause.aide")) + "</span>" +
+      '<button type="button" class="kta-btn kta-btn-primary" data-detect="reprendre">' +
+      window.ktaIcone(remplir ? "paint-bucket" : "crosshair") + " " +
+      _esc(_t(remplir ? "detect.remplir.bouton" : "detect.pause.cadre")) + "</button>";
   }
   // Harnais : état lisible sans DOM.
   function etat() {
     if (!_e) return null;
     const a = _e.apercu;
     const ga = _galeries() && a ? a : null;
-    return { etape: _e.etape, cible: _e.cible,
+    return { etape: _e.etape, cible: _e.cible, pause: !!_e.pause,
              exemples: { a: _e.couleurs.a.length, b: _e.couleurs.b.length, f: _e.couleurs.f.length,
                          g: _e.couleurs.g.length },
              pipette: _e.pipette, coins: _e.coins.length, curseurs: _e.curseurs, lectures: _e.lectures,

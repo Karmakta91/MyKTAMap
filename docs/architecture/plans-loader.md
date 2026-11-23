@@ -1007,6 +1007,17 @@ les galeries → tracés » plus bas.
     capture pour le ré-émettre à la carte. Un écouteur posé sur la forme ne recevrait rien, et le toucher relancerait
     un remplissage refusé (« déjà dans l'aperçu »). Les formes de Remplir sont donc non interactives ; le même code sert
     la carte du plan et celle du Générateur (qui n'a pas ce ré-émetteur).
+  - ⚠️ **Un seul mode de clic à la fois** (décision de KARMA du 23/11/2026) : sur la carte du plan, la visée de la
+    fenêtre (pipette, cadre, Remplir, structures comme galeries) est inscrite au registre des modes clic-carte
+    (`interface.js > ktaInscrireModeClic`, nom `detection`, retirée par `ktaRetirerModeClic` quand elle s'éteint).
+    Armer un outil (tracé, zone, structure, point, mesure, recalage…) passe par `_desactiverTousLesModes`, qui la met
+    en pause (`_mettreEnPause`) : pipette lâchée ; cadre et Remplir en pause (`etat().pause`), visée et
+    `body.kta-detect-pick-mode` retirées, fenêtre ouverte, coins, remplissages et aperçu gardés, `_onClic` muet. Le
+    bandeau le dit et propose la reprise (« Remplir au clic », ou « Reprendre le cadre ») ; viser de nouveau (reprise,
+    pipette, « Remplir au clic », cadre) désarme l'outil en cours (`_majModeClic` → `_desactiverTousLesModes`). Même
+    mécanisme que les outils entre eux, aucun cas particulier dans `road.js` / `structures.js`. Le Générateur (sa propre
+    carte) n'inscrit rien. 🩸 Une modale ouverte sur la carte (`ktaCouperModesOutils`) et l'Échap de la carte passent
+    par le même registre : elles mettent aussi la visée en pause. Checkup : `checkup-remplir-exclusif.js`.
   - ⚠️ Clavier : tant que la fenêtre est ouverte, son écouteur en capture sur `document` (`_onKey`) prend Ctrl+Z,
     Ctrl+Y et Ctrl+Maj+Z, avant celui de `historyManager.js` (bulle) : jamais d'annulation globale sous la fenêtre
     (sans lui, Ctrl+Z défaisait le « Valider » précédent). Champ de saisie : annulation native. Fenêtre fermée :
@@ -1087,6 +1098,7 @@ les galeries → tracés » plus bas.
 - Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
   `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-remplir-annuler.js` (retirer un
   remplissage au toucher, par Ctrl+Z ou « Retirer le dernier », structures et galeries, historique global intact) ·
+  `scripts/smoke/checkup-remplir-exclusif.js` (un seul mode de clic entre la fenêtre et les outils de la carte) ·
   `scripts/smoke/checkup-affiner-contours.js` (case Affiner
   les contours) · `scripts/smoke/checkup-detection-emprise.js` (calque du
   niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur

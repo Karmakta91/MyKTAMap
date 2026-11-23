@@ -343,6 +343,8 @@
   "detect.galeries.toast.surFond": "Eso es el fondo: toque el interior de una galería de color, o use Rellenar al tocar.",
   "detect.galeries.type": "Tipo de trazado",
   "detect.historique": "Estructuras detectadas ({n})",
+  "detect.pause.aide": "Una herramienta de dibujo ha tomado los toques del mapa: no se pierde nada.",
+  "detect.pause.cadre": "Reanudar el marco",
   "detect.pipette.toucher": "Toca un objeto de este color en el mapa.",
   "detect.recommencer": "Otra zona",
   "detect.refus.calques-masques": "Las capas de imagen de este nivel están ocultas (filtros o niveles mostrados): nada que detectar.",
