@@ -51,9 +51,10 @@ window.KtaDetectionUI = (function () {
   const ECART_TRAIT = 3;                // px : un front détecté à moins de cet écart d'un front existant est déjà là
   const REFUS = "KtaDetectionRefus";    // nom de l'erreur levée par _lireBloc quand le contexte refuse de dessiner
   // Remplir au clic : fenêtre lue autour du toucher (px plan), puis la grande si la zone en touche le bord.
-  // Plafond : ktaDetection.js > plafondRemplir (40 m de côté sur un plan à échelle connue, sinon 512² px). La grande
-  //   fenêtre (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) laisse une zone au plafond
-  //   loin de son bord.
+  // Plafond : ktaDetection.js > plafondRemplir (80 m de côté sur un plan à échelle connue, sinon un carré relatif à
+  //   l'image, 1 024 px au moins). La grande fenêtre (4 × la marge des blocs, ou deux fois le côté du plafond + 64)
+  //   laisse une zone au plafond loin de son bord ; au-delà de FENETRE_REMPLIR_MAX px, elle est lue à résolution
+  //   réduite (mémoire du téléphone : jamais plus de FENETRE_REMPLIR_MAX² px lus).
   const MARGE = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
   const FENETRE_REMPLIR_MAX = 4096;
   const TOUCHE_RETIRER_PX = 14;   // Remplir, galeries : rayon d'écran minimal autour d'un axe pour retirer au toucher
@@ -860,18 +861,21 @@ window.KtaDetectionUI = (function () {
     e.remplissage = true;
     try {
       let r = null;
-      const pl = window.KtaDetection.plafondRemplir(e.ctx.pxParM ? e.ctx.pxParM() : null);
-      const fenetres = [384, Math.min(FENETRE_REMPLIR_MAX, Math.max(4 * MARGE, 2 * pl.coteMax + 64))];
-      for (let k = 0; k < fenetres.length; k++) {
-        const n = fenetres[k];
+      const pl = window.KtaDetection.plafondRemplir(e.ctx.pxParM ? e.ctx.pxParM() : null,
+        { largeur: e.ctx.largeur, hauteur: e.ctx.hauteur });
+      const grande = Math.max(4 * MARGE, 2 * pl.cote + 64);
+      const passes = [[384, 1], [Math.min(FENETRE_REMPLIR_MAX, grande), 1]];
+      if (grande > FENETRE_REMPLIR_MAX) passes.push([grande, FENETRE_REMPLIR_MAX / grande]);
+      for (let k = 0; k < passes.length; k++) {
+        const n = passes[k][0], ech = passes[k][1];
         const x0 = Math.max(E.x0, Math.floor(x - n / 2)), y0 = Math.max(E.y0, Math.floor(y - n / 2));
         const x1 = Math.min(E.x1, Math.ceil(x + n / 2)), y1 = Math.min(E.y1, Math.ceil(y + n / 2));
-        const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, 1);
+        const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, ech);
         if (_e !== e) return;
         // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour un fond ouvert
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-        r = window.KtaDetection.remplir(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1, aireMax: pl.aireMax,
-          coteMax: pl.coteMax, affiner: _toleranceAffiner() });
+        r = window.KtaDetection.remplir(b, (x - x0) * ech, (y - y0) * ech, { x0: x0, y0: y0, echelle: ech,
+          aireMax: pl.aireMax, coteMax: pl.coteMax, affiner: _toleranceAffiner() });
         // zone fermée, ou fenêtre déjà grande comme l'emprise : une fenêtre plus grande n'y changerait rien
         if (r.refus !== "ouvert" || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
       }

@@ -1261,16 +1261,21 @@
   //   partielle. aireMax par défaut : le quart du bloc ; coteMax absent : pas de limite de côté.
   // 🩸 L'érosion de _passe efface la rangée du bord du bloc (voisins hors bloc comptés vides) : le trait d'origine est
   //   rajouté après la fermeture, qui ne doit jamais RETIRER de trait.
-  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1, demiTrait: 6, coteMaxM: 40,
-                                  plafondPx: 512 });
+  const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1, demiTrait: 6, coteMaxM: 80,
+                                  plafondPxMin: 1024, plafondFraction: 0.25 });
   // Plafond d'une zone remplie, en px du plan. ⚠️ contrat (décision produit) : plan à échelle connue (px/m) → côté de
-  //   boîte et aire bornés par REMPLIR.coteMaxM (40 m, 1 600 m²) : la plus grande structure plausible, prise large
-  //   pour ne jamais refuser un vrai pilier ; une galerie fermée s'étend bien au-delà et sort par son côté. Sans
-  //   échelle : aire de plafondPx² (512² px), sans côté maximal. → { aireMax, coteMax }.
-  function plafondRemplir(pxParM) {
+  //   boîte et aire bornés par REMPLIR.coteMaxM (80 m, 6 400 m²) : les gros massifs passent ; une galerie fermée plus
+  //   longue sort par son côté. Sans échelle : aire d'un carré de côté max(plafondPxMin, plafondFraction × petit côté
+  //   de l'image `image` = { largeur, hauteur }) — 1 024 px au moins, le quart du petit côté sur une grande image —,
+  //   sans côté maximal. → { aireMax, coteMax, cote } ; `cote` (px) dimensionne la fenêtre lue autour du toucher
+  //   (detectionStructures.js > _remplirEn).
+  // 🩸 Sans échelle, une galerie fermée plus courte que ce carré passe : seul l'aire la borne.
+  function plafondRemplir(pxParM, image) {
     const k = Number(pxParM);
-    if (k > 0) { const c = Math.round(REMPLIR.coteMaxM * k); return { aireMax: c * c, coteMax: c }; }
-    return { aireMax: REMPLIR.plafondPx * REMPLIR.plafondPx, coteMax: 0 };
+    if (k > 0) { const c = Math.round(REMPLIR.coteMaxM * k); return { aireMax: c * c, coteMax: c, cote: c }; }
+    const petit = image ? Math.min(Number(image.largeur) || 0, Number(image.hauteur) || 0) : 0;
+    const c = Math.max(REMPLIR.plafondPxMin, Math.round(REMPLIR.plafondFraction * petit));
+    return { aireMax: c * c, coteMax: 0, cote: c };
   }
   // Le point touché est-il du côté CLAIR de son voisinage (L* au moins à mi-chemin entre le plus sombre et le plus
   // clair des pixels à ± 3 px) ? 🩸 Pas « plus clair que le trait » : autour d'un petit pilier grisé, le masque du

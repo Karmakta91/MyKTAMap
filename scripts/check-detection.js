@@ -987,21 +987,43 @@ async function verifierGaleries() {
     t("remplir : toucher au cœur du trait → toujours refusé, le repli ne remplit jamais le trait",
       Rtr2.refus === "trait", Rtr2);
 
-    // ── Plafond en mètres (plan à échelle connue), sinon 512 px ──
+    // ── Plafond en mètres (plan à échelle connue), sinon relatif à l'image ──
     t("remplir : plafond exposé (plafondRemplir)", typeof D.plafondRemplir === "function");
     if (typeof D.plafondRemplir === "function") {
       const sans = D.plafondRemplir(null), a10 = D.plafondRemplir(10);
-      t("remplir : sans échelle, plafond 512 × 512 px, sans côté maximal",
-        sans.aireMax === 512 * 512 && !sans.coteMax, sans);
+      const petite = D.plafondRemplir(null, { largeur: 1200, hauteur: 900 });
+      const grande = D.plafondRemplir(null, { largeur: 30000, hauteur: 12000 });
+      t("remplir : sans échelle ni image, plafond 1 024 × 1 024 px, sans côté maximal",
+        sans.aireMax === 1024 * 1024 && !sans.coteMax && sans.cote === 1024, sans);
+      t("remplir : sans échelle, petite image (1 200 × 900) → 1 024 px de côté au moins",
+        petite.cote === 1024 && petite.aireMax === 1024 * 1024 && !petite.coteMax, petite);
+      t("remplir : sans échelle, grande image (30 000 × 12 000) → le quart du petit côté (3 000 px)",
+        grande.cote === 3000 && grande.aireMax === 3000 * 3000 && !grande.coteMax, grande);
       t("remplir : à 10 px/m, côté maximal " + D.REMPLIR.coteMaxM + " m = " + a10.coteMax + " px",
-        a10.coteMax === D.REMPLIR.coteMaxM * 10 && a10.aireMax === a10.coteMax * a10.coteMax, a10);
-      // galerie fictive fermée : 600 × 16 px (60 m × 1,6 m à 10 px/m), aire sous le plafond mais trop longue
-      const gal = image(800, 200).anneau(98, 98, 604, 20, 2, NOIR);
-      const Rg = D.remplir(lecteurSync(gal), 300, 108, a10);
-      t("remplir : galerie fictive de 60 m (plan à 10 px/m) → refus « tropGrand »", Rg.refus === "tropGrand", Rg);
-      const Rgs = D.remplir(lecteurSync(gal), 300, 108, { aireMax: sans.aireMax });
-      t("remplir : la même galerie sans échelle passe (plafond 512² px) : c'est le côté en mètres qui la refuse",
+        D.REMPLIR.coteMaxM === 80 && a10.coteMax === 800 && a10.aireMax === 800 * 800 && a10.cote === 800, a10);
+      // massif fictif de 60 × 60 m à 10 px/m : rempli
+      const m60 = cerne(image(800, 800), 100, 100, 600, 600, 4, 0);
+      const R60 = D.remplir(lecteurSync(m60), 400, 400, a10);
+      t("remplir : massif fictif de 60 m (plan à 10 px/m) → rempli", !!R60.points, R60.refus);
+      // massif fictif de 900 px sans échelle : rempli ; le même à 10 px/m (90 m) : refusé
+      const m900 = cerne(image(1100, 1100), 100, 100, 900, 900, 4, 0);
+      const R900 = D.remplir(lecteurSync(m900), 550, 550, { aireMax: sans.aireMax });
+      t("remplir : massif fictif de 900 px sans échelle → rempli", !!R900.points, R900.refus);
+      const R90 = D.remplir(lecteurSync(m900), 550, 550, a10);
+      t("remplir : le même à 10 px/m (90 m, au-delà de 80 m) → refus « tropGrand »", R90.refus === "tropGrand", R90);
+      // galerie fictive fermée : 1 000 × 16 px (100 m × 1,6 m à 10 px/m), aire sous le plafond mais trop longue
+      const gal = image(1200, 200).anneau(98, 98, 1004, 20, 2, NOIR);
+      const Rg = D.remplir(lecteurSync(gal), 500, 108, a10);
+      t("remplir : galerie fictive fermée de 100 m (plan à 10 px/m) → refus « tropGrand »", Rg.refus === "tropGrand", Rg);
+      const Rgs = D.remplir(lecteurSync(gal), 500, 108, { aireMax: sans.aireMax });
+      t("remplir : la même galerie sans échelle passe (aire seule bornée) : c'est le côté en mètres qui la refuse",
         !!Rgs.points, Rgs.refus);
+      // galerie ouverte (deux traits, ouverte aux deux bouts) : refusée « ouvert », avec ou sans échelle
+      const ouv = image(1200, 200).rect(100, 96, 1000, 3, NOIR).rect(100, 121, 1000, 3, NOIR);
+      const Ro = D.remplir(lecteurSync(ouv), 600, 110, a10);
+      const Ros = D.remplir(lecteurSync(ouv), 600, 110, { aireMax: sans.aireMax });
+      t("remplir : galerie ouverte → refus « ouvert », avec ou sans échelle (jamais une zone partielle)",
+        Ro.refus === "ouvert" && Ros.refus === "ouvert", [Ro.refus, Ros.refus]);
       // grande structure plausible : 30 × 25 m à 10 px/m
       const gros = cerne(image(500, 400), 60, 60, 300, 250, 4, 0);
       const Rgr = D.remplir(lecteurSync(gros), 200, 180, a10);

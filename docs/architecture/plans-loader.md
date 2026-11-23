@@ -1042,19 +1042,26 @@ les galeries → tracés » plus bas.
     garde son contour, inchangé.
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
     l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
-    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
-    (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) si la zone touche son bord.
-    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM)`, décision produit) : plan à échelle connue
-    (`ctx.pxParM()`, échelle écrite dans le plan) → **40 m de côté** (boîte de la zone) **et 1 600 m²** ; sans
-    échelle → 512 × 512 px d'aire, sans côté maximal. 40 m = la plus grande structure plausible prise large : un pilier
-    tourné fait quelques mètres, une masse laissée ou un massif de consolidation quelques dizaines ; une valeur
-    généreuse ne refuse jamais un vrai pilier, et une galerie fermée, longue de plusieurs dizaines de mètres, sort
-    par son côté. 🩸 512 px sans échelle reste trop large sur une petite image (une galerie fermée y passe : essai
-    sur un plan au trait de 1 170 px de large). Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis, si la
+    zone touche son bord, une grande fenêtre de max(1 024, 2 × côté du plafond + 64) px : pleine résolution jusqu'à
+    4 096 px (`FENETRE_REMPLIR_MAX`), au-delà lue à résolution réduite (jamais plus de 4 096² px lus : mémoire du
+    téléphone).
+    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM, image)`, décisions de KARMA du 21/11 et du 23/11/2026) :
+    plan à échelle connue (`ctx.pxParM()`, échelle écrite dans le plan) → **80 m de côté** (boîte de la zone) **et
+    6 400 m²** ; sans échelle → aire d'un carré de côté **max(1 024 px, le quart du petit côté de l'image)**, sans
+    côté maximal (`REMPLIR.plafondPxMin`, `plafondFraction`). Le plafond doit laisser passer les gros massifs (40 m et
+    512² px refusaient trop souvent « trop grande ») ; le refus reste au-delà, et une zone ouverte ou qui sort de la
+    fenêtre est toujours refusée « contour ouvert », jamais une zone partielle. Une galerie fermée plus longue que
+    80 m sort par son côté. 🩸 Sans échelle, seule l'aire borne : une galerie fermée plus courte que le carré passe
+    (sur une petite image, elle passait déjà à 512 px). Mesures (`checkup-remplir-plafond.js`, poste de dev) : massif
+    de 79 m à 10 px/m (fenêtre de 1 664 px) ≈ 0,35 s, 1,7 s processeur ralenti × 4 ; 900 px sans échelle (fenêtre de
+    2 112 px) ≈ 0,45 s. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
   - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
     trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
-    pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; galerie fictive de 60 m refusée à
-    échelle connue, structure de 30 × 25 m acceptée, 512² px sans échelle) · `scripts/smoke/checkup-remplir.js`.
+    pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; plafond de 80 m et relatif à l'image ;
+    massifs fictifs de 60 m et de 900 px remplis, de 90 m refusé ; galerie fermée de 100 m refusée à échelle connue,
+    galerie ouverte refusée ; structure de 30 × 25 m acceptée) · `scripts/smoke/checkup-remplir.js` ·
+    `scripts/smoke/checkup-remplir-plafond.js` (mêmes cas dans l'app, temps mesurés).
 - ⚠️ **Affiner les contours** (décisions de KARMA du 21/11/2026) : sur un plan de mauvaise qualité, le trait
   irrégulier donnait des piliers « en dent de scie », une forme qui n'existe pas (le Douglas-Peucker à 1 ou 1,5 px
   garde ce bruit). Case **Affiner les contours** du bandeau (exemples, Remplir au clic, aperçu), **cochée par
