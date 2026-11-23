@@ -185,6 +185,35 @@ window._applyLevelFilterToBasePlan = function() {
   }
 };
 
+// ── Opacité de l'image principale ──────────────
+// Seule règle : curseur des filtres (config.js > getPlanOpaciteFond) × transparence du fond OSM sous le plan
+// (FondOsmPlan.facteurPlan, 1 s'il est éteint). Posée sur les 3 rendus : tilePane (tuiles V2), overlays du rendu
+// direct et du repli V2 (_ktaBaseLayers), tuiles V1 (_baseTiles). Appelée au chargement du fond, par le curseur et
+// par le fond OSM (allumer, régler, éteindre).
+// ⚠️ Sans réglage ni fond OSM : aucun style posé (tilePane vidé, overlay déjà à 1 laissé tel quel).
+// 🩸 Détection et vue 3D lisent l'image pleine (drawImage ignore l'opacité CSS) : ne pas y lire cette valeur.
+window.ktaOpacitePlanDeBase = function() {
+  const curseur = typeof window.getPlanOpaciteFond === "function" ? window.getPlanOpaciteFond(null) : 1;
+  const osm = (window.FondOsmPlan && typeof window.FondOsmPlan.facteurPlan === "function")
+    ? window.FondOsmPlan.facteurPlan() : 1;
+  return Math.max(0, Math.min(1, curseur * osm));
+};
+window.ktaAppliquerOpacitePlanDeBase = function() {
+  const map = window.map;
+  if (!map) return;
+  const a = window.ktaOpacitePlanDeBase();
+  const tp = map.getPane("tilePane");
+  if (tp) tp.style.opacity = a >= 1 ? "" : String(a);
+  const poser = function(l) {
+    if (!l || typeof l.setOpacity !== "function") return;
+    const avant = (l.options && typeof l.options.opacity === "number") ? l.options.opacity : 1;
+    if (avant === a) return;
+    try { l.setOpacity(a); } catch(e) {}
+  };
+  (window._ktaBaseLayers || []).forEach(poser);
+  (window._baseTiles || []).forEach(function(t) { poser(t && t.overlay); });
+};
+
 // ── V2 : tuiles hors écran ──────────────
 // Une image d'overlay n'est demandée qu'une fois posée : ne poser que ce qui est proche de l'écran évite des
 // centaines d'overlays, de requêtes et d'abonnements Leaflet pour quelques tuiles visibles. Seule
@@ -790,6 +819,7 @@ function _chargerImageV2OptionB(urlBase, bounds, map, tilingManifest, racineSrv)
       try {
         const ovRepli = L.imageOverlay(urlBase, bounds).addTo(map);
         window._ktaBaseLayers.push(ovRepli);
+        window.ktaAppliquerOpacitePlanDeBase();
         if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
           window.OOMGuard.showToast(
             (window.I18n && window.I18n.t)

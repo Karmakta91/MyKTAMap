@@ -227,6 +227,14 @@ window.afficherSelecteurAlertes = function(alerts, opts) {
     if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") window.AlertChecker.dismiss();
   }
   function _onKey(e) { if (e.key === "Escape") _fermer(); }
+  // ⚠️ Contrat avec AlertChecker > _recouvrir : une urgence arrivée retire la liste sans dismiss ; null (rien retiré)
+  // si la liste montre une urgence.
+  modal._ktaRecouvrir = function() {
+    if (sorted.some(function(a) { return a.level !== "warning" && a.level !== "info"; })) return null;
+    modal.remove();
+    document.removeEventListener("keydown", _onKey);
+    return { alertes: sorted.map(function(a) { return { id: a.id, released: a.released }; }) };
+  };
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
   document.addEventListener("keydown", _onKey);
   document.getElementById("kta-alert-selector-close").addEventListener("click", _fermer);
@@ -312,6 +320,13 @@ window.afficherModaleAlerte = function(alert, onClose) {
     }
   }
 
+  // ⚠️ Contrat avec AlertChecker > _recouvrir : une urgence arrivée retire ce détail SANS l'acquitter (pas de
+  // dismiss) et reprend onClose, appelé quand il aura été rouvert puis fermé ; null (rien retiré) sur une urgence.
+  modal._ktaRecouvrir = function() {
+    if (level === "emergency") return null;
+    modal.remove();
+    return { alertes: [{ id: id, released: released }], onClose: onClose };
+  };
   document.getElementById("kta-alert-ok").addEventListener("click", _fermer);
   // PAS de fermeture au clic sur le fond (décision produit) : alerte critique, « J'ai compris » explicite.
 };

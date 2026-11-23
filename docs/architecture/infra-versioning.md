@@ -89,10 +89,27 @@ L'auteur active/désactive **en éditant uniquement ce fichier** :
 - Click → `AlertChecker.showCurrent()` qui re-fetch + bypass acquittement + affiche TOUTES les alertes actives en cascade
 - L'update du badge est notifié via `AlertChecker.onChange(callback)` après chaque `check()` ou `dismiss()`
 
-**Affichage en cascade** : `_afficherCascade(alerts)` dans `alertChecker.js` itère sur les alertes triées par priorité (`emergency > warning > info`) puis `released` desc. Chaque modale appelle le callback `onClose` qui déclenche la suivante après 250ms de fade-out.
+**Affichage** : une alerte → la modale détail ; plusieurs → le sélecteur, classé par priorité (`emergency > warning >
+info`) puis `released` décroissant, un clic = une modale (pas d'enchaînement, décision produit). D'office
+(démarrage, liste d'une extension relue) : seulement les alertes non acquittées et pas encore ouvertes d'office
+(`_montreesAuto`, une fois par `released`). Une fenêtre d'alerte déjà ouverte : la nouvelle attend
+(`_enAttente`) et s'ouvre à la fermeture (`dismiss`, après 300 ms de fondu).
 
-**Modales** (dans `interface.js`) :
-- `window.afficherModaleAlerte(alert, onClose)` — `onClose` (v163+, optionnel) callback à la fermeture, utilisé par la cascade
+**Urgence devant** (`alertChecker.js > _aOuvrirDOffice` / `_recouvrir`, `interfaceAlerts.js > _ktaRecouvrir`) :
+urgence = `level: "emergency"`, strict ; `warning` et `info` sont des informations. La file d'office est **urgences
+d'abord** : s'il y en a, elles s'ouvrent seules (une → détail, plusieurs → sélecteur), le reste attend leur
+fermeture. Une urgence qui arrive pendant qu'une information est à l'écran (détail, ou sélecteur sans urgence) la
+**recouvre** : la fenêtre est retirée par sa propre fonction `_ktaRecouvrir`, sans `dismiss` (donc sans acquittement
+local), et ses alertes vont dans `_recouvertes` (id → `released`). Après l'urgence, elles reviennent avant les autres
+informations en attente ; seul « J'ai compris » (`localStorage`) les retire, pas le `vue` d'une extension (son accusé
+est parti à leur premier affichage). Une urgence à l'écran n'est jamais recouverte : une autre urgence attend son
+tour. Le `onClose` d'un détail recouvert (fin du séquenceur de premier lancement) est gardé et appelé quand la file
+est vide ; au splash, une liste relue s'ajoute à celle qui attend (`_showOrDefer`) au lieu de la remplacer.
+Mesures : `scripts/smoke/checkup-urgence-devant.js` ; garde : `check-extensions.js` (urgence devant).
+
+**Modales** (dans `interfaceAlerts.js`) :
+- `window.afficherModaleAlerte(alert, onClose)` — `onClose` (optionnel) appelé à la fermeture (séquenceur de premier lancement)
+- `window.afficherSelecteurAlertes(alerts, opts)` — la liste, `opts.onSelect(alerte)` au clic sur une ligne
 - `window.afficherModaleAlerteAbsente(status)` — modale verte sobre "Aucune alerte en cours" / "Vérification impossible" (offline)
 
 **Hook splash** : pattern identique à `OOMGuard.flushPendingToasts()` et `UpdateChecker.notifySplashEnded()`. Les modales en attente sont flushed par `main.js > _splashEnd()` après le fade-out, jamais par-dessus le gradient sombre du splash.

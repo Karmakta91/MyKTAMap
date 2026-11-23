@@ -7,8 +7,8 @@
 // Relevé fictif seulement. Le checkup FABRIQUE une planche au trait (piliers blancs cernés de noir : trois fermés, un
 // au trait ouvert de 6 px, un déjà dessiné en structure) et la prête au plan en tuiles V2 (Blob dans RUNTIME_ASSETS),
 // puis, sous chaque moteur de KTA_MOTEURS (Chromium et WebKit par défaut) :
-//   1. outil Structures → Détecter → « Remplir au clic » : mode actif, réticule, types à contour fermé seuls (aucun
-//      front, mur en ligne, arc ni pilier à bras posé d'un clic) ;
+//   1. outil Structures → Détecter → « Remplir au clic » : mode actif, réticule, types à contour fermé (et types en
+//      ligne, qui suivent le trait : checkup-remplir-front.js), jamais le pilier à bras posé d'un clic ;
 //   2. type « Mur » choisi, 3 touchers → 3 zones en aperçu, RIEN d'écrit avant « Valider » ;
 //   3. toucher dans le contour ouvert → refus affiché, rien ajouté ; toucher dans la structure existante → pas de
 //      doublon, refus affiché ;
@@ -200,9 +200,11 @@ async function suite(nav) {
     return s ? Array.prototype.map.call(s.options, function (o) { return o.value; }) : null;
   });
   verifier(options && ["pilier-1", "pilier-2", "mur"].every(function (t) { return options.indexOf(t) >= 0; }) &&
-    !options.some(function (t) { return ["front-1", "front-2", "mur-ligne", "arc", "pilier-bras"].indexOf(t) >= 0; }),
-    "types proposés : contour fermé seulement (piliers, mur), ni type en ligne ni pilier à bras (posé d'un clic)",
-    options);
+    options.indexOf("pilier-bras") < 0 && e.remplir.lignes.every(function (t) {
+      return ["pilier-1", "pilier-2", "mur"].indexOf(t) < 0;
+    }),
+    "types proposés : contour fermé (piliers, mur) hors du groupe « suivre un trait », jamais le pilier à bras",
+    { options: options, lignes: e.remplir.lignes });
   await page.selectOption("#kta-detect-bandeau [data-detect-remplir-type]", "mur");
   e = await etat(page);
   verifier(e.remplir.type === "mur", "type choisi : mur", e.remplir);

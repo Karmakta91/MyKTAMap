@@ -10,7 +10,8 @@
 // interface.js — barres d'outils du plan : titre et plan switcher, groupes de la sidebar
 // (accordéon, flyout, modal de tuiles), modes exclusifs clic-carte, suppression au clic.
 // Expose : window.initInterface, ouvrirMenuTracker, ktaDemarrerSuivi, ktaCouperModesOutils,
-//   ktaMajOutilsLectureSeule, _desactiverTousLesModes, _fermerModeZone/Structure/Recalage, _groupes.
+//   ktaMajOutilsLectureSeule, _desactiverTousLesModes, ktaInscrireModeClic/ktaRetirerModeClic,
+//   _fermerModeZone/Structure/Recalage, _groupes.
 // Le reste de l'interface vit dans interfaceConfig/Docs/Legende/ImportExport/Itineraire/
 //   Maintenance/DistanceTotale.js.
 // Pièges :
@@ -534,6 +535,14 @@ function _desactiverTousLesModes() {
 }
 // Un outil clic-carte est-il armé (registre ci-dessus) ? Lu par l'Échap de la carte (shortcuts.js > _echapCarte).
 window.ktaOutilArme = function() { return Object.keys(_modesActifs).length > 0; };
+// Mode clic-carte tenu hors de la barre d'outils (visée de la fenêtre Détecter) : inscrit ici, il tombe comme un outil
+// quand un autre s'arme (desactiverFn appelée). ⚠️ contrat : l'appelant désarme d'abord (_desactiverTousLesModes),
+// puis s'inscrit, et se retire lui-même quand sa visée s'éteint.
+window.ktaInscrireModeClic = function(nom, desactiverFn) {
+  if (!nom || typeof desactiverFn !== "function") return;
+  _modesActifs[nom] = { btnEl: null, desactiverFn: desactiverFn };
+};
+window.ktaRetirerModeClic = function(nom) { delete _modesActifs[nom]; };
 
 
 // 🩸 Une suppression qui efface le tracé en cours DOIT fermer le mode : sinon le bouton reste
@@ -2837,6 +2846,10 @@ _setGroupeModeActif("tracker", isTracking, null);
   }
 
   _sousActionsTraces.push(
+    // Détecter les galeries sur l'image du plan (js/detectionStructures.js, fenêtre dédiée aux tracés) ; même
+    // fenêtre que la carte de l'📊 Éditeur de données.
+    { icone: window.ktaIcone("search"), titre: window.I18n.t("detect.galeries.bouton"),
+      onClick: function() { if (window.KtaDetectionUI) window.KtaDetectionUI.ouvrir(null, { cible: "traces" }); } },
     // Valider : termine le tracé en cours, quel que soit son type (custom compris), et l'outil reste armé
     // (décision produit, comme celui de Structures) ; retoucher le type actif l'éteint. La jonction, saisie à part
     // avec ses deux niveaux, s'éteint. Sans isTypeAction → après le séparateur.

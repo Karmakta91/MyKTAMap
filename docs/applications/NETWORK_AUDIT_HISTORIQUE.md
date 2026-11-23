@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.31.0 (Détecter les galeries, Remplir un front, alerte d'urgence devant)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** Détecter les galeries, Remplir au clic sur un front, l'affinage des contours et l'opacité de l'image principale travaillent sur l'appareil, à partir des images déjà affichées. Les points précis et les petits piliers sont dessinés dans l'export sur l'appareil. L'alerte d'urgence qui passe devant ne change que l'ordre d'affichage d'alertes déjà reçues.
+
 ### v2.30.0 (pilier à bras, Remplir au clic, opacité des calques image)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Le pilier à bras, Remplir au clic, la détection sur un niveau, l'opacité des calques image et les tracés enchaînés travaillent sur l'appareil, à partir des images déjà affichées : rien n'est téléchargé de plus. L'opacité d'un calque est retenue sur l'appareil seulement.

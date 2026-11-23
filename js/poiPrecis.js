@@ -13,8 +13,8 @@
 // pas (leurs raccords validés jouent ce rôle) : pas de bouton, champ ignoré partout (lire → null).
 // Lecteurs : vue 3D (galerieEmprise.js > _departPassage, vue3d.js > _segmentsChatiere, panneau), itinéraire (cible :
 // « Y aller », étape, repère du guidage), « 📍 Je suis ici » (cible, utils.js > _ktaPopupAction, emergencyMode.js) ;
-// cible d'une chatière = le milieu de son tracé mesuré en longueur (centre). Exports KMZ / GPX / GeoJSON / PNG / PDF :
-// l'icône (décision produit).
+// cible d'une chatière = le milieu de son tracé mesuré en longueur (centre). Exports KMZ / GPX / GeoJSON : l'icône
+// (décision produit) ; export image avancé et PDF : le dessin de la carte (peindre), case « Points précis ».
 // Saisie depuis la fiche seulement (utils.js > buildPointPopupHtml, mêmes droits que ✏️ Modifier) : armer() pose un
 // bandeau `.kta-iti-floater` (utils.js > _modeClicCarteActif : aucune fiche, clic ré-émis par map.js), un tap pose le
 // point ; chatière : un tap par point, « Retirer le dernier point » (ou Retour arrière), « Terminer » (ou Entrée) à
@@ -22,6 +22,8 @@
 // Affichage 2D : pointillé de l'icône au point et petit carré (chatière : un carré par point reliés par la
 // polyligne, pointillé vers le milieu), jeton --kta-accent par classe CSS (renderer SVG), jamais interactif ; visible
 // à partir de SEUIL_PX_PAR_M px d'écran par mètre (sans échelle : ZOOM_SANS_ECHELLE) et toujours fiche ouverte.
+// ⚠️ contrat : DESSIN (épaisseurs, tirets, carré, en px d'écran) sert la carte ET peindre() (canvas des exports),
+// couleurs = jetons --kta-accent / --kta-sur-accent : changer l'un change l'autre.
 // Expose window.KtaPoiPrecis. Garde-fou : scripts/smoke/checkup-point-precis.js · Doc : data-formats.md § Format
 // point, ui.md § Point précis.
 
@@ -31,6 +33,9 @@
   const SEUIL_PX_PAR_M = 4;       // zoom « moyen » : 100 m font 400 px d'écran
   const ZOOM_SANS_ECHELLE = -1;   // plan sans échelle : 1 px du plan = 0,5 px d'écran
   const CARRE_PX = 9;
+  // Géométrie du dessin, px d'écran (carte) ou px d'icône d'export (× résolution) : les icônes font 50 px des deux
+  // côtés, le dessin garde sa proportion.
+  const DESSIN = { trait: 2, tirets: [4, 4], segment: 3, carre: CARRE_PX, bordCarre: 1 };
 
   function _t(k, p) { return (window.I18n && typeof window.I18n.t === "function") ? window.I18n.t(k, p) : k; }
   function _r(v) { return Math.round(v * 100) / 100; }
@@ -325,7 +330,8 @@
   function _trace(g, pts, rd) {
     const cv = window.convertCoord, ll = pts.map(function (a) { return cv(a.x, a.y); });
     if (ll.length > 1) {
-      L.polyline(ll, { renderer: rd, weight: 3, interactive: false, className: "kta-precis-segment" }).addTo(g);
+      L.polyline(ll, { renderer: rd, weight: DESSIN.segment, interactive: false, className: "kta-precis-segment" })
+        .addTo(g);
     }
     ll.forEach(function (c) { _carre(c).addTo(g); });
     return g;
@@ -350,8 +356,8 @@
     if (!q) return null;
     const cv = window.convertCoord, rd = _renderer(m), g = L.layerGroup();
     const c = centre(point);
-    L.polyline([cv(point.x, point.y), cv(c.x, c.y)], { renderer: rd, weight: 2, dashArray: "4 4",
-      interactive: false, className: "kta-precis-trait" }).addTo(g);
+    L.polyline([cv(point.x, point.y), cv(c.x, c.y)], { renderer: rd, weight: DESSIN.trait,
+      dashArray: DESSIN.tirets.join(" "), interactive: false, className: "kta-precis-trait" }).addTo(g);
     return _trace(g, q.pts || [{ x: q.x, y: q.y }], rd);
   }
 
@@ -396,6 +402,66 @@
     marker.on("popupclose", function () { if (_fiche === marker) _fiche = null; maj(marker); });
   }
 
+  // ── Dessin sur canvas (exports image avancé et PDF : exporter.js > _genererCanvasExport) ──────────
+  // Couleurs de la carte : valeurs calculées des jetons (le canvas ne lit pas les variables CSS).
+  function couleurs() {
+    let accent = "", bord = "";
+    try {
+      const cs = getComputedStyle(document.documentElement);
+      accent = cs.getPropertyValue("--kta-accent").trim();
+      bord = cs.getPropertyValue("--kta-sur-accent").trim();
+    } catch (e) { /* hors document : repli ci-dessous */ }
+    return { accent: accent || "gold", bord: bord || "black" };
+  }
+  // Pointillé de l'icône au point (chatière : au milieu de son tracé), segment de la chatière, carré à chaque point,
+  // comme _construire, SANS le seuil de zoom (décision produit). `versCanvas(x, y)` → { x, y } px du canvas ;
+  // `u` = px du canvas par px d'écran de la carte (résolution de l'export). Rend true si quelque chose est peint.
+  function peindre(ctx, point, versCanvas, u, coul) {
+    const q = lire(point);
+    if (!ctx || !q || typeof versCanvas !== "function") return false;
+    const k = (u > 0) ? u : 1, c = coul || couleurs();
+    const pts = (q.pts || [{ x: q.x, y: q.y }]).map(function (a) { return versCanvas(a.x, a.y); });
+    const ico = versCanvas(Number(point.x), Number(point.y)), mil = centre(point), m = versCanvas(mil.x, mil.y);
+    ctx.save();
+    ctx.strokeStyle = c.accent;
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = DESSIN.trait * k;
+    ctx.lineCap = "butt";
+    if (ctx.setLineDash) ctx.setLineDash(DESSIN.tirets.map(function (t) { return t * k; }));
+    ctx.beginPath(); ctx.moveTo(ico.x, ico.y); ctx.lineTo(m.x, m.y); ctx.stroke();
+    if (ctx.setLineDash) ctx.setLineDash([]);
+    if (pts.length > 1) {
+      ctx.lineWidth = DESSIN.segment * k;
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.stroke();
+    }
+    const cote = DESSIN.carre * k, b = DESSIN.bordCarre * k;
+    pts.forEach(function (p) {
+      ctx.fillStyle = c.bord;
+      ctx.fillRect(p.x - cote / 2, p.y - cote / 2, cote, cote);
+      ctx.fillStyle = c.accent;
+      ctx.fillRect(p.x - cote / 2 + b, p.y - cote / 2 + b, cote - 2 * b, cote - 2 * b);
+    });
+    ctx.restore();
+    return true;
+  }
+  // Pastille de légende : pointillé puis carré, dans la boîte (x, y, l, h) px du canvas.
+  function peindrePastille(ctx, x, y, l, h, coul) {
+    const c = coul || couleurs(), k = Math.max(1, h / 22), cote = Math.min(h, DESSIN.carre * k * 1.2);
+    ctx.save();
+    ctx.strokeStyle = c.accent; ctx.lineWidth = DESSIN.trait * k;
+    if (ctx.setLineDash) ctx.setLineDash(DESSIN.tirets.map(function (t) { return t * k; }));
+    ctx.beginPath(); ctx.moveTo(x, y + h / 2); ctx.lineTo(x + l - cote, y + h / 2); ctx.stroke();
+    if (ctx.setLineDash) ctx.setLineDash([]);
+    ctx.fillStyle = c.bord;
+    ctx.fillRect(x + l - cote, y + (h - cote) / 2, cote, cote);
+    ctx.fillStyle = c.accent;
+    ctx.fillRect(x + l - cote + k, y + (h - cote) / 2 + k, cote - 2 * k, cote - 2 * k);
+    ctx.restore();
+  }
+
   // Ce que le checkup lit : guides posés, mode en cours, seuil.
   function etat() {
     let n = 0;
@@ -406,6 +472,10 @@
   window.KtaPoiPrecis = {
     SEUIL_PX_PAR_M: SEUIL_PX_PAR_M,
     ZOOM_SANS_ECHELLE: ZOOM_SANS_ECHELLE,
+    DESSIN: DESSIN,
+    couleurs: couleurs,
+    peindre: peindre,
+    peindrePastille: peindrePastille,
     applicable: applicable,
     multiPoints: multiPoints,
     lire: lire,

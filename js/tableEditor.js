@@ -456,6 +456,13 @@
                 <span class="kta-tbl-source-titre">${window.I18n.t("detect.bouton")}</span>
                 <span class="kta-tbl-source-hint">${window.I18n.t("detect.boutonAide")}</span>
               </span>
+            </button>
+            <button class="kta-tbl-source-card" id="kta-tbl-src-detect-galeries">
+              <span class="kta-tbl-source-ico">${window.ktaIcone("search")}</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("detect.galeries.bouton")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("detect.galeries.boutonAide")}</span>
+              </span>
             </button>` : ""}
             ${planAffiche && window.KtaRaccords ? `<button class="kta-tbl-source-card" id="kta-tbl-src-raccords">
               <span class="kta-tbl-source-ico">${window.ktaIcone("link")}</span>
@@ -497,6 +504,11 @@
     // Détecter les piliers : même parcours que l'outil Structures (js/detectionStructures.js).
     var btnDetect = document.getElementById("kta-tbl-src-detect");
     if (btnDetect) btnDetect.addEventListener("click", function() { fermer(); window.KtaDetectionUI.ouvrir(); });
+    // Détecter les galeries : même fenêtre dédiée que l'outil Tracés.
+    var btnGaleries = document.getElementById("kta-tbl-src-detect-galeries");
+    if (btnGaleries) btnGaleries.addEventListener("click", function() {
+      fermer(); window.KtaDetectionUI.ouvrir(null, { cible: "traces" });
+    });
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();

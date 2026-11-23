@@ -19,10 +19,10 @@
 //   }
 // Ancien format mono-alerte ({ "active", "level", "title", … } sans `alerts[]`) toujours accepté : enveloppé en
 // alerts:[{...}] avec un id généré (released, ou hash du titre).
-// Priorité : emergency (rouge) > warning (orange) > info (bleu), puis released décroissant.
-// Affichage : 1 alerte → modale détail ; plusieurs → sélecteur classé par criticité, UN clic = UNE modale (pas
-// d'enchaînement automatique, décision produit). Bouton 🚨 : TOUTES les alertes, acquittées comprises ; au
-// démarrage : les non acquittées seulement.
+// Priorité : emergency (rouge) > warning (orange) > info (bleu), puis released décroissant. 1 alerte → détail ;
+// plusieurs → sélecteur, UN clic = UNE modale (décision produit). D'office (démarrage, relecture) : non acquittées,
+// URGENCES D'ABORD — une urgence s'ouvre seule, même sur une information affichée, qui revient après (_recouvrir).
+// Bouton 🚨 : TOUTES les alertes, acquittées comprises.
 // Acquittement par alerte : localStorage["myktamap_alert_seen_<id>"] = released ; l'ancienne clé
 // "myktamap_alert_seen" sert de repli aux alertes mono-format (id "legacy-*").
 // API : window.AlertChecker = { check(), notifySplashEnded(), dismiss(id, ts), showCurrent(), getActiveAlerts(),
@@ -52,15 +52,49 @@
   function _toutes() { return _siteAlerts.concat(_extAlerts); }
   // Non acquittées et pas encore ouvertes d'office : une liste relue n'ouvre que les NOUVELLES alertes (ou une
   // alerte dont released a changé). Une modale d'alerte (ou le sélecteur) déjà ouverte : rien par-dessus
-  // (afficherModaleAlerte refuserait), rien de marqué ; ce qui attend s'ouvre à sa fermeture (dismiss).
+  // (afficherModaleAlerte refuserait), rien de marqué ; ce qui attend s'ouvre à sa fermeture (dismiss) — sauf une
+  // urgence devant une information : l'information quitte l'écran (_recouvrir) et l'urgence s'ouvre tout de suite.
+  // File : urgences d'abord, seules ; puis les recouvertes, puis le reste.
+  // ⚠️ Urgence = level "emergency", strict (comme la vibration d'urgence) ; warning et info sont des informations.
   let _enAttente = false;
+  // Alertes retirées de l'écran par une urgence sans « J'ai compris » : id → released. Elles reviennent après
+  // l'urgence, même si l'extension les dit déjà vues (`vue` : l'accusé est parti à leur premier affichage) ; seul
+  // l'acquittement de l'appareil (localStorage) les retire.
+  const _recouvertes = {};
+  let _onDoneRecouvert = null;             // fin du séquenceur de premier lancement d'une fenêtre recouverte
+  function _urgence(a) { return !!a && a.level === "emergency"; }
+  function _rel(a) { return String(a.released || ""); }
   function _modaleOuverte() {
     return !!(document.getElementById("kta-alert-modal") || document.getElementById("kta-alert-selector-modal"));
   }
+  // 🩸 La fenêtre est retirée par sa propre fonction (interfaceAlerts.js > _ktaRecouvrir) : son _fermer appellerait
+  // dismiss(id, released), donc l'acquitterait sans qu'on l'ait lue. Rend false si la fenêtre ouverte montre une
+  // urgence (ou ne sait pas se retirer) : la nouvelle urgence attend alors son tour.
+  function _recouvrir() {
+    const m = document.getElementById("kta-alert-modal") || document.getElementById("kta-alert-selector-modal");
+    const r = m && typeof m._ktaRecouvrir === "function" ? m._ktaRecouvrir() : null;
+    if (!r) return false;
+    (r.alertes || []).forEach(function(a) { if (a && a.id) _recouvertes[a.id] = _rel(a); });
+    if (typeof r.onClose === "function") {
+      const avant = _onDoneRecouvert, apres = r.onClose;
+      _onDoneRecouvert = avant ? function() { avant(); apres(); } : apres;
+    }
+    return true;
+  }
+  function _prendreOnDone() { const f = _onDoneRecouvert; _onDoneRecouvert = null; return f; }
   function _aOuvrirDOffice(alerts) {
-    if (_modaleOuverte()) { _enAttente = true; return []; }
-    const l = _filtrerEtTrier(alerts).filter(function(a) { return _montreesAuto[a.id] !== a.released; });
-    l.forEach(function(a) { _montreesAuto[a.id] = a.released; });
+    const neuves = _filtrerEtTrier(alerts).filter(function(a) {
+      return _montreesAuto[a.id] !== a.released && _recouvertes[a.id] !== _rel(a);
+    });
+    if (_modaleOuverte() && !(neuves.some(_urgence) && _recouvrir())) { _enAttente = true; return []; }
+    const revenues = _toutes().filter(function(a) {
+      return _recouvertes[a.id] === _rel(a) && !_urgence(a) && _getSeenForId(a.id) !== a.released;
+    });
+    const file = neuves.filter(_urgence).concat(revenues, neuves.filter(function(a) { return !_urgence(a); }));
+    const urg = file.filter(_urgence);
+    const l = urg.length > 0 ? urg : file;
+    if (l.length < file.length) _enAttente = true;
+    l.forEach(function(a) { _montreesAuto[a.id] = a.released; delete _recouvertes[a.id]; });
     return l;
   }
 
@@ -154,12 +188,15 @@
     if (id && ts) _setSeenForId(id, ts);
     // Les listeners sont notifiés (getActiveAlerts + tri distinguent acquittées / non).
     _notifyChange();
-    // Une alerte arrivée pendant que celle-ci était ouverte : à son tour (après le fondu de fermeture).
+    // Une alerte arrivée pendant que celle-ci était ouverte, ou recouverte par elle : à son tour (après le fondu de
+    // fermeture). La fin du premier lancement d'une fenêtre recouverte part avec la dernière de la file.
     if (_enAttente) {
       _enAttente = false;
       setTimeout(function() {
         const l = _aOuvrirDOffice(_toutes());
-        if (l.length > 0) _showOrDefer(l);
+        const fin = (_enAttente || _modaleOuverte()) ? null : _prendreOnDone();
+        if (l.length > 0) _showOrDefer(l, fin);
+        else if (fin) { try { fin(); } catch(e) {} }
       }, 300);
     }
   }
@@ -214,20 +251,33 @@
     _od();
   }
 
-  function _showOrDefer(alertsAaffich) {
+  // 🩸 Pendant le splash, une liste relue S'AJOUTE à celle qui attend : la remplacer perdait les alertes déjà
+  // marquées ouvertes d'office (elles ne revenaient qu'au bouton 🚨).
+  function _showOrDefer(alertsAaffich, onDone) {
     if (_splashEnded) {
-      _afficherAlertes(alertsAaffich, false);
+      _afficherAlertes(alertsAaffich, false, onDone);
     } else {
-      _pendingAlerts = alertsAaffich;
-      console.log("[AlertChecker] " + alertsAaffich.length + " alerte(s) différée(s) jusqu'à la fin du splash");
+      const ids = alertsAaffich.map(function(a) { return a.id; });
+      _pendingAlerts = _pendingAlerts.filter(function(a) { return ids.indexOf(a.id) < 0; }).concat(alertsAaffich);
+      if (typeof onDone === "function") _onDoneRecouvert = onDone;
+      console.log("[AlertChecker] " + _pendingAlerts.length + " alerte(s) différée(s) jusqu'à la fin du splash");
     }
   }
 
   function notifySplashEnded(onDone) {
     _splashEnded = true;
     if (_pendingAlerts.length > 0) {
-      const list = _pendingAlerts;
+      let list = _pendingAlerts;
       _pendingAlerts = [];
+      // Urgences d'abord, ici aussi : le reste n'est pas encore marqué, il s'ouvrira à la fermeture (dismiss).
+      const urg = list.filter(_urgence);
+      if (urg.length > 0 && urg.length < list.length) {
+        list.forEach(function(a) { if (!_urgence(a)) delete _montreesAuto[a.id]; });
+        _enAttente = true;
+        list = urg;
+      }
+      // Une file reste derrière : le premier lancement (légal, visite) attend qu'elle soit vidée.
+      if (_enAttente && typeof onDone === "function") { _onDoneRecouvert = onDone; onDone = null; }
       _afficherAlertes(list, false, onDone);
     } else {
       // Rien à afficher : le séquenceur est notifié tout de suite.

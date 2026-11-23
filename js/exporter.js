@@ -903,10 +903,15 @@
       }).join("");
     }
 
+    // Points précis (poiPrecis.js) : pointillé et carré de la carte, sans son seuil de zoom ; cochée par défaut.
+    const nbPrecis = window.KtaPoiPrecis
+      ? sessionPoints.filter(function (p) { return !!window.KtaPoiPrecis.lire(p); }).length : 0;
+
     const Ti = window.I18n.t;
     cont.innerHTML =
       row("points",  Ti("imgexport.ann.points"),          nbPoints,  true) +
       pointsTagsHtml +
+      row("precis",  window.ktaIcone("crosshair") + " " + Ti("imgexport.ann.precis"), nbPrecis, true) +
 
       row("roads",   Ti("imgexport.ann.roads"),           nbRoads,   true) +
       rowSub("roads_principal",  _lp("traces", "principal", Ti("imgexport.roadType.principal")),  roadsByType.principal,  true) +
@@ -1318,7 +1323,7 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       etat.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
+    ["points","roads","zones","structures","mesure","tracker","precis"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       etat.ann[k] = cb ? cb.checked : false;
     });
@@ -1614,7 +1619,7 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       opts.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
+    ["points","roads","zones","structures","mesure","tracker","precis"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       opts.ann[k] = cb ? cb.checked : false;
     });
@@ -1782,9 +1787,11 @@
     //   "transparent" → rien, image de base et calques ignorés → PNG alpha
     const bg = opts.bg || "image";
     const skipBaseImage = (bg !== "image");
+    // Fond « image » : sous un plan transparent, le fond choisi pour le plan, sinon blanc.
+    const couleurFondExport = (bg === "image" && typeof window.ktaCouleurFondPlan === "function" &&
+      window.ktaCouleurFondPlan()) || "#ffffff";
     if (bg === "image" || bg === "white") {
-      // Fond « image » : sous un plan transparent, le fond choisi pour le plan, sinon blanc.
-      ctx.fillStyle = (bg === "image" && typeof window.ktaCouleurFondPlan === "function" && window.ktaCouleurFondPlan()) || "#ffffff";
+      ctx.fillStyle = couleurFondExport;
       ctx.fillRect(0, 0, W, H);
     } else if (bg === "black") {
       ctx.fillStyle = "#000000";
@@ -1897,6 +1904,17 @@
             ctx.drawImage(baseImg, 0, 0, W, H);
           }
         } catch(e) { console.warn("[Export] base image :", e); }
+      }
+      // Opacité de l'image principale réglée dans les filtres (config.js > getPlanOpaciteFond), comme à l'écran mais
+      // sans le fond OSM, absent de l'export. Peindre l'aplat du fond par-dessus à (1 − opacité) revient à poser
+      // l'image à cette opacité sur l'aplat, même là où tuiles et image de base se sont superposées.
+      const opaciteFond = typeof window.getPlanOpaciteFond === "function" ? window.getPlanOpaciteFond(null) : 1;
+      if (opaciteFond < 1) {
+        ctx.save();
+        ctx.globalAlpha = 1 - opaciteFond;
+        ctx.fillStyle = couleurFondExport;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
       }
     }
     if (region) { ctx.save(); ctx.translate(-region.x * scale, -region.y * scale); }
@@ -2083,11 +2101,12 @@
     }
 
     // ── Helpers polygones / polylignes ──
-    // Contour d'une surface. 🩸 Carré barré (pilier à bras, 1 m) : la loi de l'écran (structures.js >
-    // ktaBordSurfacePourLargeur, le quart du front) ; à `weight × scale`, contour et croix noircissaient le carré
-    // entier. Les autres surfaces gardent leur contour d'export.
+    // Contour d'une STRUCTURE fermée (piliers, pilier à bras, mur, structure perso fermée) : la loi de l'écran
+    // (structures.js > ktaBordSurfacePourLargeur, le quart du front, jamais plus que `weight × scale`).
+    // 🩸 À `weight × scale`, un pilier de 1 m sur un relevé à quelques px/m sortait entièrement noir, à toute
+    // résolution (contour et carré grandissent ensemble). Les zones gardent `weight × scale` (_drawPolygon).
     function _contourSurfaceExp(style) {
-      if (!style.croix || typeof window.ktaBordSurfacePourLargeur !== "function") return style.weight * scale;
+      if (typeof window.ktaBordSurfacePourLargeur !== "function") return style.weight * scale;
       return window.ktaBordSurfacePourLargeur(style.weight * scale, _largeurFrontExp(style));
     }
     // Croix d'un style barré (pilier à bras), après le contour, à son épaisseur (structures.js > ktaPeindreCroix).
@@ -2096,7 +2115,8 @@
       window.ktaPeindreCroix(ctx, points.map(function (p) { return { x: sc(p.x), y: sc(p.y) }; }), style.color,
         _contourSurfaceExp(style), style.opacity);
     }
-    function _drawPolygon(points, style) {
+    // `structure` : contour à la loi des structures (_contourSurfaceExp) ; sinon (zone de calque) `weight × scale`.
+    function _drawPolygon(points, style, structure) {
       if (!points || points.length < 3) return;
       ctx.save();
       ctx.beginPath();
@@ -2109,7 +2129,7 @@
       ctx.globalAlpha = style.fillOpacity;
       ctx.fill();
       ctx.strokeStyle = style.color;
-      ctx.lineWidth = _contourSurfaceExp(style);
+      ctx.lineWidth = structure ? _contourSurfaceExp(style) : style.weight * scale;
       ctx.globalAlpha = style.opacity;
       ctx.lineJoin = "round";
       ctx.stroke();
@@ -2283,7 +2303,7 @@
           if (!st.points || st.points.length < minPts) continue;
           _poser(function () {
             if (isPolyline) _drawPolyline(st.points, s, _largeurLigneStructExp(s));
-            else _drawPolygon(st.points, s);
+            else _drawPolygon(st.points, s, true);
           }, st);
           if (typeof _diagAdv.embStructs !== "number") _diagAdv.embStructs = 0;
           _diagAdv.embStructs++;
@@ -2419,6 +2439,18 @@
       });
     }
 
+    // ── Points précis (poiPrecis.js > peindre), sous les icônes comme sur la carte ──
+    // ⚠️ contrat : seulement si `opts.ann.precis === true` (case de l'export avancé et du PDF) ; un autre appelant
+    // de MyKTAMapExporterGenererCanvas (cartes du Secours…) ne les reçoit pas sans le demander.
+    let nbPrecisPeints = 0;
+    if (opts.ann.precis === true && window.KtaPoiPrecis && typeof window.KtaPoiPrecis.peindre === "function") {
+      const coulPrecis = window.KtaPoiPrecis.couleurs();
+      const versCanvas = function (x, y) { return { x: sc(x), y: sc(y) }; };
+      for (const p of deferredMarkers) {
+        if (window.KtaPoiPrecis.peindre(ctx, p, versCanvas, scale, coulPrecis)) nbPrecisPeints++;
+      }
+    }
+
     // ── Marqueurs différés (icônes), en dernier : ZONE → TRAIT → CERCLE → ICÔNE ──
     for (const p of deferredMarkers) {
       const img = await getIconUrl(p);
@@ -2494,9 +2526,13 @@
     // ── Légende intégrée ──
     if (region) ctx.restore();
     if (opts.legende) {
-      await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache, tagsUtilises);
+      // Ligne « Point précis » seulement si l'export en a peint au moins un.
+      const legPrecis = { ...opts.legende, contenu: { ...opts.legende.contenu, precis: nbPrecisPeints > 0 } };
+      await _dessinerLegende(ctx, legPrecis, W, H, scale, iconCache, tagsUtilises);
     }
 
+    // Lu par pdfExport.js (ligne de légende du PDF, dessinée à part).
+    canvas._ktaPrecisPeints = nbPrecisPeints;
     return canvas;
   }
 
@@ -2650,6 +2686,15 @@
         lignesAutres.push({ label: _iconLabel(tag), iconUrl: url });
       });
       if (lignesAutres.length > 0) entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: lignesAutres });
+
+      // Point précis (contenu.precis : l'export en a peint) : une ligne en fin des icônes, pastille de la carte.
+      if (leg.contenu.precis === true) {
+        const lignePrecis = { label: window.I18n.t("imgexport.legLabel.precis"), precis: true };
+        // 🩸 Pas de `.at(-1)` : absent des Safari iOS anciens encore servis.
+        const derniere = entrees.slice(-1)[0];
+        if (derniere) derniere.lignes.push(lignePrecis);
+        else entrees.push({ section: window.I18n.t("imgexport.legGroupe.autres"), lignes: [lignePrecis] });
+      }
 
       // Entrées custom « icones » (plan + session), si visibles et pourvues d'une iconUrl.
       if (LC) {
@@ -2959,7 +3004,9 @@
         for (const l of sec.lignes) {
           const yLine = cyLocal + (lh - ic) / 2;
 
-          if (l.iconUrl) {
+          if (l.precis && window.KtaPoiPrecis && typeof window.KtaPoiPrecis.peindrePastille === "function") {
+            window.KtaPoiPrecis.peindrePastille(ctx, xCol, yLine, ic, ic);
+          } else if (l.iconUrl) {
             if (!iconCache[l.iconUrl]) {
               try {
                 iconCache[l.iconUrl] = await new Promise(function(res, rej) {
@@ -3031,7 +3078,8 @@
   // Construit les options complètes de _genererCanvasExport depuis des options simplifiées (pas de second
   // pipeline de rendu). Forme (tout optionnel sauf ann) :
   //   {
-  //     ann:         { points, roads, zones, structures, pointsTags, roadsTypes, zonesTypes, structuresTypes, levels },
+  //     ann:         { points, roads, zones, structures, precis, pointsTags, roadsTypes, zonesTypes, structuresTypes,
+  //                    levels }   (precis : true pour peindre les points précis ; canvas._ktaPrecisPeints = combien)
   //     scale:       1     // 1 = natif, 0.5 = ½, 2 = HD
   //     bg:          "image"|"white"|"black"|"transparent"
   //     imageLayers: { id: bool, ... }
@@ -3123,7 +3171,7 @@
   //   2. _dessinerLegende en haut-gauche, petite marge (ombre, bordure) ;
   //   3. elle rend {boiteW, boiteH, bx, by, policePx} ;
   //   4. canvas final aux dimensions exactes (crop), `_ktaPolicePx` = taille du texte en px du canvas.
-  // legContenu : { icones, traces, zones, structures, track, meta }
+  // legContenu : { icones, traces, zones, structures, track, meta, precis } (precis : ligne « Point précis »)
   // colonnes : nombre (2 par défaut) ou liste de nombres (1 à 4) → un canvas par nombre, tags collectés une fois.
   // Rend Promise<HTMLCanvasElement | null> (null si aucun contenu : l'appelant gère) ; avec une liste,
   // Promise<Array<{ colonnes, canvas }>> (vide si aucun contenu).

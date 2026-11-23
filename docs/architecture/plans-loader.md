@@ -810,6 +810,8 @@ scale: (transform && transform.metresParPixel > 0)
 Détection des piliers (masses pleines) et des fronts (traits) sur l'image du plan. Décisions de KARMA du 18/11/2026 : un module commun en
 calcul pur (mode plan d'abord, le Générateur ensuite), couleurs à la pipette, aperçu avant tout. Le parcours dans
 l'interface : outil Structures et carte de l'📊 Éditeur de données, un même parcours (`js/detectionStructures.js`).
+Les galeries ont leur fenêtre à elles, sur le même parcours et le même moteur, avec des tracés en sortie : § « Détecter
+les galeries → tracés » plus bas.
 
 - ⚠️ **Contexte** : le parcours ne touche au plan que par un contexte, `KtaDetectionUI.ouvrir(ctx)` (forme au-dessus
   de `detectionStructures.js > contextePlan`) : carte, dimensions et lecture de l'image, structures existantes,
@@ -845,7 +847,12 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     1 344 ; pic mémoire du navigateur 1,7 Go, dont l'image décodée (~960 Mo, comme au tuilage). 🩸 Un vrai iPhone
     plafonne bien plus bas : au-delà de ce que le tuilage du même appareil supporte, la détection échoue aussi
     (non mesuré sur appareil réel).
-  - Checkup : `scripts/smoke/checkup-detection-generateur.js` (Chromium et WebKit).
+  - **Galeries** : bouton « Détecter les galeries » à côté, mêmes modes, même fenêtre que l'outil Tracés
+    (`_detecterStructuresGenerateur("traces")`). Sortie dans un calque À PART « Tracés détectés »
+    (`traces-detectees`, format d'un calque de tracés `{ type: "roads", roads }`, `DETECT_GENRES`), mêmes règles :
+    repère, ligne marquée (`_ktaDetecte`, `_ktaDetecteGenre: "traces"`), une relance y ajoute, doublons contre les
+    tracés (`roads`) de TOUS les calques de la page. « Structures détectées » garde son nom et ses structures.
+  - Checkup : `scripts/smoke/checkup-detection-generateur.js` (piliers et galeries ; Chromium et WebKit).
 
 - **`js/ktaDetection.js`** (`window.KtaDetection`), sans DOM ni carte : chargé par `index.html`, par le worker et
   par Node. `detecter({ lireBloc, region, limites, classes, reglages, echelle, executer?, onProgres?, signal? })` →
@@ -855,7 +862,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **Méthode, par bloc** : classe de couleur de chaque pixel (écart ΔE en Lab à l'exemple le plus proche, table sur
   6 bits par canal remplie à la demande) → trous fermés d'au plus `trouMax` px comblés → ouverture morphologique
   (carré de côté `ouverture`) → composantes 4-connexes d'aire ≥ `aireMin` → contour extérieur sur les **bords**
-  des pixels (aire exacte) → Douglas-Peucker à `simplification`. Réglages par défaut en pixels du plan (13 px,
+  des pixels (aire exacte) → Douglas-Peucker à `simplification`, ou contour affiné (réglage `affiner`, ci-dessous
+  « Affiner les contours »). Réglages par défaut en pixels du plan (13 px,
   250 px², 1,5 px, trou 700 px²), utilisés seulement sans exemple mesuré ; `depuisMetres(r, pxParM)`.
 - ⚠️ **Réglages déduits des exemples** (décision produit, après un essai sur deux vrais plans : 3 piliers sur une
   soixantaine). `mesurerExemple(bloc, x, y, { nature })` mesure la composante touchée à la pipette : couleur
@@ -979,16 +987,80 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
   sans aperçu. 🩸 L'ancien repli sur l'image du niveau 0 recopiait ses piliers au niveau actif sans rien dire. Un
   calque masqué parmi d'autres n'est simplement pas lu. `vue3d.js > _dessinerPlanSol` garde son aiguillage, avec
   repli sur le plan de base (décision produit de la 3D). Checkup : `scripts/smoke/checkup-detection-niveau.js`.
-- **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11/2026) : un MODE du même bandeau (bouton
-  « Remplir au clic » de l'étape des exemples), pas un outil à part. Chaque toucher remplit la zone du fond fermée
-  par le trait autour du doigt ; le mode reste actif, les zones s'ajoutent à l'aperçu (un toucher sur l'une la retire
-  ou la remet), puis un seul « Ajouter N » les pose toutes en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le
-  même chemin que la détection). Type : liste des types de structure à contour FERMÉ (intégrés et types
-  personnalisés de la légende, géométrie lue par `isStructurePolylineType` : jamais un front, un mur en ligne ni un
-  arc ; ni un type posé d'un clic à taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par
-  défaut ; niveau par `ktaNiveauNouvelleStructure`. Doublons : une zone qui
-  recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas ajoutée ; revérifié à « Ajouter »
-  au niveau du type final.
+- **Remplir au clic** (pot de peinture, décisions de KARMA du 21/11 et du 23/11/2026) : un MODE du même bandeau
+  (bouton « Remplir au clic » de l'étape des exemples), pas un outil à part. ⚠️ Le geste suit le **type choisi**
+  (décision produit, sans bouton à part) : type à contour FERMÉ (pilier, mur…) → chaque toucher remplit la zone du
+  fond fermée par le trait autour du doigt ; type EN LIGNE (front, mur en ligne, arc) → chaque toucher SUR le trait le
+  suit (§ Front de taille ci-dessous). Le mode reste actif, les objets s'ajoutent à l'aperçu, puis un seul « Ajouter
+  N » les pose tous en UNE étape ⏪ (`_poserEtFermer`, un seul `ctx.poser`, le même chemin que la détection).
+  Types : liste en deux groupes, « Remplir une forme fermée » et « Suivre un trait » (`_typesRemplir` : intégrés et
+  types personnalisés de la légende, géométrie lue par `isStructurePolylineType` ; jamais un type posé d'un clic à
+  taille fixe, `ktaPoseUnClic` : pilier à bras), celui armé dans Structures par défaut ; niveau par
+  `ktaNiveauNouvelleStructure`. Zones et fronts se mêlent dans un même aperçu : « Ajouter » pose les zones au dernier
+  type fermé choisi et les fronts au dernier type en ligne choisi (`_choisirTypeRemplir`), chacun au niveau de son
+  type. Doublons : une zone qui recouvre une structure du même niveau (ou une zone déjà dans l'aperçu) n'est pas
+  ajoutée ; revérifié à « Ajouter » au niveau du type final.
+  - **Front de taille : suivre le trait** (décisions de KARMA du 23/11/2026) : un toucher SUR le trait le suit dans
+    les deux sens jusqu'à ses bouts ou au **premier carrefour** (là où un autre trait le croise), jamais au-delà ;
+    un toucher plus loin prolonge, et le bout du nouveau morceau s'accroche EXACTEMENT sur le sommet (sinon le
+    segment) du front posé ou de l'aperçu, qui n'est jamais modifié (comme les galeries : rond de raccord dans
+    l'aperçu). Ce qui double un front du même niveau (posé ou dans l'aperçu) est coupé ; un front tout entier déjà là
+    est refusé (« déjà posé ») ; revérifié à « Ajouter » (`ECART_TRAIT`, 3 px). 🩸 Contournement d'avant (« Détecter
+    les galeries » en Remplir sur le front, puis conversion en front) : des carrefours parasites à corriger ; ici le
+    carrefour arrête le suivi par construction.
+  - Moteur `ktaDetection.js > suivreTrait(bloc, x, y, o)` (pur, testé en Node) : fond = médiane d'un anneau à 12 px
+    du doigt (élargi tant qu'il a la couleur du pixel touché : un pilier plein touché en son cœur) ; encre = pixel le
+    plus loin du fond à ± 3 px du doigt ; masque = couleur de l'encre à la tolérance près (moitié de l'écart au fond,
+    plancher ΔE 20), fermé de 1 px. Avant le squelette (Zhang-Suen, celui de la détection auto), sur la seule
+    composante touchée : ⚠️ **masses** de la couleur du trait retirées (ouverture d'un carré plus large que le trait
+    touché, dilatée de 1 px) : un front qui touche un pilier plein s'arrête à son bord ; ⚠️ **traits fins** retirés
+    (pixels du squelette où le trait fait au plus la moitié de son épaisseur médiane autour du doigt) : un trait de
+    rappel fin en travers ne fait pas de carrefour. Puis le graphe des galeries (`_graphe`, `_elaguer` : ergots plus
+    courts que l'épaisseur ; `_fusionnerNoeuds` : un X du squelette = deux nœuds voisins), l'arête la plus proche du
+    doigt, et `reseauGaleries` pour les doublons, l'accroche et la simplification (1 px). « Affiner les contours » :
+    `_affinerLigne` (moyenne glissante de demi-fenêtre la tolérance en mètres, simplification à sa moitié, coins
+    vifs) ; un bout au carrefour ne bouge jamais (raccord exact), un bout libre est ramené sur la droite de son
+    extrémité. Refus : « fond » (toucher sur le fond), « masse » (masse pleine, ou trait plus court que 3 × son
+    épaisseur), « deja ». Fenêtre lue (`_suivreEn`) : 512, puis 2 048, puis 4 096 px tant qu'un bout s'arrête au bord
+    de la fenêtre ; au-delà, le front s'arrête au bord lu (toast : un toucher plus loin le prolonge et raccorde),
+    jamais de lecture à résolution réduite (le trait aminci passerait sous le seuil des traits fins).
+  - Limites : un trait en travers aussi épais que le front est un vrai carrefour ; un front aminci de plus de moitié
+    (trait abîmé) est coupé là ; un trait de rappel de 1 px sur un front de 2 px ne se distingue pas (carrefour).
+  - Garde-fous : `check-detection.js` (planche : front droit, coudé, carrefours en T et en X, front qui touche un
+    pilier plein, trait de rappel de 1 px en travers, bruit ± 8 ; raccord exact au toucher suivant, existant jamais
+    modifié, doublon refusé ; affiner sur un bord dentelé ; échelle 0,5 ; contre-épreuves sans retrait des masses,
+    sans filtre des traits fins, sans existant) · `scripts/smoke/checkup-remplir-front.js` (un toucher pose un front,
+    arrêt au carrefour, raccord exact au 2e toucher, retirer par toucher, Ctrl+Z et « Retirer le dernier », Valider,
+    doublon refusé, type pilier inchangé ; Chromium et WebKit).
+  - **Retirer un remplissage** (structures comme galeries, décisions de KARMA du 22/11/2026) : toucher DANS une forme
+    remplie ou SUR un front suivi (à moins de 14 px d'écran ou de sa demi-épaisseur), **Ctrl+Z** (Cmd+Z) ou le
+    bouton **Retirer le dernier** (`undo-2`, désactivé à vide). Le remplissage
+    QUITTE l'aperçu (pas d'état « retiré » à remettre : le retoucher au même endroit le refait) ; Ctrl+Z et le bouton
+    dépilent le plus récent, un par un. Ligne d'aide sous le texte du mode ; sa moitié « Ctrl+Z retire la dernière »
+    seulement avec un pointeur fin (`(any-pointer: fine)`). `_retirerAuToucher`, `_retirerDernier`.
+  - 🩸 Le toucher est reconnu par `_onClic`, pas par la forme : en Remplir la visée (`body.kta-detect-pick-mode`)
+    rend `_modeClicCarteActif()` vrai, et `map.js > _ktaPickCaptureClick` avale alors tout clic sur la carte en
+    capture pour le ré-émettre à la carte. Un écouteur posé sur la forme ne recevrait rien, et le toucher relancerait
+    un remplissage refusé (« déjà dans l'aperçu »). Les formes de Remplir sont donc non interactives ; le même code sert
+    la carte du plan et celle du Générateur (qui n'a pas ce ré-émetteur).
+  - ⚠️ **Un seul mode de clic à la fois** (décision de KARMA du 23/11/2026) : sur la carte du plan, la visée de la
+    fenêtre (pipette, cadre, Remplir, structures comme galeries) est inscrite au registre des modes clic-carte
+    (`interface.js > ktaInscrireModeClic`, nom `detection`, retirée par `ktaRetirerModeClic` quand elle s'éteint).
+    Armer un outil (tracé, zone, structure, point, mesure, recalage…) passe par `_desactiverTousLesModes`, qui la met
+    en pause (`_mettreEnPause`) : pipette lâchée ; cadre et Remplir en pause (`etat().pause`), visée et
+    `body.kta-detect-pick-mode` retirées, fenêtre ouverte, coins, remplissages et aperçu gardés, `_onClic` muet. Le
+    bandeau le dit et propose la reprise (« Remplir au clic », ou « Reprendre le cadre ») ; viser de nouveau (reprise,
+    pipette, « Remplir au clic », cadre) désarme l'outil en cours (`_majModeClic` → `_desactiverTousLesModes`). Même
+    mécanisme que les outils entre eux, aucun cas particulier dans `road.js` / `structures.js`. Le Générateur (sa propre
+    carte) n'inscrit rien. 🩸 Une modale ouverte sur la carte (`ktaCouperModesOutils`) et l'Échap de la carte passent
+    par le même registre : elles mettent aussi la visée en pause. Checkup : `checkup-remplir-exclusif.js`.
+  - ⚠️ Clavier : tant que la fenêtre est ouverte, son écouteur en capture sur `document` (`_onKey`) prend Ctrl+Z,
+    Ctrl+Y et Ctrl+Maj+Z, avant celui de `historyManager.js` (bulle) : jamais d'annulation globale sous la fenêtre
+    (sans lui, Ctrl+Z défaisait le « Valider » précédent). Champ de saisie : annulation native. Fenêtre fermée :
+    Ctrl+Z revient à l'historique. ⚠️ **Visée en pause avec un outil armé** (`etat().pause` et
+    `interface.js > ktaOutilArme()`) : les trois raccourcis ne sont plus captés, ils vont à l'outil
+    (`historyManager.js` annule le dernier sommet du tracé en cours) et les remplissages restent. 🩸 En pause SANS
+    outil (modale ouverte sur la carte, Échap de la carte) la fenêtre les garde. Checkup : `checkup-remplir-exclusif.js`.
   - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
     la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
     dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
@@ -998,7 +1070,8 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     condition empêche de remplir un morceau du trait depuis un pixel sombre (toucher sur le trait, ou au bord d'un
     petit pilier flou : il faut toucher son centre clair).
     Composante 4-connexe du fond fermé, étendue jusqu'au **milieu du trait** → contour extérieur
-    (`_contour`, `_simplifierFerme` à 1 px) ; un chiffre ou une pastille dedans est englobé.
+    (`_contour`, puis `_affiner` si la case « Affiner les contours » est cochée, sinon `_simplifierFerme` à 1 px) ;
+    un chiffre ou une pastille dedans est englobé.
   - ⚠️ **Milieu du trait** (décision produit) : le trait fait partie du pilier, c'est lui qui en marque la fin.
     `_jusquAuMilieu` donne à la zone les pixels du trait plus proches d'elle que de l'autre côté du trait (distances
     de chanfrein 3-4 dans le trait, égalité à la zone), à au plus 6 px d'elle (`demiTrait`) ; deux piliers séparés
@@ -1008,19 +1081,60 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
     garde son contour, inchangé.
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
     l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
-    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis 1 024 px
-    (4 × la marge des blocs, ou deux fois le côté maximal, au plus 4 096 px) si la zone touche son bord.
-    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM)`, décision produit) : plan à échelle connue
-    (`ctx.pxParM()`, échelle écrite dans le plan) → **40 m de côté** (boîte de la zone) **et 1 600 m²** ; sans
-    échelle → 512 × 512 px d'aire, sans côté maximal. 40 m = la plus grande structure plausible prise large : un pilier
-    tourné fait quelques mètres, une masse laissée ou un massif de consolidation quelques dizaines ; une valeur
-    généreuse ne refuse jamais un vrai pilier, et une galerie fermée, longue de plusieurs dizaines de mètres, sort
-    par son côté. 🩸 512 px sans échelle reste trop large sur une petite image (une galerie fermée y passe : essai
-    sur un plan au trait de 1 170 px de large). Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis, si la
+    zone touche son bord, une grande fenêtre de max(1 024, 2 × côté du plafond + 64) px : pleine résolution jusqu'à
+    4 096 px (`FENETRE_REMPLIR_MAX`), au-delà lue à résolution réduite (jamais plus de 4 096² px lus : mémoire du
+    téléphone).
+    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM, image)`, décisions de KARMA du 21/11 et du 23/11/2026) :
+    plan à échelle connue (`ctx.pxParM()`, échelle écrite dans le plan) → **80 m de côté** (boîte de la zone) **et
+    6 400 m²** ; sans échelle → aire d'un carré de côté **max(1 024 px, le quart du petit côté de l'image)**, sans
+    côté maximal (`REMPLIR.plafondPxMin`, `plafondFraction`). Le plafond doit laisser passer les gros massifs (40 m et
+    512² px refusaient trop souvent « trop grande ») ; le refus reste au-delà, et une zone ouverte ou qui sort de la
+    fenêtre est toujours refusée « contour ouvert », jamais une zone partielle. Une galerie fermée plus longue que
+    80 m sort par son côté. 🩸 Sans échelle, seule l'aire borne : une galerie fermée plus courte que le carré passe
+    (sur une petite image, elle passait déjà à 512 px). Mesures (`checkup-remplir-plafond.js`, poste de dev) : massif
+    de 79 m à 10 px/m (fenêtre de 1 664 px) ≈ 0,35 s, 1,7 s processeur ralenti × 4 ; 900 px sans échelle (fenêtre de
+    2 112 px) ≈ 0,45 s. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
   - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
     trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
-    pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; galerie fictive de 60 m refusée à
-    échelle connue, structure de 30 × 25 m acceptée, 512² px sans échelle) · `scripts/smoke/checkup-remplir.js`.
+    pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; plafond de 80 m et relatif à l'image ;
+    massifs fictifs de 60 m et de 900 px remplis, de 90 m refusé ; galerie fermée de 100 m refusée à échelle connue,
+    galerie ouverte refusée ; structure de 30 × 25 m acceptée) · `scripts/smoke/checkup-remplir.js` ·
+    `scripts/smoke/checkup-remplir-plafond.js` (mêmes cas dans l'app, temps mesurés).
+- ⚠️ **Affiner les contours** (décisions de KARMA du 21/11/2026) : sur un plan de mauvaise qualité, le trait
+  irrégulier donnait des piliers « en dent de scie », une forme qui n'existe pas (le Douglas-Peucker à 1 ou 1,5 px
+  garde ce bruit). Case **Affiner les contours** du bandeau (exemples, Remplir au clic, aperçu), **cochée par
+  défaut**, retenue sur l'appareil pour tous les plans (`myktamap_detect_affiner_v1`, `"0"` = décochée ; clé globale
+  hors de la liste exportée du profil). Elle vaut pour Remplir au clic et la détection automatique, donc aussi
+  dans le Générateur (même parcours, `ctx.pxParM` du Générateur) ; changée sur l'aperçu, elle le recalcule ; les
+  zones déjà dans l'aperçu de Remplir restent telles quelles. Décochée : le contour d'avant, à l'identique.
+  - Moteur `ktaDetection.js > _affiner(contour, tol, eps)` (option `affiner` de `remplir`, réglage `affiner` de
+    `detecter`/`recalculer`, en px du plan ; absente ou nulle : `_simplifierFerme`). Tolérance
+    `toleranceAffinage(pxParM)` = **0,25 m** × l'échelle (`AFFINER.toleranceM`), **2 px** sans échelle
+    (`AFFINER.repliPx`), bornée à √aire / 6 (un petit pilier n'est pas lissé en galet). Étapes : contour
+    rééchantillonné au pas de 1 px, moyenne glissante circulaire (2 passes, demi-fenêtre = tolérance) ; puis
+    ⚠️ **redressement seulement si la forme est presque un rectangle** : orientation dominante (angles des côtés × 4,
+    pondérés par leur longueur : un rectangle tourné garde son orientation), rectangle des côtés MÉDIANS ; forme
+    lissée d'aire ≥ 0,96 × ce rectangle et à moins de max(1,5 px, 0,9 × tolérance) de lui → ses 4 coins. Sinon
+    Douglas-Peucker à max(`eps`, tolérance / 2) puis coins rendus vifs (`_coinsVifs` : chaque côté remplacé par la
+    droite ajustée sur sa partie centrale, sommet = intersection des voisines ; `_nettoyer` : sommet presque aligné
+    retiré, coin coupé entre deux côtés longs refait). Un pilier rond ou irrégulier garde sa forme, lissée.
+  - Mesures (40 planches bruitées de ± 2 px à 20 px/m, tolérance 5 px) : carré et rectangle tourné de 20° redressés
+    40 fois sur 40 (rapport ≥ 0,98, écart ≤ 0,87 × tolérance) ; rond (Ø 24 et 80 px), pentagone, L jamais redressés
+    (rond : rapport ≤ 0,95) ; trapèze aux côtés de 7° redressé 1 fois sur 40 (à 0,3 m : 19 sur 40, d'où 0,25 m).
+    Relevé réel au trait flou (≈ 4 px/m, tolérance ≈ 1 px) : marches d'escalier gommées, décrochements gardés,
+    petits piliers presque carrés redressés ; à 0,75 m, de vrais décrochements disparaissaient.
+    🩸 Limite : sous ~25 px de côté, un bruit de ± 2 px rend carré et rond indiscernables ; le petit pilier carré
+    n'est alors pas toujours redressé (lissé seulement), un rond ne l'est jamais.
+  - Garde-fous : `check-detection.js` (carré bruité → rectangle aux angles droits à 2 px, rectangle tourné, rond,
+    petit rond, pentagone, trapèze, L ; détection et recalcul ; contre-épreuves sans l'option, empreintes du contour
+    d'avant) · `scripts/smoke/checkup-affiner-contours.js` (case cochée par défaut, retenue, effet sur Remplir).
+- ⚠️ **Un seul détecteur ouvert** (décision de KARMA du 23/11/2026) : ouvrir « Détecter » (structures) ferme
+  « Détecter les galeries », et l'inverse, comme un outil en désarme un autre (`detectionStructures.js > ouvrir`).
+  Le détecteur fermé passe par `fermer()`, le chemin d'Échap et de la croix : aperçu non validé jeté sans
+  confirmation, rien écrit ; ce qui a été validé reste. Le même détecteur (même cible, même carte) rouvert reste tel
+  quel, aperçu compris. Au Générateur, `fermer()` rend aussi la fenêtre du premier (`ctx.sortir`). Checkup :
+  `checkup-detecteur-unique.js`.
 - ⚠️ **Rien n'est écrit avant « Valider »**, puis UNE étape ⏪. Types choisis dans l'aperçu (A → pilier-1, B →
   pilier-2, Front → front-1 par défaut ; front-2 au choix) ; niveau par `structures.js > ktaNiveauNouvelleStructure` (règle du tracé à la main :
   pilier-2 au −1). uid et updatedAt par KtaUid ; la synchro pro suit comme pour tout ajout. Le pilier à bras
@@ -1028,11 +1142,85 @@ l'interface : outil Structures et carte de l'📊 Éditeur de données, un même
 - **Doublons** : une masse qui recouvre une structure du même niveau (session ou calque), un front dont tous les
   sommets et milieux sont à moins de 3 px d'un front existant du même niveau : écartés et comptés « déjà présents ».
   Relancer ne double rien. Posées mais masquées (niveau non affiché, filtre) : dit au bilan.
-- **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>`, jamais dans la session ni dans
+- **Couleurs par plan** sur l'appareil : `myktamap_detect_couleurs_v1_<plan>` (classes `a`, `b`, `f`, et `g` des
+  galeries), jamais dans la session ni dans
   l'export du profil (exclues dans `profileExportImport.js`), retirées avec le plan (`purgeAssociatedData`).
 - Vue tournée : redressée et rotation bloquée pendant le parcours (`MapBearing.suspend("detection")`). Plan quitté :
   parcours fermé (`main.js > _libererRessourcesPlanPrecedent`). Lecture seule : refusé (`ktaEditionRefusee`).
 - Garde-fous : `scripts/check-detection.js` (moteur, pre-commit) · `scripts/smoke/checkup-detection.js` (parcours) ·
-  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-detection-emprise.js` (calque du
+  `scripts/smoke/checkup-remplir.js` (Remplir au clic) · `scripts/smoke/checkup-remplir-front.js` (Remplir sur un
+  front : suivi du trait, arrêt au carrefour, raccord exact) · `scripts/smoke/checkup-remplir-annuler.js` (retirer un
+  remplissage au toucher, par Ctrl+Z ou « Retirer le dernier », structures et galeries, historique global intact) ·
+  `scripts/smoke/checkup-remplir-exclusif.js` (un seul mode de clic entre la fenêtre et les outils de la carte) ·
+  `scripts/smoke/checkup-detecteur-unique.js` (ouvrir un détecteur ferme l'autre, plan et Générateur) ·
+  `scripts/smoke/checkup-affiner-contours.js` (case Affiner
+  les contours) · `scripts/smoke/checkup-detection-emprise.js` (calque du
   niveau −1 plus grand que l'image : Remplir sur le débord, « Tout le plan » sur tout le calque, pilier à cheval sur
   le bord de l'image entier, niveau 0 inchangé ; Chromium et WebKit).
+
+### Détecter les galeries → tracés
+
+Décisions de KARMA du 22/11/2026 (leçons d'un essai privé où l'auteur avait dû retoucher ~15 % des tracés tirés d'un
+squelette) : compléter un plan à moitié tracé, en tracés routables, sans doublon.
+
+- ⚠️ **Fenêtre à part** (décision produit) : `KtaDetectionUI.ouvrir(ctx, { cible: "traces" })`, ouverte depuis
+  l'outil Tracés, la carte « Détecter les galeries » de l'📊 Éditeur de données et le Générateur. Titre et aide à
+  elle ; elle ne propose que la galerie (pipette, classe `g`), Remplir au clic, le cadre, « Tout le plan », deux
+  réglages et le type de tracé (principal par défaut, ou le type armé dans Tracés ; secondaire, chemin, types
+  personnalisés ; jamais la jonction ni l'itinéraire). La fenêtre des structures ne propose jamais les galeries.
+  Le contexte ajoute `niveauTrace()`, `tracesExistants()` et `poserTraces(tracés)` (mode plan : une étape ⏪ de
+  catégorie `roads` puis `setRoads`, comme `_poserSession` pour les structures ; `road.js` n'est pas touché).
+- **Deux sources, un moteur** (`ktaDetection.js`) :
+  - pipette sur la COULEUR de la galerie (galeries grisées entre des murs noirs) : `detecter` avec le réglage
+    `galerie` → `_galeriesBloc` (masque de la couleur, bouché, obstacles percés, squelette Zhang-Suen, rayon inscrit
+    à chaque sommet), axes bruts découpés au cœur de chaque bloc et gardés par la page ;
+  - REMPLIR AU CLIC dans une galerie blanche entre deux murs (couleur du fond) : `remplirGalerie`, le remplissage
+    de `remplir` (`_murs`, `_inonder`) sans plafond de taille, jusqu'aux murs, puis le même squelette. La page
+    agrandit la fenêtre lue (768, 2 048 px, puis toute l'emprise, à résolution réduite au-delà de 4 096 px) ; refus
+    « ouvert » seulement si la zone touche encore le bord de l'emprise ; refus « large » quand la largeur médiane
+    de la zone dépasse 8 m (80 px sans échelle) : 🩸 sur un plan dans un cadre, toucher le fond entre le plan et le
+    cadre remplissait tout le fond, galeries ouvertes comprises (essai sur un relevé réel au trait). Un trait fin qui
+    coupe TOUTE la galerie
+    (trait de rappel d'un mur à l'autre) est rouvert (`_rouvrirCoupures`) : pixels du trait à moins de 4 px à la
+    fois de la zone remplie et d'une zone libre FERMÉE, composante plus courte que 3 × la largeur de la galerie,
+    gardée si le nouveau remplissage reste fermé. 🩸 Un mur entre la galerie et le fond extérieur n'est jamais
+    candidat (le fond touche le bord) ; un mur fin entre deux galeries parallèles l'est, mais il est long.
+- ⚠️ **Bouchage avant le calcul** (`_boucher`, décision produit) : trous compacts plus petits que (0,6 × la largeur)²
+  (lettres, points de repère), puis fermeture de 2 px dont on ne garde que les ajouts plus courts que 4 × la
+  largeur (traits de rappel, encoches). 🩸 Sans lui, la galerie était coupée puis recousue « en étoile » ; une
+  fermeture sans la règle de longueur soudait deux galeries séparées par un mur fin. Un pilier dessiné plus large
+  que 0,6 × la galerie reste un trou : le tracé le contourne.
+- ⚠️ **Structures posées = obstacles** (`_percerObstacles`, 1,5 px de marge) : contours fermés et murs en ligne du
+  niveau visé, percés dans le masque avant le squelette ; la simplification garde un sommet plutôt que de couper un
+  obstacle. Les fronts et les arcs ne comptent pas.
+- **Réseau** (`reseauGaleries(axes, { simplification, brancheMin, doublon, existants, obstacles })`, pur, dans la
+  page : un réglage bougé recalcule sans relire l'image) : graphe (bouts à 2,5 px confondus : raccord des blocs) →
+  ergots retirés (bout libre plus court que la branche minimale ou que 2 × le rayon du carrefour : il ne sort pas de
+  la largeur de la galerie ; du plus court au plus long, degrés relus) → carrefours reliés par une arête plus courte
+  que la somme de leurs rayons fusionnés, sans s'éloigner de plus du plus grand rayon de leur place d'origine (🩸
+  fusionnées de proche en proche, les grappes d'une zone bruitée dérivaient et partaient en étoile à travers les
+  murs) → petites boucles sans obstacle (aire < (2 × branche minimale)²) retirées →
+  enchaînement : degré 2, et à travers un carrefour sur l'arête la plus droite (déviation ≤ 35°), pour UN tracé
+  long par galerie ; les autres galeries finissent sur son sommet (sommet fixe, jamais simplifié) → doublons →
+  accroche → Douglas-Peucker entre sommets fixes. Branches plus courtes que la branche minimale retirées.
+- **Deux réglages visibles** (décision produit) : simplification (0,5 m par défaut) et branche minimale (1,5 m), en
+  mètres à l'échelle du plan, en px sans échelle (3 et 15 px ; `reglagesGaleries`).
+- ⚠️ **Réseau existant jamais modifié** (décision produit) : tracés du même niveau (session et calques, masqués
+  compris ; jonction : l'un de ses niveaux ; jamais l'itinéraire). Toute partie à moins de 6 px d'un tracé existant
+  est coupée (« déjà tracées » au bilan). Un bout à portée (max(9 px, rayon de la galerie + 6 px)) se pose
+  EXACTEMENT sur le sommet existant le plus proche, sinon exactement sur le segment (pied de T, relié par
+  l'itinéraire à distance nulle : § Enrichissement de `multilevel-pathfinding.md`) ; le point n'est jamais arrondi.
+  ⚠️ L'outil ne pose AUCUN sommet sur un croisement : seuls les bouts s'accrochent (l'itinéraire, lui, relie un
+  croisement strict de deux segments).
+- **Aperçu** : une polyligne par tracé (`.kta-detect-galerie`), un rond aux bouts raccordés (`.kta-detect-accroche`) ;
+  après un cadre ou « Tout le plan », un toucher retire ou remet un tracé, gardé retiré d'un réglage à l'autre (clé :
+  ses bouts à 2 px près). Remplir s'ajoute à l'aperçu toucher après toucher (`_e.remplisG` : les axes de chaque
+  toucher) ; un toucher dans une galerie déjà remplie (rayon de ses axes, au moins 14 px d'écran autour de l'axe) la
+  retire tout entière, comme Ctrl+Z et « Retirer le dernier » (§ Remplir au clic).
+- **Hors de l'outil** (pistes dans `docs/IDEES.md`) : passage hachuré en liaison, croisements de niveaux, largeur des
+  galeries.
+- Garde-fous : `check-detection.js` (planche `scripts/smoke/scene-galeries.js` : galeries grises et blanches, texte
+  et traits de rappel en travers, pilier posé, tracé existant ; réseau connexe, zéro étoile, zéro doublon, pilier
+  contourné, accroche exacte ; contre-épreuves sans bouchage, sans obstacle, sans existant) ·
+  `scripts/smoke/checkup-galeries.js` (fenêtres distinctes, aperçu, réglages, Valider en une étape ⏪, Éditeur de
+  données et Remplir ; Chromium et WebKit) · `checkup-detection-generateur.js` (calque « Tracés détectés »).

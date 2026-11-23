@@ -18,6 +18,9 @@
   sommet), bande sur la carte, parois 3D et passage étroit pour l'itinéraire ; saisie manuelle possible, mais la
   lecture sur l'image (remplir la galerie → axe + largeur) conditionne l'intérêt (lot L). Contour du vide écarté.
   Déclencheur : un besoin réel au-delà de l'essai privé.
+- **Détecter les galeries : passages et niveaux** — suite du lot « Détecter les galeries » (backlog) : passage étroit
+  hachuré reconnu comme liaison, croisement de niveaux sans nœud, largeur lue au remplissage (voir « Largeur des
+  galeries »). Déclencheur : le lot livré et un plan qui en a besoin.
 - **Adresse de contact de l'installation** — `contact@myktamap.fr` est en dur (`index.html` ×2, dicos ×3, guide ×3).
   Idée : un champ ConfAdmin → `index.json > config`, repli sur l'adresse actuelle ; trancher quelles mentions
   suivent (crédit, licence, `NETWORK_AUDIT` restent). Déclencheur : une installation tierce qui le demande.

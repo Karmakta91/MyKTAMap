@@ -558,6 +558,9 @@ async function initMapFromConfig() {
   const baseSize = baseFile?.size  || null;
 
   window._baseTiles = await chargerImage(config.plan.baseImage, bounds, map, baseSize, baseFile);
+  // Opacité de l'image principale réglée dans les filtres (tiling.js > ktaAppliquerOpacitePlanDeBase) : sans
+  // réglage, rien n'est posé.
+  window.ktaAppliquerOpacitePlanDeBase();
 
   // ── Calques de données ──
   const dataLayerGroups = {};

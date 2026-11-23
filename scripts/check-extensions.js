@@ -1002,6 +1002,16 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
         .test(corpsSel) && /if \(a\.vue === true && String\(a\.id \|\| ""\)\.indexOf\("ext_"\) === 0\) return true;/.test(corpsSel));
     t("🔒 sans extension, le signal ne change rien : fermer la liste n'acquitte rien sur l'appareil (dismiss sans argument)",
       /function _fermer\(\) \{[\s\S]{0,300}AlertChecker\.dismiss\(\);/.test(corpsSel));
+    const corpsDet = IA6.slice(IA6.indexOf("window.afficherModaleAlerte = function"), IA6.indexOf("window.afficherModaleUpdateDispo"));
+    t("🔒 urgence devant : une alerte emergency (strict) retire le détail ou la liste d'une information SANS dismiss " +
+      "(pas d'acquittement ni de signal « à l'écran ») et la remet en file ; une urgence affichée n'est jamais retirée",
+      /function _urgence\(a\) \{ return !!a && a\.level === "emergency"; \}/.test(AC) &&
+      /m\._ktaRecouvrir\(\)/.test(AC) && /neuves\.filter\(_urgence\)\.concat\(revenues,/.test(AC) &&
+      /modal\._ktaRecouvrir = function\(\) \{\s*if \(level === "emergency"\) return null;\s*modal\.remove\(\);\s*return \{/
+        .test(corpsDet) &&
+      /modal\._ktaRecouvrir = function\(\) \{\s*if \(sorted\.some\([^\n]*\)\) return null;\s*modal\.remove\(\);/
+        .test(corpsSel) &&
+      /removeEventListener\("keydown", _onKey\);\s*return \{ alertes: sorted\.map/.test(corpsSel));
     t("AlertChecker : liste de l'extension fusionnée (check, bouton 🚨), relue à mktm:alertes-changees, attente bornée",
       /KtaExtensions\.alertesExtension\(\)/.test(AC) && /addEventListener\("mktm:alertes-changees"/.test(AC) &&
       /const ALERTES_DELAI_MS = 3000;/.test(lire("js/ktaExtensions.js")));

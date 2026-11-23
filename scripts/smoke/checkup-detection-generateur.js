@@ -12,6 +12,11 @@
 // 2. Mode Modifier sur ce ZIP (« Mettre à jour le plan ») : relance → 0 nouveau, 9 déjà présents (doublons
 //    comparés dans le repère du plan gardé).
 // 3. Échap ferme la fenêtre, le Générateur reste ouvert.
+// Galeries (bouton « Détecter les galeries », même fenêtre que l'outil Tracés) : galerie bleue en T sur l'image.
+//   Nouveau plan : un cadre sur la branche du haut → 1 tracé, Valider → ligne « Tracés détectés » ; « Tout le
+//   plan » → la branche du haut déjà là, la verticale seule, accrochée exactement à la première ; la relance AJOUTE
+//   au calque. ZIP : 2 tracés au pixel près dans le repère rogné, format tracés, uid, niveau 0 ; « Structures
+//   détectées » garde ses 9 structures. Mode Modifier : relance → 0 nouveau tracé.
 // 🩸 Sans la conversion du rognage, les structures sortent décalées de la marge ; sans les doublons, la relance
 // en remet 9.
 // Usage : node scripts/smoke/checkup-detection-generateur.js (SMOKE_PORT, KTA_MOTEURS) · doc : plans-loader.md
@@ -34,6 +39,8 @@ const IMG = { W: 1400, H: 1000, marge: 120, cote: 40 };
 // 9 piliers (coin haut-gauche, px de l'image SOURCE)
 const PILIERS = [];
 for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) PILIERS.push([300 + i * 250, 250 + j * 200]);
+// galerie bleue en T (rectangles [x, y, w, h], px SOURCE) : axe horizontal y = 192, axe vertical x = 692
+const GALERIE = [[200, 180, 1000, 24], [680, 204, 24, 656]];
 
 const problemes = [];
 function pb(msg) { problemes.push(msg); console.log("  ❌ " + msg); }
@@ -85,6 +92,31 @@ async function detecterTout(page) {
   return etat(page);
 }
 
+// Fenêtre « Détecter les galeries » du Générateur : pipette sur la galerie (si aucune couleur retenue), puis le
+// cadre [x0, y0, x1, y1] (px source) ou tout le plan ; aperçu.
+async function detecterGaleries(page, cadre) {
+  await page.evaluate(function () { document.getElementById("pl_detectGaleries").click(); });
+  await attendre(page, function () {
+    return !!document.querySelector(".kta-detect-gen .leaflet-image-layer") && !!window.KtaDetectionUI.etat();
+  }, 30000);
+  await page.waitForTimeout(500);
+  const e0 = await etat(page);
+  if (!e0.exemples.g) await toucherImage(page, 900, 192);
+  await bouton(page, "zone");
+  if (cadre) { await toucherImage(page, cadre[0], cadre[1]); await toucherImage(page, cadre[2], cadre[3]); }
+  else await bouton(page, "tout");
+  await attendre(page, function () {
+    const s = window.KtaDetectionUI.etat();
+    return s && s.etape === "apercu";
+  }, 60000);
+  return etat(page);
+}
+async function validerGaleries(page) {
+  await bouton(page, "valider-galeries");
+  await attendre(page, function () { return !document.querySelector(".kta-detect-gen"); }, 10000);
+  await page.waitForTimeout(500);
+}
+
 async function jouer(nomMoteur) {
   const nav = await lancerNavigateur.lancerMoteur(nomMoteur);
   if (!nav) return;
@@ -106,8 +138,10 @@ async function jouer(nomMoteur) {
       k.fillStyle = "#b4b4b4"; k.fillRect(a.I.marge, a.I.marge, a.I.W - 2 * a.I.marge, a.I.H - 2 * a.I.marge);
       k.fillStyle = "#ff9933";
       a.P.forEach(function (p) { k.fillRect(p[0], p[1], a.I.cote, a.I.cote); });
+      k.fillStyle = "#3366cc";
+      a.G.forEach(function (r) { k.fillRect(r[0], r[1], r[2], r[3]); });
       return c.toDataURL("image/png").split(",")[1];
-    }, { I: IMG, P: PILIERS }), "base64");
+    }, { I: IMG, P: PILIERS, G: GALERIE }), "base64");
 
     console.log("— 1. nouveau plan : détecter sur l'image source —");
     await page.evaluate(function () { window.afficherPlanner(); });
@@ -139,6 +173,23 @@ async function jouer(nomMoteur) {
     });
     verifier(ligne.indexOf("structures-detectees") >= 0, "ligne « Structures détectées » ajoutée aux calques", ligne);
 
+    console.log("— 1 bis. nouveau plan : détecter les galeries —");
+    let g = await detecterGaleries(page, [150, 120, 1250, 214]);
+    verifier(g.cible === "traces" && g.exemples.g === 1 && g.galeries.n === 1,
+      "« Détecter les galeries » : fenêtre des tracés, cadre sur la branche du haut → 1 tracé", g.galeries);
+    await validerGaleries(page);
+    const lignesG = await page.evaluate(function () {
+      const items = Array.prototype.slice.call(
+        document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item"));
+      return items.map(function (it) { return document.getElementById(it.dataset.layerId + "_id").value; });
+    });
+    verifier(lignesG.indexOf("traces-detectees") >= 0 && lignesG.indexOf("structures-detectees") >= 0,
+      "ligne « Tracés détectés » ajoutée, à part des structures", lignesG);
+    g = await detecterGaleries(page, null);
+    verifier(g.galeries.n === 1 && g.galeries.deja >= 1 && g.galeries.accroches >= 1,
+      "« Tout le plan » : la branche du haut déjà là, la verticale seule, accrochée au tracé existant", g.galeries);
+    await validerGaleries(page);
+
     // génération (pas de calque fourni ni de calage : pas de question du rognage)
     const dl = page.waitForEvent("download", { timeout: 180000 });
     await page.evaluate(function () { document.getElementById("kta-planner-generer").click(); });
@@ -156,6 +207,40 @@ async function jouer(nomMoteur) {
     await page.evaluate(function (b64) {
       window.__zipDet = new Blob([Uint8Array.from(atob(b64), function (c) { return c.charCodeAt(0); })]);
     }, fs.readFileSync(fichier).toString("base64"));
+    const luG = await page.evaluate(async function () {
+      const z = await JSZip.loadAsync(window.__zipDet);
+      const cfg = JSON.parse(await z.file("plan-config.json").async("string"));
+      const dl = cfg.dataLayers.find(function (d) { return d.id === "traces-detectees"; });
+      const j = dl ? JSON.parse(await z.file(dl.file).async("string")) : {};
+      return { type: j.type, roads: j.roads || [], structures: (j.structures || []).length,
+               rognage: cfg.plan.rognage || null };
+    });
+    {
+      const rx = luG.rognage ? luG.rognage.x : 0, ry = luG.rognage ? luG.rognage.y : 0;
+      verifier(luG.type === "roads" && luG.roads.length === 2 && luG.structures === 0,
+        "ZIP : calque « Tracés détectés » au format tracés, 2 tracés (la relance a ajouté)", luG);
+      // branche du haut : tous ses sommets sur l'axe y = 192 ; verticale : sur l'axe x = 692 (px source − rognage)
+      const surAxe = function (r, axe, v) {
+        return r.points.every(function (p) { return Math.abs(p[axe] - v) <= 1.5; });
+      };
+      const hor = luG.roads.find(function (r) { return surAxe(r, "y", 192 - ry); });
+      const ver = luG.roads.find(function (r) { return surAxe(r, "x", 692 - rx); });
+      verifier(!!hor && !!ver, "axes au pixel près dans le REPÈRE ROGNÉ (source − rognage)", luG.roads);
+      // bout de la verticale à moins de 0,01 px du segment de la branche du haut (pied de T de l'itinéraire)
+      const surHor = function (p) {
+        for (let i = 1; hor && i < hor.points.length; i++) {
+          const A = hor.points[i - 1], B = hor.points[i], dx = B.x - A.x, dy = B.y - A.y, L = dx * dx + dy * dy;
+          const u = L ? Math.max(0, Math.min(1, ((p.x - A.x) * dx + (p.y - A.y) * dy) / L)) : 0;
+          if (Math.hypot(p.x - A.x - u * dx, p.y - A.y - u * dy) < 0.01) return true;
+        }
+        return false;
+      };
+      verifier(!!ver && (surHor(ver.points[0]) || surHor(ver.points[ver.points.length - 1])),
+        "la verticale finit EXACTEMENT sur la branche du haut", { ver: ver && ver.points, hor: hor && hor.points });
+      verifier(luG.roads.every(function (r) {
+        return r.type === "principal" && r.level === 0 && /^rd_/.test(r.uid || "") && Number.isFinite(r.updatedAt);
+      }), "type principal, niveau 0 (multi-niveau), uid et updatedAt", luG.roads.map(function (r) { return r.type; }));
+    }
     const lu = await page.evaluate(async function () {
       const z = await JSZip.loadAsync(window.__zipDet);
       const cfg = JSON.parse(await z.file("plan-config.json").async("string"));
@@ -213,6 +298,12 @@ async function jouer(nomMoteur) {
     verifier(e.exemples.a === 1, "couleurs retenues pour le Générateur : pas de nouvelle pipette", e.exemples);
     verifier(e.apercu && e.apercu.n === 0 && e.apercu.deja === 9,
       "relance en mode Modifier : 0 nouveau, 9 déjà présents (comparés dans le repère gardé)", e.apercu);
+    await bouton(page, "fermer");
+    await attendre(page, function () { return !document.querySelector(".kta-detect-gen"); }, 10000);
+    g = await detecterGaleries(page, null);
+    verifier(g.galeries.n === 0 && g.galeries.deja >= 2,
+      "galeries relancées en mode Modifier : 0 nouveau tracé (comparés aux tracés du calque, repère gardé)",
+      g.galeries);
 
     console.log("— 3. Échap —");
     await page.keyboard.press("Escape");
@@ -243,6 +334,7 @@ async function jouer(nomMoteur) {
     console.log("\n❌ CHECKUP ROUGE — " + problemes.length + " problème(s)");
     process.exit(1);
   }
-  console.log("\n🎉 CHECKUP VERT — détecter dans le Générateur : fenêtre à mini-carte, calque « Structures détectées », " +
+  console.log("\n🎉 CHECKUP VERT — détecter dans le Générateur : fenêtre à mini-carte, calques « Structures " +
+    "détectées » et « Tracés détectés », " +
     "repère rogné au pixel près, doublons en mode Modifier, Échap.");
 })();

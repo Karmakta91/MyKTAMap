@@ -575,11 +575,45 @@ L'itinéraire n'est pas exporté. `checkup-epaisseur-traits.js`.
 Le réglage d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits`, `ui.md`) ne s'applique qu'à l'écran : les
 lois appelées ici n'ont pas de facteur, un export ne change pas avec lui.
 
-**Contour des surfaces (piliers, murs, structures perso fermées), à l'écran** :
-`majLargeurFronts` le pose au quart de la largeur d'un front, plafonné à
-l'épaisseur d'origine (3 px), plancher 0,5 px — session et calques. Le
-remplissage ne change pas. Un contour fixe de 3 px recouvrait tout le pilier au
-dézoom. Les exports gardent leur propre contour. `checkup-bord-piliers.js`.
+**Contour des structures fermées (piliers, pilier à bras, murs, structures perso fermées)** : une seule loi,
+`structures.js > ktaBordSurfacePourLargeur` — le quart de la largeur d'un front, plafonné à l'épaisseur
+d'origine, plancher 0,5 px ; le remplissage ne change pas.
+- **Écran** : `majLargeurFronts` (session et calques), épaisseur d'origine 3 px. `checkup-bord-piliers.js`.
+- **Export avancé / PDF** (`exporter.js > _contourSurfaceExp`, session et calques via `_drawPolygon(…, true)`) :
+  front = `_largeurFrontExp` (ratio = résolution), épaisseur d'origine `weight × scale`. Plan non calibré : le
+  repli du front (`weight × scale` du style du pilier) donne un contour au quart, `0,75 × scale`.
+- **« Télécharger le plan »** (`utils.js > telechargerPlan > drawPolygon(…, true)`) : même loi à l'échelle 1.
+- 🩸 À `weight × scale`, un pilier de 1 m sur un relevé à quelques px/m sortait **entièrement noir**, à toute
+  résolution (contour et carré grandissent ensemble). `checkup-export-petits-piliers.js` (3 px/m forcé, session
+  et calque, résolutions 1 et 2, export rapide).
+- **Hors de cette loi** : les **zones** (contour `weight × scale` ; un fond translucide reste lisible sous un trait,
+  et l'écran ne l'affine pas non plus) et les **structures en ligne** (fronts, mur en ligne, arc, perso en ligne) :
+  leur trait EST l'objet, il n'a pas de plein à dégager ; dans l'export avancé / PDF il suit déjà la loi du
+  terrain ci-dessus (`_largeurLigneStructExp`). ⚠️ « Télécharger le plan » les dessine encore à `style.weight`
+  (`drawPolyline`), sans la loi du terrain.
+
+#### 69.4 Point précis d'un POI : dessiné par l'export image avancé et le PDF
+
+Le pointillé doré de l'icône au point précis, le segment d'une chatière et le petit carré à chaque point
+(`ui.md` § Point précis) sortent dans l'export image avancé et le PDF comme sur la carte (décisions de KARMA du
+12/11/2026) :
+- **Une seule loi de dessin** : `poiPrecis.js > peindre(ctx, point, versCanvas, u)` (canvas), géométrie
+  `KtaPoiPrecis.DESSIN` (trait 2, tirets 4 4, segment 3, carré 9, liseré 1) partagée avec `_construire` (carte) ;
+  `u` = résolution (les icônes font 50 px à l'écran comme à l'export : le dessin garde sa proportion). Couleurs =
+  valeurs calculées des jetons `--kta-accent` / `--kta-sur-accent` (`couleurs()`), aucune table locale.
+- **Sans le seuil de zoom** de la carte (`SEUIL_PX_PAR_M`) : un export n'a pas de zoom, tout point précis d'un POI
+  exporté est peint, sous les icônes (après les cercles d'intersection), POI de session et de calque, filtres de
+  tag et de niveau compris (la liste des marqueurs différés).
+- **Case « Points précis »** (`ann_precis` dans l'export avancé, `pdf_inc_precis` dans le PDF ; icône `crosshair`,
+  cochée par défaut, grisée sans point précis). ⚠️ contrat : `MyKTAMapExporterGenererCanvas` ne peint que si
+  `ann.precis === true` ; les autres appelants (cartes du Secours…) n'en reçoivent pas sans le demander.
+- **Légende** : une ligne « Point précis » (`imgexport.legLabel.precis`, pastille `KtaPoiPrecis.peindrePastille`) en
+  fin des icônes, seulement si l'export en a peint au moins un (`contenu.precis`) ; le PDF lit
+  `canvas._ktaPrecisPeints` et le passe à sa légende dessinée à part.
+- **Hors périmètre** : KMZ, GPX, GeoJSON (l'icône, décision produit) et « Télécharger le plan » (export rapide).
+
+🛡️ `scripts/smoke/checkup-export-point-precis.js` (par les fenêtres, Chromium et WebKit : doré au pointillé, au
+carré, au segment et aux bouts de la chatière ; rien case décochée ; ligne de légende).
 
 ---
 

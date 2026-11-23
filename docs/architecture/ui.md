@@ -1078,16 +1078,20 @@ window._ktaRuntimeFilters = {
 - `applyFilters()` — force re-render via `window.appliquerFiltreRuntime`
 - `onLevelChange()` — appelée par `appliquerFiltreNiveau` quand le M-LVL change ailleurs → re-render la section M-LVL si la modale est ouverte (sync bidirectionnel)
 
-#### Section « Calques image » : case et curseur d'opacité
+#### Section « Calques image » : cases et curseurs d'opacité
 
-Chaque calque image (`PLAN_CONFIG.imageLayers`, id `id || label`) a sa ligne : la case `data-img-layer` (afficher /
-masquer, `map.addLayer` / `removeLayer`) et, dessous, un curseur « Opacité » `data-img-opacite` (10 à 100 %, pas de
-5 %, valeur affichée en %, `aria-label` au nom du calque, 28 px de haut pour le doigt). Le glissé (`input`) applique
-`overlay.setOpacity` au calque déjà posé et écrit la pref du plan (`config.js > setPlanOpaciteCalque`,
-`myktamap_plan_prefs_<planId>.imageLayerOpacity[layerId]`) ; 100 % retire l'entrée. Le curseur se rouvre sur la
-valeur retenue (`getPlanOpaciteCalque`). Il est indépendant de la transparence du fond OSM sous le plan (autre
-panneau, autre pref) : détails `rendering-leaflet.md` § Opacité d'un calque image. 🛡️
-`scripts/smoke/checkup-transparence-calques.js`.
+En tête, la case « Afficher le plan de base » (`data-plan-de-base`) et, dessous, le curseur « Opacité » de l'image
+principale (`data-plan-opacite`, classe `kta-fp-opacite-plan`). La copie de la case dans la section Niveaux n'a pas
+de curseur (`filterPanel.js > _renderCasePlanDeBase(avecCurseur)`). Puis chaque calque image
+(`PLAN_CONFIG.imageLayers`, id `id || label`) a sa ligne : la case `data-img-layer` (afficher / masquer,
+`map.addLayer` / `removeLayer`) et, dessous, son curseur `data-img-opacite`. Tous les curseurs viennent de
+`_renderCurseurOpacite` : 10 à 100 %, pas de 5 %, valeur affichée en %, `aria-label` (nom du calque, ou « plan de
+base »), 28 px de haut pour le doigt. Le glissé (`input`) écrit la pref du plan (`config.js > setPlanOpaciteCalque`
+/ `setPlanOpaciteFond`) et applique l'opacité : `overlay.setOpacity` pour un calque, `tiling.js >
+ktaAppliquerOpacitePlanDeBase` pour l'image principale (multipliée par la transparence du fond OSM s'il est
+allumé) ; 100 % retire l'entrée. Les curseurs se rouvrent sur la valeur retenue. Détails `rendering-leaflet.md`
+§ Opacité des images du plan. 🛡️ `scripts/smoke/checkup-transparence-calques.js`,
+`checkup-transparence-plan-de-base.js`.
 
 #### 64.4 Cascade re-render — `window.appliquerFiltreRuntime`
 
@@ -1966,7 +1970,8 @@ Parcours : `scripts/smoke/checkup-verifier-plan.js` (Chromium et WebKit). i18n `
 Tuile de l'accueil de l'Éditeur juste après Vérifier le plan, **plan affiché seulement**, et bouton du groupe 🏛️
 Structures (icône `search`, avant ✅ Fermer) : les deux ouvrent `window.KtaDetectionUI.ouvrir()`, un seul parcours
 (décision produit). Bandeau `#kta-detect-bandeau` (`.kta-racc-bandeau`) en trois étapes (exemples à la pipette,
-zone, aperçu) ; aperçu dans le pane `ktaDetection` (renderer SVG propre, classes `.kta-detect-*` en jetons de la
+zone, aperçu), posé en colonne (`.kta-detect-bandeau`) : largeur de sa plus longue rangée de boutons, plafond
+`min(900px, 100vw - 32px)`, plancher 420 px, lignes de texte repliées dessous sans pousser la largeur ; aperçu dans le pane `ktaDetection` (renderer SVG propre, classes `.kta-detect-*` en jetons de la
 charte ; la pastille d'exemple prend la couleur lue sur le plan), trois curseurs (tolérance, tailles minimale et
 maximale). Pendant la pipette et le cadre, réticule rouge de précision (`body.kta-detect-pick-mode`, ajoutée au
 sélecteur du « Curseur de précision » de `css/style.css` : une classe propre, `kta-precision-mode` étant recalculée
@@ -2736,6 +2741,8 @@ Un POI est souvent posé à côté de son vrai lieu pour rester lisible (secteur
   (`opts.icone`). Sans point précis, ou passage entre niveaux : l'icône, comme avant.
 - **3D** : en vue d'édition, la fiche 3D d'un POI de session propose aussi 🎯 (et ✏️ Modifier, 📍 Déplacer) ; un
   toucher au sol y sert le même mode (`tracking.md` § Vue 3D).
+- **Exports** : KMZ, GPX, GeoJSON gardent l'icône ; l'export image avancé et le PDF peignent le même dessin
+  (`KtaPoiPrecis.peindre`, géométrie `DESSIN` partagée avec la carte), sans le seuil de zoom (`exports.md` § Point précis).
 
 Preuve : `scripts/smoke/checkup-point-precis.js` (Chromium et WebKit, souris et doigt) ; 3D : `checkup-vue-3d.js`
 § 39.
