@@ -26,6 +26,11 @@
  * Remplir au clic : pilier cerné droit ou oblique rempli au MILIEU du trait (≤ 1 px), mur partagé coupé au milieu,
  * chiffre dedans englobé, trous de 1 et 2 px fermés, 3 et 4 px refusés, bord de l'image ou de la région lue refusé,
  * plafond (quart de la région lue, ou donné) refusé, toucher sur le trait refusé, bruit, échelle 0,5, pilier plein.
+ * Remplir au clic sur un front (suivreTrait) : front droit, coudé, carrefours en T et en X (arrêt au carrefour),
+ * front qui touche un pilier plein (arrêt à son bord), trait de rappel de 1 px en travers (pas de carrefour), toucher
+ * sur le fond ou le pilier refusé, raccord EXACT du toucher suivant sur le front posé (jamais modifié), doublon
+ * refusé, affiner sur un bord dentelé, échelle 0,5 ; contre-épreuves sans retrait des masses, sans filtre des traits
+ * fins, sans existant (aucune accroche).
  * Contre-épreuves (sabotages) : remplissage sans fermeture (le trou de 1 px fuit), sans marge, sans ouverture,
  * sans dédoublonnage des blocs, sans comblement des trous,
  * sans classe de masse (squelette du pilier dans le trait), sans raccord des traits → le contrôle rougit.
@@ -406,6 +411,119 @@ async function verifierGaleries() {
   t("remplir galerie : toucher sur le fond ouvert → refus « ouvert »", ro && ro.refus === "ouvert", ro);
   const rt = D.remplirGalerie(b, 452, 220, { x0: 0, y0: 0, echelle: 1 });
   t("remplir galerie : toucher sur le trait de rappel → refus « trait »", rt && rt.refus === "trait", rt && rt.refus);
+}
+
+// ── Remplir au clic : front de taille (suivreTrait) ── planche fabriquée, trait noir de 4 px, bruit ± 8.
+// Front droit, front coudé, carrefour en T et en X, front qui touche un pilier plein, trait de rappel fin (1 px) en
+// travers ; un toucher suit le trait jusqu'à ses bouts ou au premier carrefour ; le suivant raccorde exactement.
+function plancheFronts() {
+  const im = image(420, 300);
+  im.rect(20, 30, 120, 4, NOIR);                                   // droit : axe y = 32, x 20 → 140
+  im.rect(200, 30, 100, 4, NOIR).rect(296, 30, 4, 80, NOIR);      // coudé : coin (298, 32), bas (298, 110)
+  im.rect(20, 100, 140, 4, NOIR).rect(88, 100, 4, 70, NOIR);      // T : axe y = 102, pied x = 90 → 170
+  im.rect(200, 150, 140, 4, NOIR).rect(268, 120, 4, 70, NOIR);    // X : centre (270, 152)
+  im.rect(40, 220, 30, 30, NOIR).rect(70, 233, 90, 4, NOIR);      // pilier plein (40..70) et front y = 235
+  im.rect(200, 250, 160, 4, NOIR).rect(280, 225, 1, 55, NOIR);    // front y = 252, rappel de 1 px en x = 280
+  return im.bruit(8);
+}
+function verifierFronts() {
+  if (typeof D.suivreTrait !== "function") { t("front : API suivreTrait exposée", false); return; }
+  const im = plancheFronts(), b = { data: im.data, w: im.W, h: im.H };
+  const suivre = (x, y, o) => D.suivreTrait(b, x, y, Object.assign({ x0: 0, y0: 0, echelle: 1 }, o || {}));
+  const pts = r => (r && r.traces && r.traces[0] ? r.traces[0].points : []);
+  const xs = r => pts(r).map(p => p.x), ys = r => pts(r).map(p => p.y);
+  const pres = (p, x, y, tol) => Math.hypot(p.x - x, p.y - y) <= tol;
+  const bouts = r => (pts(r).length ? [pts(r)[0], pts(r)[pts(r).length - 1]] : []);
+  const resume = r => r && (r.refus || { n: r.traces.length, bouts: r.bouts, pts: pts(r) });
+
+  const d = suivre(80, 32);
+  t("front droit : un trait, deux bouts libres, 2 sommets sur l'axe (± 1 px)", d && !d.refus &&
+    d.traces.length === 1 && pts(d).length === 2 && d.bouts.join() === "bout,bout" &&
+    ys(d).every(y => Math.abs(y - 32) <= 1), resume(d));
+  t("front droit : bouts à 3 px près des bouts dessinés (x 20 et 140)", d && !d.refus &&
+    Math.abs(Math.min(...xs(d)) - 21) <= 3 && Math.abs(Math.max(...xs(d)) - 139) <= 3, resume(d));
+  const d2 = suivre(80, 36);
+  t("front droit : toucher à 2 px à côté du trait → le même front", d2 && !d2.refus && pts(d2).length === 2 &&
+    Math.abs(pts(d2)[0].y - 32) <= 1, resume(d2));
+
+  const c = suivre(240, 32);
+  t("front coudé : un trait de 3 sommets, coin à 2,5 px près de (298, 32), bouts libres", c && !c.refus &&
+    c.traces.length === 1 && pts(c).length === 3 && pts(c).some(p => pres(p, 298, 32, 2.5)) &&
+    c.bouts.join() === "bout,bout" && pts(c).some(p => p.y > 105), resume(c));
+
+  const tg = suivre(40, 102);
+  t("carrefour en T : le suivi s'arrête au carrefour (bout à 3 px de (90, 102))", tg && !tg.refus &&
+    tg.traces.length === 1 && tg.bouts.indexOf("carrefour") >= 0 && tg.bouts.indexOf("bout") >= 0 &&
+    bouts(tg).some(p => pres(p, 90, 102, 3)) && Math.max(...xs(tg)) <= 93, resume(tg));
+  const pied = suivre(90, 150, { existants: tg && tg.traces ? tg.traces : [] });
+  t("carrefour en T : le pied touché ensuite finit EXACTEMENT sur le bout posé au carrefour", pied && !pied.refus &&
+    pied.traces.length === 1 && bouts(pied).some(p => pts(tg).some(q => q.x === p.x && q.y === p.y)) &&
+    Math.max(...ys(pied)) >= 165, resume(pied));
+
+  const x1 = suivre(220, 152);
+  t("carrefour en X : arrêt au carrefour (bout à 3 px de (270, 152))", x1 && !x1.refus && x1.traces.length === 1 &&
+    x1.bouts.indexOf("carrefour") >= 0 && bouts(x1).some(p => pres(p, 270, 152, 3)) &&
+    Math.max(...xs(x1)) <= 273, resume(x1));
+  const ex1 = x1 && x1.traces ? x1.traces : [];
+  const exact = (r, ex) => r && !r.refus && r.traces.length >= 1 && bouts(r).some(p => ex.some(s =>
+    s.points.some(q => q.x === p.x && q.y === p.y)));
+  const x2 = suivre(320, 152, { existants: ex1 });
+  t("carrefour en X : 2e toucher au-delà → prolongé, raccord EXACT sur le sommet posé", exact(x2, ex1) &&
+    Math.max(...xs(x2)) >= 335, resume(x2));
+  const ex2 = ex1.concat(x2 && x2.traces ? x2.traces : []);
+  const x3 = suivre(270, 130, { existants: ex2 });
+  t("carrefour en X : la branche verticale finit exactement sur un sommet posé", exact(x3, ex2), resume(x3));
+  t("carrefour en X : existant jamais modifié (mêmes sommets)", ex1.length === 1 &&
+    JSON.stringify(ex1[0].points) === JSON.stringify(pts(x1)));
+  const x2sans = suivre(320, 152);
+  const accroche = r => r && !r.refus && r.traces.some(tr => tr.accroches.indexOf(true) >= 0);
+  t("contre-épreuve : sans existant, aucun bout accroché (le 2e toucher, avec, l'est)", x2sans && !x2sans.refus &&
+    !accroche(x2sans) && accroche(x2), [resume(x2sans), x2 && x2.traces && x2.traces.map(tr => tr.accroches)]);
+  const dbl = suivre(222, 153, { existants: ex1 });
+  t("front déjà posé retouché → refus « deja », rien rendu", dbl && dbl.refus === "deja", resume(dbl));
+
+  const pl = suivre(120, 235);
+  t("front qui touche un pilier : arrêt au bord du pilier (bout entre x 68 et 75), ne le traverse pas", pl &&
+    !pl.refus && pl.traces.length === 1 && Math.min(...xs(pl)) >= 68 && Math.min(...xs(pl)) <= 75 &&
+    Math.max(...xs(pl)) >= 155, resume(pl));
+  const plSans = suivre(120, 235, { masses: false });
+  t("contre-épreuve : sans retrait des masses, le suivi entre dans le pilier", plSans && !plSans.refus &&
+    Math.min(...xs(plSans)) < 66, resume(plSans));
+  const surPilier = suivre(55, 235);
+  t("toucher sur le pilier plein → refus « masse »", surPilier && surPilier.refus === "masse", resume(surPilier));
+
+  const rp = suivre(220, 252);
+  t("trait de rappel fin en travers : le front passe (un seul trait jusqu'à x ≥ 355, bouts libres)", rp &&
+    !rp.refus && rp.traces.length === 1 && Math.max(...xs(rp)) >= 355 && Math.min(...xs(rp)) <= 205 &&
+    rp.bouts.join() === "bout,bout", resume(rp));
+  const rpSans = suivre(220, 252, { minces: false });
+  t("contre-épreuve : sans le filtre des traits fins, arrêt au trait de rappel", rpSans && !rpSans.refus &&
+    Math.max(...xs(rpSans)) < 290, resume(rpSans));
+
+  const fond = suivre(100, 65);
+  t("toucher sur le fond → refus « fond »", fond && fond.refus === "fond", resume(fond));
+
+  // Affiner : front aux bords dentelés (± 2 px tous les 3 px) → lissé et redressé en 2 sommets
+  const dent = image(300, 60);
+  for (let x = 20; x < 280; x++) {
+    const k = Math.floor(x / 3), h1 = ((k * 7) % 5) - 2, h2 = ((k * 11) % 5) - 2;
+    dent.rect(x, 27 + h1, 1, 6 + h2 - h1, NOIR);
+  }
+  const bd = { data: dent.data, w: dent.W, h: dent.H };
+  const sansA = D.suivreTrait(bd, 150, 30, { x0: 0, y0: 0, echelle: 1, simplification: 0.5 });
+  const avecA = D.suivreTrait(bd, 150, 30, { x0: 0, y0: 0, echelle: 1, simplification: 0.5, affiner: 5 });
+  t("affiner (front) : bord dentelé → 2 sommets avec l'option, davantage sans", sansA && !sansA.refus && avecA &&
+    !avecA.refus && pts(avecA).length === 2 && pts(sansA).length > 2, [resume(sansA), resume(avecA)]);
+
+  // Échelle 0,5 (bloc lu à mi-résolution) : coordonnées rendues en px du plan
+  const demi = { data: new Uint8ClampedArray(210 * 150 * 4), w: 210, h: 150 };
+  for (let j = 0; j < 150; j++) for (let i = 0; i < 210; i++) {
+    const s = ((j * 2) * im.W + i * 2) * 4, o = (j * 210 + i) * 4;
+    for (let k = 0; k < 4; k++) demi.data[o + k] = im.data[s + k];
+  }
+  const e5 = D.suivreTrait(demi, 40, 16, { x0: 0, y0: 0, echelle: 0.5 });
+  t("échelle 0,5 : front droit rendu en px du plan (axe y ≈ 32, bout vers x 140)", e5 && !e5.refus &&
+    ys(e5).every(y => Math.abs(y - 32) <= 2) && Math.abs(Math.max(...xs(e5)) - 139) <= 4, resume(e5));
 }
 
 (async function main() {
@@ -1204,6 +1322,9 @@ async function verifierGaleries() {
 
   // ── Galeries → tracés (planche scripts/smoke/scene-galeries.js) ──
   await verifierGaleries();
+
+  // ── Remplir au clic : front de taille ──
+  verifierFronts();
 
   // ── Pas de DOM dans le moteur ──
   const moteur = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8")

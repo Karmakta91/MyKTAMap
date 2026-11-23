@@ -21,10 +21,12 @@
 // rectangle des formes presque rectangles.
 // Galeries → tracés (section « Galeries ») : axes du masque d'une galerie (pipette : réglage `galerie` de detecter ;
 // remplirGalerie), bouché puis percé des structures posées, et reseauGaleries (un tracé par galerie, accroché).
+// Remplir au clic sur un front (suivreTrait) : le trait touché suivi jusqu'à ses bouts ou au premier carrefour, sans
+// les masses ni les traits fins de sa couleur, raccordé exactement aux fronts existants (graphe des galeries).
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
 //   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE,
 //   remplir, REMPLIR, plafondRemplir, toleranceAffinage, AFFINER, reseauGaleries, remplirGalerie,
-//   reglagesGaleries, GALERIES }.
+//   reglagesGaleries, GALERIES, suivreTrait, FRONT }.
 // ⚠️ contrat : les coordonnées rendues sont en PIXELS DU PLAN (x vers la droite, y vers le bas, comme les données) ;
 //   les réglages aussi (`echelle` = pixels de bloc par pixel de plan, pour lire l'image à résolution réduite).
 // ⚠️ contrat : lireBloc(x, y, w, h, echelle) → Promise<{ data, w, h }> (RGBA, w × h pixels de bloc), fourni par
@@ -993,17 +995,21 @@
     return { dmax: dmax, dist: dist, x0: x0, y0: y0, bw: bw };
   }
   const _pxEpaisseur = function (dmax) { return Math.max(1, Math.round((2 * dmax) / 3) - 1); };
-  function mesurerExemple(b, px, py, o) {
-    const W = b.w, H = b.h, d = b.data, N = W * H, plafond = (o && o.seuil) || 28, nature = o && o.nature;
-    px = Math.floor(px); py = Math.floor(py);
-    if (px < 0 || py < 0 || px >= W || py >= H) return null;
+  // Lab d'un pixel (indice) d'une image RGBA, table remplie à la demande sur 6 bits par canal.
+  function _labDe(d) {
     const cache = new Map();
-    const lab = function (i) {
+    return function (i) {
       const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
       let v = cache.get(c);
       if (!v) { v = rgbVersLab(d[k], d[k + 1], d[k + 2]); cache.set(c, v); }
       return v;
     };
+  }
+  function mesurerExemple(b, px, py, o) {
+    const W = b.w, H = b.h, d = b.data, N = W * H, plafond = (o && o.seuil) || 28, nature = o && o.nature;
+    px = Math.floor(px); py = Math.floor(py);
+    if (px < 0 || py < 0 || px >= W || py >= H) return null;
+    const lab = _labDe(d);
     const opaque = function (q) { return d[q * 4 + 3] >= 128; };
     const med = function (vals) { vals.sort(function (a, b2) { return a - b2; }); return vals[vals.length >> 1]; };
     // couleur médiane (canal par canal) des pixels de `pix` à moins de `s` de `ref`
@@ -1345,13 +1351,7 @@
     if (px < 0 || py < 0 || px >= W || py >= H || d[(py * W + px) * 4 + 3] < 128) return { refus: "hors" };
     const tol = Number(o.tolerance) > 0 ? Number(o.tolerance) : REMPLIR.tolerance;
     const R = o.fermeture === undefined ? REMPLIR.fermeture : Math.max(0, Math.floor(o.fermeture));
-    const cache = new Map();
-    const lab = function (i) {
-      const k = i * 4, c = ((d[k] >> 2) << 12) | ((d[k + 1] >> 2) << 6) | (d[k + 2] >> 2);
-      let v = cache.get(c);
-      if (!v) { v = rgbVersLab(d[k], d[k + 1], d[k + 2]); cache.set(c, v); }
-      return v;
-    };
+    const lab = _labDe(d);
     // couleur du fond touché : médiane (canal par canal) du carré 5 × 5 à moins de 12 du pixel touché (bruit JPEG)
     const g = py * W + px, labG = lab(g), r = [], v = [], bl = [];
     for (let j = Math.max(0, py - 2); j <= Math.min(H - 1, py + 2); j++) {
@@ -1562,6 +1562,10 @@
   function _axesMasque(m, W, H, x0, y0, e, coeur) {
     const dist = _distance(m, W, H), S = new Uint8Array(m);
     _squelette(S, W, H);
+    return _axesSquelette(S, dist, W, H, x0, y0, e, coeur);
+  }
+  // Squelette S déjà calculé (dist : chanfrein 3-4 du masque) → axes [[{ x, y, r }]] en px du plan.
+  function _axesSquelette(S, dist, W, H, x0, y0, e, coeur) {
     const r1 = function (v) { return Math.round(v * 100) / 100; };
     const out = [];
     _chemins(S, W, H).forEach(function (t) {
@@ -2089,6 +2093,245 @@
     return pts.filter(function (_, i) { return garder[i]; });
   }
 
+  // ── Remplir au clic sur un front de taille (suivreTrait) ──
+  // ⚠️ contrat (décision produit) : un toucher SUR le trait le suit dans les deux sens jusqu'à ses bouts ou au
+  //   premier carrefour, jamais au-delà. Un toucher suivant prolonge : son bout s'accroche EXACTEMENT sur le sommet
+  //   (sinon le segment) d'un front existant à portée, qui n'est jamais modifié, et ce qui double un existant est
+  //   coupé (reseauGaleries, comme les galeries).
+  // Masque : couleur au point touché (pixel le plus loin du fond à ± rayonEncre px du doigt) à `tolerance` près
+  //   (défaut : moitié de l'écart au fond, plancher REMPLIR.tolerance), fermé de 1 px. Retirés avant le squelette :
+  //   - les MASSES de sa couleur (ouverture d'un carré plus large que le trait, dilatée de 1 px) : un front qui
+  //     touche un pilier plein s'arrête à son bord (option masses: false : contre-épreuve) ;
+  //   - les traits FINS : pixels du squelette où le trait fait au plus `partMince` de son épaisseur médiane autour
+  //     du doigt ; un trait de rappel fin en travers ne fait pas de carrefour (option minces: false).
+  // 🩸 Les ergots du squelette (coins, bord bruité) feraient de faux carrefours : graphe des galeries, ergots plus
+  //   courts que l'épaisseur retirés (_elaguer), carrefours voisins fusionnés (un X du squelette = deux nœuds).
+  // Limites : un trait en travers aussi épais que le front est un vrai carrefour ; un front aminci de plus de moitié
+  //   est coupé là (un toucher plus loin le prolonge et raccorde).
+  const FRONT = Object.freeze({ rayonEncre: 3, anneauFond: 12, ouvertureMarge: 1, partMince: 0.5, bord: 3,
+                                rayonMediane: 10, allongement: 3 });
+  // b, px, py : comme remplir ; o = { x0, y0, echelle, tolerance, affiner, simplification, existants: [{ points }],
+  //   doublon, masses, minces }.
+  // → { traces: [{ points, accroches }], bouts: [genre, genre] ("bout" | "carrefour" | "bord" | "boucle"), bord,
+  //   deja, accroches, epaisseur } ; ou { refus: "hors" | "fond" | "masse" | "deja" } (masse : masse pleine ou trait
+  //   trop court pour un front). `bord` : un bout s'arrête au bord du bloc lu (l'appelant peut relire plus grand).
+  function suivreTrait(b, px, py, o) {
+    o = o || {};
+    const W = b.w, H = b.h, N = W * H, d = b.data, e = o.echelle || 1, ox = o.x0 || 0, oy = o.y0 || 0;
+    px = Math.floor(px); py = Math.floor(py);
+    if (px < 0 || py < 0 || px >= W || py >= H || d[(py * W + px) * 4 + 3] < 128) return { refus: "hors" };
+    const lab = _labDe(d), opaque = function (q) { return d[q * 4 + 3] >= 128; };
+    const med = function (t) { t.sort(function (a, c) { return a - c; }); return t[t.length >> 1]; };
+    // fond : médiane de l'anneau carré à anneauFond px du doigt, élargi (× 2, × 4) tant qu'il a la couleur du pixel
+    // touché. 🩸 Un toucher au cœur d'un pilier plein lisait le pilier comme fond (refus « fond » au lieu de « masse »).
+    const anneau = function (R) {
+      const cr = [], cv = [], cb = [];
+      for (let j = py - R; j <= py + R; j++) for (let i = px - R; i <= px + R; i++) {
+        if (i < 0 || j < 0 || i >= W || j >= H || (Math.abs(i - px) !== R && Math.abs(j - py) !== R)) continue;
+        const q = j * W + i;
+        if (opaque(q)) { cr.push(d[q * 4]); cv.push(d[q * 4 + 1]); cb.push(d[q * 4 + 2]); }
+      }
+      return cr.length ? rgbVersLab(med(cr), med(cv), med(cb)) : null;
+    };
+    const R0 = Math.max(6, Math.round(FRONT.anneauFond * e));
+    let labF = null;
+    for (let k = 1; k <= 4; k *= 2) {
+      const l = anneau(R0 * k);
+      if (l) labF = l;
+      if (labF && deltaE(lab(py * W + px), labF) >= REMPLIR.tolerance) break;
+    }
+    if (!labF) return { refus: "hors" };
+    const re = Math.max(1, Math.round(FRONT.rayonEncre * e));
+    let p0 = -1, dm = -1;
+    for (let j = Math.max(0, py - re); j <= Math.min(H - 1, py + re); j++) {
+      for (let i = Math.max(0, px - re); i <= Math.min(W - 1, px + re); i++) {
+        const q = j * W + i, v = opaque(q) ? deltaE(lab(q), labF) : -1;
+        if (v > dm) { dm = v; p0 = q; }
+      }
+    }
+    if (dm < REMPLIR.tolerance) return { refus: "fond" };
+    const x0p = p0 % W, y0p = (p0 - x0p) / W, l0 = lab(p0), r = [], v = [], bl = [];
+    for (let j = Math.max(0, y0p - 2); j <= Math.min(H - 1, y0p + 2); j++) {
+      for (let i = Math.max(0, x0p - 2); i <= Math.min(W - 1, x0p + 2); i++) {
+        const q = j * W + i;
+        if (!opaque(q) || deltaE(lab(q), l0) > 12) continue;
+        r.push(d[q * 4]); v.push(d[q * 4 + 1]); bl.push(d[q * 4 + 2]);
+      }
+    }
+    const labE = rgbVersLab(med(r), med(v), med(bl));
+    const tol = Number(o.tolerance) > 0 ? Number(o.tolerance) : Math.max(REMPLIR.tolerance, 0.5 * deltaE(labE, labF));
+    // Cadre de calcul : boîte de la composante de l'encre touchée (pas de 2 px : elle enjambe un trou de 1 px que la
+    // fermeture bouchera), élargie de 3 px. 🩸 Tout le bloc coûtait ~5 s à 4 096² (couleur, distance, ouvertures,
+    // squelette) ; un long front isolé n'en occupe qu'une bande. Exact : un pixel d'encre voisin de la composante en
+    // ferait partie, l'érosion et la distance n'y voient donc rien au-delà du cadre.
+    const etat = new Uint8Array(N), pile = [p0];   // 1 : encre de la composante, 2 : testé, pas de l'encre
+    let bx0 = x0p, by0 = y0p, bx1 = x0p, by1 = y0p;
+    etat[p0] = 1;
+    while (pile.length) {
+      const q = pile.pop(), qx = q % W, qy = (q - qx) / W;
+      if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const x = qx + dx, y = qy + dy, t = y * W + x;
+        if (x < 0 || y < 0 || x >= W || y >= H || etat[t]) continue;
+        if (opaque(t) && deltaE(lab(t), labE) <= tol) { etat[t] = 1; pile.push(t); } else etat[t] = 2;
+      }
+    }
+    const cx0 = Math.max(0, bx0 - 3), cy0 = Math.max(0, by0 - 3);
+    const cw = Math.min(W - 1, bx1 + 3) - cx0 + 1, ch = Math.min(H - 1, by1 + 3) - cy0 + 1;
+    const comp = new Uint8Array(cw * ch);   // encre de la composante, dans le cadre
+    for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) if (etat[(cy0 + j) * W + cx0 + i] === 1) comp[j * cw + i] = 1;
+    // bord du BLOC lu (pas du cadre) : l'appelant relit plus grand
+    const auBord = function (pt) {
+      const bx = (pt.x - ox) * e, by = (pt.y - oy) * e;
+      return bx < FRONT.bord || by < FRONT.bord || bx > W - FRONT.bord || by > H - FRONT.bord;
+    };
+    return _suivreCadre(comp, cw, ch, (y0p - cy0) * cw + (x0p - cx0), e,
+      ox + cx0 / e, oy + cy0 / e, { x: ox + (px + 0.5) / e, y: oy + (py + 0.5) / e }, re, auBord, o);
+  }
+  // Suite de suivreTrait dans le cadre de calcul (W × H, coin plan ox, oy) : T = encre de la composante touchée,
+  //   p0 = pixel d'encre touché (indice du cadre), cible = point touché (px plan), auBord(point plan) = bout au bord
+  //   du bloc lu.
+  function _suivreCadre(T, W, H, p0, e, ox, oy, cible, re, auBord, o) {
+    const N = W * H;
+    const med = function (t) { t.sort(function (a, b) { return a - b; }); return t[t.length >> 1]; };
+    const x0p = p0 % W, y0p = (p0 - x0p) / W;
+    const F = new Uint8Array(N), tmp = new Uint8Array(N);
+    _passe(T, tmp, W, H, 1, false);
+    _passe(tmp, F, W, H, 1, true);
+    for (let i = 0; i < N; i++) if (T[i]) F[i] = 1;
+    const dist = _distance(F, W, H);
+    let dc = 0;
+    for (let j = Math.max(0, y0p - 2); j <= Math.min(H - 1, y0p + 2); j++) {
+      for (let i = Math.max(0, x0p - 2); i <= Math.min(W - 1, x0p + 2); i++) if (dist[j * W + i] > dc) dc = dist[j * W + i];
+    }
+    // masses de la couleur du trait : ouverture d'un carré plus large que le trait touché, dilatée de 1 px
+    if (o.masses !== false) {
+      const Ro = Math.round(dc / 3) + FRONT.ouvertureMarge, M = new Uint8Array(N);
+      _passe(F, tmp, W, H, Ro, true);
+      _passe(tmp, M, W, H, Ro + 1, false);
+      if (M[p0]) return { refus: "masse" };
+      for (let i = 0; i < N; i++) if (M[i]) F[i] = 0;
+    }
+    // composante (8-connexe) du trait touché, puis son squelette
+    const S = new Uint8Array(N), file = new Int32Array(N);
+    let n = 0;
+    file[n++] = p0; S[p0] = 1;
+    for (let h = 0; h < n; h++) {
+      const q = file[h], qx = q % W, qy = (q - qx) / W;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = qx + dx, y = qy + dy, t = y * W + x;
+        if (x < 0 || y < 0 || x >= W || y >= H || S[t] || !F[t]) continue;
+        S[t] = 1; file[n++] = t;
+      }
+    }
+    _squelette(S, W, H);
+    const rm = Math.max(4, Math.round(FRONT.rayonMediane * e)), autour = [];
+    for (let j = Math.max(0, y0p - rm); j <= Math.min(H - 1, y0p + rm); j++) {
+      for (let i = Math.max(0, x0p - rm); i <= Math.min(W - 1, x0p + rm); i++) if (S[j * W + i]) autour.push(dist[j * W + i]);
+    }
+    const dmed = autour.length ? med(autour) : dc;
+    if (o.minces !== false) for (let i = 0; i < N; i++) if (S[i] && dist[i] <= FRONT.partMince * dmed) S[i] = 0;
+    // graphe : ergots plus courts que l'épaisseur retirés, carrefours voisins fusionnés
+    const g = _graphe(_axesSquelette(S, dist, W, H, ox, oy, e, { x: 0, y: 0, w: W, h: H }));
+    const bmin = (2 * dmed / 3 + 2) / e;
+    _elaguer(g, bmin);
+    _fusionnerNoeuds(g);
+    _elaguer(g, bmin);
+    let best = -1, dmin = Infinity;
+    g.aretes.forEach(function (a, id) {
+      if (!a.vivante) return;
+      for (let i = 1; i < a.pts.length; i++) {
+        const dd = _projSeg(cible, a.pts[i - 1], a.pts[i]).d;
+        if (dd < dmin) { dmin = dd; best = id; }
+      }
+    });
+    if (best < 0 || dmin > (dc / 3 + re + 3) / e) return { refus: "masse" };
+    const A = g.aretes[best], pts = _depuis(g, A, A.a);
+    // 🩸 Un pilier plein touché en son cœur mesure sa propre épaisseur (l'ouverture ne le voit pas comme une masse) :
+    //   son squelette, plus court que lui, part en ergots (rien près du doigt) ; un « trait » plus court que
+    //   allongement × son épaisseur n'est pas un front non plus. Même refus pour un trait trop court.
+    if (_longueur(pts) < Math.max(4 / e, FRONT.allongement * Math.max(dc, dmed) * 2 / 3 / e)) return { refus: "masse" };
+    const genre = function (nd, p) {
+      if (A.a === A.b) return "boucle";
+      if (_degre(g, nd) >= 3) return "carrefour";
+      return auBord(p) ? "bord" : "bout";
+    };
+    const bouts = [genre(A.a, pts[0]), genre(A.b, pts[pts.length - 1])];
+    const demi = dmed / 3 / e;
+    let ligne = pts.map(function (p) { return { x: p.x, y: p.y, r: demi }; });
+    let eps = Math.max(0.5 / e, o.simplification === undefined ? REMPLIR.simplification : Number(o.simplification));
+    if (Number(o.affiner) > 0) {
+      ligne = _affinerLigne(ligne, Number(o.affiner), eps, [bouts[0] === "bout", bouts[1] === "bout"]);
+      eps = 0.5 / e;
+    }
+    const res = reseauGaleries([ligne], { simplification: eps, brancheMin: 0,
+      doublon: Number(o.doublon) > 0 ? Number(o.doublon) : GALERIES.doublon, existants: o.existants || [],
+      obstacles: [] });
+    if (!res.traces.length) return { refus: "deja" };
+    return { traces: res.traces, bouts: bouts, bord: bouts.indexOf("bord") >= 0, deja: res.deja,
+             accroches: res.accroches, epaisseur: (2 * dmed) / 3 / e };
+  }
+  // Affiner un front (case « Affiner les contours ») : polyligne [{ x, y, r }] → lissée (moyenne glissante de
+  // demi-fenêtre `tol`, 2 passes, rétrécie aux bouts), simplifiée à max(eps, tol / 2), coins rendus vifs (droites
+  // ajustées sur la partie centrale de chaque côté, _croiser).
+  // ⚠️ contrat : un bout au carrefour ou au bord ne bouge pas (le raccord du toucher suivant reste exact) ; un bout
+  //   LIBRE (libres[k]) et ses points à fenêtre rétrécie sont ramenés sur la droite ajustée de leur bout de trait
+  //   (sinon le bruit du bout y laisse un sommet).
+  function _affinerLigne(pts, tol, eps, libres) {
+    const P = [];
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], k = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.y - a.y)));
+      for (let j = 0; j < k; j++) P.push([a.x + ((b.x - a.x) * j) / k, a.y + ((b.y - a.y) * j) / k]);
+    }
+    const fin = pts[pts.length - 1];
+    P.push([fin.x, fin.y]);
+    const N = P.length, h = Math.min(Math.max(1, Math.round(tol)), Math.floor((N - 1) / 2));
+    if (h < 1) return pts;
+    let S = P;
+    for (let passe = 0; passe < AFFINER.passes; passe++) {
+      S = S.map(function (p, i) {
+        const k = Math.min(h, i, N - 1 - i);
+        if (!k) return p;
+        let sx = 0, sy = 0;
+        for (let j = i - k; j <= i + k; j++) { sx += S[j][0]; sy += S[j][1]; }
+        return [sx / (2 * k + 1), sy / (2 * k + 1)];
+      });
+    }
+    const droite = function (a, c) {
+      const m = Math.min(2 * h, Math.floor((c - a) / 4));
+      let cx = 0, cy = 0, nb = 0, xx = 0, yy = 0, xy = 0;
+      for (let j = a + m; j <= c - m; j++) { cx += S[j][0]; cy += S[j][1]; nb++; }
+      cx /= nb; cy /= nb;
+      for (let j = a + m; j <= c - m; j++) {
+        const dx = S[j][0] - cx, dy = S[j][1] - cy;
+        xx += dx * dx; yy += dy * dy; xy += dx * dy;
+      }
+      const ang = 0.5 * Math.atan2(2 * xy, xx - yy);
+      return { x: cx, y: cy, ux: Math.cos(ang), uy: Math.sin(ang) };
+    };
+    const projeter = function (q, D) {
+      const u = (q[0] - D.x) * D.ux + (q[1] - D.y) * D.uy;
+      return [D.x + u * D.ux, D.y + u * D.uy];
+    };
+    [0, 1].forEach(function (k) {
+      if (!libres || !libres[k] || N < 8) return;
+      const L = Math.min(N - 1, 4 * h), D = k ? droite(N - 1 - L, N - 1) : droite(0, L);
+      for (let j = 0; j < Math.min(h, N >> 1); j++) {
+        const i = k ? N - 1 - j : j;
+        S[i] = projeter(S[i], D);
+      }
+    });
+    const V = _dp(S, Math.max(eps, tol / 2)), rang = new Map();
+    S.forEach(function (p, i) { rang.set(p, i); });
+    const idx = V.map(function (p) { return rang.get(p); });
+    const r0 = pts[0].r;
+    return V.map(function (p, k) {
+      if (k === 0 || k === V.length - 1) return { x: p[0], y: p[1], r: r0 };
+      const q = _croiser(droite(idx[k - 1], idx[k]), droite(idx[k], idx[k + 1]));
+      return q && Math.hypot(q[0] - p[0], q[1] - p[1]) <= 2 * tol ? { x: q[0], y: q[1], r: r0 } : { x: p[0], y: p[1], r: r0 };
+    });
+  }
+
   const api = { detecter: detecter, detecterBloc: detecterBloc, depuisMetres: depuisMetres, REGLAGES: REGLAGES,
                 executeurWorker: executeurWorker, executeurLocal: executeurLocal, recalculer: recalculer,
                 mesurerExemple: mesurerExemple, reglagesDepuisExemples: reglagesDepuisExemples,
@@ -2096,7 +2339,7 @@
                 remplir: remplir, REMPLIR: REMPLIR, plafondRemplir: plafondRemplir,
                 toleranceAffinage: toleranceAffinage, AFFINER: AFFINER, _magasin: _magasin,
                 reseauGaleries: reseauGaleries, remplirGalerie: remplirGalerie, reglagesGaleries: reglagesGaleries,
-                GALERIES: GALERIES };
+                GALERIES: GALERIES, suivreTrait: suivreTrait, FRONT: FRONT };
   racine.KtaDetection = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : globalThis);
