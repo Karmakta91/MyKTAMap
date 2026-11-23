@@ -414,7 +414,11 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   alerte d'extension) quand le DÉTAIL d'une alerte est posé à l'écran ; **liste à l'écran** : `afficherSelecteurAlertes`
   émet **`mktm:alertes-listees`** `{ alertes: [{ id, released }] }` (les alertes de la liste, ids tels qu'affichés)
   quand la liste est posée. Signaux sortants seulement : une extension en tire un accusé de lecture ; sans écouteur,
-  rien (l'acquittement local ne change pas : fermer la liste n'acquitte rien sur l'appareil). **Déjà vue** : `vue:
+  rien (l'acquittement local ne change pas : fermer la liste n'acquitte rien sur l'appareil). **Urgence devant**
+  (`level: "emergency"`) : elle s'ouvre seule, tout de suite, et retire une information à l'écran sans l'acquitter ;
+  une alerte qui attend derrière une urgence n'émet aucun signal avant d'être vraiment affichée, une alerte recouverte
+  est réaffichée après (signal émis une seconde fois : l'écouteur doit être idempotent). Détail :
+  `infra-versioning.md` § Urgence devant. **Déjà vue** : `vue:
   true` (strict) sur une alerte de l'extension = elle la sait vue ailleurs (autre appareil du même compte) —
   `AlertChecker` la traite comme acquittée (pas d'ouverture d'office, « acquittée » dans la liste), crue seulement pour
   un id `ext_`. Sans extension, aucune alerte n'a `vue`.
