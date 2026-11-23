@@ -283,7 +283,7 @@ remplacent celles du plan.
 
 - **`plan.histoirePdfs`** (tableau, depuis v1.71.0) : chemins relatifs `"data/<nom>.pdf"` des PDF embarqués par le générateur (multi-upload, noms sanitizés + dédoublonnés `-2`, `-3`…).
 - **`plan.histoirePdf`** (chaîne, historique) : TOUJOURS écrit = **premier élément** du tableau → une app antérieure à v1.71.0 lit au moins le premier document.
-- ⚠️ Lecteurs : préférer le tableau, replier sur la chaîne, **ne jamais concaténer les deux** (doublon garanti). `config.js` résout chaque entrée via `getRuntimeAssetUrl` ; `modeHistoire._getEmbeddedPdfUrls()` liste N entrées 📕 (ids `__embed__<i>`, non supprimables) ; `homeLoader._addPath` collecte chaque chemin (assets runtime ZIP).
+- ⚠️ Lecteurs : préférer le tableau, replier sur la chaîne, **ne jamais concaténer les deux** (doublon garanti). `homeLoader._addPath` extrait chaque chemin du ZIP, `main.js > startImportedPlan` enregistre CHAQUE entrée du tableau et de la chaîne dans `RUNTIME_ASSETS`, `config.js` les résout en blob: URL (`getRuntimeAssetUrl`) ; un plan serveur en dossier les préfixe par son dossier (`resolveServerPaths`). 🩸 Un lecteur qui oublie le tableau laisse un chemin brut, servi comme une adresse du site (page 404 ou `index.html` téléchargée à la place du PDF). `modeHistoire._getEmbeddedPdfUrls()` liste N entrées 📕 (ids `__embed__<i>`, non supprimables).
 - Aucun PDF → les deux champs **absents** (rétrocompat stricte inchangée).
 
 ---

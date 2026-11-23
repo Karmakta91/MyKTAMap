@@ -90,7 +90,7 @@
         const ext = filename.split(".").pop().toLowerCase();
         return ({ json:"application/json", png:"image/png", jpg:"image/jpeg",
                   jpeg:"image/jpeg", gif:"image/gif", webp:"image/webp",
-                  svg:"image/svg+xml" })[ext] || "application/octet-stream";
+                  svg:"image/svg+xml", pdf:"application/pdf" })[ext] || "application/octet-stream";
       }
 
       async function extraireZip(zipFile) {

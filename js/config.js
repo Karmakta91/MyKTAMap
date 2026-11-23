@@ -563,6 +563,15 @@ function resolveServerPaths(config, baseDir) {
   if (config.plan?.baseImage) config.plan.baseImage = resolveServerPath(config.plan.baseImage, baseDir);
   (config.imageLayers || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
   (config.dataLayers  || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
+  // PDF du Mode Histoire : `data/…` est relatif au ZIP, donc au dossier du plan (sinon 404 à la racine du site).
+  if (typeof config.plan?.histoirePdf === "string") {
+    config.plan.histoirePdf = resolveServerPath(config.plan.histoirePdf, baseDir);
+  }
+  if (Array.isArray(config.plan?.histoirePdfs)) {
+    config.plan.histoirePdfs = config.plan.histoirePdfs.map(function(p) {
+      return typeof p === "string" ? resolveServerPath(p, baseDir) : p;
+    });
+  }
   // Icônes : traitées ici aussi (sinon les icônes personnalisées du plan restent cherchées à la racine).
   if (config.icons && typeof config.icons === "object") {
     // 🩸 D'abord jeter ce qui n'est pas un chemin, sinon on fabrique une URL vers un fichier qui n'existe pas.
