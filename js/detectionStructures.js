@@ -1271,10 +1271,14 @@ window.KtaDetectionUI = (function () {
   //   (document, bulle), que stopPropagation coupe. Ctrl+Z / Cmd+Z retire le dernier remplissage ; Ctrl+Y et
   //   Ctrl+Maj+Z sont avalés aussi (rien à refaire ici, et le ↪ global écrirait sous la fenêtre). Un champ de saisie
   //   garde son annulation native ; une fenêtre au-dessus : touche avalée, rien retiré.
+  // ⚠️ Visée en pause avec un outil armé (_mettreEnPause, interface.js > ktaOutilArme) : les trois raccourcis sont à
+  //   l'outil (historyManager.js annule le dernier sommet du tracé en cours), le remplissage reste. 🩸 En pause sans
+  //   outil (modale, Échap de la carte) la fenêtre les garde : sinon Ctrl+Z défait le « Valider » précédent.
   function _onKey(ev) {
     if (!_e) return;
     const k = (ev.key || "").toLowerCase();
     if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (k === "z" || k === "y")) {
+      if (_e.pause && typeof window.ktaOutilArme === "function" && window.ktaOutilArme()) return;
       const ae = document.activeElement, tag = ae && ae.tagName;
       const saisie = tag === "TEXTAREA" || (ae && ae.isContentEditable) ||
         (tag === "INPUT" && ["range", "checkbox", "radio", "button", "submit"].indexOf(ae.type) < 0);

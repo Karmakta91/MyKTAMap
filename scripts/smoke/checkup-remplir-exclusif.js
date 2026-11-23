@@ -13,7 +13,9 @@
 //   3. tracé, zone, mesure et ajout de point mettent aussi Remplir en pause, et la reprise les désarme ;
 //   4. cadre (deux coins) : même pause, bouton « Reprendre le cadre » ;
 //   5. sens inverse : outil armé, puis « Remplir au clic » → l'outil tombe ;
-//   6. outil armé, puis la pipette → l'outil tombe ; pipette armée, puis un outil → pipette lâchée.
+//   6. outil armé, puis la pipette → l'outil tombe ; pipette armée, puis un outil → pipette lâchée ;
+//   Ctrl+Z : visée en pause et tracé en cours → il annule le dernier sommet de l'outil, le remplissage reste
+//   (fenêtre muette) ; visée active, ou en pause sans outil → il retire le dernier remplissage.
 // Usage : NODE_PATH=<node_modules de scripts/smoke> SMOKE_PORT=8210 node scripts/smoke/checkup-remplir-exclusif.js
 // Doc : docs/architecture/plans-loader.md (Détecter les structures, Un seul mode de clic)
 // =====================================================================
@@ -226,6 +228,16 @@ async function parcours(page, O, galeries) {
     nom + " : deux clics dans deux formes = deux sommets de l'outil, aucun remplissage",
     { n: nombre(e, galeries), sommets: sommets });
 
+  // Ctrl+Z en pause : à l'outil (dernier sommet annulé), jamais au remplissage
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(200);
+  e = await etat(page);
+  const apresZ = await sommetsEnCours(page);
+  m = await modes(page);
+  verifier(apresZ === 1 && nombre(e, galeries) === 1 && outilArme(m) && !!e && e.pause === true,
+    nom + " : en pause, Ctrl+Z annule le dernier sommet de l'outil, le remplissage reste",
+    { sommets: apresZ, n: nombre(e, galeries), m: m });
+
   // ── 2. Reprendre : l'outil tombe, la visée revient ──
   verifier(await cliquerBandeau(page, "reprendre"), nom + " : clic sur « Reprendre »");
   m = await modes(page); e = await etat(page);
@@ -234,6 +246,27 @@ async function parcours(page, O, galeries) {
   const m2 = milieu(2);
   await toucher(page, m2.x, m2.y);
   verifier(nombre(await etat(page), galeries) === 2, nom + " : le clic suivant remplit (2 en aperçu)",
+    nombre(await etat(page), galeries));
+
+  // Ctrl+Z, visée active : la fenêtre le prend et retire le dernier remplissage ; on le refait pour la suite
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(200);
+  e = await etat(page);
+  verifier(!!e && e.pause === false && nombre(e, galeries) === 1,
+    nom + " : visée active, Ctrl+Z retire le dernier remplissage (1 en aperçu)", court(e, galeries));
+  // En pause SANS outil (modale ouverte sur la carte) : la fenêtre garde Ctrl+Z, jamais l'historique global
+  await page.evaluate(function () { window.ktaCouperModesOutils(); });
+  m = await modes(page); e = await etat(page);
+  verifier(!outilArme(m) && !!e && e.pause === true, nom + " : modes coupés → visée en pause, aucun outil", m);
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(200);
+  e = await etat(page);
+  verifier(!!e && nombre(e, galeries) === 0, nom + " : en pause sans outil, Ctrl+Z reste à la fenêtre",
+    court(e, galeries));
+  await cliquerBandeau(page, "reprendre");
+  await toucher(page, m0.x, m0.y);
+  await toucher(page, m2.x, m2.y);
+  verifier(nombre(await etat(page), galeries) === 2, nom + " : remplissages refaits (2 en aperçu)",
     nombre(await etat(page), galeries));
 
   // ── 3. Les autres outils de la carte ──

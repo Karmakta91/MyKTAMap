@@ -1021,7 +1021,10 @@ les galeries → tracés » plus bas.
   - ⚠️ Clavier : tant que la fenêtre est ouverte, son écouteur en capture sur `document` (`_onKey`) prend Ctrl+Z,
     Ctrl+Y et Ctrl+Maj+Z, avant celui de `historyManager.js` (bulle) : jamais d'annulation globale sous la fenêtre
     (sans lui, Ctrl+Z défaisait le « Valider » précédent). Champ de saisie : annulation native. Fenêtre fermée :
-    Ctrl+Z revient à l'historique.
+    Ctrl+Z revient à l'historique. ⚠️ **Visée en pause avec un outil armé** (`etat().pause` et
+    `interface.js > ktaOutilArme()`) : les trois raccourcis ne sont plus captés, ils vont à l'outil
+    (`historyManager.js` annule le dernier sommet du tracé en cours) et les remplissages restent. 🩸 En pause SANS
+    outil (modale ouverte sur la carte, Échap de la carte) la fenêtre les garde. Checkup : `checkup-remplir-exclusif.js`.
   - Moteur `ktaDetection.js > remplir(bloc, x, y, o)` (pur, testé en Node) : trait = tout pixel à plus de ΔE 20 de
     la couleur sous le doigt (médiane du carré 5 × 5) ; ⚠️ **fermeture** du masque du trait (carré de rayon 1 :
     dilatation puis érosion) avant le remplissage : un trou de 1 à 2 px est bouché, un trou de 3 px et plus reste
