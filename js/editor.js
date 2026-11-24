@@ -106,6 +106,13 @@ function _buildTypeOptionsHTML(selectedTag) {
     if (!EDITOR_EXCLURE.includes(k)) tagsSet.add(k);
   });
   EDITOR_EXCLURE.forEach(function(k) { tagsSet.delete(k); });
+  // 🩸 Un tag créé à la volée (« Nouveau tag ») vit sur le POINT seul : PLAN_CONFIG.icons ne le garde pas au
+  // rechargement. Sans les tags des points de session et celui du point ouvert, la liste s'ouvrait sur « Aucun tag »
+  // et Enregistrer effaçait le tag.
+  (Array.isArray(listePoints) ? listePoints : []).forEach(function(p) {
+    if (p && Array.isArray(p.tags) && p.tags[0] && !EDITOR_EXCLURE.includes(p.tags[0])) tagsSet.add(String(p.tags[0]));
+  });
+  if (selectedTag) tagsSet.add(String(selectedTag));
 
   // Les ICÔNES CUSTOM de la légende sont des tags sélectionnables (icône résolue par _iconMap[id], enregistrée
   // par map.js et mise à jour par onCustomEntriesChange).
@@ -132,7 +139,7 @@ function _buildTypeOptionsHTML(selectedTag) {
     const label = EDITOR_TAG_LABELS[tag] ? window.I18n.t("editor.tag." + tag)
                 : (customIconLabels[tag] || tag);
     const sel   = tag === selectedTag ? ' selected' : '';
-    return `<option value="${tag}"${sel}>${label}</option>`;
+    return `<option value="${window.ktaEsc(tag)}"${sel}>${window.ktaEsc(label)}</option>`;
   }).join("");
 
   html += '<option value="__new__">' + window.I18n.t("editor.options.newTag") + '</option>';
