@@ -17,7 +17,7 @@ The app has **no ambition to replace** old annotated paper maps, outings guided 
 ### The philosophy
 
 - 🌐 **100% offline by default** — the app works without a network once the map is loaded. You can launch it on a plane, in the metro, or 30 m underground.
-- 🔒 **Zero telemetry** — no third-party service is called to track you. The only outside requests are the update check and, if one of your maps is GPS-calibrated, the OpenStreetMap background of the OSM View (on by default, can be turned off in ⚙️ Configuration): none of your map data goes out. The auditor can verify in `🔒 Network audit`.
+- 🔒 **Zero telemetry** — no third-party service is called to track you. The only outside requests are the update check and, if one of your maps is GPS-calibrated, the OpenStreetMap background of the Map view (on by default, can be turned off in ⚙️ Configuration): none of your map data goes out. The auditor can verify in `🔒 Network audit`.
 - 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`📤 Export`) and erase everything in 2 clicks (`💥 Reset everything`).
 - 🤝 **Open code** — the license is `CC BY-NC-SA 4.0`. You can read the code, audit it. No black box, no marketing.
 - ⚖️ **Discretion = respect** — a map shared carelessly is a weakened place. The app contains no maps by default; it is up to each user to load their own, and **not to distribute them** beyond the circle of trust.
@@ -48,13 +48,13 @@ To those who agreed to go down with an unstable `1.x.y-beta` version, to come ba
 MyKTAMap relies entirely on **open-source bricks**. Without these projects, the app simply would not exist:
 
 - 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — interactive map engine. Heart of the map display. Thanks to **Vladimir Agafonkin** and the many contributors of the project.
-- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers and for the projection of MyKTAMap plans **onto the OSM View**. Thanks to **Iván Sánchez Ortega** for this elegant plugin.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers and for the projection of MyKTAMap plans **onto the Map view**. Thanks to **Iván Sánchez Ortega** for this elegant plugin.
 - 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
 - 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
 - 📸 **[html2canvas](https://html2canvas.hertzen.com/)** *(MIT, vendored)* — DOM-to-image capture (canvas → PNG). Used to embed the **Leaflet OSM map** in the **« Firefighters Briefing »** PDFs of the Rescue Mode: the full graphic stack (tiles + overlays + projected plan) is captured as a frozen image and embedded in the PDF handed to external rescue teams. Thanks to **Niklas von Hertzen** and contributors.
 - 🧊 **[three.js](https://threejs.org/)** *(MIT, vendored)* — 3D engine for the browser (WebGL). Draws the **🧊 3D view**: the map in relief around your position. Loaded only the first time the view opens, then available offline. Thanks to **Ricardo Cabello (mrdoob)** and the contributors.
 - 🎨 **[Twemoji](https://github.com/twitter/twemoji)** *(artwork CC-BY 4.0, [twemoji-colr](https://github.com/mozilla/twemoji-colr) font by Mozilla, Apache 2.0, subset)* — draws the emoji in the app's texts (messages, alerts, profile medals, export legend, 3D view labels): they look the same on iPhone, Android and PC, offline, with nothing downloaded from elsewhere. Thanks to the **Twemoji** authors and to **Mozilla** for the colour version.
-- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget) **as soon as one of your maps is GPS-calibrated** (on by default, can be turned off in ⚙️ Configuration). The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **Map view** (modal + HOME widget) **as soon as one of your maps is GPS-calibrated** (on by default, can be turned off in ⚙️ Configuration). The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the Map view would not exist.
 - 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
 - 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
@@ -77,7 +77,7 @@ For taking 10 minutes to read instead of clicking blindly. This is exactly the s
 
 ---
 
-**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + OSM View projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🧊 three.js (3D view) · 🎨 Twemoji (emoji in texts, CC-BY 4.0) · 🌍 OpenStreetMap & contributors (ODbL data, OSM View can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
+**Library & algorithm credits** — 🍃 Leaflet (interactive mapping) · 🔄 Leaflet.ImageOverlay.Rotated (2-anchor fitting + Map view projection) · 📦 JSZip (reading/writing ZIP archives) · 📤 jsPDF (printable PDF export) · 📸 html2canvas (DOM capture for the firefighters' Briefing PDF) · 🧊 three.js (3D view) · 🎨 Twemoji (emoji in texts, CC-BY 4.0) · 🌍 OpenStreetMap & contributors (ODbL data, Map view can be turned off) · 🧭 Dijkstra (shortest path for itineraries) · 🌐 GPX 1.1 (outdoor exchange).
 
 ---
 
@@ -125,7 +125,7 @@ The author can broadcast **safety alerts** to the whole community: fire, access 
 
 **Your annotations, sessions, maps and personal data stay on your device: nothing is sent to a server or to a third-party service.**
 
-The app only contacts its own site (loading, updates, alerts, connection test) and OpenStreetMap, which serves the background of the **OSM view** — on by default, can be turned off in ⚙️ Configuration. OpenStreetMap therefore sees the areas you look at, but none of your map data.
+The app only contacts its own site (loading, updates, alerts, connection test) and OpenStreetMap, which serves the background of the **Map view** — on by default, can be turned off in ⚙️ Configuration. OpenStreetMap therefore sees the areas you look at, but none of your map data.
 
 To check it yourself: ⚙️ Configuration (home screen) › **🔒 Privacy & Audit**:
 
@@ -302,7 +302,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 - the **compass rose** on the left takes you back to the home screen;
 - the **map name** opens **🗂️ Switch map** (see below);
 - the **counters** 📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures · 📸 photos open **📊 Session details**;
-- on the right: **📖** Story Mode, **🌍** basemap under the map, OpenStreetMap or IGN (georeferenced map, see “🌍 OSM View”), **🚨** Emergency exit, **🔋** battery.
+- on the right: **📖** Story Mode, **🌍** basemap under the map, OpenStreetMap or IGN (georeferenced map, see “🌍 Map view”), **🚨** Emergency exit, **🔋** battery.
 
 **At the bottom**, a status bar groups what is in progress: 📐 measurement, 📏 total path distance, 🗺️ route (distance, time, pace — tap it to open the route) and the **🧭 tracker** light (ON · steps · distance while tracking; tap it to open the Tracker menu). It wraps onto a second line if everything doesn't fit; the ▾▴ button collapses it.
 
@@ -351,7 +351,7 @@ A click on the top counters opens the map's **dashboard**:
 - **Pinch** to zoom, **drag** to move around (or use the **+** / **−** buttons at the top left).
 - **Twisting two fingers** turns the map (Shift + wheel on a computer); the **north** button, at the bottom left (above the compass when it is open), straightens it. A drawing tool, measurement or realignment straighten it; 🔃 Oriented map takes over while tracking. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
 - **Tapping an icon** opens the point's popup; **double-tapping** zooms onto it (like the popup's “Go” button).
-- Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (OSM view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
+- Icons shrink as you zoom out to stay at the map's scale, on the plan as well as on the OSM maps (Map view and the home screen map). To keep a fixed size: home ⚙️ Configuration → 🎨 Display → “📐 Scale icon size with zoom”.
 
 #### 🌐 GPS coordinates in popups
 
@@ -395,7 +395,7 @@ The **≡** button at the top right of the map opens **≡ Display filters**. Ev
 In the Legend, **✏️ Edit**. For each path, zone or structure type:
 
 - **Rename**: your label (“Main” → “Grand gallery”) shows everywhere — legend, popups, statistics, filters.
-- **🎨 Colour**: one square per row; two for zones, pillars and walls (fill and border). The colour applies at once everywhere: map, image, PDF and KMZ exports, statistics, OSM View. **↺** restores the original colours. With no border chosen, a zone takes a darker shade of its fill; a recoloured *Inaccessible* zone loses its hatching.
+- **🎨 Colour**: one square per row; two for zones, pillars and walls (fill and border). The colour applies at once everywhere: map, image, PDF and KMZ exports, statistics, Map view. **↺** restores the original colours. With no border chosen, a zone takes a darker shade of its fill; a recoloured *Inaccessible* zone loses its hatching.
 - **👁️ Hide** removes the entry from the legend box only. To hide objects on the map, use **≡ Filters**.
 - **➕ Add an entry** creates your own type (path, zone, structure, icon) with its colour, drawable right away. Shortcut: the **New type…** row of the Paths, Zones and Structures menus, which selects the new type.
 - **🗑️ Delete** one of your types: if objects still use it, the app tells you how many before confirming.
@@ -854,7 +854,7 @@ A link joins **a point on one map to a point on another map** — a “portal”
 
 **🌀 My links** (on the home screen) lists all your links: ➜ to go to one end, 🗑️ to delete, ⛔ if a map is missing from the device. Two views:
 
-- **List** — with, when both maps are georeferenced, the **Alignment gap**: the distance between the two ends, which mark the same real spot. It is not a distance to walk: the smaller it is, the better your georeferencing. An absurd gap almost always comes from the georeferencing of one of the two maps. The OSM View ranks these gaps from worst to best.
+- **List** — with, when both maps are georeferenced, the **Alignment gap**: the distance between the two ends, which mark the same real spot. It is not a distance to walk: the smaller it is, the better your georeferencing. An absurd gap almost always comes from the georeferencing of one of the two maps. The Map view ranks these gaps from worst to best.
 - **Graph** — your library as a network: one bubble per map, one line per border (thicker with more links). Tap a bubble to open the map, a line to see its links; drag the bubbles with your finger.
 
 ### 🧭 Route to another map
@@ -869,36 +869,36 @@ By default, the route crosses only one border (your map and the destination map)
 
 ---
 
-## 🌍 OSM View
+## 🌍 Map view
 
-The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
+The Map view lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
 
-- **On the home screen**, the **🌍 OSM View** widget; its **⛶** button opens the OSM mode full screen.
-- **On a map**, the **🌍** button in the top bar does not open the OSM View: it puts a basemap **under** the map (“Basemap under the map”, below). Rescue Mode still opens the OSM View window.
+- **On the home screen**, the **🌍 Map view** widget; its **⛶** button opens the OSM mode full screen.
+- **On a map**, the **🌍** button in the top bar does not open the Map view: it puts a basemap **under** the map (“Basemap under the map”, below). Rescue Mode still opens the Map view window.
 - A map only shows up once it has been **opened at least once**: that is when the app reads its georeferencing.
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
-- **Basemap**: in the OSM View window bar, the **Basemap** list picks **OpenStreetMap** (default), **IGN – aerial photos** or **IGN – map**. The choice is kept on the device and applies everywhere: basemap under the map, home screen map (which switches at once) and the Rescue briefing map. The IGN basemaps cover France: elsewhere, OpenStreetMap shows instead. They contact the IGN (`data.geopf.fr`), only when you choose them, and are turned off with the OSM View. Offline stays OpenStreetMap only: with an IGN basemap, **💾 Save Offline** is greyed out, in the window (dotted border, “OSM only” written inside) as on the home screen (where tapping it tells you why). The window is titled “Map view — map on the chosen base map”; the basemap credit (“OpenStreetMap”, “IGN – Géoplateforme”, both when OpenStreetMap replaces the IGN) shows in small print at the bottom right of the map (can be hidden in ⚙️ Configuration › Display).
+- **Basemap**: in the Map view window bar, the **Basemap** list picks **OpenStreetMap** (default), **IGN – aerial photos** or **IGN – map**. The choice is kept on the device and applies everywhere: basemap under the map, home screen map (which switches at once) and the Rescue briefing map. The IGN basemaps cover France: elsewhere, OpenStreetMap shows instead. They contact the IGN (`data.geopf.fr`), only when you choose them, and are turned off with the Map view. Offline stays OpenStreetMap only: with an IGN basemap, **💾 Save Offline** is greyed out, in the window (dotted border, “OSM only” written inside) as on the home screen (where tapping it tells you why). The window is titled “Map view — map on the chosen base map”; the basemap credit (“OpenStreetMap”, “IGN – Géoplateforme”, both when OpenStreetMap replaces the IGN) shows in small print at the bottom right of the map (can be hidden in ⚙️ Configuration › Display).
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
 
 **Basemap under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel with five commands.
 
 - **Basemap under the map** turns it on or off. When it is on, the 🌍 button stays highlighted and the basemap credit (OpenStreetMap or IGN) shows at the bottom right, above the bottom bar. Closing the panel does not turn it off.
-- **Basemap**: OpenStreetMap, IGN – aerial photos or IGN – map, as in the OSM View window (it is the same choice). Outside France, OpenStreetMap replaces the IGN and its credit is added.
+- **Basemap**: OpenStreetMap, IGN – aerial photos or IGN – map, as in the Map view window (it is the same choice). Outside France, OpenStreetMap replaces the IGN and its credit is added.
 - **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque. Each map remembers its own (50 % the first time). It adds to the base plan **Opacity** slider (≡ Filters): 50 % on each side leaves the plan at 25 %.
 - **My location**: your GPS position, once, without tracking. Refused when you are far from the map, and in incognito mode. Nothing is saved or sent.
-- **Save offline**: downloads the OpenStreetMap tiles of the whole map in advance (200 tiles at most), to have the background without a network. Progress shows in the command, then a message gives the count. Greyed out, with the reason, when offline, in incognito mode, if the OSM View is turned off, or with an IGN basemap (“OSM only”: only OpenStreetMap can be saved).
+- **Save offline**: downloads the OpenStreetMap tiles of the whole map in advance (200 tiles at most), to have the background without a network. Progress shows in the command, then a message gives the count. Greyed out, with the reason, when offline, in incognito mode, if the Map view is turned off, or with an IGN basemap (“OSM only”: only OpenStreetMap can be saved).
 
-The background turns with the oriented map and is off every time a map opens (the transparency is remembered). Without georeferencing, the button is greyed out (hover over it to read why). If the OSM View is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, a line in the panel says so and only saved OpenStreetMap tiles are shown, even with an IGN basemap chosen; at a zoom that was not saved, the closest saved tile is enlarged. Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
+The background turns with the oriented map and is off every time a map opens (the transparency is remembered). Without georeferencing, the button is greyed out (hover over it to read why). If the Map view is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, a line in the panel says so and only saved OpenStreetMap tiles are shown, even with an IGN basemap chosen; at a zoom that was not saved, the closest saved tile is enlarged. Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
 
 **Search**: the bar in the title row looks for a map or a point among your georeferenced maps; the map flies to it. It reads your maps, without asking the Internet anything.
 
 **📏 Measuring**: in OSM mode, the measurement tool gives a distance and an area; they do not depend on any map calibration.
 
-**🧭 Turning the map**: in the OSM View window (Rescue Mode) and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
+**🧭 Turning the map**: in the Map view window (Rescue Mode) and on the home screen map, twist two fingers on the map (Shift + wheel on a computer); the **north** button, at the bottom left of the map, straightens it. The window always reopens north up, and so does the home screen map when you come back to it; picking another map in its list keeps the angle. On the home screen, one finger still moves the map: to scroll the page, put your finger beside it. To prevent it: ⚙️ home screen Configuration › 🎨 Display › **Lock map rotation**.
 
 **🎯 Surface coordinates**: a click on the map gives the latitude and longitude of the point right above, with a Copy button — that is what you pass on to a team arriving from the surface. Their accuracy depends on the map's alignment.
 
-**🗺️ Legend**: in the OSM View window, the **🗺️ Legend** button; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
+**🗺️ Legend**: in the Map view window, the **🗺️ Legend** button; on the home screen, the **🗺️** button of the banner. It is the map's legend, with your names, your colours and your own types, **read-only**: you edit it from the map (🗺️ Legend → ✏️ Edit). On the home screen, it is the legend of the map you just left, otherwise that of the displayed map you opened most recently; when several maps are displayed, a message reminds you that the others have their own.
 
 **🗂️ Several maps at once**: the **≡** button of the banner opens a window with the display settings, the tag filter and the stack of displayed maps:
 
@@ -1055,11 +1055,11 @@ For quarries: the load-bearing elements and the progress of the workings, in the
 
 Press a type, tap the points, then press the lit type again (or **✅ Close the current structure**): a pillar or a wall (3 points minimum) closes back onto its first point, a quarry face, a wall (line) or an arch (2 points minimum) stays an open line. A pillar or a wall also closes when you tap its **first** point again; a quarry face, a wall (line) or an arch finishes when you tap its **last** point again (⏪ right after reopens it). After ✅ or that tap, the tool stays on so you can chain the next pillar or face; press the type again to finish.
 
-A **hand-built pillar** is placed with **a single tap**: a 1 m square (at the map's scale), centred where you tap, its sides aligned with the map, on the active level. The tool stays on: each tap places another pillar, ⏪ removes the last one. Its vertices can then be adjusted like those of the other pillars. Like them, it has no effect on the route, stops the tracker, stands in the 3D view (as a column of stacked stone blocks with 🧱 Textures, each pillar different and the same every time you open it; as a plain block without) and counts as a pillar in the Mined volume. On the map, in the legend and in image and PDF exports it is a yellow square with a thin cross; KMZ and the OSM view show it plain. Detection never offers it.
+A **hand-built pillar** is placed with **a single tap**: a 1 m square (at the map's scale), centred where you tap, its sides aligned with the map, on the active level. The tool stays on: each tap places another pillar, ⏪ removes the last one. Its vertices can then be adjusted like those of the other pillars. Like them, it has no effect on the route, stops the tracker, stands in the 3D view (as a column of stacked stone blocks with 🧱 Textures, each pillar different and the same every time you open it; as a plain block without) and counts as a pillar in the Mined volume. On the map, in the legend and in image and PDF exports it is a yellow square with a thin cross; KMZ and the Map view show it plain. Detection never offers it.
 
 On a multi-level map, **2nd-mass** elements are automatically placed **on level −1** (the bed under the 1st mass), whatever level is shown; the others take the active level. The **Level** list of their card moves them.
 
-A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where it becomes a dressed-stone arch on two piers, from one wall to the other, its keystone at the ceiling: you walk under it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
+A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where it becomes a dressed-stone arch on two piers, from one wall to the other, its keystone at the ceiling: you walk under it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the Map view keep only the blue stroke.
 
 A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A gallery that stops a few pixels short of another is joined to it by the route, unless a wall (line) or an impassable area lies between the two: then it stays separate on that side. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 
@@ -1566,14 +1566,14 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
 
 - **🌍 Application** — the **language**: Français, English, Español. It applies at once, guide and tutorial included; the flag in the 📖 Documentation window changes the language of the guide only. It can also be chosen on the unlock screen, and is kept in incognito mode.
 - **🎨 Display**:
-  - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the OSM view and the home screen OSM map;
+  - **📐 Scale icon size with zoom** (on by default): on the plan, and also in the Map view and the home screen OSM map;
   - **❓ Help button inside windows** (on): a ❓ in the title of windows that have a help page, which opens the right page directly;
   - **🔔 Notifications**: **All**, **Essential** (default: no more messages confirming something you just did) or **Silence** (only what matters: low battery, sensor refused, errors). Server alerts and windows waiting for a decision are never muted;
-  - **➕ Zoom +/− buttons on maps and in 3D**: shows the + and − buttons on the plan, the home OSM widget and the OSM view, and in the edit view of the 🧊 3D view the + / − and ▲ ▼ (tilt) buttons. Off by default: zoom with your fingers (pinch), the mouse wheel or the keyboard; the 3D ⌖ stays;
-  - **Lock map rotation**: two fingers and Shift + wheel no longer turn the plan map, the home OSM widget or the OSM view; turning it on puts open maps back straight. Useful on slow devices. Off by default. The tracker's 🔃 Oriented map still turns, and the 🧊 3D view keeps its gestures;
+  - **➕ Zoom +/− buttons on maps and in 3D**: shows the + and − buttons on the plan, the home OSM widget and the Map view, and in the edit view of the 🧊 3D view the + / − and ▲ ▼ (tilt) buttons. Off by default: zoom with your fingers (pinch), the mouse wheel or the keyboard; the 3D ⌖ stays;
+  - **Lock map rotation**: two fingers and Shift + wheel no longer turn the plan map, the home OSM widget or the Map view; turning it on puts open maps back straight. Useful on slow devices. Off by default. The tracker's 🔃 Oriented map still turns, and the 🧊 3D view keeps its gestures;
   - **Open cards in a window**: the card of a point, path, zone or structure opens in a window in the middle of the screen, like the Tracker one, with the app blurred behind, instead of a bubble on the map; it scrolls inside the window, the same buttons work there, **✕**, Esc or tapping outside closes it, and the map does not move behind. As long as you leave it alone, it follows the device: ticked on a phone (touch screen less than 900 px wide), unticked on a computer or a tablet in landscape; your choice is kept on this device;
-  - **Hide map credits**: removes the small “OpenStreetMap” or “IGN – Géoplateforme” notice from the corner of the OSM View window and of the basemap under the map, at once, on open maps as on later ones. Unticked by default; your choice is kept on this device. The home screen map keeps its footer line (domain contacted and credit);
-  - **Line thickness**: a slider from ×0.75 to ×2 (×1 at first) thickens or thins paths, quarry faces, line walls, support arches and the route, on the plan, the home OSM widget and the OSM View, on top of the thinning when zooming out; pillar outlines and PNG, PDF and KMZ exports do not change. A setting of this device, never exported;
+  - **Hide map credits**: removes the small “OpenStreetMap” or “IGN – Géoplateforme” notice from the corner of the Map view window and of the basemap under the map, at once, on open maps as on later ones. Unticked by default; your choice is kept on this device. The home screen map keeps its footer line (domain contacted and credit);
+  - **Line thickness**: a slider from ×0.75 to ×2 (×1 at first) thickens or thins paths, quarry faces, line walls, support arches and the route, on the plan, the home OSM widget and the Map view, on top of the thinning when zooming out; pillar outlines and PNG, PDF and KMZ exports do not change. A setting of this device, never exported;
   - **🪟 Anchor tool panels to their button**: the Paths, Zones and Structures panels open next to their button instead of centred (comfortable on a large screen, not recommended on a phone);
   - **🧲 Snap while drawing** and its distance: a click close to an existing point snaps onto it, so that your galleries really join;
   - **☀️ Light theme**;
@@ -1583,7 +1583,7 @@ The **⚙️** button at the top of the home screen opens **⚙️ Configuration
   - **📔 Keep a logbook of my outings** (on, see “📔 My logbook”);
   - **💾 Store the map in the app on first load** (on);
   - **🔐 Local access code** (PIN, Face ID): see “🔭 Going further”;
-  - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ OSM view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the OSM View's background map), which this box turns off, and the network log shows it to you;
+  - **🔒 Privacy & Audit**: **📋 View the network log**, **📖 What does the app do on the network?** and the **🗺️ Map view** box (see “🔴 Important warnings”) — the app sends none of your data; the only outside site it contacts is OpenStreetMap (the Map view's background map), which this box turns off, and the network log shows it to you;
   - **📚 Site maps**: **🚫 Don't load the site's maps on startup**, if you only use your own maps (after a reload, they disappear from the list and the statistics).
 - **🛠️ System & maintenance**:
   - **🛠️ Developer Mode**: verbose logs to copy when reporting a problem, plus technical tools — see “🔭 Going further”;
@@ -1602,7 +1602,7 @@ No Apply button: every field is saved at once (a green flash confirms it). An ou
 - **📐 Map: scale & geolocation** *(this map)*:
   - **Scale**, with **🎯** to calibrate it (see below);
   - **🧭 North calibration**, if the top of the map is not North: an angle, or **📐 Calibrate (2 clicks)** (South then North on the map), **↺ Reset** to go back to 0. The compass always shows true North;
-  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the OSM view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the OSM view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. Below the points, the window shows the **accuracy at the corners** of the saved calibration: “Exact projection” for any calibration made today; “Approximate projection, ± X m” for a map calibrated earlier (the old calculation drifts by 2 to 3 m on a 1 km map, up to 20 m on 6 km). The **Recalibrate to exact projection** button fixes that map: it first tells you how far the map and its objects will move, without touching the calibration points. Nothing changes until you confirm, and saving the same calibration again does not alter it. This georeferencing is used by the OSM view, the KMZ, GPX, GeoJSON and GeoTIFF exports and GPX import. Saved here, it replaces the map's own on this device, right away (OpenStreetMap background, Rescue mode) and every time the map opens, and **🔄 Update the map** writes it into the new map; a map regenerated elsewhere with another calibration does not replace it (**Clear** to go back to the map's).
+  - **🌐 GPS georeferencing**: its state is shown (not georeferenced, points A and B, A, B and C, B estimated) and **🌐 Open georeferencing…** opens its window. For points A and B: **🔍 Search a point** or **📍 Click on map** fills in the position on the map, then you paste the GPS coordinates in Google Maps format (`48.856600, 2.352200`). Pick them **far** from each other. **Estimate B** deduces B from A, the scale and North: an estimate, to be checked in the Map view. The **📐 Point C (optional)**, far from the A-B line, corrects a distorted map (stretched assembly) for the Map view, the exports and Rescue Mode. **💾 Save calibration** / **🗑️ Clear**. Below the points, the window shows the **accuracy at the corners** of the saved calibration: “Exact projection” for any calibration made today; “Approximate projection, ± X m” for a map calibrated earlier (the old calculation drifts by 2 to 3 m on a 1 km map, up to 20 m on 6 km). The **Recalibrate to exact projection** button fixes that map: it first tells you how far the map and its objects will move, without touching the calibration points. Nothing changes until you confirm, and saving the same calibration again does not alter it. This georeferencing is used by the Map view, the KMZ, GPX, GeoJSON and GeoTIFF exports and GPX import. Saved here, it replaces the map's own on this device, right away (OpenStreetMap background, Rescue mode) and every time the map opens, and **🔄 Update the map** writes it into the new map; a map regenerated elsewhere with another calibration does not replace it (**Clear** to go back to the map's).
 - **📍 Navigation & tracker** *(📍/🌍 per line)*:
   - **🧭 Tracker start position** *(this map)*: X/Y, **🔍 Pick via a point** or **📍 Click on the map**. Changing the start restarts tracking from there (the current trail is cleared);
   - **👣 Step detection** *(all maps)*: step length (0 to 1.5 m), threshold (10 to 30), delay (300 to 3,000 ms);
@@ -1891,7 +1891,7 @@ In **📋 Phases**, **➕ Add a phase**: a name, then tick the **participating t
 
 - **📤 Export .mkmsec.json**: send this file to each team (messaging app, email, cable). On their phone, the team opens 🚑 Rescue mode → **📥 Import a plan**, checks the preview, then **✓ Import this scenario** — or, quicker, drops the file on **📦 Add a map** on the home screen: the app opens the right map, shows the preview, then offers to launch as “Team”. The import keeps the link with the command post: that is what will let the operator accept the team's report. If the scenario is already on the phone, choose **Replace** (recommended: keeps the link, but erases the operation entries already made on that phone) rather than **Import as a copy** (the report from that copy will be refused). The preview warns you if the file comes from another map or another version of the map.
 - ⚠️ **After an app update, re-import the scenario on every phone before the operation**: otherwise the command post may fail to merge the reports.
-- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, while you still have a network, tap **🌍** on the map, then **Save offline** (details in the OSM view section).
+- **Offline**: at launch, the app warns you if the map is not fully available offline on the device; download it from **ℹ️ Map info** before going down. For the surface map, while you still have a network, tap **🌍** on the map, then **Save offline** (details in the Map view section).
 - **📄 PDF export (1 page/team)**: one sheet per team, to print or keep on the phone — context, members, leader and headcount, mandatory return, mission, map of the zone (at the map's full resolution: gallery names stay readable even on a large map), steps, **route sheet** junction by junction (level changes included, if the route has been computed) and an "Observations" box to fill in with a pen.
 - **🌍 Geolocated KMZ export**: the scenario for Google Earth, OsmAnd or Avenza — one folder per team (points, zone, route) over the map as background. Missing routes are computed before the export, and MyKTAMap reads this KMZ back along with the scenario. The map must be calibrated with two GPS points (📡 External export tab of the session export).
 
@@ -1954,10 +1954,10 @@ A step set to **Casualty found** gives a position: the step's position, level in
   - **TEAMS ON SITE**: members, leader, headcount, mandatory return, surface GPS;
   - **CRITICAL POIs**: the map's access points with their level, open ones first, then closed ones (which firefighters and the relevant services can open).
   
-  You choose the layers of the PDF's OSM map; the text sections are always included. The basemap credit is written under the image. If the OSM View is turned off (⚙️ Configuration) or in incognito mode, the PDF map has no basemap: the map frame and the teams on a white background, without any request to OpenStreetMap or the IGN.
+  You choose the layers of the PDF's OSM map; the text sections are always included. The basemap credit is written under the image. If the Map view is turned off (⚙️ Configuration) or in incognito mode, the PDF map has no basemap: the map frame and the teams on a white background, without any request to OpenStreetMap or the IGN.
 - **📍 Surface GPS** (team card): the position of the command post, the meeting point or any surface location linked to the team, as "latitude, longitude" (e.g. 48.856600, 2.352200). It appears in the briefing with a map link.
-- **🚪 Plan entry point**: this tag (🚨 Rescue category of the POI editor) marks the main entrances; they appear in the critical POIs and on the OSM view.
-- **🌍 OSM view**, available in the scenario banner and in all three views, shows the map on OpenStreetMap to the rescuers who arrive. The map must be georeferenced.
+- **🚪 Plan entry point**: this tag (🚨 Rescue category of the POI editor) marks the main entrances; they appear in the critical POIs and on the Map view.
+- **🌍 Map view**, available in the scenario banner and in all three views, shows the map on OpenStreetMap to the rescuers who arrive. The map must be georeferenced.
 
 #### 📦 5. Closing and writing the report
 
@@ -1990,7 +1990,7 @@ The **🏗️ Generate a map** button on the home screen opens the **Generator**
 
 #### 🧙 The Generator
 
-- **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭️ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no OSM View and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
+- **🧙 Wizard**: the Generator moves **step by step** (name, image, layers…). Optional steps are skipped in one click (**⏭️ Skip**), and a **✅ Summary before generation** shows what is filled in, skipped or missing, with useful warnings (for example: without GPS georeferencing, no Map view and no KMZ / GPX export). **🗒️ Show all** instead shows the whole form at once; your choice is remembered.
 - **🚀 Simple / ⚙️ Advanced**: Simple mode keeps to the essentials (image, name, version, V2 — the image cut into tiles, see “🧱 Convert to V2 tiles” —, multi-level) and loads the default icons; Advanced mode gives access to every option.
 - **📂 Load a file** accepts a **MyKTAMap ZIP** (to edit it), a **KMZ** or a **GPX** exported by MyKTAMap (the GPX gives a blank background georeferenced automatically), a **GIS export** (`.geojson`, `.kml`) or a **GeoTIFF**. Otherwise, fill in the form to create a map from scratch.
 
@@ -2006,7 +2006,7 @@ When you're ready, **📦 Generate ZIP** downloads the archive.
 - **Tracking parameters**: scale and **North** orientation (0 if the top of the map is North; anyone can correct it in their Settings).
 - **Icons & tags**: **↺ Load defaults** pre-fills the standard icons, **+ Add a tag** creates a type of your own. The `default` and `track` tags are mandatory.
 - **🏷️ Map legend**: renames, hidden entries and added entries apply to everyone who opens the map; each person can then change it for themselves.
-- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no OSM View and no KMZ / GPX export. Below the fields, the **accuracy at the corners** of the calibration appears as soon as A, B and the image are there: “Exact projection” for a new calibration or an imported GeoTIFF; “Approximate projection, ± X m” for the original calibration of a map calibrated earlier, kept as long as you do not change its points (⚙️ Settings → Georeferencing offers to recalibrate it).
+- **🌐 GPS georeferencing** (optional): two points A and B, plus a point C for a distorted map. Without it, no Map view and no KMZ / GPX export. Below the fields, the **accuracy at the corners** of the calibration appears as soon as A, B and the image are there: “Exact projection” for a new calibration or an imported GeoTIFF; “Approximate projection, ± X m” for the original calibration of a map calibrated earlier, kept as long as you do not change its points (⚙️ Settings → Georeferencing offers to recalibrate it).
 - **📖 History PDF** (optional): one or more PDFs, at the top of the list in History Mode. When editing, the map's existing ones are kept.
 
 #### 📂 Edit an existing map
@@ -2020,7 +2020,7 @@ If the map has **photos attached to its points** on your device, the **📸 Incl
 To draw a map **without a source image**, choose **Blank image** instead of **From an image** in **🖼️ Main images**:
 
 - **width** and **height** from 500 to 12,000 px — on iPhone / iPad, 16 Mpx at most (about 4,096 × 4,096), a larger background is generated on a computer (taken from the map when you reload a ZIP: to make an existing map's background transparent, pick **🫥 transparent** and regenerate);
-- **background colour**: white, grey, black, sepia, or **🫥 transparent** (in the OSM view the background map shows through; in map mode, the background chosen in Settings);
+- **background colour**: white, grey, black, sepia, or **🫥 transparent** (in the Map view the background map shows through; in map mode, the background chosen in Settings);
 - **🎨 Suggested background** (optional): the background shown under transparent parts in map mode — anyone can change it in ⚙️ Settings › Display;
 - **🎨 Generate the blank image** installs it as the main image.
 
@@ -2061,7 +2061,7 @@ Good to know: holes in polygons are ignored; beyond 20,000 objects a warning is 
 
 #### 🧱 Convert to V2 tiles
 
-The **🧱 Convert to V2 tiles (recommended)** box cuts the image into **tiles**: the app then only loads the pieces on screen. It is **recommended for every map**: without it, **OSM View** does not open and the map does not appear on the home OpenStreetMap map. On a heavy map (image over 50 MB or over 8,000 px), it also greatly reduces memory use.
+The **🧱 Convert to V2 tiles (recommended)** box cuts the image into **tiles**: the app then only loads the pieces on screen. It is **recommended for every map**: without it, **Map view** does not open and the map does not appear on the home OpenStreetMap map. On a heavy map (image over 50 MB or over 8,000 px), it also greatly reduces memory use.
 
 1. Choose a main image, or load the ZIP of the map to convert.
 2. Tick it and read the warning: the conversion is heavy.
@@ -2069,7 +2069,7 @@ The **🧱 Convert to V2 tiles (recommended)** box cuts the image into **tiles**
 4. Import that ZIP: the map opens in V2 (purple `V2` badge).
 
 - The **white margins** of a scanned map are trimmed automatically. A plan you edit keeps its framing: its layers stay in place. For a new plan with layers, a GPS calibration or image layer calibrations entered, the Generator asks whether they were entered on the original image: **Shift them** puts them all back in place together, **Leave them** does not touch them.
-- A **transparent PNG / WebP** image keeps its transparency: in the OSM View, the map shows through your plan. For a V2 map generated before this treatment, regenerate it once to benefit.
+- A **transparent PNG / WebP** image keeps its transparency: in the Map view, the map shows through your plan. For a V2 map generated before this treatment, regenerate it once to benefit.
 - On a map that is **already V2**, the box is pre-ticked and the tiles are rebuilt; unticking it turns the map back into a single image.
 - Drawbacks: a slight flash when the zoom level changes, and a black border when zooming very far out.
 
@@ -2134,7 +2134,7 @@ If a large map still crashes or lags, open **⚙️ Settings** → **🚀 Perfor
 | 🐢 **Slow auto-save (30s)** | Saves every 30 s | Up to 30 s lost if the app crashes |
 | 🛡️ **Limit zoom-out on mobile** | Caps zoom-out on phones. **Ticked by default** | No full overview on mobile; reload required |
 
-- ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map) and locks map rotation with two fingers or Shift + wheel on this map (and in the OSM view opened from it), without changing the home screen option; the tracker's 🔃 Oriented map still turns. You can also enable only some options, for example **🐢** for a good gain with no visible loss.
+- ULTRA ticks everything; unticking it unticks everything. On top of the options above, it only draws the paths and points near the screen (slight pop-in when moving the map) and locks map rotation with two fingers or Shift + wheel on this map (and in the Map view opened from it), without changing the home screen option; the tracker's 🔃 Oriented map still turns. You can also enable only some options, for example **🐢** for a good gain with no visible loss.
 - **Your session points are always shown**, whatever the options.
 - When optimizations are active, a message reminds you when the map opens: a lightened display is not a bug.
 - **Lighten the rotated map (large maps)** (same group, outside ULTRA, ticked by default): on a large map, while you rotate the map with two fingers, only the points and paths on screen are drawn, which keeps the phone from running out of memory; everything comes back once the map points north again. Points stay tappable. Untick it if you prefer to see everything while rotating.

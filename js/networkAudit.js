@@ -41,8 +41,8 @@
         "DNS / SSL / Nginx en un seul appel)",
       "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
       "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)",
-      "OpenStreetMap (tile.openstreetmap.org) — fond de carte de la Vue OSM, en lecture seule, coupé si tu décoches « 🗺️ Vue OSM »",
-      "IGN (data.geopf.fr) — fonds IGN aérien et plan, seulement si tu les choisis, en lecture seule, coupés si tu décoches « 🗺️ Vue OSM »"
+      "OpenStreetMap (tile.openstreetmap.org) — fond de la Vue carte, en lecture seule, coupé si tu décoches « 🗺️ Vue carte »",
+      "IGN (data.geopf.fr) — fonds IGN aérien et plan, seulement si tu les choisis, en lecture seule, coupés si tu décoches « 🗺️ Vue carte »"
     ];
     const sameOrigin = _t("netaudit.whitelist.sameOrigin", { origin: origin });
     const blob       = _t("netaudit.whitelist.blob");
