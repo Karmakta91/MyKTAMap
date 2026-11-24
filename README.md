@@ -467,7 +467,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
-| `ktaDetectionWorker.js` | Worker de la détection des structures : calcule un bloc d'image (importe `ktaDetection.js`) — lancé par `ktaDetection.js` |
+| `ktaDetectionWorker.js` | Worker de la détection des structures : calcule un bloc d'image et le suivi de trait de « Remplir » sur un front (importe `ktaDetection.js`) — lancé par `ktaDetection.js` |
 | `vue3d.js` | Vue 3D autour de la position du tracker — chargé par `js/interface.js` au toucher du bouton cube de la barre de droite ; three.js importé à la première ouverture ; précaché par `sw.js` |
 
 ---

@@ -901,7 +901,10 @@ les galeries → tracés » plus bas.
   `tropGrands`, jamais coupée. La marge est lue au-delà du cadre demandé : une masse coupée par le cadre reste entière.
   « Bord du plan » = bord des `limites` (l'emprise) : une masse qui le touche est rendue telle quelle.
 - **Worker** `js/ktaDetectionWorker.js` (`executeurWorker()`, CSP `worker-src 'self' blob:` déjà servie) : un bloc à
-  la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche.
+  la fois, tampon d'image transféré. Sans Worker, le calcul se fait dans la page, un bloc par tâche. Le même canal
+  porte le suivi de trait de « Remplir au clic » sur un front (`suivreTrait`, ci-dessous). `fermer()` rejette
+  (AbortError) un suivi en attente, jamais un bloc : le rejet tardif d'un bloc ferait échouer la détection relancée
+  entre-temps sur le même parcours.
 - **Fronts** (classe `nature: "trait"`) : 🩸 un trait a souvent la couleur d'un pilier, il ne concourt donc pas
   avec les masses pour un pixel : couleur du trait MOINS les masses **de sa couleur** (`_masseDuTrait` : composantes
   après ouverture, de toute taille, dont la moitié au moins des pixels est dans le masque du trait ; dilatées de
@@ -1022,16 +1025,26 @@ les galeries → tracés » plus bas.
     vifs) ; un bout au carrefour ne bouge jamais (raccord exact), un bout libre est ramené sur la droite de son
     extrémité. Refus : « fond » (toucher sur le fond), « masse » (masse pleine, ou trait plus court que 3 × son
     épaisseur), « deja ». Fenêtre lue (`_suivreEn`) : 512, puis 2 048, puis 4 096 px tant qu'un bout s'arrête au bord
-    de la fenêtre ; au-delà, le front s'arrête au bord lu (toast : un toucher plus loin le prolonge et raccorde),
-    jamais de lecture à résolution réduite (le trait aminci passerait sous le seuil des traits fins).
+    de la fenêtre (à moins de 3 px plus la demi-épaisseur du trait : 🩸 le squelette d'un trait coupé par le bord
+    recule d'autant, un front de 4 px finissait à 3,5 px du bord et n'était jamais relu plus grand) ; au-delà, le
+    front s'arrête au bord lu (toast : un toucher plus loin le prolonge et raccorde), jamais de lecture à résolution
+    réduite (le trait aminci passerait sous le seuil des traits fins).
+  - **Hors du fil principal** : le suivi tourne dans le worker de la détection (`executeurWorker().suivreTrait`,
+    tampon transféré ; repli `executeurLocal()` dans la page sans Worker), créé au premier toucher et gardé jusqu'au
+    changement de mode ou à la fermeture (`_e.ex`). Un long front dans un réseau dense lit 4 096 px : sur le fil
+    principal, ~2 s de calcul en deux tâches longues ; dans le worker, aucune. Un résultat arrivé après un changement
+    de mode ou d'aperçu est ignoré.
   - Limites : un trait en travers aussi épais que le front est un vrai carrefour ; un front aminci de plus de moitié
     (trait abîmé) est coupé là ; un trait de rappel de 1 px sur un front de 2 px ne se distingue pas (carrefour).
   - Garde-fous : `check-detection.js` (planche : front droit, coudé, carrefours en T et en X, front qui touche un
     pilier plein, trait de rappel de 1 px en travers, bruit ± 8 ; raccord exact au toucher suivant, existant jamais
     modifié, doublon refusé ; affiner sur un bord dentelé ; échelle 0,5 ; contre-épreuves sans retrait des masses,
-    sans filtre des traits fins, sans existant) · `scripts/smoke/checkup-remplir-front.js` (un toucher pose un front,
-    arrêt au carrefour, raccord exact au 2e toucher, retirer par toucher, Ctrl+Z et « Retirer le dernier », Valider,
-    doublon refusé, type pilier inchangé ; Chromium et WebKit).
+    sans filtre des traits fins, sans existant ; front coupé par le bord du bloc → bout « bord » ; même résultat dans
+    le worker et par `executeurLocal` qu'en direct, `fermer()` rejette un suivi en attente) ·
+    `scripts/smoke/checkup-remplir-front.js` (un toucher pose un front, arrêt au carrefour, raccord exact au 2e
+    toucher, retirer par toucher, Ctrl+Z et « Retirer le dernier », Valider, doublon refusé, type pilier inchangé ;
+    long front dans un réseau dense suivi d'un bout à l'autre sans tâche longue de plus de 200 ms ; Chromium et
+    WebKit, tâches longues mesurées sous Chromium).
   - **Retirer un remplissage** (structures comme galeries, décisions de KARMA du 22/11/2026) : toucher DANS une forme
     remplie ou SUR un front suivi (à moins de 14 px d'écran ou de sa demi-épaisseur), **Ctrl+Z** (Cmd+Z) ou le
     bouton **Retirer le dernier** (`undo-2`, désactivé à vide). Le remplissage

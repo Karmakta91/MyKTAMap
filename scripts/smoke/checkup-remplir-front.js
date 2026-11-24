@@ -15,7 +15,12 @@
 //      raccord affiché) ;
 //   5. retirer : toucher sur un front, Ctrl+Z, « Retirer le dernier » ;
 //   6. « Valider » → fronts posés au niveau du type, uid, raccord exact gardé ; front déjà posé retouché → refusé ;
-//   7. le type pilier ne change pas : « Pilier 1re masse » choisi, un toucher dans le contour fermé → une zone.
+//   7. le type pilier ne change pas : « Pilier 1re masse » choisi, un toucher dans le contour fermé → une zone ;
+//   8. (page neuve) long front dans un réseau dense, sur toute la largeur du plan : traits épais tous les 160 px,
+//      reliés par des traits fins tous les 40 px (une seule composante d'encre). Un toucher au milieu relit jusqu'à
+//      la plus grande fenêtre (bouts coupés par le bord relus plus grand), le front va d'un bout à l'autre, et le
+//      calcul, fait dans le worker, ne laisse aucune tâche longue de plus de 200 ms (PerformanceObserver « longtask »,
+//      moteurs qui le connaissent : Chromium). Sur le fil principal, le même cas en faisait deux, de 0,6 et 1,3 s.
 // Usage : NODE_PATH=<node_modules de scripts/smoke> SMOKE_PORT=8226 node scripts/smoke/checkup-remplir-front.js
 // Doc : docs/architecture/plans-loader.md (Remplir au clic)
 // =====================================================================
@@ -308,6 +313,94 @@ async function suite(nav) {
   await ctx.close();
 }
 
+// ── 8. Long front dans un réseau dense : calcul hors du fil principal ──
+const TACHE_LONGUE_MAX = 200;   // ms
+async function suiteLongue(nav) {
+  const ctx = await nav.newContext({ viewport: { width: 1280, height: 860 } });
+  const page = await ctx.newPage();
+  const erreurs = [];
+  page.on("pageerror", function (e) { erreurs.push(String(e)); });
+  await page.addInitScript(function (ls) {
+    for (const k in ls) { try { if (localStorage.getItem(k) === null) localStorage.setItem(k, ls[k]); } catch (e) {} }
+  }, LS_PREGATES);
+  await page.goto(BASE + "/index.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(2500);
+  await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+  await page.getByText(PLAN, { exact: false }).first().click();
+  await attendre(page, function () {
+    return !!window.map && !!window.PLAN_CONFIG && !!window.PLAN_CONFIG.plan && !!window.KtaDetectionUI;
+  }, 90000);
+  await page.waitForTimeout(2000);
+  // planche sur tout le plan : front y = yF (4 px), autres traits épais tous les 160 px, traits fins (1 px) tous les
+  // 40 px qui relient tout. Les fronts du relevé fictif qui croisent le front le coupent en morceaux (doublons
+  // coupés, raccord exact) : on vérifie son étendue, pas le nombre de morceaux.
+  const P = await page.evaluate(async function () {
+    const pc = window.PLAN_CONFIG, p = pc.plan, W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
+    p.imageWidth = W; p.imageHeight = H; p.tiledV2 = true;
+    pc.tiling = { minNativeZoom: -3, maxNativeZoom: 0, tileSize: 256, format: "png" };
+    const yF = Math.round(H / 2) - 2;
+    const dessiner = function (k) {
+      k.fillStyle = "#141414";
+      k.fillRect(50, yF, W - 100, 4);
+      for (let y = 100; y < H - 100; y += 160) if (Math.abs(y - yF) > 40) k.fillRect(50, y, W - 100, 4);
+      for (let x = 70; x < W - 50; x += 40) k.fillRect(x, 60, 1, H - 120);
+    };
+    const T = 256, cols = Math.ceil(W / T), rows = Math.ceil(H / T);
+    window.RUNTIME_ASSETS = window.RUNTIME_ASSETS || {};
+    for (let col = 0; col < cols; col++) for (let k = 1; k <= rows; k++) {
+      const cv = document.createElement("canvas"); cv.width = cv.height = T;
+      const kk = cv.getContext("2d"); kk.fillStyle = "#ffffff"; kk.fillRect(0, 0, T, T);
+      kk.translate(-col * T, -(H - k * T)); dessiner(kk);
+      const f = await new Promise(function (r) { cv.toBlob(r, "image/png"); });
+      window.RUNTIME_ASSETS["data/tiles/z0/x" + col + "_y" + (-k) + ".png"] = { file: f };
+    }
+    window.APP_CONFIG.multiLevel = true; window.APP_CONFIG.activeLevel = 0; window.APP_CONFIG.visibleLevels = [0];
+    window.map.fitBounds(L.latLngBounds([window.convertCoord(W / 2 - 200, yF - 150),
+      window.convertCoord(W / 2 + 200, yF + 150)]), { animate: false });
+    const lt = typeof PerformanceObserver !== "undefined" &&
+      (PerformanceObserver.supportedEntryTypes || []).indexOf("longtask") >= 0;
+    return { W: W, H: H, yF: yF, longtask: lt };
+  });
+  if (P.W < 2200) {
+    pb("long front : plan fictif trop petit (" + P.W + " px) pour dépasser la fenêtre de 2 048 px");
+    await ctx.close();
+    return;
+  }
+  await page.waitForTimeout(800);
+  const ouvert = await ouvrirRemplir(page);
+  if (ouvert !== "ok") { pb("long front : mode Remplir introuvable (" + ouvert + ")"); await ctx.close(); return; }
+  await page.waitForTimeout(200);
+  await page.selectOption("#kta-detect-bandeau [data-detect-remplir-type]", "front-1");
+  await page.evaluate(function (lt) {
+    window.__ktaTachesLongues = [];
+    if (!lt) return;
+    new PerformanceObserver(function (l) {
+      l.getEntries().forEach(function (e) { window.__ktaTachesLongues.push(Math.round(e.duration)); });
+    }).observe({ type: "longtask" });
+  }, P.longtask);
+  await toucher(page, P.W / 2, P.yF + 2);
+  await page.waitForTimeout(400);
+  const e = await etat(page);
+  const taches = await page.evaluate(function () { return window.__ktaTachesLongues; });
+  const xs = [].concat.apply([], (e.remplir.fronts || []).map(function (f) {
+    return f.points.map(function (p) { return p.x; });
+  }));
+  const xmin = xs.length ? Math.min.apply(null, xs) : NaN, xmax = xs.length ? Math.max.apply(null, xs) : NaN;
+  verifier(e.remplir.n === 1 && Math.abs(xmin - 50) <= 4 && Math.abs(xmax - (P.W - 50)) <= 4 &&
+    (e.remplir.bouts[0] || []).join() === "bout,bout",
+    "long front (" + (P.W - 100) + " px) : suivi d'un bout à l'autre, au-delà des fenêtres de 512 et 2 048 px",
+    { n: e.remplir.n, xmin: xmin, xmax: xmax, bouts: e.remplir.bouts });
+  if (P.longtask) {
+    const max = taches.length ? Math.max.apply(null, taches) : 0;
+    verifier(max <= TACHE_LONGUE_MAX, "long front : aucune tâche longue de plus de " + TACHE_LONGUE_MAX +
+      " ms pendant le suivi (plus longue : " + max + " ms)", taches);
+  } else {
+    ok("long front : tâches longues non mesurées (PerformanceObserver « longtask » absent de ce moteur)");
+  }
+  verifier(erreurs.length === 0, "long front : aucune erreur de page", erreurs.slice(0, 3));
+  await ctx.close();
+}
+
 (async function main() {
   const liste = lancerNavigateur.moteurs();
   try {
@@ -316,7 +409,7 @@ async function suite(nav) {
       console.log("\n══ Moteur : " + nom + " ══");
       const nav = await lancerNavigateur.lancerMoteur(nom);
       if (!nav) { pb("moteur absent : rien n'a été vérifié"); continue; }
-      try { await suite(nav); }
+      try { await suite(nav); await suiteLongue(nav); }
       catch (err) { pb("exception du harnais : " + (err && err.message)); }
       finally { await nav.close(); }
     }
@@ -330,6 +423,6 @@ async function suite(nav) {
     process.exit(1);
   }
   console.log("🎉 CHECKUP VERT — remplir au clic sur un front : suivi, arrêt au carrefour, raccord exact, retirer, " +
-    "Valider, type pilier inchangé.");
+    "Valider, type pilier inchangé, long front dans un réseau dense sans tâche longue.");
   process.exit(0);
 })();
