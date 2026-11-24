@@ -797,11 +797,11 @@
           <div class="kta-perf-titre"><span data-kta-ico="shield"></span> <span data-i18n="home.privacy.title">Confidentialité &amp; Audit</span></div>
           <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;" ><span data-kta-ico="scroll-text"></span> <span data-i18n="home.privacy.netLogBtn">Voir le journal réseau</span></button>
           <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;" ><span data-kta-ico="book-open"></span> <span data-i18n="home.privacy.netDocBtn">Que fait l'app sur le réseau ?</span></button>
-          <!-- Vue OSM (tile.openstreetmap.org) : cochée par défaut ; décochée, ni le widget de l'accueil ni la modale
-               ne chargent de tuile (js/osmView.js > isOptedIn). -->
+          <!-- Vue OSM (tile.openstreetmap.org, et data.geopf.fr pour un fond IGN) : cochée par défaut ; décochée, ni le
+               widget de l'accueil, ni la modale, ni le fond sous le plan ne chargent de tuile (js/osmView.js > isOptedIn). -->
           <label class="kta-net-paranoia-toggle">
             <input type="checkbox" id="loaderOsmOptInCb">
-            <span data-kta-ico="map"></span><span data-i18n-html="home.privacy.osmToggle"><strong>Vue OSM (OpenStreetMap)</strong> — contacte <code>tile.openstreetmap.org</code> quand l'accueil ou la Vue OSM affiche la carte. Activée par défaut.</span>
+            <span data-kta-ico="map"></span><span data-i18n-html="home.privacy.osmToggle"><strong>Vue OSM (OpenStreetMap)</strong> — contacte <code>tile.openstreetmap.org</code> quand l'accueil ou la Vue OSM affiche la carte, et <code>data.geopf.fr</code> (IGN) si tu choisis un fond IGN. Activée par défaut.</span>
           </label>
         </div>
 
@@ -925,8 +925,8 @@
           <ol class="kta-net-doc-ol">
             <li data-i18n-html="home.netdoc.verify1"><strong>Journal interne</strong> : bouton « 📋 Voir le journal réseau » dans la même section — logue en temps réel toutes les requêtes émises par l'app.</li>
             <li data-i18n-html="home.netdoc.verify2"><strong>DevTools navigateur (F12)</strong> : onglet « Network » / « Réseau » → tu vois <strong>toutes</strong> les requêtes, indépendamment de ce que l'app raconte. Filtre par méthode pour vérifier qu'il n'y a aucun POST/PUT/PATCH/DELETE.</li>
-            <li data-i18n-html="home.netdoc.verify3"><strong>Un seul site extérieur</strong> : le fond de carte OpenStreetMap de la Vue OSM (<code>tile.openstreetmap.org</code>). Décoche la case « 🗺️ Vue OSM » dans la même section (ou passe en mode incognito) : l'app ne contacte plus que son propre serveur — le journal et F12 te le montrent.</li>
-            <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée : seuls le site lui-même et le fond de carte OpenStreetMap sont autorisés.</li>
+            <li data-i18n-html="home.netdoc.verify3"><strong>Deux sites extérieurs au plus</strong> : le fond de carte OpenStreetMap (<code>tile.openstreetmap.org</code>) et, seulement si tu choisis un fond IGN, la Géoplateforme de l'IGN (<code>data.geopf.fr</code>). Décoche la case « Vue OSM » dans la même section (ou passe en mode incognito) : l'app ne contacte plus que son propre serveur — le journal et F12 te le montrent.</li>
+            <li data-i18n-html="home.netdoc.verify4"><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée : seuls le site lui-même et les fonds de carte (OpenStreetMap, et l'IGN pour ses fonds) sont autorisés.</li>
           </ol>
         </div>
 
@@ -1095,6 +1095,9 @@
   <!-- visionneusePdf.js : visionneuse du Mode Histoire et du Carnet ; PDF.js (lib/pdfjs/) importé à la 1re ouverture. -->
   <script src="js/visionneusePdf.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
+  <!-- ⚠️ fondsCarte.js (table unique des fonds de carte et choix de l'appareil) : AVANT osmTilesCache.js, osmView.js
+       et fondOsmPlan.js, qui y lisent leurs URL de tuiles. -->
+  <script src="js/fondsCarte.js" defer></script>
   <!-- ⚠️ osmTilesCache.js (cache OSM hors-ligne, IDB partagé Vue OSM / accueil / Secours) : AVANT osmView.js
        et osmHomePreview.js. -->
   <script src="js/osmTilesCache.js" defer></script>

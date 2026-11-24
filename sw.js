@@ -477,6 +477,7 @@ const ASSETS_TO_CACHE = [
   "./js/vuePlan.js",
   "./js/planRegistry.js",
   "./js/planDenylist.js",
+  "./js/fondsCarte.js",
   "./js/osmTilesCache.js",
   "./js/sessionPersist.js",
   "./js/journal.js",
@@ -1397,6 +1398,12 @@ self.addEventListener("fetch", (event) => {
     const h = event.request.headers;
     if (h && (h.get("X-Kta-Ext") || h.get("Authorization"))) return;
   } catch (e) { /* en-têtes illisibles : on continue normalement */ }
+
+  // 🔒 FONDS IGN (data.geopf.fr, js/fondsCarte.js) : RÉSEAU SEUL, JAMAIS DE CACHE.
+  // Le hors ligne des fonds de carte est OpenStreetMap seul (cache IndexedDB plus bas). Sans cette sortie, la branche
+  // par défaut rangerait chaque tuile IGN dans CACHE_NAME (réponse CORS 200) : un hors ligne IGN en silence, et des
+  // centaines d'entrées comptées dans le plafond du cache de l'app.
+  if (/^https?:\/\/data\.geopf\.fr\//i.test(reqUrl)) return;
 
   // PLAN ZIP DÉCLARÉ PAR L'INDEX (`"zip": "data/x.zip"`) : RÉSEAU SEUL.
   // Le hors-ligne d'un tel plan est la copie gardée en IndexedDB (PlanRegistry.saveBlob),

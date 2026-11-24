@@ -5,20 +5,21 @@
  */
 
 // =====================================================================
-// fondOsmPlan.js — fond OpenStreetMap SOUS le plan, dans la carte du plan, et son petit panneau (bouton carte du haut)
+// fondOsmPlan.js — fond de carte SOUS le plan (OSM ou IGN), dans la carte du plan, et son petit panneau (bouton du haut)
 // =====================================================================
 // Une L.GridLayer en canvas dans le pane `ktaFondOsm` (sous `tilePane`) : chaque tuile de la carte du plan dessine
 // les tuiles OSM qui la couvrent, posées par setTransform (affine des 3 coins de la tuile, calage
 // KmzExport.buildTransformCalib → Web Mercator). Pas de seconde carte. La transparence est celle de l'image du plan,
 // multipliée par le curseur des filtres (tiling.js > ktaAppliquerOpacitePlanDeBase) ; le fond OSM reste opaque.
-// Panneau : interrupteur, transparence, « Ma position ».
+// Panneau : interrupteur, choix du fond (table js/fondsCarte.js, partagé avec la Vue OSM), transparence, « Ma position ».
 // Quatrième commande : « Enregistrer hors ligne » (emprise du plan dans OsmTilesCache, même code que l'accueil).
 // Expose : window.FondOsmPlan = { basculerPanneau, fermerPanneau, allumer, eteindre, maPosition, majBouton, regler,
 //   facteurPlan, enregistrerHorsLigne, retirer, transferer, PREFIXE, etat }.
 // ⚠️ Interrupteur éteint à chaque plan ouvert ; transparence retenue PAR PLAN (décision produit) ; la fenêtre Vue
 //   OSM ne s'ouvre plus du bouton.
-// 🔒 Réseau : seulement tile.openstreetmap.org, OSM autorisé (OsmView.isOptedIn), hors incognito ; hors ligne, les
-//   tuiles enregistrées (OsmTilesCache) et aucune requête. Au-delà du zoom 19 : la tuile 19 agrandie, rien de plus.
+// 🔒 Réseau : les domaines de la table des fonds, Vue OSM autorisée (OsmView.isOptedIn), hors incognito ; hors ligne,
+//   les tuiles OSM enregistrées (OsmTilesCache) et aucune requête, quel que soit le fond. Au-delà du zoom max du fond :
+//   la tuile la plus fine agrandie. Fond IGN : une tuile IGN absente (404 hors couverture) devient la tuile OSM.
 // 🔒 « Ma position » : un getCurrentPosition, refusé hors de l'emprise du plan (pad 0,5) et en incognito ; rien
 //   de persisté ni d'envoyé. Le point vit en mémoire jusqu'au plan suivant.
 // 🩸 Le pane doit tourner avec le plan orienté : créé DANS le pane de rotation s'il existe (sinon il y sera déplacé),
@@ -30,8 +31,6 @@
 (function() {
   "use strict";
 
-  const OSM_URL      = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const OSM_ZOOM_MAX = 19;
   const PANE         = "ktaFondOsm";
   const TUILE        = 256;            // côté CSS des tuiles de la couche (et des tuiles OSM)
   // 🩸 Chaque canvas déborde d'un pixel CSS à droite et en bas, avec son vrai contenu : sous rotation, le bord
@@ -60,7 +59,11 @@
   let _dernierEnregistrement = null;   // résultat du dernier enregistrement (diagnostic, lu par etat())
   const _enVol      = new Set();       // images réseau en cours (coupées à l'extinction)
   let _requetes     = 0;               // requêtes réseau lancées (diagnostic, lu par etat())
+  let _replis       = 0;               // tuiles IGN remplacées par OSM (attribution OSM ajoutée, lu par etat())
 
+  // Fond choisi sur l'appareil (table js/fondsCarte.js).
+  function _fond() { return window.KtaFondsCarte.courant(); }
+  function _urlTuile(id, z, x, y) { return window.KtaFondsCarte.urlTuile(id, z, x, y); }
   function _t(cle, vars) { return window.I18n ? window.I18n.t(cle, vars) : cle; }
   function _toast(msg, type) {
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
@@ -112,11 +115,11 @@
     const g1 = _gpsDuPoint(map, o.add([COTE, 0]), coords.z, H);
     const g2 = _gpsDuPoint(map, o.add([0, COTE]), coords.z, H);
     if (!g0 || !g1 || !g2) return null;
-    // zoom OSM dont un pixel vaut un pixel du canvas (arrondi), plafonné à 19 (agrandi au-delà)
+    // zoom Web Mercator dont un pixel vaut un pixel du canvas (arrondi), plafonné au zoom max du fond (agrandi au-delà)
     const a0 = _mercator(g0.lat, g0.lng, 0), b0 = _mercator(g1.lat, g1.lng, 0);
     const cote0 = Math.hypot(b0.x - a0.x, b0.y - a0.y);
     if (!(cote0 > 0)) return null;
-    const z = Math.max(0, Math.min(OSM_ZOOM_MAX, Math.round(Math.log2(N / cote0))));
+    const z = Math.max(0, Math.min(_fond().zoomMax, Math.round(Math.log2(N / cote0))));
     const m0 = _mercator(g0.lat, g0.lng, z), m1 = _mercator(g1.lat, g1.lng, z), m2 = _mercator(g2.lat, g2.lng, z);
     const ax = m1.x - m0.x, ay = m1.y - m0.y, cx = m2.x - m0.x, cy = m2.y - m0.y;
     const det = ax * cy - cx * ay;
@@ -177,13 +180,24 @@
   // → { img, sx, sy, cote } : la tuile elle-même (cote 256), ou, sans réseau permis, le morceau d'une tuile
   // enregistrée d'un zoom plus large, agrandi. 🩸 « Enregistrer hors ligne » ne garde que 3 zooms autour de
   // l'emprise : sans ce repli, le fond hors ligne serait vide à tous les autres zooms.
+  // Fond IGN : la tuile IGN d'abord, réseau permis seulement ; absente (404 hors couverture, erreur), la suite est
+  // celle d'OSM. 🔒 Aucune tuile IGN n'est lue ni écrite dans le cache hors ligne.
   async function _imageOsm(z, x, y, gen) {
+    const fond = _fond();
+    if (fond.id !== window.KtaFondsCarte.OSM && _reseauPermis()) {
+      _requetes++;
+      const ign = await _chargerImg(_urlTuile(fond.id, z, x, y), true);
+      if (gen !== _generation) return null;
+      if (ign) return { img: ign, sx: 0, sy: 0, cote: TUILE };
+      _replis++;
+      if (_replis === 1 && _allume) _attribution(_carte, true);
+    }
     const img = await _imageEnregistree(z, x, y);
     if (gen !== _generation) return null;
     if (img) return { img: img, sx: 0, sy: 0, cote: TUILE };
     if (_reseauPermis()) {
       _requetes++;
-      const net = await _chargerImg(OSM_URL.replace("{z}", z).replace("{x}", x).replace("{y}", y), true);
+      const net = await _chargerImg(_urlTuile(window.KtaFondsCarte.OSM, z, x, y), true);
       return net ? { img: net, sx: 0, sy: 0, cote: TUILE } : null;
     }
     for (let k = 1; k <= REPLI_ZOOMS && z - k >= 0; k++) {
@@ -297,8 +311,13 @@
     if (!visible || !map) return;
     const d = document.createElement("div");
     d.className = "kta-fond-osm-attrib";
-    d.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" ' +
-      'rel="noopener noreferrer">OpenStreetMap</a>';
+    // Attribution du fond affiché ; celle d'OSM s'y ajoute dès qu'une tuile OSM remplace une tuile IGN, et hors
+    // ligne (seules les tuiles OSM enregistrées s'affichent alors).
+    const F = window.KtaFondsCarte, fond = _fond();
+    let html = fond.attribution;
+    if (fond.id !== F.OSM && (_replis > 0 || !_enLigne())) html += " · " + F.ATTR_OSM;
+    d.innerHTML = html;
+    d.setAttribute("data-fond", fond.id);
     document.body.appendChild(d);
     _attrib = d;
   }
@@ -319,6 +338,7 @@
     }
     const map = window.map;
     _generation++;
+    _replis = 0;
     _pane(map);
     _couche = new CoucheFondOsm();
     _couche.addTo(map);
@@ -448,6 +468,11 @@
         '<span class="kta-group-flyout-btn-label">' + window.ktaEsc(_t("fondosm.interrupteur")) + '</span>' +
         '<span class="kta-fond-osm-etat" data-fond-osm="etat"></span>' +
       '</button>' +
+      '<label class="kta-fond-osm-curseur kta-fond-osm-choix">' +
+        '<span>' + window.ktaIcone("layers") + " " + window.ktaEsc(_t("fondscarte.choix")) + '</span>' +
+        '<select data-fond-osm="fond" title="' + window.ktaEsc(_t("fondscarte.choix.title")) + '">' +
+          _optionsFond() + '</select>' +
+      '</label>' +
       '<label class="kta-fond-osm-curseur">' +
         '<span>' + window.ktaIcone("blend") + " " + window.ktaEsc(_t("fondosm.transparence")) + '</span>' +
         '<input type="range" min="0" max="100" step="5" data-fond-osm="transparence">' +
@@ -475,14 +500,26 @@
       else if (role === "moi") maPosition();
       else if (role === "hors-ligne") enregistrerHorsLigne();
     });
+    p.querySelector("[data-fond-osm='fond']").addEventListener("change", function(e) {
+      window.KtaFondsCarte.choisir(e.target.value);
+    });
     p.querySelector("[data-fond-osm='transparence']").addEventListener("input", function(e) {
       regler(Number.parseInt(e.target.value, 10));
     });
     return p;
   }
 
+  function _optionsFond() {
+    const F = window.KtaFondsCarte, id = F.courant().id;
+    return F.liste().map(function(f) {
+      return '<option value="' + window.ktaEsc(f.id) + '"' + (f.id === id ? " selected" : "") + '>' +
+        window.ktaEsc(F.libelle(f.id)) + '</option>';
+    }).join("");
+  }
+
   function _majPanneau() {
     if (!_panneau) return;
+    _panneau.querySelector("[data-fond-osm='fond']").value = _fond().id;
     const inter = _panneau.querySelector("[data-fond-osm='interrupteur']");
     inter.classList.toggle("kta-actif", _allume);
     inter.setAttribute("aria-pressed", _allume ? "true" : "false");
@@ -496,7 +533,7 @@
     // Hors ligne : dit dans le panneau, tenu à jour par les événements online / offline (fin de fichier).
     const msg = _panneau.querySelector("[data-fond-osm='hors-ligne-msg']");
     msg.hidden = _enLigne();
-    msg.textContent = msg.hidden ? "" : _t("fondosm.horsLigne");
+    msg.textContent = msg.hidden ? "" : _t(_fond().horsLigne ? "fondosm.horsLigne" : "fondscarte.horsLigne.fondIgn");
     const etat = _panneau.querySelector("[data-fond-osm='etat']");
     const on = _t("fondosm.etat.on"), off = _t("fondosm.etat.off");
     etat.textContent = _allume ? on : off;
@@ -515,6 +552,8 @@
     _panneau.querySelector("[data-fond-osm='hors-ligne-etat']").textContent = _enregistrement
       ? _t("fondosm.cache.enCours", { fait: _enregistrement.fait, total: _enregistrement.total })
       : (raison ? _t("fondosm.cache.indispo." + raison) : "");
+    // raison complète au survol quand c'est le fond choisi qui empêche l'enregistrement
+    hl.title = _t(raison === "fond" ? "fondscarte.horsLigne.osmSeul" : "fondosm.cache.title");
   }
 
   function _placerPanneau() {
@@ -622,9 +661,11 @@
   // ── « Enregistrer hors ligne » : l'emprise du plan dans le cache OSM partagé (OsmTilesCache) ──────────
   // Même garde que le bouton de la carte de l'accueil, plus OSM coupé et incognito : la commande est grisée
   // avec sa raison. Zoom : le plus fin où l'emprise tient sur 3 zooms sous le plafond de 200 tuiles.
+  // 🔒 Fond IGN choisi : grisée (« OSM seulement »), jamais d'OSM enregistré en silence à sa place.
   function _raisonEnregistrement() {
     if (!_osmAutorise()) return "optin";
     if (_incognito()) return "incognito";
+    if (!_fond().horsLigne) return "fond";
     if (!_enLigne()) return "horsLigne";
     const bbox = (window.OsmView && typeof window.OsmView.getPlanGpsBbox === "function")
       ? window.OsmView.getPlanGpsBbox() : null;
@@ -674,6 +715,7 @@
     return {
       disponible: !_raisonIndispo(), raison: _raisonIndispo(), allume: _allume, transparence: _transparence,
       imagesEnMemoire: _images.size, requetesReseau: _requetes, panneauOuvert: !!_panneau,
+      fond: _fond().id, replis: _replis,
       position: _moi ? _moi.marqueur.getLatLng() : null,
       enregistrement: _enregistrement, dernierEnregistrement: _dernierEnregistrement,
       raisonEnregistrement: _raisonEnregistrement()
@@ -699,10 +741,30 @@
     }
     _majTout();
   }
+  // Fond changé (ce panneau ou la Vue OSM) : images oubliées, couche redessinée sans être rallumée.
+  function _surChangementFond() {
+    if (_allume && _couche) {
+      _generation++;
+      _replis = 0;
+      _enVol.forEach(function(img) { img.onload = img.onerror = null; img.src = ""; });
+      _enVol.clear();
+      _images.clear();
+      _ancetres.clear();
+      _attribution(_carte, true);
+      _couche.redraw();
+    }
+    _majPanneau();
+  }
+  window.addEventListener("kta:fondCarteChange", _surChangementFond);
   window.addEventListener("kta:georefChange", _surCalage);
   window.addEventListener("kta:osmOptInChange", _surRefus);
-  window.addEventListener("online", _majPanneau);
-  window.addEventListener("offline", _majPanneau);
+  // Réseau perdu ou revenu : phrase du panneau, et attribution d'un fond IGN (OSM seul s'affiche hors ligne).
+  function _surReseau() {
+    if (_allume) _attribution(_carte, true);
+    _majPanneau();
+  }
+  window.addEventListener("online", _surReseau);
+  window.addEventListener("offline", _surReseau);
   window.addEventListener("mktm:plan-ferme", _remiseAZero);
   window.addEventListener("mktm:plan-pret", function() { if (_carte !== window.map) _remiseAZero(); majBouton(); });
 

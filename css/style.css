@@ -15154,6 +15154,11 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
   flex: 1 1 72px; min-width: 0; max-width: 100%; margin: 0; accent-color: var(--kta-accent);
 }
 .kta-fond-osm-curseur input[type="range"]:disabled { cursor: not-allowed; }
+/* Choix du fond (OSM, IGN) : la liste prend la place du curseur, le libellé garde la sienne. */
+.kta-fond-osm-choix select {
+  flex: 1 1 72px; min-width: 0; max-width: 100%; margin: 0; padding: 3px 4px; font: inherit; font-size: 12.5px;
+  background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-texte-3); border-radius: 4px;
+}
 .kta-fond-osm-horsligne { margin: 0 4px 6px; font-size: 12px; line-height: 1.35; }
 .kta-fond-osm-valeur {
   flex: 0 0 auto; min-width: 5.5ch; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums;

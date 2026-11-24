@@ -7,11 +7,11 @@
 //   donnée ne part (PWA 100 % client-side : la collecte est impossible par construction, encore faut-il le voir).
 // Instrumente fetch, XHR, sendBeacon, WebSocket, EventSource ; buffer mémoire de 500 entrées ; journal en
 //   direct dans la modale 📋 Voir le journal réseau. Il OBSERVE sans rien bloquer.
-// ⚠️ Seule requête vers un tiers possible : le fond OpenStreetMap de la Vue OSM, coupé par la case 🗺️ Vue OSM
-//   (OsmView.isOptedIn) et le mode incognito. Les tuiles posées en <img> (Leaflet) ne passent pas par
-//   fetch/XHR : absentes de ce journal, visibles seulement dans l'onglet Réseau de F12.
+// ⚠️ Seules requêtes vers un tiers possibles : le fond de carte (OpenStreetMap, ou IGN s'il est choisi : table
+//   js/fondsCarte.js), coupé par la case 🗺️ Vue OSM (OsmView.isOptedIn) et le mode incognito. Les tuiles posées en
+//   <img> (Leaflet) ne passent pas par fetch/XHR : absentes de ce journal, visibles seulement dans l'onglet Réseau de F12.
 // Origines attendues (WHITELIST_HUMAN) : même origine (dont <origin>/ping.html, corps "OK") ; blob: et data:
-//   (locales) ; tile.openstreetmap.org.
+//   (locales) ; tile.openstreetmap.org ; data.geopf.fr (fonds IGN).
 // 🩸 Chargé AVANT tout module qui pourrait appeler fetch/XHR au boot (juste après copyright.js, avant
 //   debug.js et sw.register), sinon les premières requêtes passent sous le radar.
 // Expose window.NetworkAudit : getLog() (copie), clear(), onLog(cb) → unsubscribe, WHITELIST_HUMAN (getter,
@@ -41,17 +41,20 @@
         "DNS / SSL / Nginx en un seul appel)",
       "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
       "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)",
-      "OpenStreetMap (tile.openstreetmap.org) — fond de carte de la Vue OSM, en lecture seule, coupé si tu décoches « 🗺️ Vue OSM »"
+      "OpenStreetMap (tile.openstreetmap.org) — fond de carte de la Vue OSM, en lecture seule, coupé si tu décoches « 🗺️ Vue OSM »",
+      "IGN (data.geopf.fr) — fonds IGN aérien et plan, seulement si tu les choisis, en lecture seule, coupés si tu décoches « 🗺️ Vue OSM »"
     ];
     const sameOrigin = _t("netaudit.whitelist.sameOrigin", { origin: origin });
     const blob       = _t("netaudit.whitelist.blob");
     const data       = _t("netaudit.whitelist.data");
     const osm        = _t("netaudit.whitelist.osm");
+    const ign        = _t("netaudit.whitelist.ign");
     return [
       sameOrigin != null ? sameOrigin : fr[0],
       blob       != null ? blob       : fr[1],
       data       != null ? data       : fr[2],
-      osm        != null ? osm        : fr[3]
+      osm        != null ? osm        : fr[3],
+      ign        != null ? ign        : fr[4]
     ];
   }
 
