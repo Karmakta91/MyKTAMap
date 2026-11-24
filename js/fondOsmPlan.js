@@ -50,7 +50,7 @@
   let _generation   = 0;               // jeton : un chargement d'une génération éteinte ne dessine plus
   let _panneau      = null;
   let _bouton       = null;
-  let _attrib       = null;
+  let _attrib       = null;            // { carte, textes } : crédits posés dans le contrôle d'attribution de la carte
   let _moi          = null;            // { marqueur, cercle } du dernier fix
   let _horsLigneDit = false;
   const _images     = new Map();       // "z/x/y" → Promise<{ img, sx, sy, cote }|null> (ordre = LRU)
@@ -305,21 +305,26 @@
     if (typeof window.ktaAppliquerOpacitePlanDeBase === "function") window.ktaAppliquerOpacitePlanDeBase();
   }
 
+  // Crédit des données dans le contrôle d'attribution Leaflet de la carte du plan, visible seulement fond allumé
+  // (KtaFondsCarte.montrerCredits ; le plan seul n'en montre aucun). Crédit du fond affiché ; celui d'OSM s'y ajoute
+  // dès qu'une tuile OSM remplace une tuile IGN, et hors ligne (seules les tuiles OSM enregistrées s'affichent).
+  // ⚠️ Le crédit OSM d'un repli reste jusqu'au changement de fond ou à l'extinction : les tuiles OSM sont dessinées
+  //   dans les canvas de la couche, rien ne dit quand la dernière quitte l'écran.
   function _attribution(map, visible) {
-    if (_attrib && _attrib.parentNode) _attrib.parentNode.removeChild(_attrib);
-    _attrib = null;
+    const F = window.KtaFondsCarte;
+    if (_attrib) {
+      const ctrl = _attrib.carte.attributionControl;
+      if (ctrl) _attrib.textes.forEach(function(t) { ctrl.removeAttribution(t); });
+      if (!visible || map !== _attrib.carte) F.montrerCredits(_attrib.carte, false);
+      _attrib = null;
+    }
     if (!visible || !map) return;
-    const d = document.createElement("div");
-    d.className = "kta-fond-osm-attrib";
-    // Attribution du fond affiché ; celle d'OSM s'y ajoute dès qu'une tuile OSM remplace une tuile IGN, et hors
-    // ligne (seules les tuiles OSM enregistrées s'affichent alors).
-    const F = window.KtaFondsCarte, fond = _fond();
-    let html = fond.attribution;
-    if (fond.id !== F.OSM && (_replis > 0 || !_enLigne())) html += " · " + F.ATTR_OSM;
-    d.innerHTML = html;
-    d.setAttribute("data-fond", fond.id);
-    document.body.appendChild(d);
-    _attrib = d;
+    const ctrl = F.montrerCredits(map, true);
+    if (!ctrl) return;
+    const fond = _fond(), textes = [fond.attribution];
+    if (fond.id !== F.OSM && (_replis > 0 || !_enLigne())) textes.push(F.ATTR_OSM);
+    textes.forEach(function(t) { ctrl.addAttribution(t); });
+    _attrib = { carte: map, textes: textes };
   }
 
   // ── Allumer / éteindre ──────────

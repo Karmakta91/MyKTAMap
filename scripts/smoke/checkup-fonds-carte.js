@@ -17,8 +17,14 @@
 //   requête IGN · V8 incognito : idem · A1-A5 widget de l'accueil : suit le fond en direct, pied (domaine,
 //   attribution) et 💾 refusé avec sa raison en IGN, repli OSM tuile par tuile, retour OSM, aucune requête IGN sans
 //   la case ni en incognito · S1-S4 briefing Secours : capture html2canvas lisible (canvas non souillé) avec les
-//   tuiles IGN, par la Vue OSM et par le repli hors écran, repli OSM sur 404, aucune requête IGN sans la case ni en
-//   incognito · M1-M3 téléphone (390 px) : sélecteurs du fond dans l'écran · V9 aucune erreur de page.
+//   tuiles IGN, par la Vue OSM et par le repli hors écran, repli OSM sur 404, crédit du fond sous l'image du PDF ;
+//   sans la case et en incognito : AUCUNE requête de tuile (ni OSM ni IGN), cadre du plan et équipe sur fond blanc,
+//   aucun crédit · Crédits : visibles par défaut, sans préfixe « Leaflet », justes selon le fond dans la Vue OSM
+//   (V1-V3) et sur le fond sous le plan (P1-P5), les deux en repli, OSM retiré quand plus aucune tuile remplacée
+//   n'est affichée (V3b), rien sur le plan seul ; case « Masquer les crédits des cartes » : effet immédiat, retenue
+//   au rechargement (K1-K4) · Vue OSM : titre neutre, « Sauvegarder hors-ligne » grisé lisible avec sa raison
+//   (contraste mesuré) · M1-M5 téléphone (390 px), thèmes sombre et clair : sélecteurs dans l'écran, crédit lisible
+//   (contraste ≥ 4,5:1 sur tuile blanche et noire) sans recouvrir de bouton · V9 aucune erreur de page.
 // Usage : node scripts/smoke/checkup-fonds-carte.js   (SMOKE_PORT pour une copie de travail ; CAPTURES=<dossier> :
 //   captures à 390 px, à regarder, jamais à commiter)
 // Doc : docs/architecture/vue-osm.md (Fonds de carte)
@@ -108,6 +114,7 @@ async function ouvrirPage(nav, nom, opts) {
   await page.goto(BASE + "/index.html" + (o.incognito ? "?incognito=1" : ""), { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
   await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+  await accrocherVue(page);
   await ouvrirPlan(page, nom);
   return { ctx: ctx, page: page, etat: etat };
 }
@@ -139,6 +146,101 @@ async function ouvrirPlan(page, nom) {
   }, PNG_TUILE);
 }
 
+// Carte Leaflet de la Vue OSM, gardée dans window.__vue à sa création (zoom piloté par V3b) ; outils de contraste.
+async function accrocherVue(page) {
+  await page.evaluate(function () {
+    L.Map.addInitHook(function () { if (this.getContainer().id === "kta-osm-map") window.__vue = this; });
+  });
+  await page.evaluate(poserContraste);
+}
+// Crédit d'une carte (contrôle d'attribution Leaflet) : visible, texte, préfixe, contraste au pire (tuile blanche et
+// noire sous le fond voilé), boutons recouverts, dans l'écran.
+function lireCredit(sel) {
+  const carte = document.querySelector(sel);
+  const a = carte && carte.querySelector(".leaflet-control-attribution");
+  if (!a) return { present: false, visible: false, texte: "" };
+  const cs = getComputedStyle(a), r = a.getBoundingClientRect();
+  const visible = cs.display !== "none" && cs.visibility !== "hidden" && r.width > 0 && r.height > 0;
+  const res = { present: true, visible: visible, texte: (a.textContent || "").trim(),
+                prefixe: /Leaflet/.test(a.textContent || "") || !!a.querySelector("svg") };
+  if (!visible) return res;
+  const C = window.__contraste;
+  const textes = [a].concat(Array.from(a.querySelectorAll("a")));
+  res.ratio = Math.min.apply(null, textes.map(function (el) {
+    return C.texte(el, carte, [[255, 255, 255, 1], [0, 0, 0, 1]]);
+  }));
+  res.ratio = Math.round(res.ratio * 100) / 100;
+  res.taillePolice = cs.fontSize;
+  res.rect = { g: Math.round(r.left), d: Math.round(r.right), h: Math.round(r.top), b: Math.round(r.bottom) };
+  res.dansEcran = r.left >= 0 && r.right <= window.innerWidth && r.top >= 0 && r.bottom <= window.innerHeight;
+  const centre = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  res.dessus = !!centre && a.contains(centre);
+  res.recouvre = Array.from(document.querySelectorAll("button, a, input, select, [role=button], .leaflet-control"))
+    .filter(function (el) {
+      if (a.contains(el) || el.contains(a)) return false;
+      if (el.classList.contains("leaflet-marker-icon")) return false;   // contenu de la carte, pas une commande
+      const q = el.getBoundingClientRect();
+      if (!q.width || !q.height) return false;
+      if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return false;
+      const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+      if (!top || !(el.contains(top) || top.contains(el))) return false;   // caché sous autre chose
+      return q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top;
+    }).map(function (el) { return el.id || String(el.className) || el.tagName; });
+  return res;
+}
+// Outils de contraste WCAG posés dans la page (couleurs calculées rgb(), rgba() ou color(srgb …)).
+function poserContraste() {
+  function rgba(c) {
+    let m = /rgba?\(([^)]+)\)/.exec(c || "");
+    if (m) {
+      const p = m[1].split(/[\s,\/]+/).filter(Boolean).map(Number);
+      return [p[0], p[1], p[2], p[3] === undefined ? 1 : p[3]];
+    }
+    m = /color\(srgb ([^)]+)\)/.exec(c || "");
+    if (m) {
+      const p = m[1].split(/[\s\/]+/).filter(Boolean).map(Number);
+      return [p[0] * 255, p[1] * 255, p[2] * 255, p[3] === undefined ? 1 : p[3]];
+    }
+    return null;
+  }
+  function lum(c) {
+    const f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+  function mix(h, b) {
+    const a = h[3];
+    return [h[0] * a + b[0] * (1 - a), h[1] * a + b[1] * (1 - a), h[2] * a + b[2] * (1 - a), 1];
+  }
+  function fond(el, stop, base) {
+    const pile = [];
+    for (let e = el; e && e !== stop; e = e.parentElement) {
+      const b = rgba(getComputedStyle(e).backgroundColor);
+      if (b && b[3] > 0) pile.push(b);
+    }
+    let c = base;
+    for (let i = pile.length - 1; i >= 0; i--) c = mix(pile[i], c);
+    return c;
+  }
+  function ratio(c1, c2) { const l1 = lum(c1), l2 = lum(c2); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); }
+  window.__contraste = {
+    texte: function (el, stop, bases) {
+      const t = rgba(getComputedStyle(el).color);
+      return Math.min.apply(null, bases.map(function (b) { const f = fond(el, stop, b); return ratio(mix(t, f), f); }));
+    }
+  };
+}
+// « Sauvegarder hors-ligne » de la Vue OSM : grisé visible, raison affichée, contraste de la raison sur le bandeau.
+function lireBoutonCache() {
+  const b = document.getElementById("kta-osm-cache-btn");
+  if (!b) return null;
+  const r = b.querySelector(".kta-osm-cache-raison"), cs = getComputedStyle(b);
+  return {
+    desactive: b.disabled, classe: b.classList.contains("kta-osm-cache-indispo"), bord: cs.borderTopStyle,
+    opacite: cs.opacity, raison: r ? r.textContent : null,
+    raisonVisible: !!r && r.getBoundingClientRect().width > 0,
+    ratio: Math.round(window.__contraste.texte(r || b, null, [[255, 255, 255, 1]]) * 100) / 100
+  };
+}
 async function ouvrirVueOsm(page) {
   await page.evaluate(function () { window.OsmView.open(); });
   await attendre(page, function () { return !!document.getElementById("kta-osm-fond"); }, 30000);
@@ -161,7 +263,13 @@ function lireVue() {
     tuilesIgn: tuiles.filter(function (t) { return /data\.geopf\.fr/.test(t.src) && t.classList.contains("leaflet-tile-loaded"); }).length,
     tuilesOsm: tuiles.filter(function (t) { return /tile\.openstreetmap\.org/.test(t.src) && t.classList.contains("leaflet-tile-loaded"); }).length,
     cacheDesactive: btn ? btn.disabled : null, cacheTitre: btn ? btn.title : null,
-    courant: window.KtaFondsCarte.courant().id
+    courant: window.KtaFondsCarte.courant().id,
+    titre: (function () {
+      const t = document.querySelector("#kta-osm-view-overlay .kta-readme-modal-titre");
+      return t ? t.textContent.trim() : null;
+    })(),
+    creditVisible: !!attr && getComputedStyle(attr).display !== "none" && attr.getBoundingClientRect().width > 0,
+    prefixe: !!attr && (/Leaflet/.test(attr.textContent) || !!attr.querySelector("svg"))
   };
 }
 async function cle(page, k) { return page.evaluate(function (c) { return window.I18n.t(c); }, k); }
@@ -218,7 +326,8 @@ async function attendreAccueil(page) { await page.waitForTimeout(2000); return p
 // ── Briefing Secours : html2canvas instrumenté (part des couleurs des tuiles fabriquées, canvas lisible ou souillé).
 // `horsEcran` : Vue OSM déclarée indisponible, la capture passe par le repli hors écran (carte Leaflet à part).
 async function briefing(page, horsEcran) {
-  return page.evaluate(async function (horsEcran) {
+  return page.evaluate(async function (arg) {
+    const horsEcran = arg.horsEcran, garder = arg.garder;
     if (!window.__h2cInstrumente) {
       window.__h2cInstrumente = true;
       const orig = window.html2canvas;
@@ -230,29 +339,69 @@ async function briefing(page, horsEcran) {
           const proche = function (i, rgb) {
             return Math.abs(d[i] - rgb[0]) < 30 && Math.abs(d[i + 1] - rgb[1]) < 30 && Math.abs(d[i + 2] - rgb[2]) < 30;
           };
-          let n = 0, ign = 0, osm = 0;
-          for (let i = 0; i < d.length; i += 4 * 53) {
+          let n = 0, ign = 0, osm = 0, blanc = 0, jaune = 0, equipe = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            if (proche(i, [244, 197, 66])) jaune++;          // cadre du plan (trait de la charte)
+            else if (proche(i, [255, 68, 68])) equipe++;     // équipe Alpha (palette du Secours)
+            if ((i / 4) % 53) continue;
             n++;
             if (proche(i, [200, 40, 40]) || proche(i, [40, 40, 200])) ign++;
             else if (proche(i, [150, 200, 150])) osm++;
+            // blanc, ou blanc sous le voile jaune à 15 % du cadre du plan
+            else if (d[i] > 240 && d[i + 1] > 235 && d[i + 2] > 215) blanc++;
           }
           c.toDataURL("image/jpeg", 0.5);   // jette si le canvas est souillé
           r.lisible = true; r.ign = Math.round(ign / n * 100); r.osm = Math.round(osm / n * 100);
+          r.blanc = Math.round(blanc / n * 100); r.jaune = jaune; r.equipe = equipe;
+          if (window.__garderImage) window.__images.push(c.toDataURL("image/png"));
         } catch (e) { r.erreur = String((e && e.message) || e); }
         window.__captures.push(r);
         return c;
       };
     }
+    if (!window.__pdfInstrumente) {
+      window.__pdfInstrumente = true;
+      const Orig = window.jspdf.jsPDF;
+      window.jspdf.jsPDF = function (o) {
+        const p = new Orig(o), t0 = p.text;
+        p.text = function (txt) {
+          window.__pdfTextes.push(Array.isArray(txt) ? txt.join(" ") : String(txt));
+          return t0.apply(this, arguments);
+        };
+        p.save = function () {};   // pas de téléchargement
+        return p;
+      };
+    }
     window.__captures = [];
+    window.__pdfTextes = [];
+    window.__images = [];
+    window.__garderImage = garder;
     const OV = window.OsmView, dispo = OV.isAvailable;
     if (horsEcran) OV.isAvailable = function () { return false; };
     const sc = window.SecoursMode.create("Essai fonds de carte (test)");
+    // équipe avec un GPS de surface au centre de l'emprise : son repère doit figurer dans la capture
+    const g = window.SecoursMode.addGroupe(sc.id, "Alpha test");
+    const bb = OV.getPlanGpsBbox && OV.getPlanGpsBbox();
+    if (g && bb) {
+      const c = bb.getCenter();
+      window.SecoursMode.updateGroupe(sc.id, g.id, { couleurIdx: 0, surfaceGps: { lat: c.lat, lng: c.lng } });
+    }
     try { await window.SecoursMode.genererBriefingPompiersPDF(sc.id); }
     finally { window.SecoursMode.delete(sc.id); OV.isAvailable = dispo; }
-    return window.__captures;
-  }, !!horsEcran);
+    const prefixe = window.I18n.t("secours.surf.fondCredit", { credit: "" }).trim();
+    const credit = window.__pdfTextes.filter(function (x) { return x.indexOf(prefixe) === 0; });
+    return window.__captures.map(function (c) { return Object.assign({ credit: credit.join(" | ") }, c); });
+  }, { horsEcran: !!horsEcran, garder: !!CAPTURES });
 }
 // Le briefing lit le plan ouvert : on le rouvre s'il a été quitté (retour à l'accueil).
+// Image de la dernière capture du briefing (CAPTURES seulement), à regarder.
+async function garderCapture(page, nom) {
+  if (!CAPTURES) return;
+  const img = await page.evaluate(function () { return (window.__images || []).slice(-1)[0] || null; });
+  if (!img) return;
+  fs.mkdirSync(CAPTURES, { recursive: true });
+  fs.writeFileSync(path.join(CAPTURES, nom + ".png"), Buffer.from(img.split(",")[1], "base64"));
+}
 async function ouvrirPlanSiBesoin(page, nom) {
   const ouvert = await page.evaluate(function () {
     return !!(window.ktaPlanAffiche && window.ktaPlanAffiche()) && !document.getElementById("ktaOsmHomeMap");
@@ -274,6 +423,14 @@ async function captureMobile(page, nom) {
   await page.screenshot({ path: path.join(CAPTURES, nom + ".png") });
 }
 
+// Crédit à 390 px : visible, dans l'écran, au-dessus de tout, sans recouvrir de bouton, contraste ≥ 4,5:1.
+async function verifCreditMobile(page, sel, nomCarte, theme) {
+  const c = await page.evaluate(lireCredit, sel);
+  verif(nomCarte + " à 390 px (" + theme + ") : crédit visible, dans l'écran, sans recouvrir de bouton, contraste " +
+    (c.ratio || "?") + ":1 ≥ 4,5:1", c.visible && c.dansEcran && c.dessus && c.recouvre.length === 0 && c.ratio >= 4.5, c);
+  return c;
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   const erreurs = [];
@@ -293,6 +450,13 @@ async function captureMobile(page, nom) {
       v1.tuilesOsm > 0 && s.etat.ign.length === 0 && /OpenStreetMap/.test(v1.attribution),
       { osm: v1.tuilesOsm, ign: s.etat.ign.length, attribution: v1.attribution });
     verif("OSM : « Sauvegarder hors-ligne » permis", v1.cacheDesactive === false, v1.cacheDesactive);
+    verif("crédit visible par défaut dans la Vue OSM, « © OpenStreetMap », sans préfixe Leaflet",
+      v1.creditVisible && !v1.prefixe && v1.attribution.trim() === "© OpenStreetMap", v1.attribution);
+    const titreAttendu = await cle(page, "osm.modal.title");
+    verif("titre neutre de la Vue OSM (ni OpenStreetMap ni IGN)",
+      v1.titre === titreAttendu && !/OpenStreetMap|IGN/.test(v1.titre || ""), v1.titre);
+    const b1 = await page.evaluate(lireBoutonCache);
+    verif("OSM : « Sauvegarder hors-ligne » sans marque d'indisponibilité", !b1.classe && b1.raison === null, b1);
 
     console.log("— V2 : IGN aérien —");
     const nOsm = s.etat.osm.length;
@@ -304,7 +468,13 @@ async function captureMobile(page, nom) {
         const m = /TILEMATRIX=(\d+)&/.exec(u);
         return /LAYER=ORTHOIMAGERY\.ORTHOPHOTOS/.test(u) && m && +m[1] <= 19;
       }), s.etat.ign.slice(0, 2));
-    verif("IGN aérien : attribution IGN seule", /IGN/.test(v2.attribution) && !/OpenStreetMap/.test(v2.attribution), v2.attribution);
+    verif("IGN aérien : crédit visible « © IGN – Géoplateforme » seul",
+      v2.creditVisible && !v2.prefixe && v2.attribution.trim() === "© IGN – Géoplateforme", v2.attribution);
+    const b2 = await page.evaluate(lireBoutonCache);
+    verif("IGN : « Sauvegarder hors-ligne » visiblement grisé (bord pointillé, raison affichée, sans opacité), " +
+      "contraste de la raison ≥ 4,5:1 (thème sombre : " + b2.ratio + ":1)",
+      b2.desactive && b2.classe && b2.bord === "dashed" && b2.opacite === "1" && b2.raisonVisible &&
+      b2.raison === await cle(page, "fondosm.cache.indispo.fond") && b2.ratio >= 4.5, b2);
     verif("IGN : « Sauvegarder hors-ligne » grisé, raison au survol",
       v2.cacheDesactive === true && v2.cacheTitre === await cle(page, "fondscarte.horsLigne.osmSeul"), v2);
     const nCache = await page.evaluate(async function () { return (await window.OsmTilesCache.getStats()).count; });
@@ -320,9 +490,15 @@ async function captureMobile(page, nom) {
     const v3 = await page.evaluate(lireVue);
     verif("hors couverture : la tuile OSM remplace la tuile IGN",
       v3.tuilesOsm > 0 && s.etat.ign.some(function (u) { return /PLANIGNV2/.test(u); }), v3);
-    verif("hors couverture : attribution IGN et OpenStreetMap", /IGN/.test(v3.attribution) && /OpenStreetMap/.test(v3.attribution),
-      v3.attribution);
+    verif("hors couverture : crédit visible IGN et OpenStreetMap",
+      v3.creditVisible && /IGN/.test(v3.attribution) && /OpenStreetMap/.test(v3.attribution), v3.attribution);
     s.etat.ignHors = false;
+    console.log("— V3b : plus aucune tuile remplacée affichée —");
+    await page.evaluate(function () { window.__vue.setZoom(window.__vue.getZoom() + 2, { animate: false }); });
+    await page.waitForTimeout(2500);
+    const v3b = await page.evaluate(lireVue);
+    verif("tuiles IGN revenues (zoom changé) : crédit OSM retiré, IGN seul",
+      v3b.tuilesIgn > 0 && v3b.tuilesOsm === 0 && v3b.attribution.trim() === "© IGN – Géoplateforme", v3b);
 
     console.log("— V4 : choix partagé avec le fond sous le plan —");
     await fermerVueOsm(page);
@@ -350,6 +526,32 @@ async function captureMobile(page, nom) {
       !/IGN/.test(v5.attribution), { v5: v5, ign: s.etat.ign.length - nIgn });
     verif("retour OSM : « Sauvegarder hors-ligne » permis de nouveau", v5.cacheDesactive === false, v5.cacheDesactive);
 
+    console.log("— P1-P5 : crédit du fond sous le plan —");
+    await fermerVueOsm(page);
+    const p1 = await page.evaluate(lireCredit, "#map");
+    verif("plan seul : aucun crédit affiché", !p1.visible, p1);
+    await page.evaluate(function () { return window.FondOsmPlan.allumer(); });
+    await page.waitForTimeout(2000);
+    const p2 = await page.evaluate(lireCredit, "#map");
+    verif("fond OSM allumé : crédit visible « © OpenStreetMap », sans préfixe", p2.visible && !p2.prefixe &&
+      p2.texte === "© OpenStreetMap", p2);
+    await page.evaluate(function () { window.KtaFondsCarte.choisir("ign-aerien"); });
+    await page.waitForTimeout(2000);
+    const p3 = await page.evaluate(lireCredit, "#map");
+    verif("fond IGN aérien : crédit « © IGN – Géoplateforme » seul", p3.visible && p3.texte === "© IGN – Géoplateforme", p3);
+    s.etat.ignHors = true;
+    await page.evaluate(function () { window.KtaFondsCarte.choisir("ign-plan"); });
+    await page.waitForTimeout(2500);
+    const p4b = await page.evaluate(lireCredit, "#map");
+    verif("fond IGN hors couverture : crédits IGN et OpenStreetMap", p4b.visible && /IGN/.test(p4b.texte) &&
+      /OpenStreetMap/.test(p4b.texte), p4b);
+    s.etat.ignHors = false;
+    await page.evaluate(function () { window.FondOsmPlan.eteindre(); window.KtaFondsCarte.choisir("osm"); });
+    await page.waitForTimeout(500);
+    const p5 = await page.evaluate(lireCredit, "#map");
+    verif("fond éteint : plus de crédit sur le plan", !p5.visible, p5);
+    await ouvrirVueOsm(page);
+
     console.log("— V6 : rechargement —");
     await choisirVue(page, "ign-plan");
     await fermerVueOsm(page);
@@ -360,6 +562,39 @@ async function captureMobile(page, nom) {
     await ouvrirVueOsm(page);
     const v6 = await page.evaluate(lireVue);
     verif("rechargement : la Vue OSM rouvre sur IGN plan", v6.valeur === "ign-plan" && v6.courant === "ign-plan" && v6.tuilesIgn > 0, v6);
+
+    console.log("— K1-K4 : case « Masquer les crédits des cartes » —");
+    await page.evaluate(function () { document.getElementById("loaderCreditsCartesCb").click(); });
+    await page.waitForTimeout(300);
+    const k1 = await page.evaluate(function () {
+      let ls = null;
+      try { ls = localStorage.getItem("myktamap_credits_cartes_masques_v1"); } catch (e) { ls = null; }
+      return { cb: document.getElementById("loaderCreditsCartesCb").checked, ls: ls };
+    });
+    const k1c = await page.evaluate(lireCredit, "#kta-osm-map");
+    verif("case cochée : crédit masqué aussitôt dans la Vue OSM ouverte, retenu sur l'appareil",
+      k1.cb && k1.ls === "1" && k1c.present && !k1c.visible, { k1: k1, credit: k1c });
+    await fermerVueOsm(page);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2500);
+    await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await accrocherVue(page);
+    await ouvrirPlan(page, nom);
+    await ouvrirVueOsm(page);
+    const k2 = await page.evaluate(function () { return document.getElementById("loaderCreditsCartesCb").checked; });
+    const k2c = await page.evaluate(lireCredit, "#kta-osm-map");
+    verif("rechargement : case toujours cochée, crédit de la Vue OSM masqué", k2 && k2c.present && !k2c.visible,
+      { case: k2, credit: k2c });
+    await fermerVueOsm(page);
+    await page.evaluate(function () { return window.FondOsmPlan.allumer(); });
+    await page.waitForTimeout(1500);
+    const k3 = await page.evaluate(lireCredit, "#map");
+    verif("case cochée : crédit du fond sous le plan masqué aussi", k3.present && !k3.visible, k3);
+    await page.evaluate(function () { document.getElementById("loaderCreditsCartesCb").click(); });
+    await page.waitForTimeout(300);
+    const k4 = await page.evaluate(lireCredit, "#map");
+    verif("case décochée : crédit du fond sous le plan revenu aussitôt", k4.visible && /IGN/.test(k4.texte), k4);
+    await page.evaluate(function () { window.FondOsmPlan.eteindre(); });
     erreurs.push.apply(erreurs, s.etat.erreurs);
     await s.ctx.close();
 
@@ -455,12 +690,16 @@ async function captureMobile(page, nom) {
     const c1 = s1.find(function (c) { return c.cible === "kta-osm-map"; });
     verif("briefing (Vue OSM, IGN aérien) : canvas lisible (non souillé), tuiles IGN dans l'image",
       !!c1 && c1.lisible && c1.ign >= 20 && s.etat.ign.length > nIgnS, s1);
+    verif("briefing (Vue OSM, IGN aérien) : crédit IGN sous l'image", !!c1 && /IGN - Géoplateforme/.test(c1.credit) &&
+      !/OpenStreetMap/.test(c1.credit), c1 && c1.credit);
 
     console.log("— S2 : briefing Secours en IGN, repli hors écran —");
     const s2 = await briefing(page, true);
     const c2 = s2.find(function (c) { return c.cible === "hors-écran"; });
     verif("briefing (hors écran, IGN aérien) : canvas lisible, tuiles IGN dans l'image",
       !!c2 && c2.lisible && c2.ign >= 20 && c2.osm === 0, s2);
+    verif("briefing (hors écran, IGN aérien) : crédit IGN seul", !!c2 && /IGN/.test(c2.credit) &&
+      !/OpenStreetMap/.test(c2.credit), c2 && c2.credit);
     // 🩸 Autre couche, donc d'autres URL : la page garde en mémoire les images déjà décodées (IGN aérien de S2), qui
     // se chargeraient sans repasser par la route en 404.
     s.etat.ignHors = true;
@@ -469,6 +708,8 @@ async function captureMobile(page, nom) {
     const c2b = s2b.find(function (c) { return c.cible === "hors-écran"; });
     verif("briefing (hors écran, IGN en 404) : tuiles OSM à la place, canvas lisible",
       !!c2b && c2b.lisible && c2b.osm >= 20 && c2b.ign === 0, s2b);
+    verif("briefing (hors écran, IGN en 404) : crédits IGN et OpenStreetMap", !!c2b && /IGN/.test(c2b.credit) &&
+      /OpenStreetMap/.test(c2b.credit), c2b && c2b.credit);
     s.etat.ignHors = false;
     erreurs.push.apply(erreurs, s.etat.erreurs);
     await s.ctx.close();
@@ -478,9 +719,13 @@ async function captureMobile(page, nom) {
     page = s.page;
     const s3 = await briefing(page, false);
     await allerAccueilSansCarte(page);
-    verif("sans la case : briefing et accueil sans aucune requête IGN", s.etat.ign.length === 0,
-      { ign: s.etat.ign.length, captures: s3 });
-    console.log("  ℹ️  repli hors écran du briefing sans la case : " + s.etat.osm.length + " requête(s) OSM");
+    const c3 = s3.find(function (c) { return c.cible === "hors-écran"; });
+    await garderCapture(page, "s3-briefing-sans-case");
+    verif("sans la case : briefing et accueil sans AUCUNE requête de tuile (ni IGN ni OSM)",
+      s.etat.ign.length === 0 && s.etat.osm.length === 0, { ign: s.etat.ign.length, osm: s.etat.osm.length });
+    verif("sans la case : capture sur fond blanc avec le cadre du plan et l'équipe, sans crédit",
+      !!c3 && c3.lisible && c3.blanc >= 60 && c3.jaune > 50 && c3.equipe > 20 && c3.osm === 0 && c3.ign === 0 &&
+      !c3.credit, s3);
     erreurs.push.apply(erreurs, s.etat.erreurs);
     await s.ctx.close();
 
@@ -489,9 +734,12 @@ async function captureMobile(page, nom) {
     page = s.page;
     const s4 = await briefing(page, false);
     await allerAccueilSansCarte(page);
-    verif("incognito : briefing et accueil sans aucune requête IGN", s.etat.ign.length === 0,
-      { ign: s.etat.ign.length, captures: s4 });
-    console.log("  ℹ️  repli hors écran du briefing en incognito : " + s.etat.osm.length + " requête(s) OSM");
+    const c4 = s4.find(function (c) { return c.cible === "hors-écran"; });
+    verif("incognito : briefing et accueil sans AUCUNE requête de tuile (ni IGN ni OSM)",
+      s.etat.ign.length === 0 && s.etat.osm.length === 0, { ign: s.etat.ign.length, osm: s.etat.osm.length });
+    verif("incognito : capture sur fond blanc avec le cadre du plan et l'équipe, sans crédit",
+      !!c4 && c4.lisible && c4.blanc >= 60 && c4.jaune > 50 && c4.equipe > 20 && c4.osm === 0 && c4.ign === 0 &&
+      !c4.credit, s4);
     erreurs.push.apply(erreurs, s.etat.erreurs);
     await s.ctx.close();
 
@@ -502,13 +750,21 @@ async function captureMobile(page, nom) {
     const m1 = await page.evaluate(dansEcran, "#kta-osm-fond");
     verif("Vue OSM à 390 px : sélecteur du fond entier dans l'écran, pas de défilement horizontal", m1.ok, m1);
     await captureMobile(page, "m1-vue-osm");
+    await verifCreditMobile(page, "#kta-osm-map", "Vue OSM", "sombre");
+    const mb = await page.evaluate(lireBoutonCache);
+    verif("Vue OSM à 390 px : bouton grisé, raison lisible (sombre : " + mb.ratio + ":1)", mb.desactive && mb.raisonVisible &&
+      mb.ratio >= 4.5, mb);
     await fermerVueOsm(page);
     await page.evaluate(function () { window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm")); });
     await page.waitForTimeout(400);
     const m2 = await page.evaluate(dansEcran, "[data-fond-osm='fond']");
     verif("panneau du bouton carte à 390 px : sélecteur du fond entier dans l'écran", m2.ok, m2);
     await captureMobile(page, "m2-panneau-fond");
-    await page.evaluate(function () { window.FondOsmPlan.fermerPanneau(); });
+    await page.evaluate(function () { window.FondOsmPlan.fermerPanneau(); window.FondOsmPlan.allumer(); });
+    await page.waitForTimeout(2000);
+    await verifCreditMobile(page, "#map", "fond sous le plan", "sombre");
+    await captureMobile(page, "m2-fond-plan-credit");
+    await page.evaluate(function () { window.FondOsmPlan.eteindre(); });
     await allerAccueil(page);
     await page.evaluate(function () { const b = document.getElementById("ktaOsmHomeCacheStats"); if (b) b.scrollIntoView(); });
     await page.waitForTimeout(300);
@@ -517,6 +773,26 @@ async function captureMobile(page, nom) {
     await captureMobile(page, "m3-accueil-ign");
     await page.evaluate(function () { document.getElementById("ktaOsmHomeCacheBtn").scrollIntoView({ block: "center" }); });
     await captureMobile(page, "m3-accueil-bandeau");
+    erreurs.push.apply(erreurs, s.etat.erreurs);
+    await s.ctx.close();
+
+    console.log("— M4-M5 : téléphone, 390 px, thème clair —");
+    s = await ouvrirPage(nav, nom, { viewport: { width: 390, height: 844 },
+      ls: { [CLE_FOND]: "ign-aerien", "myktamap_theme_v1": "light" } });
+    page = s.page;
+    const clair = await page.evaluate(function () { return document.documentElement.classList.contains("kta-theme-light"); });
+    if (!clair) pb("thème clair non appliqué : mesures du clair impossibles");
+    await ouvrirVueOsm(page);
+    await verifCreditMobile(page, "#kta-osm-map", "Vue OSM", "clair");
+    const mc = await page.evaluate(lireBoutonCache);
+    verif("Vue OSM à 390 px, clair : bouton grisé, raison lisible (clair : " + mc.ratio + ":1)", mc.desactive &&
+      mc.raisonVisible && mc.bord === "dashed" && mc.ratio >= 4.5, mc);
+    await captureMobile(page, "m4-vue-osm-clair");
+    await fermerVueOsm(page);
+    await page.evaluate(function () { window.FondOsmPlan.allumer(); });
+    await page.waitForTimeout(2000);
+    await verifCreditMobile(page, "#map", "fond sous le plan", "clair");
+    await captureMobile(page, "m5-fond-plan-clair");
     erreurs.push.apply(erreurs, s.etat.erreurs);
     await s.ctx.close();
 

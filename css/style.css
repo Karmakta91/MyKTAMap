@@ -633,6 +633,35 @@ html, body {
 .leaflet-control-attribution {
   display: none !important;
 }
+/* Crédit des données (© OpenStreetMap, © IGN – Géoplateforme) : visible sur la Vue OSM et sur le fond sous le plan
+   seulement (classe kta-credits-carte posée par KtaFondsCarte.montrerCredits), masqué par la case « Masquer les
+   crédits des cartes » (html.kta-credits-masques). Petit, en coin ; fond voilé à 90 % : texte ≥ 4,5:1 sur une tuile
+   blanche comme noire, dans les deux thèmes (mesuré par checkup-fonds-carte.js), jamais d'opacité sur le texte. */
+.kta-credits-carte .leaflet-control-attribution {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 4px;
+  border-radius: 3px 0 0 0;
+  background: var(--kta-fond);
+  background: color-mix(in srgb, var(--kta-fond) 90%, transparent);
+  color: var(--kta-texte-3);
+  font-size: 10px;
+  line-height: 1.5;
+}
+/* 🩸 #map descend sous la barre d'état (hauteur pleine, mesuré à 390 px) : son coin bas est caché. Le crédit du fond
+   sous le plan se fixe au-dessus de la barre (le conteneur de la carte n'a pas de transform). */
+#map.kta-credits-carte .leaflet-control-attribution {
+  position: fixed;
+  right: 0;
+  bottom: var(--kta-statusbar-h, 52px);
+}
+.kta-credits-carte .leaflet-control-attribution a {
+  font-size: inherit;
+  color: var(--kta-texte-2);
+  text-decoration: underline;
+  text-underline-offset: 1px;
+}
+html.kta-credits-masques .kta-credits-carte .leaflet-control-attribution { display: none !important; }
 
 .leaflet-bar a.kta-actif,
 .leaflet-bar a.kta-actif:hover {
@@ -15147,6 +15176,18 @@ body.kta-theme-light .kta-group-flyout-fond { background: rgba(20, 28, 44, 0.35)
   color: var(--kta-texte-3);
   cursor: not-allowed;
 }
+/* « Sauvegarder hors-ligne » de la Vue OSM refusé (fond IGN) : grisé lisible, jamais par opacité (texte-3 ≥ 4,5:1
+   sur le bandeau dans les deux thèmes, mesuré par checkup-fonds-carte.js), bord pointillé, raison courte affichée. */
+/* html devant : passe devant html.kta-theme-light .kta-btn-ghost (bord plein, !important). */
+html .kta-btn.kta-osm-cache-indispo,
+html .kta-btn.kta-osm-cache-indispo:hover {
+  opacity: 1;
+  background: transparent !important;
+  color: var(--kta-texte-3) !important;
+  border-style: dashed !important;
+  cursor: not-allowed;
+}
+.kta-osm-cache-raison { margin-left: 6px; font-weight: 400; }
 .kta-fond-osm-curseur {
   display: flex;
   align-items: center;
@@ -15195,25 +15236,6 @@ body.kta-theme-light .kta-refonte-counter-osm.kta-fond-osm-indispo {
   color: var(--kta-texte-3) !important;
   border-style: dashed !important;
 }
-/* Attribution exigée par la licence ODbL, visible tant que le fond est allumé. */
-/* Fixée au-dessus de la barre d'état : le conteneur de la carte descend sous elle. */
-/* Attribution ODbL : discrète mais toujours visible et cliquable. Fond voilé (90 %) : le contraste texte / fond
-   reste ≥ 4,5:1 sur une tuile blanche comme sur du noir, dans les deux thèmes (jamais d'opacité sur le texte). */
-.kta-fond-osm-attrib {
-  position: fixed;
-  left: 4px;
-  bottom: calc(var(--kta-statusbar-h, 52px) + 4px);
-  z-index: 1000;
-  padding: 0 4px;
-  border-radius: 3px;
-  background: var(--kta-fond);
-  background: color-mix(in srgb, var(--kta-fond) 90%, transparent);
-  color: var(--kta-texte-3);
-  font-size: 10px;
-  line-height: 1.5;
-  pointer-events: auto;
-}
-.kta-fond-osm-attrib a { color: var(--kta-texte-2); text-decoration: underline; text-underline-offset: 1px; }
 /* Point « Ma position » (un fix, jamais de suivi). */
 .kta-fond-osm-moi {
   box-sizing: border-box;

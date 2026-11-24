@@ -656,6 +656,15 @@
               <span class="kta-perf-ultra-hint" data-i18n="config.fichePe.hint">Les fiches des points, tracés, zones et structures s'ouvrent dans une fenêtre au milieu de l'écran, l'app floutée derrière, au lieu d'une bulle sur la carte. Au départ : cochée sur un téléphone, décochée sur un ordinateur ou une tablette en paysage.</span>
             </span>
           </label>
+          <!-- Crédits des cartes : réglage d'appareil, source de vérité KtaFondsCarte.creditsMasques() (fondsCarte.js),
+               pour la Vue OSM et le fond sous le plan ; le pied de la carte de l'accueil garde sa ligne. -->
+          <label class="kta-perf-ultra-row" style="margin-top:10px;">
+            <input type="checkbox" id="loaderCreditsCartesCb">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label"><span data-kta-ico="info"></span> <span data-i18n="config.creditsCartes.label">Masquer les crédits des cartes</span></span>
+              <span class="kta-perf-ultra-hint" data-i18n="config.creditsCartes.hint">Retire la mention « © OpenStreetMap » ou « © IGN – Géoplateforme » du coin de la fenêtre Vue OSM et du fond sous le plan. Les fonds restent ceux d'OpenStreetMap et de l'IGN.</span>
+            </span>
+          </label>
           <!-- Épaisseur des traits : réglage d'appareil, source de vérité KtaEpaisseurTraits (structures.js), jamais
                exporté ; homeConfig.js > _initEpaisseurTraitsHome. -->
           <div class="kta-perf-ultra-row kta-epaisseur-row">

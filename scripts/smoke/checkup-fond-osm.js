@@ -198,7 +198,10 @@ function lireFond() {
     opaciteImage: img ? +getComputedStyle(img).opacity : null,
     opaciteTilePane: +getComputedStyle(tp).opacity,
     opacitePane: p ? +getComputedStyle(p).opacity : null,
-    attribution: !!document.querySelector(".kta-fond-osm-attrib"),
+    attribution: (function () {   // crédit du contrôle Leaflet de la carte du plan, visible seulement fond allumé
+      const a = document.querySelector("#map .leaflet-control-attribution");
+      return !!a && getComputedStyle(a).display !== "none" && a.getBoundingClientRect().width > 0;
+    })(),
     panneau: !!document.querySelector(".kta-fond-osm-panneau"),
     fenetreOsm: !!document.getElementById("kta-osm-map"),
     etat: window.FondOsmPlan.etat()
@@ -218,13 +221,14 @@ function preterCalageFrance() {
 // Panneau du fond : choix, attribution affichée, état du fond.
 function lireChoixFond() {
   const sel = document.querySelector("[data-fond-osm='fond']");
-  const a = document.querySelector(".kta-fond-osm-attrib");
+  const a0 = document.querySelector("#map .leaflet-control-attribution");
+  const a = (a0 && getComputedStyle(a0).display !== "none" && a0.getBoundingClientRect().width > 0) ? a0 : null;
   let ls = null;
   try { ls = localStorage.getItem("myktamap_fond_carte_v1"); } catch (e) { ls = null; }
   return {
     select: !!sel, valeur: sel ? sel.value : null,
     options: sel ? Array.from(sel.options).map(function (o) { return o.value + "=" + o.textContent; }) : [],
-    attribution: a ? a.textContent : null, attribFond: a ? a.getAttribute("data-fond") : null,
+    attribution: a ? a.textContent : null, attribFond: a ? window.KtaFondsCarte.courant().id : null,
     etat: window.FondOsmPlan.etat(), courant: window.KtaFondsCarte.courant().id, ls: ls
   };
 }

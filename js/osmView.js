@@ -1739,6 +1739,19 @@
     const ok = _fondEnregistrable();
     btn.disabled = !ok;
     btn.title = window.I18n.t(ok ? "osm.cache.btn.title" : "fondscarte.horsLigne.osmSeul");
+    // Grisé visible (couleur de la charte, bord pointillé) et raison courte dans le bouton, comme « Enregistrer hors
+    // ligne » du panneau du bouton carte : le survol n'existe pas au doigt.
+    btn.classList.toggle("kta-osm-cache-indispo", !ok);
+    let raison = btn.querySelector(".kta-osm-cache-raison");
+    if (!ok && !raison) {
+      raison = document.createElement("span");
+      raison.className = "kta-osm-cache-raison";
+      btn.appendChild(raison);
+    }
+    if (raison) {
+      if (ok) raison.remove();
+      else raison.textContent = window.I18n.t("fondosm.cache.indispo.fond");
+    }
   }
   // Couche du fond choisi : remplace la précédente (sous les tuiles du plan, pane dédié à 350).
   function _poserFond() {
@@ -2071,6 +2084,8 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 6);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_osmMap);
+    // Crédit des données visible (masqué ailleurs) : celui du fond posé, plus OSM tant qu'une tuile IGN est remplacée.
+    if (window.KtaFondsCarte) window.KtaFondsCarte.montrerCredits(_osmMap, true);
     _brancherRotation();
     _poserFond();
 

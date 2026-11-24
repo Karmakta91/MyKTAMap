@@ -67,8 +67,8 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
   `PM` est servi aussi. Au-delà, la tuile 19 est agrandie (`maxNativeZoom`, ou le plafond du fond sous le plan).
 - **Hors couverture** : l'IGN répond 404 hors de ses données (mesuré une fois, à la main, en pleine mer). Une seule
   règle, sans polygone de couverture à tenir à jour : **chaque tuile IGN en erreur est remplacée par la tuile OSM**
-  (`KtaFondsCarte.creerCouche` pour Leaflet, `fondOsmPlan.js > _imageOsm` pour le canvas), et l'attribution OSM
-  s'ajoute dès le premier remplacement. Une image refusée par la CSP tombe dans la même règle : un serveur dont la
+  (`KtaFondsCarte.creerCouche` pour Leaflet, `fondOsmPlan.js > _imageOsm` pour le canvas), et le crédit OSM
+  s'ajoute au premier remplacement (§ Crédit des données ci-dessous). Une image refusée par la CSP tombe dans la même règle : un serveur dont la
   CSP n'autorise pas encore `data.geopf.fr` montre de l'OSM sous l'étiquette IGN, avec les deux attributions.
 - 🔒 **Hors ligne = OSM seul** : `osmTilesCache.js` n'enregistre que des tuiles OSM (URL de la table, fond `osm`) ;
   `sw.js` sort tôt pour `data.geopf.fr` (pas de `respondWith` : ni `CACHE_NAME`, ni cache IDB) ; fond IGN choisi,
@@ -92,17 +92,37 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
   survol.
 - **Mode Secours** : sa carte est la fenêtre Vue OSM (bouton 🌍 du scénario, capture du briefing), qui suit le fond.
   Le repli hors écran de la capture (`secoursMode.js > _captureOsmCanvasForBriefing`, Vue OSM indisponible) prend
-  `creerCouche(_idFondBriefing(), { crossOrigin: "anonymous" })` : le fond de l'appareil si OSM est autorisé, hors
-  incognito et en ligne, sinon OSM. Carte de quelques secondes : pas d'écoute de `kta:fondCarteChange`. html2canvas
-  (`useCORS`, `allowTaint: false`) relit les tuiles en CORS ; l'IGN répond `Access-Control-Allow-Origin: *`. Seul le
-  fond change, la palette du Secours reste la sienne. 🩸 Ce repli demande des tuiles OSM même sans la case Vue OSM ou
-  en incognito (comportement antérieur, non tranché) ; jamais de tuile IGN dans ces deux cas.
-- 🩸 **Attribution Leaflet masquée** : `css/style.css` cache `.leaflet-control-attribution` pour toutes les cartes ; le
-  crédit écrit par la Vue OSM est dans le DOM mais pas à l'écran. Le widget (pied) et le fond sous le plan
-  (`.kta-fond-osm-attrib`) écrivent le leur eux-mêmes.
+  `_idFondBriefing()` : 🔒 **sans la case Vue OSM ou en incognito, `null` : aucune couche de tuiles, aucune requête**
+  (ni OSM ni IGN), la capture garde le cadre du plan, son nom et les équipes sur fond blanc ; hors ligne, OSM (tuiles
+  enregistrées) ; sinon le fond de l'appareil, `creerCouche(id, { crossOrigin: "anonymous" })`. Carte de quelques
+  secondes : pas d'écoute de `kta:fondCarteChange`. html2canvas (`useCORS`, `allowTaint: false`) relit les tuiles en
+  CORS ; l'IGN répond `Access-Control-Allow-Origin: *`. Seul le fond change, la palette du Secours reste la sienne.
+  Sous l'image du PDF, une ligne `secours.surf.fondCredit` cite le fond capturé (lu dans le contrôle d'attribution de
+  la Vue OSM capturée, ou dans la table pour le repli, plus OSM après un remplacement) ; aucune sans tuile.
 
-🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue OSM V1-V8, widget de l'accueil A1-A4, briefing Secours S1-S2, case
-décochée et incognito A5/S3-S4, sélecteurs à 390 px M1-M3), `checkup-fond-osm.js` F8 et F13 (fond sous le plan) : tuiles
+### Crédit des données
+
+- **Visible sur deux cartes seulement** : la fenêtre Vue OSM et le fond sous le plan. `css/style.css` masque
+  `.leaflet-control-attribution` partout (plan seul, 3D, mini-cartes, briefing) ; `KtaFondsCarte.montrerCredits(map,
+  actif)` pose la classe `kta-credits-carte` sur le conteneur de la carte (le contrôle redevient visible) et retire le
+  préfixe « Leaflet » (`setPrefix(false)`). Petit, en coin bas à droite, fond `--kta-fond` voilé à 90 %, texte
+  `--kta-texte-3`, liens `--kta-texte-2` : ≥ 4,5:1 sur une tuile blanche comme noire (mesuré 5,87:1 en sombre,
+  4,64:1 en clair). Sur le plan, le contrôle est fixé au-dessus de la barre d'état (`#map` descend sous elle).
+- **Texte** : l'option `attribution` de la couche (« © OpenStreetMap » ou « © IGN – Géoplateforme »). Fond IGN :
+  le crédit OSM s'ajoute tant qu'au moins une tuile remplacée est gardée par la couche (compte à la pose, décompte au
+  `tileunload`), puis se retire. Fond sous le plan : il reste jusqu'au changement de fond ou à l'extinction (les tuiles
+  OSM sont peintes dans les canvas, rien ne dit quand la dernière quitte l'écran), et hors ligne.
+- **Case « Masquer les crédits des cartes »** (Configuration de l'accueil › Affichage, `#loaderCreditsCartesCb`,
+  `homeConfig.js > _initCreditsCartesHome`) : décochée par défaut ; `KtaFondsCarte.masquerCredits(bool)` écrit
+  `myktamap_credits_cartes_masques_v1` ("1"/"0", try/catch), pose `html.kta-credits-masques` (effet immédiat sur les
+  cartes ouvertes, appliqué au chargement du module) et émet `kta:creditsCartesChange`. Réglage d'appareil, non exporté.
+- Le widget de l'accueil garde sa ligne de pied (domaine contacté + crédit), que la case ne masque pas : elle dit
+  aussi quel domaine la carte contacte.
+
+🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue OSM V1-V8, crédits V1-V3b et P1-P5, case des crédits K1-K4, widget de
+l'accueil A1-A4, briefing Secours S1-S2 et son crédit, case décochée et incognito A5/S3-S4 : zéro requête de tuile,
+téléphone 390 px sombre et clair M1-M5 : crédit lisible sans recouvrir de bouton, bouton de sauvegarde grisé lisible),
+`checkup-fond-osm.js` F8 et F13 (fond sous le plan) : tuiles
 OSM et IGN fabriquées par le harnais, aucune requête réelle. `scripts/check-plan-offline.js` §9 : `sw.js` n'intercepte
 pas `data.geopf.fr`.
 
@@ -116,7 +136,7 @@ ancré, sans fond assombri) avec cinq commandes. Le panneau se ferme (✕, Écha
 
 | Commande | Effet |
 |---|---|
-| Interrupteur « Fond sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche du fond choisi dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), attribution du fond fixée au-dessus de la barre d'état (`data-fond`, plus « © OpenStreetMap » après un remplacement d'une tuile IGN ou hors ligne) |
+| Interrupteur « Fond sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche du fond choisi dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), crédit du fond dans le contrôle d'attribution de la carte (§ Crédit des données ; plus « © OpenStreetMap » après un remplacement d'une tuile IGN ou hors ligne) |
 | Fond | liste des fonds de la table (§ Fonds de carte) ; changer redessine la couche allumée (images oubliées, génération suivante) sans l'éteindre |
 | Transparence du plan (0 → 100 %, 50 % au premier usage) | opacité de l'**image du plan** seulement : `tilePane` (tuiles V2) et overlays du fond (`_ktaBaseLayers` : rendu direct et repli V2 ; `_baseTiles` : tuiles V1), **multipliée** par le curseur d'opacité de l'image principale des filtres ≡ (`FondOsmPlan.facteurPlan` lu par `tiling.js > ktaAppliquerOpacitePlanDeBase`, seule à poser l'opacité ; `rendering-leaflet.md` § Opacité des images du plan). Le fond OSM reste opaque. Éteint : le curseur des filtres seul. **Retenue par plan** (décision produit) : localStorage `myktamap_fond_osm_v1_<planId>` ("0" à "100", lecture et écriture en try/catch), purgée et transférée avec les données du plan (`planRegistry.js > purgeAssociatedData`, `transferAssociatedData` → `FondOsmPlan.retirer` / `transferer`), exportée avec le profil (`profileExportImport.js > PER_PLAN_PREFIXES`) |
 | Ma position | un `getCurrentPosition` (jamais `watchPosition`, fix de moins de 10 s accepté), mêmes garde-fous que la fenêtre (§4) : refus hors de `OsmView.getPlanGpsBbox().pad(0.5)`, bloqué en incognito, rien de persisté ni d'envoyé. Point (`.kta-fond-osm-moi`) et cercle de précision posés sur le plan par `KmzExport.gpsToPlan`, en mémoire jusqu'au plan suivant |
