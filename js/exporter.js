@@ -2442,7 +2442,8 @@
     // ⚠️ contrat : seulement si `opts.ann.precis === true` (case de l'export avancé et du PDF) ; un autre appelant
     // de MyKTAMapExporterGenererCanvas (cartes du Secours…) ne les reçoit pas sans le demander.
     let nbPrecisPeints = 0;
-    if (opts.ann.precis === true && window.KtaPoiPrecis && typeof window.KtaPoiPrecis.peindre === "function") {
+    if (opts.ann.precis === true && !opts.sansIcones && window.KtaPoiPrecis &&
+        typeof window.KtaPoiPrecis.peindre === "function") {
       const coulPrecis = window.KtaPoiPrecis.couleurs();
       const versCanvas = function (x, y) { return { x: sc(x), y: sc(y) }; };
       for (const p of deferredMarkers) {
@@ -2451,7 +2452,7 @@
     }
 
     // ── Marqueurs différés (icônes), en dernier : ZONE → TRAIT → CERCLE → ICÔNE ──
-    for (const p of deferredMarkers) {
+    for (const p of (opts.sansIcones ? [] : deferredMarkers)) {
       const img = await getIconUrl(p);
       drawMarker(img, p.x, p.y, 50 * scale);
     }
@@ -3083,6 +3084,8 @@
   //     bg:          "image"|"white"|"black"|"transparent"
   //     imageLayers: { id: bool, ... }
   //     dataLayers:  { id: bool, ... }
+  //     sansIcones:  true  // ni icônes ni points précis (fond peint d'un plan HD, planHD.js : les marqueurs vivants
+  //                        // passent par-dessus, une icône peinte resterait en fantôme quand le point bouge)
   //   }
   // Repli ancienne forme (booléens globaux) : includeBaseImage (false = fond blanc), includeImgLayers,
   // includeDataLayers (cochent TOUS les calques).
@@ -3096,6 +3099,7 @@
       resol:       userOpts.scale || 1,
       bg:          userOpts.bg    || "image",
       region:      userOpts.region || null,   // { x, y, w, h } unités plan : ne rendre que ce rectangle
+      sansIcones:  userOpts.sansIcones === true,
       imageLayers: {},
       dataLayers:  {}
     };

@@ -776,6 +776,76 @@ disparaître de leur session avant d'avoir rouvert le plan.
 
 ---
 
+## 🔍 Régénérer en haute résolution — un NOUVEAU plan ×2, ×3 ou ×4
+
+`js/planHD.js` (`window.ktaOuvrirPlanHD`, calcul pur `window.KtaPlanHD`) · Générateur prérempli par le chemin de
+« Mettre à jour le plan » (`createConf.js > ktaGenerateurMaj`) · garde-fou `scripts/check-plan-hd.js` · parcours réel
+`scripts/smoke/checkup-plan-hd.js` (relevé fictif ×2 : fond uni puis rendu, ZIP relu, ajout, rechargement, refus).
+
+**Pour quoi** : un plan décalqué (piliers, structures, tracés…) sur un scan basse résolution devient un plan plus
+grand, tout en vectoriel, sur lequel continuer à dessiner. **Où** : tuile de l'accueil de l'📊 Éditeur de données,
+plan affiché seulement (`tableEditor.js > #kta-tbl-src-hd`, icône `scaling`). 🔒 Refusé sans le droit d'exporter tout
+le plan (`ktaExportPlanRefuse`, le nouveau plan en est une copie) ; la lecture seule ne bloque pas (le plan ouvert
+n'est jamais modifié).
+
+⚠️ **Contrat** : le plan ouvert ne change jamais (entrée du registre, archive gardée, session). Le nouveau plan est un
+plan **local** sous un identifiant libre : `KtaPlanHD.idLibre` = `genLocalId(nom, version)`, suffixé `_2`, `_3`… s'il
+est pris ou s'il est celui du plan d'origine. Nom proposé : nom d'origine + « (HD) », modifiable dans le Générateur.
+
+| Étape | Ce qui se passe |
+|---|---|
+| 1. Fenêtre `#kta-plan-hd` | **Facteur** ×2 / ×3 / ×4 avec la taille finale (`KtaPlanHD.facteurs`) ; **refusé** (radio grisé, raison en `kta-tx-err`) au-delà de la surface de canvas de l'appareil — iPhone 16 777 216 px, ailleurs 64 Mi px, les plafonds de l'export image (`exporter.js > IOS_MAX_PX_CANVAS`, `SEUIL_PX_EXPORT`) — ou d'un côté de 32 767 px ; aucun facteur possible : bouton grisé et phrase. Au-delà de 4096² px : « tuilage V2 coché d'office » (`TILING.md` § 1). **Fond** : uni (couleur : blanc, gris clair, noir, sépia, transparent) ou rendu des données. **Ancien scan** (coché ; grisé si le plan a déjà 10 calques image). **Objets de la session** (si la session en a). |
+| 2. Archive préparée | Archive du plan (`MajPlan._interne.zipDuPlan` : copie gardée, extension, ZIP de l'index ; aucune → refus « ouvre-le depuis son fichier ZIP »). Calques relus DANS l'archive ; session cochée : copies des calques en modification et objets dessinés à la main dans un calque nouveau « Session » (`MajPlan._interne.construire`, mêmes règles que « Mettre à jour le plan », légende des types versés par `ktaLegendePourCalque`). Chaque calque passe à ×k (`KtaPlanHD.mettreAEchelleCalque`), le plan-config aussi (`mettreAEchellePlanConfig`). Nouvelle image W·k × H·k : couleur unie, ou rendu de `MyKTAMapExporterGenererCanvas` (`scale: k`, `bg: "transparent"`, tous les calques de données, `sansIcones: true`, niveau 0 seulement sur un plan multi-niveau) posé sur la couleur (`destination-over`) ; PNG, repli JPEG 0,92 si l'appareil ne sait pas encoder (sauf fond transparent), sinon refus clair. Archive : tout ce que l'ancienne embarque (icônes, calques image, PDF) sauf plan-config, image de base, calques, `data/tiles/` et `data/photos/` (le Générateur reprend les photos de l'appareil). |
+| 3. Générateur | `ktaGenerateurMaj({ zip, calques: [], legende, statut, tilingV2, onZip })` en mode Modifier sur cette archive. ⚠️ **Sans `planId`** : l'échelle recalibrée et le calage des Réglages seraient réappliqués tels quels, dans l'ancien repère — `planHD.js` les a déjà repris à l'échelle. `statut` remplace le bilan des calques dans la ligne d'état ; `tilingV2` coche la case (l'utilisateur garde la main). « Inclure les photos » coché : les photos du plan d'origine (IndexedDB, lues par l'id relevé avant une éventuelle fermeture pour le tuilage) partent dans le ZIP, indexées par l'uid du point. |
+| 4. Fin `#kta-plan-hd-fin` | **Télécharger**, ou **Ajouter à mes plans et l'ouvrir** : `chargerZipFichier(fichier, "auto", { planId: <id libre>, storeBlob: true })`, puis photos et liaisons recopiées (ci-dessous). Ouverture ratée : le ZIP part en téléchargement. |
+
+**Ce qui passe à ×k** (🩸 le champ oublié est le bug classique ; `check-plan-hd.js` vérifie que tout couple `{ x, y }`
+d'un plan-config ou d'un calque, où qu'il soit, sort à ×k) :
+- calques (`KtaRecalageScan.transformerCoordsFichier`, homothétie `{ a: k, b: 0, c: 0, d: k, e: 0, f: 0 }`, option
+  `exact` : aucun arrondi) : points, sommets des tracés / zones / structures, mesures, point précis (trois formes),
+  raccords des passages entre niveaux (`accroches`), fin des rampes de masse au sol ; côté « ce plan » d'une liaison
+  embarquée dans un point (`interPlanLinks`, l'autre côté vise un autre plan et reste tel quel) ;
+- plan-config : `imageWidth` / `imageHeight`, calage `pointA` / `pointB` / `pointC` (lat/lng, `estimated` et `modele`
+  intacts : le modèle ne dépend que des points), `tracking.startX` / `startY` et `scale` (px/m ; absente = 4,9, le
+  défaut de l'app), cibles des calages de calques image (`targetA` / `targetB`, sources intactes) ;
+- réglages de l'appareil, prioritaires comme ailleurs puis mis à l'échelle : calage des Réglages (même règle que
+  `_georefReglagesPourMaj`), échelle recalibrée (`getPlanScale`), départ du tracker (`APP_CONFIG.startX/Y`), calages
+  de calques image (`ImageLayerCalibration.getCalibration`).
+
+Retirés : `plan.rognage`, `plan.tiledV2`, `tiling` (image neuve, entière, retuilée par le Générateur). Gardés tels
+quels : tout ce qui est en mètres (hauteurs et profondeurs des niveaux ; largeurs de fronts : la loi de largeur suit
+px/m, `structures.js > _largeurFrontPourRatio`, et `scale × k` au zoom de même rendu donne la même largeur réelle,
+à l'écran comme dans le fond rendu), Nord, légende, icônes, PDF. Calque image sans calage : étiré sur le plan, il
+suit seul.
+
+**Ancien scan** : l'image de base d'origine, copiée en `data/scan_origine.<ext>`, calque image `scan_origine`
+(« Ancien scan »), visible, niveau 0, ordre 5 ; sans calage il est étiré sur W·k × H·k (= emprise ×k). Image rognée
+(tuilage V2, `plan.rognage`) : calage `sourceA = (rx, ry) → (0, 0)`, `sourceB = (rx + W, ry + H) → (W·k, H·k)`, sinon
+les marges le décaleraient. Transparence : le curseur des Filtres, comme tout calque image (opaque par défaut).
+
+**uid** : **gardés**. Le nouveau plan a un autre id : sessions, traces de suppression et fusions sont par plan, aucune
+collision avec l'ancien ; les garder rattache les photos (index du ZIP par uid) et les liaisons (`pointUid`). Favoris,
+session et réglages par plan restent sur le plan d'origine.
+
+**🩸 Photos sur le même appareil** : les photos sont rangées par identifiant tous plans confondus ; au chargement,
+une photo du ZIP déjà en base n'est pas restaurée (`main.js > startImportedPlan`, « déjà là ») — elle reste à l'ancien
+plan et le nouveau n'en aurait aucune. « Ajouter à mes plans » recopie donc celles que le ZIP embarque
+(`planHD.js > _copierPhotos`) sous un identifiant neuf, rattachées au même point, `meta.copieDe` = id d'origine, sans
+marque `origine: "plan"` (le tri du chargement suivant ne les retire jamais). Le ZIP téléchargé et ouvert ailleurs les
+restaure normalement.
+
+**Liaisons inter-plan** : celles du plan d'origine sont recopiées pour le nouveau (`liaisonsPourNouveauPlan` puis
+`InterPlanLinks.importLinks`) : id neuf, côté d'origine renvoyé vers le nouveau plan, à ×k ; l'ancien garde les
+siennes.
+
+**Limites** : le plan d'origine doit avoir son archive sur l'appareil ; le rendu des données ne peint ni les icônes
+(les marqueurs vivants passent par-dessus, une icône peinte resterait en fantôme quand le point bouge) ni d'autre
+niveau que le 0 d'un plan multi-niveau ; une donnée modifiée ensuite sur le nouveau plan laisse son ancien tracé dans
+un fond rendu ; un calque en modification, session décochée, part avec le contenu de son fichier et n'apparaît pas
+dans le fond rendu.
+
+---
+
 ## 🪜 Zone jonction dans le Générateur
 
 Le type « Jonction » (zones `pente`) est dans les menus de types de zones du Générateur : liste « Polygones → type »

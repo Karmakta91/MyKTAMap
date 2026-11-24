@@ -1940,6 +1940,9 @@ Tuile 🔁 de l'accueil de l'Éditeur : ferme l'accueil et ouvre `window.ktaOuvr
 
 **Aperçu** (plan ouvert) : copie recalée de chaque fichier dessinée dans un `L.layerGroup` temporaire (`convertCoord`, cercles pour les points, tireté pour tracés / zones / structures, couleur = valeur calculée de `--kta-accent` : le rendu canvas ne lit pas les variables CSS), outil masqué et barre « Retour / Télécharger », vue ajustée au résultat. Le calque part à la fermeture de l'outil et à tout changement du calcul. Niveaux ignorés (tout est dessiné).
 
+Coordonnées converties : points, sommets, mesures, et celles que porte un objet (point précis sous ses trois formes,
+raccords `accroches` des passages entre niveaux, fin des rampes de masse au sol), comptées dans le tableau de l'objet ;
+option `exact` (sans arrondi au centipixel) pour l'homothétie entière de « Régénérer en haute résolution » (91.8).
 Calcul **pur** exposé sur `window.KtaRecalageScan` (sans DOM), éprouvé par `scripts/check-resolution-convert.js` ; parcours à la souris : `scripts/smoke/checkup-recalage-scan.js`. i18n `recalscan.*` (fr/en/es).
 
 #### 91.5 Raccords à vérifier (`js/raccordsTraces.js`)
@@ -1981,6 +1984,29 @@ Calcul, lecture de l'image, doublons et couleurs par plan : `plans-loader.md` §
 `scripts/smoke/checkup-detection.js` (Chromium et WebKit). Dans le Générateur (`js/detectionGenerateur.js`) : bouton
 de l'étape Calques de données, fenêtre plein écran `.kta-detect-gen` (z-index 100001, sous-modale au-dessus du
 Générateur) à mini-carte, bandeau posé dans la fenêtre ; `scripts/smoke/checkup-detection-generateur.js`. i18n `detect.*` (fr/en/es). Aucune popup native.
+
+#### 91.8 Régénérer en haute résolution (`js/planHD.js`)
+
+Tuile de l'accueil de l'Éditeur avant Vérifier le plan, **plan affiché seulement** (icône `scaling`) : ferme l'accueil
+et ouvre `window.ktaOuvrirPlanHD()` (`tableEditor.js` ne porte que l'appel). Calcul, archive, Générateur, uid, photos
+et liaisons : `plans-loader.md` § Régénérer en haute résolution.
+
+- **Fenêtre** `#kta-plan-hd` (`kta-readme-modal-overlay`, boîte `kta-fp-boite` de « Mettre à jour le plan », z-index
+  100001) en trois blocs titrés `.kta-maj-etape` : **1. Agrandissement** (radios ×2 / ×3 / ×4, `.kta-export-radio-row`,
+  taille finale en px et Mpx ; refusé = radio `disabled`, ligne `.kta-planhd-refuse`, raison `kta-tx-err` ; au-delà de
+  4096² px, note `kta-tx-warn` « tuilage V2 coché d'office »), **2. Fond** (Uni / Rendu des données, couleur du fond en
+  `<select>` `.kta-planhd-couleur` ; aide : les données restent par-dessus, le rendu ne peint pas les icônes),
+  **3. Ce qui part** (case Ancien scan, grisée au plafond de 10 calques image ; case Objets de la session (N), seulement
+  si la session en a ; phrase sur les identifiants gardés). Ligne d'état pendant la préparation (archive, données,
+  image), erreur dans `.kta-conv-erreur`. Échap ou ✕ ferment. Aucun facteur possible : phrase et bouton grisé.
+- **Générateur** : ligne d'état propre (`planhd.gen.statut`, plus « Tuilage V2 coché » au besoin) à la place du bilan
+  des calques ; nom « (HD) » à vérifier.
+- **Fin** `#kta-plan-hd-fin` : **Fermer** · **Télécharger** · **Ajouter à mes plans et l'ouvrir** (primaire) ; plan
+  fermé pour le tuilage : la fenêtre le dit. Toasts `success` au téléchargement et à l'ajout.
+
+Parcours : `scripts/smoke/checkup-plan-hd.js`. i18n `planhd.*`, `tabledit.source.hd*` (fr/en/es), CSS
+`css/style-filtres.css` (`.kta-planhd-*`, jetons `--kta-*`). Aucune popup native, aucune surface réseau (archive du
+plan relue sur l'appareil, ou le même `fetch` que « Mettre à jour le plan » pour un plan du site).
 ---
 
 ### 92. Menu Tracker — refonte flyout → modal plein écran de tuiles (v1.50.0)

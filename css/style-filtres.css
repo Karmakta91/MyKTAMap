@@ -540,3 +540,21 @@ html.kta-theme-light .kta-fp-ajouts-filtre select {
   max-width: 100%;
 }
 .kta-maj-groupe input[hidden] { display: none; }
+
+/* « Régénérer en haute résolution » (js/planHD.js) : facteurs, fond, données. */
+.kta-planhd-groupe {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kta-planhd-refuse { cursor: not-allowed; }
+.kta-planhd-couleur {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--kta-texte-2);
+}
+.kta-planhd-couleur select { flex: 1 1 140px; max-width: 220px; }

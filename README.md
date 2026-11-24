@@ -96,6 +96,7 @@ Conçue pour le terrain : **100 % hors-ligne** par défaut (Service Worker + Ind
 | 🛰️ **GeoTIFF calé** (scan seul ou scan + dessins, Lambert 93 / WGS84, tuilé + Deflate, écrit sans librairie) · 🧭 **GeoJSON** (cases du KMZ) pour QGIS / SIG | `geotiffExport.js`, `geojsonExport.js` |
 | 📊 Éditeur de données du plan (tableau, 3 sources) | `tableEditor.js` |
 | 🔁 Recaler des données sur un autre scan (noms communs, repères cliqués, aperçu sur la carte) | `recalageScan.js` |
+| Régénérer en haute résolution (nouveau plan ×2 / ×3 / ×4, fond uni ou rendu des données, ancien scan en calque) | `planHD.js` |
 | 🔗 Raccords à vérifier (tracés qui ne se touchent pas : raccorder un carrefour, ignorer un mur) | `raccordsTraces.js` |
 | Vérifier le plan (tracés coupés par une zone bloquante ou un mur, passages entre niveaux sans raccord, jonctions mal posées, objets en double, écarts du réseau, contours, hors image, niveaux, types, sommets en double ; « Vu, normal ») ; pastille et toast des bloquants à l'ouverture et à la fin du Générateur | `verifierPlan.js`, `verifierPlanAuto.js` |
 | 📋 Rapport de sortie · 📈 stats globales + export PDF | `sessionReport.js`, `statsGlobales.js` |
@@ -219,7 +220,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (161 modules)
+## 🟢 L'application : modules JS (162 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -371,6 +372,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 |---|---|
 | `createConf.js` | Générateur de plans ZIP (nouveau, Modifier, assistant, tuilage V2) et convertisseurs vers un ZIP |
 | `majPlan.js` | Assistant « Mettre à jour le plan » : de la session à une nouvelle version du plan |
+| `planHD.js` | « Régénérer en haute résolution » : nouveau plan ×2 / ×3 / ×4, données mises à l'échelle (calcul pur `KtaPlanHD` + fenêtre) |
 | `vuePlan.js` | Vue laissée sur un plan (centre, zoom, niveau), retrouvée à la réouverture |
 | `planRegistry.js` | Registre des plans connus (serveur et ZIP locaux), blobs en IndexedDB, dossiers |
 | `planOffline.js` | Rendre un plan serveur disponible hors ligne (cache dédié par plan) |
@@ -614,6 +616,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-release-docs.js` | Bump de version avec les 3 sources divergentes ou les docs des 4 axes non suivies | commit-msg |
 | `check-repositionner.js` | Repositionnement d'un POI qui copie au lieu de muter, ou laisse ses liaisons à l'ancienne place | pre-commit |
 | `check-resolution-convert.js` | « Recaler sur un autre scan » qui oublie un champ de coordonnée | pre-commit |
+| `check-plan-hd.js` | « Régénérer en haute résolution » : plafond, plan-config ou calque qui oublie un champ de coordonnée | pre-commit |
 | `check-secours-balayage.js` | Secteurs ou parcours de balayage du Mode Secours faux sur le graphe d'un réseau fictif | pre-commit |
 | `check-secours-relais.js` | Relais Secours qui écrase l'intervention en cours par le scénario d'un autre appareil | pre-commit |
 | `check-selection-multi.js` | Sélection multiple qui mêle ligne et surface, conversion ou niveau en lot en plusieurs gestes d'annulation, jonction déplacée par le niveau en lot | pre-commit |
@@ -699,6 +702,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-rognage.js` | Rognage automatique du Générateur : calques décalés ou laissés en nouveau plan, repère gardé en mise à jour et en régénération V1 → V2 |
 | `smoke/checkup-maxbounds.js` | Limites de la carte = image ∪ calques de niveau calés (décalé, agrandi, tourné) : coins atteints au zoom max et par glissé, molette et pincement (contexte tactile) sur la partie hors de l'image, fond OSM, plan orienté, calque repositionné, sans calage au pixel près, plan suivant ouvert pendant un chargement tardif ; Chromium et WebKit |
 | `smoke/checkup-maj-plan.js` | Assistant « Mettre à jour le plan » de bout en bout sur le relevé fictif |
+| `smoke/checkup-plan-hd.js` | « Régénérer en haute résolution » ×2 sur le relevé fictif : données exactement à l'échelle, fonds uni et rendu, ancien scan, ancien plan intact, refus au-delà du plafond |
 | `smoke/checkup-georef-reglages.js` | Calage modifié dans les Réglages : gagne sur le calage embarqué (mémoire, registre, fond OSM sans rallumer, Secours, plan rouvert, « Mettre à jour le plan »), calage périmé écarté |
 | `smoke/checkup-mode-dev.js` | Mode Développeur sans mot de passe : confirmation chartée, outils rendus, journal affiché et copié, appareil déjà déverrouillé gardé actif |
 | `smoke/checkup-mur-ligne.js` | Front converti en mur (ligne), mur dessiné à l'outil : l'itinéraire contourne, échoue, passe en levant la case ; fiche renommée par la légende |
@@ -892,6 +896,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 #### Pas encore publié (après v2.32.0, branche `Karma_dev`)
 
+- **Régénérer en haute résolution** (`js/planHD.js` `window.KtaPlanHD`, `window.ktaOuvrirPlanHD`, `js/tableEditor.js`, `js/createConf.js > _appliquerMaj` (`statut`, `tilingV2`), `js/majPlan.js > _interne.zipDuPlan`, `js/exporter.js` (`sansIcones`), `js/recalageScan.js > transformerCoordsFichier`, `css/style-filtres.css`, `lang/*.json` `planhd.*`, guides, `plans-loader.md`, `ui.md`, `check-plan-hd.js`, `checkup-plan-hd.js`) : dans l'📊 Éditeur de données, un plan décalqué sur un scan basse résolution donne un NOUVEAU plan ×2, ×3 ou ×4 (taille finale affichée, refus clair au-delà de ce que l'appareil sait dessiner, tuilage V2 coché d'office au-delà de 16,8 Mpx). Fond uni ou rendu des données, ancien scan gardé en calque image à l'échelle (transparence réglable), objets de la session compris ; toutes les coordonnées passent à l'échelle (calage, px/m, départ, calages d'images), les objets gardent leur identifiant, photos et liaisons suivent. Le Générateur s'ouvre prérempli, nom « (HD) » ; l'ancien plan ne change pas. Corrigé au passage : « Recaler des données sur un autre scan » convertit aussi les points précis, les raccords des passages entre niveaux et la fin des rampes.
 - 🗺️ **Fonds de carte : OpenStreetMap, IGN aérien, IGN plan** (`js/fondsCarte.js` `window.KtaFondsCarte`, `kta:fondCarteChange`, `js/osmView.js`, `js/fondOsmPlan.js`, `js/osmTilesCache.js`, `js/osmHomePreview.js`, `js/secoursMode.js`, `sw.js`, `lang/*.json`, CSP `img-src` + `https://data.geopf.fr`, `checkup-fonds-carte.js`) : une table unique des fonds remplace les adresses de tuiles écrites en dur ; le fond se choisit dans les réglages de la Vue OSM et dans le panneau du bouton carte, sans nouveau bouton, et vaut pour la Vue OSM, le fond sous le plan, la carte de l'accueil et le briefing Secours. Hors couverture IGN, la tuile OSM prend la place. Hors ligne : OSM seulement (« Enregistrer hors ligne » grisé en IGN, raison dite), et le service worker ne range plus les tuiles IGN. Case « Vue OSM » décochée ou navigation privée : aucune requête IGN.
 - 🚒 **Briefing pompiers sans fond de carte quand la Vue OSM est coupée** (`js/secoursMode.js > _idFondBriefing`, `_captureOsmCanvasForBriefing`, `lang/*.json` `secours.surf.osmCaption` / `fondCredit`, `NETWORK_AUDIT.md`, guides, `secours.md`, `checkup-fonds-carte.js` S1-S4) : case Vue OSM décochée ou mode incognito, la carte hors écran du briefing demandait encore des tuiles OpenStreetMap (72 mesurées) ; elle n'en demande plus aucune et garde le cadre du plan et les équipes sur fond blanc. Sous l'image, le crédit du fond réellement capturé ; légende neutre.
 - 🗺️ **Crédit des fonds visible sur la Vue OSM et le fond sous le plan, case pour le masquer** (`js/fondsCarte.js > montrerCredits`, `masquerCredits`, `creerCouche`, `js/osmView.js`, `js/fondOsmPlan.js > _attribution`, `js/homeConfig.js`, `index.html`, `css/style.css`, `lang/*.json` `config.creditsCartes.*`, guides, `vue-osm.md` § Crédit des données, `checkup-fonds-carte.js`, `checkup-fond-osm.js`) : le contrôle d'attribution Leaflet, sans préfixe, en coin : « © OpenStreetMap » ou « © IGN – Géoplateforme », les deux tant qu'une tuile OSM remplace une tuile IGN ; rien sur le plan seul. Case « Masquer les crédits des cartes » dans Configuration de l'accueil › Affichage, décochée par défaut, effet immédiat, retenue sur l'appareil.

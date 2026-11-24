@@ -92,9 +92,10 @@ function _renderHistPdfListe() {
 let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
 // Mise à jour d'un plan (js/majPlan.js > window.ktaGenerateurMaj) : { calques: [{ id, label, payload }], legende,
-// onZip(blob, nomFichier, infos) }. Appliquée au formulaire une fois le ZIP du plan chargé ; présente, elle remplace
-// le téléchargement et la proposition « Publier » de fin de génération (l'assistant choisit la suite). Remise à
-// null à chaque ouverture de la modale.
+// onZip(blob, nomFichier, infos), planId?, statut?, tilingV2? } (sans planId : ni échelle recalibrée ni calage des
+// Réglages repris — planHD.js les a déjà mis à l'échelle). Appliquée au formulaire une fois le ZIP du plan chargé ;
+// présente, elle remplace le téléchargement et la proposition « Publier » de fin de génération (l'assistant choisit
+// la suite). Remise à null à chaque ouverture de la modale.
 let _plannerMaj = null;
 // Empreinte du ZIP chargé en mode Modifier { sha256, taille, nom } : sert à reconnaître un plan d'extension
 // (cf. _planExtensionDuZip). null en mode Nouveau ; remise à null à chaque ouverture de la modale.
@@ -1760,9 +1761,13 @@ function _appliquerMaj() {
   if (cb) cb.checked = true;
   _majVisibiliteCheckboxPhotos();
   _majCompteurPhotosPlanner();
+  // Tuilage V2 demandé par l'assistant (plan HD au-delà de 4096², planHD.js) : coché, l'utilisateur garde la main.
+  const v2 = document.getElementById("pl_tilingV2");
+  if (maj.tilingV2 && v2) { v2.checked = true; _majVisibiliteCheckboxV2(); }
   const echelle = _appliquerEchelleRecalibree(maj.planId);
   const calage = maj.georefReglages ? window.I18n.t("gen.maj.georefReglages") : "";
-  _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }) +
+  // `maj.statut` : phrase de l'assistant appelant (planHD.js), à la place du bilan des calques remplacés.
+  _plannerZipStatus((maj.statut || window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux })) +
     (echelle ? " " + echelle : "") + (calage ? " " + calage : ""), false);
   if (refuses.length) _plannerErreur(window.I18n.t("gen.maj.tropDeCalques", { ids: refuses.join(", ") }));
 }
