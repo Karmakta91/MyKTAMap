@@ -1131,6 +1131,36 @@
     };
   }
 
+  // ── Légende de la session (synchro des types et tags personnalisés) ──
+  // legendeSession(planId) → { entrees, types, retirees, plan } (copies, LegendCustomization.entreesSession) ;
+  // appliquerLegende(lot, planId) → { appliques, gardes } (LegendCustomization.appliquerSession : une entrée encore
+  // utilisée par un objet n'est jamais retirée, elle revient dans `gardes`) ; usagesLegende(ids, planId) → { id: n }.
+  // Changement local signalé par `mktm:legende-session`. Sans extension, personne ne les appelle.
+  // 🔒 null si aucun plan n'est prêt ou si le plan prêt n'est pas `planId` (même garde que changementsDepuis) : la
+  // légende en mémoire peut être celle d'un AUTRE plan.
+  function _legendePrete(planId) {
+    if (!planPret()) return null;
+    if (planId !== undefined && planId !== null && planId !== (window._currentLoadedPlanId || null)) return null;
+    const LC = window.LegendCustomization;
+    return (LC && typeof LC.entreesSession === "function" && typeof LC.appliquerSession === "function") ? LC : null;
+  }
+  function legendeSession(planId) {
+    const LC = _legendePrete(planId);
+    return LC ? LC.entreesSession() : null;
+  }
+  function appliquerLegende(lot, planId) {
+    const LC = _legendePrete(planId);
+    if (!LC || !lot || typeof lot !== "object") return null;
+    return LC.appliquerSession(JSON.parse(JSON.stringify(lot)));
+  }
+  function usagesLegende(ids, planId) {
+    const LC = _legendePrete(planId);
+    if (!LC || !Array.isArray(ids) || typeof LC.usages !== "function") return null;
+    const out = {};
+    ids.forEach(function (id) { if (typeof id === "string" && id) out[id] = LC.usages(id); });
+    return out;
+  }
+
   // ── Actions du compte (Mon profil, Configuration) ──
   // Selon le LIEU (« profil » | « config »), les actions proposées : en tête de « Mon profil » sous le compte
   // connecté ; dans ⚙️ Configuration, un bloc « Installation ». Texte seulement (60 car.), 10 au plus, action
@@ -2558,6 +2588,9 @@
     versionAutorisee: versionAutorisee,
     publierVersion: publierVersion,
     changementsDepuis: changementsDepuis,
+    legendeSession: legendeSession,
+    appliquerLegende: appliquerLegende,
+    usagesLegende: usagesLegende,
     effacerDonneesExtension: effacerDonneesExtension,
     secoursAppliquer: secoursAppliquer,
     compte: compte,
