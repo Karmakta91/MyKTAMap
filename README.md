@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.31.0` (23/11/2026)
+## 📦 Version courante — `v2.32.0` (24/11/2026)
 
-> 🛣️ **v2.31.0 — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles** : **Détecter les galeries** (outil 🛣️ Tracés, Éditeur de données, Générateur) trace l'axe des galeries de l'image en tracés, un par galerie, piliers contournés, bouts accrochés exactement au réseau existant. **🪣 Remplir au clic** suit aussi le trait d'un **front de taille** (arrêt au carrefour, un deuxième toucher prolonge), accepte les massifs jusqu'à 80 m, retire une erreur d'un toucher ou de Ctrl+Z, et **affine les contours** (lissage en mètres, quasi-rectangles redressés) ; un seul détecteur et un seul mode de clic à la fois. Curseur **Opacité** pour l'image principale du plan. L'export image et le PDF dessinent les **points précis** et gardent les **petits piliers** lisibles. 🚨 Une **alerte d'urgence passe devant** une alerte d'information. Détail : journal ci-dessous.
+> 📄 **v2.32.0 — Visionneuse PDF hors ligne, tags au nom libre et icônes changées dans l'app, GPS dès l'ajout d'un point** : les PDF du Mode Histoire et du Carnet s'affichent **dans l'app**, page après page, hors ligne et sur iPhone ; **tous** les PDF d'un plan ZIP sont enregistrés, avec « Ouvrir / Enregistrer » (partage iPhone). **« Créer un nouveau tag »** prend un nom libre qui devient une icône personnalisée de la Légende, et **« Personnaliser la légende »** change son image depuis l'appareil ou rend modifiables les anciens tags courts du plan, régénération comprise. Les **coordonnées GPS** s'affichent dès « Ajouter un point ». L'itinéraire ne raccorde plus deux galeries **à travers un mur** ; un écart négatif entre niveaux est signalé. **Remplir un front** calcule hors du fil principal (plus de gel) et va jusqu'au bout des traits épais ; « Télécharger le plan » suit la loi du terrain ; la case V2 du Générateur est dite recommandée (indispensable pour OSM).
 
 ---
 
@@ -888,7 +888,9 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
-#### Pas encore publié (après v2.31.0, branche `Karma_dev`)
+#### v2.32.0 (24/11/2026) — Visionneuse PDF hors ligne, tags au nom libre et icônes changées dans l'app, GPS dès l'ajout d'un point (branche `Karma_dev`)
+
+> Écart avec la prod v2.31.0.
 
 - 🎨 **Icônes de Légende : changer l'image, rendre modifiables les anciens tags** (`js/legendCustomization.js > ouvrirEditeur`, `imageEnIcone`, `listAnciensTags`, `rendreModifiable`, `js/map.js > _enregistrerIconesCustom`, `js/editor.js > afficherFormulaire`, `js/sessionExporter.js > _legendePourPayload`, `js/majPlan.js`, `js/createConf.js > _appliquerMaj`, `css/style.css`, `lang/*.json` `legend.editor.*`, `gen.icons.imageLegende*`, guides, `checkup-icones-legende.js`) : dans « Personnaliser la légende », **Changer l'icône** sur chaque icône personnalisée (image de l'appareil réduite à 64 px, gardée en data-URI ; illisible → message) ; les tags courts d'un plan plus ancien sont listés avec **Rendre modifiable** (même tag, libellé lisible, points inchangés), puis renommables et à l'image modifiable. La nouvelle image gagne partout, y compris dans les résolveurs qui lisent `icons` du plan d'abord, et « Mettre à jour le plan » l'écrit dans le nouveau plan. Corrigé au passage sur le parcours d'un nouveau tag : sur un plan importé, son icône était une adresse `blob:` morte au rechargement, une icône de la session n'était plus enregistrée sur la carte après un rechargement, et « Mettre à jour le plan » n'emportait pas sa définition (le plan régénéré, ouvert ailleurs, montrait ses points sans libellé ni icône). La section Icônes de l'éditeur ne se referme plus à chaque changement.
 
@@ -10353,6 +10355,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🛣️ **v2.31.0 — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles** : **Détecter les galeries** (outil 🛣️ Tracés, Éditeur de données, Générateur) trace l'axe des galeries de l'image en tracés, un par galerie, piliers contournés, bouts accrochés exactement au réseau existant. **🪣 Remplir au clic** suit aussi le trait d'un **front de taille** (arrêt au carrefour, un deuxième toucher prolonge), accepte les massifs jusqu'à 80 m, retire une erreur d'un toucher ou de Ctrl+Z, et **affine les contours** (lissage en mètres, quasi-rectangles redressés) ; un seul détecteur et un seul mode de clic à la fois. Curseur **Opacité** pour l'image principale du plan. L'export image et le PDF dessinent les **points précis** et gardent les **petits piliers** lisibles. 🚨 Une **alerte d'urgence passe devant** une alerte d'information. Détail : journal ci-dessous.
 
 > 🏛️ **v2.30.0 — Pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés** : nouvelle structure **pilier à bras** posée d'un seul toucher (carré de 1 m barré d'une croix ; en 3D, une colonne de blocs en assises). Dans 🔎 Détecter, **🪣 Remplir au clic** dessine un pilier blanc cerné de noir d'un toucher ; la détection lit le niveau actif seulement (refus d'un niveau sans image) et tout son calque, même plus grand que l'image du plan ; les fronts fins ne disparaissent plus près des piliers clairs. Un curseur **Opacité** sous chaque calque image (filtres ≡). On **enchaîne les tracés** sans éteindre l'outil (⏪ et ⏩ le gardent allumé). Un niveau calé hors de l'image se zoome jusqu'à ses bords ; la sélection par zone prend les niveaux visibles. Détail : journal ci-dessous.
 
