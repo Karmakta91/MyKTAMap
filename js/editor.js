@@ -198,6 +198,17 @@ function afficherFormulaire(x, y, existingPoint) {
   // objectURL révoquées à la fermeture (fuite mémoire sinon).
   const _photoObjectUrls = new Set();
 
+  // Coordonnées GPS dès l'ouverture (plan géoréférencé), sans attendre l'enregistrement : même texte que la fiche.
+  const _gpsTxt = (typeof window.ktaGpsTexte === "function") ? window.ktaGpsTexte(x, y) : "";
+  const _gpsLigne = _gpsTxt
+    ? '<div class="kta-popup-gps" title="' + _esc(window.I18n.t("poi.gpsComputed")) + '">' +
+        '<span class="kta-popup-gps-icon">' + window.ktaIcone("globe") + '</span>' +
+        '<code class="kta-popup-gps-val">' + _esc(_gpsTxt) + '</code>' +
+        '<button class="kta-popup-gps-copy" id="kta-poi-gps-copy" type="button" title="' +
+          _esc(window.I18n.t("poi.copyGps")) + '">' + window.ktaIcone("copy") + '</button>' +
+      '</div>'
+    : "";
+
   const modal = document.createElement("div");
   modal.id = "kta-poi-modal";
   modal.className = "kta-readme-modal-overlay";
@@ -215,6 +226,7 @@ function afficherFormulaire(x, y, existingPoint) {
           <div style="font-size:13px; color:var(--kta-texte-3); padding:4px 0;">
             X : <strong style="color:var(--kta-texte);">${x}</strong> — Y : <strong style="color:var(--kta-texte);">${y}</strong>
           </div>
+          ${_gpsLigne}
         </div>
 
         <div class="kta-aide-section">
@@ -291,6 +303,10 @@ function afficherFormulaire(x, y, existingPoint) {
   const btnClose    = document.getElementById("kta-poi-close");
   const btnAnnuler  = document.getElementById("kta-poi-annuler");
   const btnValider  = document.getElementById("kta-poi-valider");
+  const btnGps      = document.getElementById("kta-poi-gps-copy");
+  if (btnGps) btnGps.addEventListener("click", function() {
+    if (typeof window.kta_copierGps === "function") window.kta_copierGps(_gpsTxt);
+  });
 
   const photoGrid       = document.getElementById("kta-poi-photos-grid");
   const photoCounter    = document.getElementById("kta-poi-photos-counter");

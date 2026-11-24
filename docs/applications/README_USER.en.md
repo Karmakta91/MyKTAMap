@@ -355,7 +355,7 @@ A click on the top counters opens the map's **dashboard**:
 
 #### 🌐 GPS coordinates in popups
 
-If your map is **georeferenced**, the popup of every point (yours and the map's) shows its coordinates, for example `🌐 48.85660° N, 2.35220° E`, to about 1 m. The **📋** button copies them in `lat, lng` format, ready to paste into a maps app or a text message — handy to pass on the location of a shaft you have just added. Paths, zones and structures have no single coordinate, so no GPS line. Map not georeferenced: no line.
+If your map is **georeferenced**, the popup of every point (yours and the map's) shows its coordinates, for example `🌐 48.85660° N, 2.35220° E`, to about 1 m. The **📋** button copies them in `lat, lng` format, ready to paste into a maps app or a text message — handy to pass on the location of a shaft you have just added. The **Add a point** window already shows them, with the same button, before you even save. Paths, zones and structures have no single coordinate, so no GPS line. Map not georeferenced: no line.
 
 #### 🔄 Switching maps
 

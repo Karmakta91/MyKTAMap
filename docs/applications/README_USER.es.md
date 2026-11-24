@@ -355,7 +355,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 
 #### 🌐 Coordenadas GPS en las fichas
 
-Si tu mapa está **georreferenciado**, la ficha de cada punto (los tuyos y los del mapa) muestra sus coordenadas, por ejemplo `🌐 48.85660° N, 2.35220° E`, con una precisión de 1 m aproximadamente. El botón **📋** las copia en formato `lat, lng`, listas para pegar en una aplicación de mapas o en un SMS — práctico para transmitir la ubicación de un pozo que acabas de añadir. Los trazados, zonas y estructuras no tienen una coordenada única, así que no tienen línea GPS. Mapa no georreferenciado: sin línea.
+Si tu mapa está **georreferenciado**, la ficha de cada punto (los tuyos y los del mapa) muestra sus coordenadas, por ejemplo `🌐 48.85660° N, 2.35220° E`, con una precisión de 1 m aproximadamente. El botón **📋** las copia en formato `lat, lng`, listas para pegar en una aplicación de mapas o en un SMS — práctico para transmitir la ubicación de un pozo que acabas de añadir. La ventana **Añadir un punto** ya las muestra, con el mismo botón, antes incluso de guardar. Los trazados, zonas y estructuras no tienen una coordenada única, así que no tienen línea GPS. Mapa no georreferenciado: sin línea.
 
 #### 🔄 Cambiar de mapa
 

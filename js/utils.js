@@ -1766,6 +1766,13 @@ function _formatGps(ll) {
   return latStr + ", " + lngStr;
 }
 
+// Texte GPS d'un point (x, y) du plan courant, "" sans calibrage utilisable : même calcul et même format que
+// la fiche, pour le formulaire d'ajout (editor.js > afficherFormulaire), qui l'affiche avant l'enregistrement.
+window.ktaGpsTexte = function(x, y) {
+  const ll = _planXyToGps(x, y);
+  return ll ? _formatGps(ll) : "";
+};
+
 // Copie dans le presse-papier (bouton 📋 de la popup).
 window.kta_copierGps = function(txt) {
   if (!txt) return;

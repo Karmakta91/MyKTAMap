@@ -355,7 +355,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 
 #### 🌐 Coordonnées GPS dans les fiches
 
-Si ton plan est **géoréférencé**, la fiche de chaque point (les tiens comme ceux du plan) affiche ses coordonnées, par exemple `🌐 48.85660° N, 2.35220° E`, à environ 1 m près. Le bouton **📋** les copie au format `lat, lng`, prêt à coller dans une application de cartes ou un SMS — pratique pour transmettre l'emplacement d'un puits que tu viens d'ajouter. Les tracés, zones et structures n'ont pas de coordonnée unique, donc pas de ligne GPS. Plan non géoréférencé : pas de ligne.
+Si ton plan est **géoréférencé**, la fiche de chaque point (les tiens comme ceux du plan) affiche ses coordonnées, par exemple `🌐 48.85660° N, 2.35220° E`, à environ 1 m près. Le bouton **📋** les copie au format `lat, lng`, prêt à coller dans une application de cartes ou un SMS — pratique pour transmettre l'emplacement d'un puits que tu viens d'ajouter. La fenêtre **Ajouter un point** les affiche déjà, avec le même bouton, avant même d'enregistrer. Les tracés, zones et structures n'ont pas de coordonnée unique, donc pas de ligne GPS. Plan non géoréférencé : pas de ligne.
 
 #### 🔄 Changer de plan
 

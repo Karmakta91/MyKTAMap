@@ -2527,7 +2527,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
 
 /* Coordonnées GPS du point (via le calibrage), sélectionnables + bouton copier. Bloc absent du DOM si le plan
    n'a pas de calibrage utilisable. */
-.kta-popup-point .kta-popup-gps {
+.kta-popup-point .kta-popup-gps, #kta-poi-modal .kta-popup-gps {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2538,12 +2538,12 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   border-radius: 4px;
   font-size: 11.5px;
 }
-.kta-popup-point .kta-popup-gps-icon {
+.kta-popup-point .kta-popup-gps-icon, #kta-poi-modal .kta-popup-gps-icon {
   flex-shrink: 0;
   font-size: 13px;
   opacity: 0.85;
 }
-.kta-popup-point .kta-popup-gps-val {
+.kta-popup-point .kta-popup-gps-val, #kta-poi-modal .kta-popup-gps-val {
   flex: 1;
   color: #a8c5ff;
   font-family: "KTA Emoji", ui-monospace, "SF Mono", Consolas, monospace;
@@ -2555,7 +2555,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   white-space: nowrap;
   overflow-x: auto;
 }
-.kta-popup-point .kta-popup-gps-copy {
+.kta-popup-point .kta-popup-gps-copy, #kta-poi-modal .kta-popup-gps-copy {
   flex-shrink: 0;
   background: transparent !important;
   border: none !important;
@@ -2567,7 +2567,7 @@ html.kta-theme-light .kta-histoire-pdf-action-open:hover {
   min-width: 0 !important;
 }
 /* Pas d'opacité au repos : le glyphe tombait à 4,0–4,4:1. Le survol se lit au fond. */
-.kta-popup-point .kta-popup-gps-copy:hover {
+.kta-popup-point .kta-popup-gps-copy:hover, #kta-poi-modal .kta-popup-gps-copy:hover {
   background: var(--kta-info-fond) !important;
 }
 
@@ -13535,11 +13535,11 @@ html.kta-theme-light .kta-popup-point .kta-popup-desc {
 html.kta-theme-light .kta-popup-ext-info {
   color: var(--kta-light-text-muted) !important;
 }
-html.kta-theme-light .kta-popup-point .kta-popup-gps {
+html.kta-theme-light .kta-popup-point .kta-popup-gps, html.kta-theme-light #kta-poi-modal .kta-popup-gps {
   background: rgba(40, 80, 160, 0.08) !important;
   border-color: rgba(40, 80, 160, 0.30) !important;
 }
-html.kta-theme-light .kta-popup-point .kta-popup-gps-val {
+html.kta-theme-light .kta-popup-point .kta-popup-gps-val, html.kta-theme-light #kta-poi-modal .kta-popup-gps-val {
   color: #1a4a9e !important;
 }
 html.kta-theme-light .kta-popup-actions {
@@ -20122,10 +20122,10 @@ button.kta-cfg-ligne-action {
    extensions verticales dans les barres). Croix et copie : 32 px partout, 44 px au doigt. */
 .kta-panneau-close,
 .kta-readme-modal-close,
-.kta-popup-point .kta-popup-gps-copy { position: relative; }
+.kta-popup-point .kta-popup-gps-copy, #kta-poi-modal .kta-popup-gps-copy { position: relative; }
 .kta-panneau-close::after,
 .kta-readme-modal-close::after,
-.kta-popup-point .kta-popup-gps-copy::after,
+.kta-popup-point .kta-popup-gps-copy::after, #kta-poi-modal .kta-popup-gps-copy::after,
 .leaflet-container a.leaflet-popup-close-button::after {
   content: "";
   position: absolute;
@@ -20140,7 +20140,7 @@ button.kta-cfg-ligne-action {
   .kta-readme-toc-toggle-btn { position: relative; }
   .kta-panneau-close::after,
   .kta-readme-modal-close::after,
-  .kta-popup-point .kta-popup-gps-copy::after,
+  .kta-popup-point .kta-popup-gps-copy::after, #kta-poi-modal .kta-popup-gps-copy::after,
   .leaflet-container a.leaflet-popup-close-button::after { width: max(100%, 44px); height: max(100%, 44px); }
   .kta-aide-submodal-back::after,
   .kta-readme-toc-toggle-btn::after,
