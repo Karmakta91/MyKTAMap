@@ -2508,7 +2508,7 @@
     });
   }
 
-  // Modale « Plans & filtres OSM » (rien de flottant sur la carte), sur le modèle de ≡ Filtres du mode plan.
+  // Modale « Plans & filtres de la carte » (rien de flottant sur la carte), sur le modèle de ≡ Filtres du mode plan.
   // _renderMultiPanel() cible ses ids (garde d'existence en place).
   const OSM_FILTERS_MODAL_ID = "kta-osm-filters-modal";
 
@@ -2539,6 +2539,10 @@
           '<button class="kta-readme-modal-close" id="kta-osm-filters-close" type="button" aria-label="✕">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
+          // fond de carte en tête : le même sélecteur que la Vue carte, le même choix partagé (pas de bouton de plus)
+          (window.KtaFondsCarte
+            ? '<div class="kta-osm-filters-fond">' + window.KtaFondsCarte.htmlSelecteur("ktaOsmFiltersFond") + '</div>'
+            : '') +
           '<p class="kta-osm-filters-hint">' + _escapeHtml(window.I18n.t("osm_mode.filters.hint")) + '</p>' +
           '<div class="kta-osm-filters-sect">' + _escapeHtml(window.I18n.t("osm_mode.filters.global")) + '</div>' +
           '<div class="kta-osm-multi-cats kta-osm-filters-globaux" id="ktaOsmFiltersGlobaux"></div>' +
@@ -2562,6 +2566,7 @@
     document.documentElement.appendChild(overlay);
 
     document.getElementById("kta-osm-filters-close").addEventListener("click", _fermerModalFiltresOsm);
+    if (window.KtaFondsCarte) window.KtaFondsCarte.brancherSelecteur(overlay.querySelector("#ktaOsmFiltersFond"));
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _fermerModalFiltresOsm(); });
     document.addEventListener("keydown", _escFiltresOsm, true);
 

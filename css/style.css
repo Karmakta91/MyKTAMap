@@ -18068,6 +18068,11 @@ html.kta-theme-light .kta-osm-search-row { color: var(--kta-texte-2); }
 
 /* ── Mode OSM : multi-plans — styles .kta-osm-multi-* réutilisés par la modale ≡ (aucun panneau flottant) ── */
 .kta-osm-filters-boite { max-width: 480px !important; height: auto !important; max-height: 88vh !important; max-height: 88dvh !important; }
+/* Sélecteur du fond de carte (fondsCarte.js > htmlSelecteur) : bandeau de la Vue carte et tête de « Plans & filtres
+   de la carte ». La liste se rétrécit plutôt que de déborder au téléphone. */
+.kta-fond-choix { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; min-width: 0; max-width: 100%; }
+.kta-fond-choix select { font-size: 12px; min-width: 0; max-width: 100%; }
+.kta-osm-filters-fond { margin: 0 0 10px; color: var(--kta-texte-2); }
 .kta-osm-filters-hint { font-size: 11.5px; color: var(--kta-texte-3); margin: 0 0 10px; line-height: 1.5; }
 .kta-osm-filters-add {
   width: 100%;

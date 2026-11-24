@@ -1458,11 +1458,7 @@
           '<input type="range" id="kta-osm-opacity" min="0" max="100" value="' + Math.round(_opacity * 100) + '" style="flex:1 1 auto; max-width:240px;">' +
           '<span id="kta-osm-opacity-val" style="width:38px; text-align:right;">' + Math.round(_opacity * 100) + '%</span>' +
           // fond de carte : un sélecteur dans le bandeau, pas de bouton de plus (place au téléphone)
-          '<label style="display:inline-flex; align-items:center; gap:5px; font-size:12px;" title="' +
-            _escapeHtml(window.I18n.t("fondscarte.choix.title")) + '">' + window.ktaIcone("layers") + " " +
-            window.I18n.t("fondscarte.choix") +
-            '<select id="kta-osm-fond" style="font-size:12px;">' + _optionsFond() + '</select>' +
-          '</label>' +
+          (window.KtaFondsCarte ? window.KtaFondsCarte.htmlSelecteur("kta-osm-fond") : "") +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center" style="font-size:12px; padding:5px 10px;">' + window.ktaIcone("crosshair") + " " + window.I18n.t("osm.btn.centerPlan") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center-tracker" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.btn.centerTracker.title")) + '">' + window.ktaIcone("navigation") + " " + window.I18n.t("osm.btn.centerTracker") + '</button>' +
           // « 📍 Moi » : un fix ponctuel ; désactivé si incognito à la construction
@@ -1565,12 +1561,7 @@
     if (cacheBtn) {
       cacheBtn.addEventListener("click", function() { _runCacheOsmTiles(cacheBtn); });
     }
-    const fondSel = overlay.querySelector("#kta-osm-fond");
-    if (fondSel) {
-      fondSel.addEventListener("change", function(e) {
-        if (window.KtaFondsCarte) window.KtaFondsCarte.choisir(e.target.value);
-      });
-    }
+    if (window.KtaFondsCarte) window.KtaFondsCarte.brancherSelecteur(overlay.querySelector("#kta-osm-fond"));
     _majBoutonCache();
     _refreshOsmCacheStats();
     const planCb = overlay.querySelector("#kta-osm-plan-toggle");
@@ -1720,16 +1711,6 @@
     }
   }
 
-  // Options du sélecteur de fond, le fond de l'appareil sélectionné.
-  function _optionsFond() {
-    const F = window.KtaFondsCarte;
-    if (!F) return "";
-    const id = F.courant().id;
-    return F.liste().map(function(f) {
-      return '<option value="' + _escapeHtml(f.id) + '"' + (f.id === id ? " selected" : "") + '>' +
-        _escapeHtml(F.libelle(f.id)) + '</option>';
-    }).join("");
-  }
   // 🔒 Hors ligne = OSM seul : fond IGN affiché, le bouton est grisé et dit pourquoi, au lieu d'enregistrer de
   // l'OSM en silence.
   function _fondEnregistrable() { return !window.KtaFondsCarte || window.KtaFondsCarte.estOsm(); }
@@ -1761,9 +1742,7 @@
   }
   function _surChangementFond() {
     _poserFond();
-    const sel = document.getElementById("kta-osm-fond");
-    if (sel && window.KtaFondsCarte) sel.value = window.KtaFondsCarte.courant().id;
-    _majBoutonCache();
+    _majBoutonCache();   // le sélecteur suit seul (fondsCarte.js > htmlSelecteur)
   }
   window.addEventListener("kta:fondCarteChange", _surChangementFond);
 

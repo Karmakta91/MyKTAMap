@@ -6421,7 +6421,7 @@
   "osm_mode.multi.opacityTitle": "This plan's opacity",
   "osm_mode.warn.multi": "⚡ {n} plans displayed at once: on mobile, rendering and memory may suffer.",
   "osm_mode.filters.btnTitle": "Plans & filters (priorities, opacities, per-plan filters)",
-  "osm_mode.filters.title": "OSM plans & filters",
+  "osm_mode.filters.title": "Map plans & filters",
   "osm_mode.filters.hint": "Top of the list = on top on the map · ◉ = main map.",
   "osm_mode.filters.global": "Display (all plans)",
   "osm_mode.filters.tags": "Filter by tag",

@@ -476,7 +476,7 @@
       '<label class="kta-fond-osm-curseur kta-fond-osm-choix">' +
         '<span>' + window.ktaIcone("layers") + " " + window.ktaEsc(_t("fondscarte.choix")) + '</span>' +
         '<select data-fond-osm="fond" title="' + window.ktaEsc(_t("fondscarte.choix.title")) + '">' +
-          _optionsFond() + '</select>' +
+          window.KtaFondsCarte.htmlOptions() + '</select>' +
       '</label>' +
       '<label class="kta-fond-osm-curseur">' +
         '<span>' + window.ktaIcone("blend") + " " + window.ktaEsc(_t("fondosm.transparence")) + '</span>' +
@@ -512,14 +512,6 @@
       regler(Number.parseInt(e.target.value, 10));
     });
     return p;
-  }
-
-  function _optionsFond() {
-    const F = window.KtaFondsCarte, id = F.courant().id;
-    return F.liste().map(function(f) {
-      return '<option value="' + window.ktaEsc(f.id) + '"' + (f.id === id ? " selected" : "") + '>' +
-        window.ktaEsc(F.libelle(f.id)) + '</option>';
-    }).join("");
   }
 
   function _majPanneau() {

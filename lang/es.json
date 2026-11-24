@@ -6421,7 +6421,7 @@
   "osm_mode.multi.opacityTitle": "Opacidad de este mapa",
   "osm_mode.warn.multi": "⚡ {n} mapas mostrados a la vez: en móvil, el rendimiento y la memoria pueden verse afectados.",
   "osm_mode.filters.btnTitle": "Mapas y filtros (prioridades, opacidades, filtros por mapa)",
-  "osm_mode.filters.title": "Mapas y filtros OSM",
+  "osm_mode.filters.title": "Planos y filtros del mapa",
   "osm_mode.filters.hint": "Arriba en la lista = encima en el mapa · ◉ = mapa principal.",
   "osm_mode.filters.global": "Visualización (todos los mapas)",
   "osm_mode.filters.tags": "Filtrar por etiqueta",

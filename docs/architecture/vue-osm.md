@@ -65,9 +65,12 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
   try/catch ; écriture refusée → le choix vaut pour la page). `KtaFondsCarte.choisir(id)` émet `kta:fondCarteChange`
   `{ id }` : la Vue carte et le widget de l'accueil remplacent leur couche, le fond sous le plan se redessine sans être
   rallumé. Non exporté avec le profil (réglage d'appareil).
-- **Sélecteurs** (aucun bouton de plus, place au téléphone) : liste `#kta-osm-fond` dans le premier bandeau de la Vue
-  OSM ; liste `[data-fond-osm='fond']` dans le panneau du bouton carte du plan. Le widget de l'accueil et le Mode
-  Secours **suivent** le dernier choix, sans réglage propre (décision produit).
+- **Sélecteurs** (aucun bouton de plus, place au téléphone), tous sur le même choix : liste `#kta-osm-fond` dans le
+  premier bandeau de la Vue carte et `#ktaOsmFiltersFond` en tête de la fenêtre « Plans & filtres de la carte » (≡ du
+  widget de l'accueil), un seul gabarit `KtaFondsCarte.htmlSelecteur(id)` relié par `brancherSelecteur(select)` ;
+  liste `[data-fond-osm='fond']` dans le panneau du bouton carte du plan (`htmlOptions()`, sa propre mise en page).
+  ⚠️ Un sélecteur marqué `data-kta-fond-choix` suit seul un changement venu d'ailleurs (`fondsCarte.js`, écouteur
+  de `kta:fondCarteChange`). Le Mode Secours **suit** le dernier choix, sans réglage propre (décision produit).
 - **Zooms** : le GetCapabilities de `data.geopf.fr` annonce les deux couches IGN sur la grille `PM_0_19` (zooms 0 à 19) ;
   `PM` est servi aussi. Au-delà, la tuile 19 est agrandie (`maxNativeZoom`, ou le plafond du fond sous le plan).
 - **Hors couverture** : l'IGN répond 404 hors de ses données (mesuré une fois, à la main, en pleine mer). Une seule

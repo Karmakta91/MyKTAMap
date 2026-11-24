@@ -11,7 +11,7 @@
 // aucune URL de tuile ne s'écrit ailleurs. Choix retenu sur l'appareil (localStorage `myktamap_fond_carte_v1`),
 // partagé par les vues ; un changement émet `kta:fondCarteChange` { id }.
 // Expose : window.KtaFondsCarte = { OSM, CLE, liste, fond, courant, choisir, estOsm, urlTuile, libelle,
-//   creerCouche, creditsMasques, masquerCredits, montrerCredits }.
+//   htmlOptions, htmlSelecteur, brancherSelecteur, creerCouche, creditsMasques, masquerCredits, montrerCredits }.
 // Crédit des données : la Vue OSM et le fond sous le plan montrent le contrôle d'attribution Leaflet, sans préfixe
 //   (montrerCredits ; classe `kta-credits-carte` sur leur conteneur, le CSS global le masque partout ailleurs).
 //   Case « Masquer les crédits des cartes » (Configuration de l'accueil › Affichage) : classe `kta-credits-masques`
@@ -77,6 +77,34 @@
     }
     return true;
   }
+
+  // Sélecteur du fond, le même partout où il s'affiche (bandeau de la Vue carte, fenêtre « Plans & filtres de la
+  // carte » de l'accueil) : libellé « Fond », liste des fonds de la table, le fond de l'appareil sélectionné.
+  // htmlOptions() seules : panneau du bouton carte (fondOsmPlan.js), qui garde sa mise en page.
+  // ⚠️ Gabarit en chaîne (les deux fenêtres se construisent en innerHTML) ; brancherSelecteur(select) le relie au
+  //   choix partagé. Tous les sélecteurs `data-kta-fond-choix` suivent un changement venu d'ailleurs (ci-dessous).
+  function htmlOptions() {
+    const esc = window.ktaEsc;
+    const id = courant().id;
+    return FONDS.map(function(f) {
+      return '<option value="' + esc(f.id) + '"' + (f.id === id ? " selected" : "") + '>' + esc(libelle(f.id)) +
+        '</option>';
+    }).join("");
+  }
+  function htmlSelecteur(idSelect) {
+    const esc = window.ktaEsc;
+    return '<label class="kta-fond-choix" title="' + esc(window.I18n.t("fondscarte.choix.title")) + '">' +
+      window.ktaIcone("layers") + " " + esc(window.I18n.t("fondscarte.choix")) +
+      '<select id="' + esc(idSelect) + '" data-kta-fond-choix="1">' + htmlOptions() + '</select></label>';
+  }
+  function brancherSelecteur(sel) {
+    if (!sel) return;
+    sel.addEventListener("change", function(e) { choisir(e.target.value); });
+  }
+  window.addEventListener("kta:fondCarteChange", function() {
+    const id = courant().id;
+    document.querySelectorAll("select[data-kta-fond-choix]").forEach(function(sel) { sel.value = id; });
+  });
 
   function estOsm(id) { return (id || courant().id) === OSM; }
   function urlTuile(id, z, x, y) {
@@ -179,6 +207,9 @@
     estOsm: estOsm,
     urlTuile: urlTuile,
     libelle: libelle,
+    htmlOptions: htmlOptions,
+    htmlSelecteur: htmlSelecteur,
+    brancherSelecteur: brancherSelecteur,
     creerCouche: creerCouche,
     creditsMasques: creditsMasques,
     masquerCredits: masquerCredits,

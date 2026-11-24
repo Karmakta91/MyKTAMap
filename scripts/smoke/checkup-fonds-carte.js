@@ -23,7 +23,9 @@
 //   (V1-V3) et sur le fond sous le plan (P1-P5), les deux en repli, OSM retiré quand plus aucune tuile remplacée
 //   n'est affichée (V3b), rien sur le plan seul ; case « Masquer les crédits des cartes » : effet immédiat, retenue
 //   au rechargement (K1-K4) · Vue OSM : titre neutre, « Sauvegarder hors-ligne » grisé lisible avec sa raison
-//   (contraste mesuré) · M1-M5 téléphone (390 px), thèmes sombre et clair : sélecteurs dans l'écran, crédit lisible
+//   (contraste mesuré) · A6 fond choisi dans « Plans & filtres de la carte » de l'accueil : suivi par le widget, la
+//   Vue carte et le fond sous le plan, retenu au rechargement, 💾 grisé en IGN
+//   · M1-M5 téléphone (390 px), thèmes sombre et clair : sélecteurs dans l'écran, crédit lisible
 //   (contraste ≥ 4,5:1 sur tuile blanche et noire) sans recouvrir de bouton · V9 aucune erreur de page.
 // Usage : node scripts/smoke/checkup-fonds-carte.js   (SMOKE_PORT pour une copie de travail ; CAPTURES=<dossier> :
 //   captures à 390 px, à regarder, jamais à commiter)
@@ -402,6 +404,28 @@ async function garderCapture(page, nom) {
   fs.mkdirSync(CAPTURES, { recursive: true });
   fs.writeFileSync(path.join(CAPTURES, nom + ".png"), Buffer.from(img.split(",")[1], "base64"));
 }
+// Fenêtre « Plans & filtres de la carte » du widget de l'accueil (bouton ≡).
+async function ouvrirFiltresAccueil(page) {
+  await page.evaluate(function () { document.getElementById("ktaOsmHomeFiltersBtn").click(); });
+  await attendre(page, function () { return !!document.getElementById("ktaOsmFiltersFond"); }, 10000);
+  await page.waitForTimeout(300);
+}
+async function fermerFiltresAccueil(page) {
+  await page.evaluate(function () { const b = document.getElementById("kta-osm-filters-close"); if (b) b.click(); });
+  await page.waitForTimeout(300);
+}
+function lireFiltresAccueil() {
+  const sel = document.getElementById("ktaOsmFiltersFond");
+  const corps = document.querySelector("#kta-osm-filters-modal .kta-readme-modal-corps");
+  const t = document.querySelector("#kta-osm-filters-modal .kta-readme-modal-titre");
+  return {
+    select: !!sel, valeur: sel ? sel.value : null,
+    options: sel ? Array.from(sel.options).map(function (o) { return o.value; }) : [],
+    enTete: !!sel && !!corps && corps.firstElementChild === sel.closest(".kta-osm-filters-fond"),
+    titre: t ? t.textContent.trim() : null
+  };
+}
+
 async function ouvrirPlanSiBesoin(page, nom) {
   const ouvert = await page.evaluate(function () {
     return !!(window.ktaPlanAffiche && window.ktaPlanAffiche()) && !document.getElementById("ktaOsmHomeMap");
@@ -682,6 +706,46 @@ async function verifCreditMobile(page, sel, nomCarte, theme) {
       !/IGN/.test(a4.attribution || "") && a4.cacheIndispo === false && a4.cacheTitre !== raison,
       { a4: a4, ign: s.etat.ign.length - nIgnA });
 
+    console.log("— A6 : fond choisi dans « Plans & filtres de la carte » de l'accueil —");
+    await ouvrirFiltresAccueil(page);
+    const f0 = await page.evaluate(lireFiltresAccueil);
+    const titreFiltres = await cle(page, "osm_mode.filters.title");
+    verif("fenêtre des filtres : sélecteur du fond en tête, sur le fond de l'appareil (OSM), titre sans « OSM »",
+      f0.select && f0.enTete && f0.valeur === "osm" && f0.options.join() === "osm,ign-aerien,ign-plan" &&
+      f0.titre === titreFiltres && !/OSM/.test(f0.titre), f0);
+    await page.selectOption("#ktaOsmFiltersFond", "ign-plan");
+    const a6 = await attendreAccueil(page);
+    verif("choisi dans la fenêtre (IGN plan) : le widget passe aux tuiles IGN plan, 💾 et stats grisés",
+      a6.tuilesIgn > 0 && s.etat.ign.some(function (u) { return /PLANIGNV2/.test(u); }) && a6.cacheIndispo === true &&
+      a6.cacheTitre === raison && a6.statsTitre === raison, a6);
+    await fermerFiltresAccueil(page);
+    await ouvrirPlanSiBesoin(page, nom);
+    await page.evaluate(function () { window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm")); });
+    await page.waitForTimeout(300);
+    const a6p = await page.evaluate(function () { const x = document.querySelector("[data-fond-osm='fond']"); return x ? x.value : null; });
+    await page.evaluate(function () { window.FondOsmPlan.fermerPanneau(); });
+    verif("le fond sous le plan suit le choix de l'accueil (IGN plan)", a6p === "ign-plan", a6p);
+    await ouvrirVueOsm(page);
+    const a6v = await page.evaluate(lireVue);
+    verif("la Vue carte suit le choix de l'accueil (IGN plan, tuiles IGN, 💾 grisé)",
+      a6v.valeur === "ign-plan" && a6v.tuilesIgn > 0 && a6v.cacheDesactive === true, a6v);
+    await fermerVueOsm(page);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2500);
+    await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await ouvrirPlan(page, nom);
+    await allerAccueil(page);
+    await ouvrirFiltresAccueil(page);
+    const f1 = await page.evaluate(lireFiltresAccueil);
+    const a6r = await attendreAccueil(page);
+    verif("rechargement : fenêtre et widget toujours sur IGN plan, 💾 grisé",
+      f1.valeur === "ign-plan" && a6r.tuilesIgn > 0 && a6r.cacheIndispo === true, { f1: f1, a6r: a6r });
+    await page.selectOption("#ktaOsmFiltersFond", "osm");
+    await page.waitForTimeout(800);
+    const a6o = await attendreAccueil(page);
+    verif("retour OSM depuis la fenêtre : 💾 permis de nouveau", a6o.cacheIndispo === false, a6o);
+    await fermerFiltresAccueil(page);
+
     console.log("— S1 : briefing Secours en IGN, capture par la Vue OSM —");
     await page.evaluate(function () { window.KtaFondsCarte.choisir("ign-aerien"); });
     await ouvrirPlanSiBesoin(page, nom);
@@ -771,6 +835,11 @@ async function verifCreditMobile(page, sel, nomCarte, theme) {
     const m3 = await page.evaluate(dansEcran, "#ktaOsmHomeCacheStats");
     verif("accueil à 390 px (IGN) : pied du widget dans l'écran", m3.ok, m3);
     await captureMobile(page, "m3-accueil-ign");
+    await ouvrirFiltresAccueil(page);
+    const m3f = await page.evaluate(dansEcran, "#ktaOsmFiltersFond");
+    verif("accueil à 390 px : sélecteur du fond de « Plans & filtres de la carte » entier dans l'écran", m3f.ok, m3f);
+    await captureMobile(page, "m3-filtres-fond");
+    await fermerFiltresAccueil(page);
     await page.evaluate(function () { document.getElementById("ktaOsmHomeCacheBtn").scrollIntoView({ block: "center" }); });
     await captureMobile(page, "m3-accueil-bandeau");
     erreurs.push.apply(erreurs, s.etat.erreurs);
