@@ -1552,7 +1552,9 @@ Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async �
 - Footers des 3 vues Live (Équipier, Opérateur, Secouriste) via `_bindLiveCommonHandlers` (v1.41.1)
 
 Carte OSM en tête de page : capture `html2canvas` (`_captureOsmCanvasForBriefing` — Vue OSM ouverte, sinon carte hors
-écran : tuiles, cadre du plan, équipes GPS) ; liens cliquables OSM / Google Maps en plus. L'étiquette « 📍 site » de
+écran : tuiles, cadre du plan, équipes GPS) ; liens cliquables OSM / Google Maps en plus. Le fond est celui choisi sur
+l'appareil (OpenStreetMap ou IGN, `vue-osm.md` § Fonds de carte), sans réglage propre au Secours ; la carte hors écran
+le prend dans `KtaFondsCarte` (IGN seulement si la Vue OSM est autorisée, hors incognito et en ligne). L'étiquette « 📍 site » de
 la carte hors écran porte la classe `kta-secours-osm-etiquette` (`style-secours.css`) : sombre par défaut, claire en thème clair.
 
 ### 79.6 Hotfixes v1.41.1 → v1.41.4

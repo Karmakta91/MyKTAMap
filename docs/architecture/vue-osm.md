@@ -47,8 +47,8 @@
 ## 🗺️ Fonds de carte : OpenStreetMap, IGN aérien, IGN plan (`js/fondsCarte.js`)
 
 **Une seule table** (`window.KtaFondsCarte`) porte, pour chaque fond, son URL de tuile, son zoom max, son attribution
-et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmView.js`, `fondOsmPlan.js` ni
-`osmTilesCache.js`. Chargée par `index.html` avant `osmTilesCache.js`, précachée par `sw.js`.
+et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmView.js`, `fondOsmPlan.js`,
+`osmTilesCache.js`, `osmHomePreview.js` ni `secoursMode.js`. Chargée par `index.html` avant `osmTilesCache.js`, précachée par `sw.js`.
 
 | id | Couche | URL | Zoom max | Attribution | Hors ligne |
 |---|---|---|---|---|---|
@@ -58,10 +58,11 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
 
 - **Choix de l'appareil**, partagé par les vues : `localStorage` `myktamap_fond_carte_v1` (lecture et écriture en
   try/catch ; écriture refusée → le choix vaut pour la page). `KtaFondsCarte.choisir(id)` émet `kta:fondCarteChange`
-  `{ id }` : la Vue OSM remplace sa couche, le fond sous le plan se redessine sans être rallumé. Non exporté avec le
-  profil (réglage d'appareil).
+  `{ id }` : la Vue OSM et le widget de l'accueil remplacent leur couche, le fond sous le plan se redessine sans être
+  rallumé. Non exporté avec le profil (réglage d'appareil).
 - **Sélecteurs** (aucun bouton de plus, place au téléphone) : liste `#kta-osm-fond` dans le premier bandeau de la Vue
-  OSM ; liste `[data-fond-osm='fond']` dans le panneau du bouton carte du plan.
+  OSM ; liste `[data-fond-osm='fond']` dans le panneau du bouton carte du plan. Le widget de l'accueil et le Mode
+  Secours **suivent** le dernier choix, sans réglage propre (décision produit).
 - **Zooms** : le GetCapabilities de `data.geopf.fr` annonce les deux couches IGN sur la grille `PM_0_19` (zooms 0 à 19) ;
   `PM` est servi aussi. Au-delà, la tuile 19 est agrandie (`maxNativeZoom`, ou le plafond du fond sous le plan).
 - **Hors couverture** : l'IGN répond 404 hors de ses données (mesuré une fois, à la main, en pleine mer). Une seule
@@ -71,7 +72,8 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
   CSP n'autorise pas encore `data.geopf.fr` montre de l'OSM sous l'étiquette IGN, avec les deux attributions.
 - 🔒 **Hors ligne = OSM seul** : `osmTilesCache.js` n'enregistre que des tuiles OSM (URL de la table, fond `osm`) ;
   `sw.js` sort tôt pour `data.geopf.fr` (pas de `respondWith` : ni `CACHE_NAME`, ni cache IDB) ; fond IGN choisi,
-  « 💾 Sauvegarder hors-ligne » (Vue OSM) et « Enregistrer hors ligne » (fond sous le plan) sont grisés, raison
+  « 💾 Sauvegarder hors-ligne » (Vue OSM, widget de l'accueil) et « Enregistrer hors ligne » (fond sous le plan) sont
+  grisés, raison
   écrite (`fondscarte.horsLigne.osmSeul`, `fondosm.cache.indispo.fond`). Hors ligne avec un fond IGN, les tuiles
   OSM enregistrées s'affichent (le repli tuile par tuile y mène tout seul).
 - 🔒 **Consentement** : la case « Vue OSM » couvre tous les fonds ; décochée ou en incognito, aucune requête IGN
@@ -80,11 +82,27 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
 - **CSP** : `img-src … https://data.geopf.fr` (`docker/nginx-docker.conf`, `docs/nginx-myktamap.conf`,
   `docs/nginx-csp-config.conf`) ; pas dans `connect-src` (le service worker ne la récupère pas). Le serveur public
   porte sa propre CSP hors de ce dépôt : sans la même ligne, le repli ci-dessus s'applique.
-- **Pas encore branchés** : le widget de l'accueil (`osmHomePreview.js`) et la carte du Mode Secours
-  (`secoursMode.js`) gardent OpenStreetMap ; les brancher = `KtaFondsCarte.creerCouche(KtaFondsCarte.courant().id)`
-  à la place de leur `L.tileLayer`, plus l'écoute de `kta:fondCarteChange`.
+- **Widget de l'accueil** (`osmHomePreview.js > _poserFond`) : `creerCouche(courant().id)`, remplacée à chaque
+  `kta:fondCarteChange` sans remonter le widget ; hors ligne, couche OSM directe (elle lit le cache « Save Offline »).
+  Pas de contrôle d'attribution Leaflet : le pied (`_majPied`) écrit le domaine contacté (`osm_home.footer.tiles`,
+  paramètre `{domaine}`) et l'attribution du fond, plus celle d'OSM et son domaine dès le premier remplacement d'une
+  tuile IGN (lu à `tileload`, `ktaReplis`). Fond IGN : 💾 en `aria-disabled` + `.kta-osm-home-indispo` (bordure
+  pointillée), **touchable** : le toucher affiche la raison (`fondscarte.horsLigne.osmSeul`, toast d'avertissement) au
+  lieu d'enregistrer, la raison se lit donc aussi au téléphone ; stats du cache en `--kta-texte-3`, même raison au
+  survol.
+- **Mode Secours** : sa carte est la fenêtre Vue OSM (bouton 🌍 du scénario, capture du briefing), qui suit le fond.
+  Le repli hors écran de la capture (`secoursMode.js > _captureOsmCanvasForBriefing`, Vue OSM indisponible) prend
+  `creerCouche(_idFondBriefing(), { crossOrigin: "anonymous" })` : le fond de l'appareil si OSM est autorisé, hors
+  incognito et en ligne, sinon OSM. Carte de quelques secondes : pas d'écoute de `kta:fondCarteChange`. html2canvas
+  (`useCORS`, `allowTaint: false`) relit les tuiles en CORS ; l'IGN répond `Access-Control-Allow-Origin: *`. Seul le
+  fond change, la palette du Secours reste la sienne. 🩸 Ce repli demande des tuiles OSM même sans la case Vue OSM ou
+  en incognito (comportement antérieur, non tranché) ; jamais de tuile IGN dans ces deux cas.
+- 🩸 **Attribution Leaflet masquée** : `css/style.css` cache `.leaflet-control-attribution` pour toutes les cartes ; le
+  crédit écrit par la Vue OSM est dans le DOM mais pas à l'écran. Le widget (pied) et le fond sous le plan
+  (`.kta-fond-osm-attrib`) écrivent le leur eux-mêmes.
 
-🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue OSM), `checkup-fond-osm.js` F8 et F13 (fond sous le plan) : tuiles
+🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue OSM V1-V8, widget de l'accueil A1-A4, briefing Secours S1-S2, case
+décochée et incognito A5/S3-S4, sélecteurs à 390 px M1-M3), `checkup-fond-osm.js` F8 et F13 (fond sous le plan) : tuiles
 OSM et IGN fabriquées par le harnais, aucune requête réelle. `scripts/check-plan-offline.js` §9 : `sw.js` n'intercepte
 pas `data.geopf.fr`.
 
