@@ -890,6 +890,11 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
+#### Pas encore publié (après v2.32.0, branche `Karma_dev`)
+
+- 🗺️ **Fonds de carte : OpenStreetMap, IGN aérien, IGN plan** (`js/fondsCarte.js` `window.KtaFondsCarte`, `kta:fondCarteChange`, `js/osmView.js`, `js/fondOsmPlan.js`, `js/osmTilesCache.js`, `js/osmHomePreview.js`, `js/secoursMode.js`, `sw.js`, `lang/*.json`, CSP `img-src` + `https://data.geopf.fr`, `checkup-fonds-carte.js`) : une table unique des fonds remplace les adresses de tuiles écrites en dur ; le fond se choisit dans les réglages de la Vue OSM et dans le panneau du bouton carte, sans nouveau bouton, et vaut pour la Vue OSM, le fond sous le plan, la carte de l'accueil et le briefing Secours. Hors couverture IGN, la tuile OSM prend la place. Hors ligne : OSM seulement (« Enregistrer hors ligne » grisé en IGN, raison dite), et le service worker ne range plus les tuiles IGN. Case « Vue OSM » décochée ou navigation privée : aucune requête IGN.
+- 📋 **Backlog : champs `id`, `après`, `échéance`** (`scripts/check-backlog.js`, `docs/BACKLOG.md`) : identifiant stable, dépendances (y compris vers le backlog pro) et date butoir, vérifiés au pre-commit (doublon, référence inconnue, cycle, date invalide) ; un `id` sur chaque entrée.
+
 #### v2.32.0 (24/11/2026) — Visionneuse PDF hors ligne, tags au nom libre et icônes changées dans l'app, GPS dès l'ajout d'un point (branche `Karma_dev`)
 
 > Écart avec la prod v2.31.0.
