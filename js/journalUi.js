@@ -723,6 +723,7 @@
     if (_recitUrl) { try { URL.revokeObjectURL(_recitUrl); } catch(e) {} _recitUrl = null; }
     const el = document.getElementById(RECIT_ID);
     if (el) {
+      if (window.KtaVisionneusePdf) window.KtaVisionneusePdf.liberer(el);
       // 🩸 Vider l'iframe AVANT le remove : sinon WebKit garde la bitmap du PDF en mémoire (cf modeHistoire.js).
       const ifr = el.querySelector("iframe");
       if (ifr) { try { ifr.src = ""; } catch(e) {} }
@@ -828,6 +829,30 @@
     _renderRecitDocs(r);
   }
 
+  // Visionneuse libérée (document, worker, canvas) et iframe vidée AVANT de remplacer le contenu de la vue.
+  function _viderVuePdf(vue) {
+    if (window.KtaVisionneusePdf) window.KtaVisionneusePdf.liberer(vue);
+    const ifr = vue.querySelector("iframe");
+    if (ifr) { try { ifr.src = ""; } catch(e) {} }
+  }
+
+  // La fiche ne s'élargit (2 colonnes sur PC) QUE quand un PDF est affiché.
+  function _elargirRecit(oui) {
+    const boite = document.getElementById("kta-jrn-recit-boite");
+    if (boite) boite.classList.toggle("kta-jrn-recit-avecpdf", !!oui);
+  }
+
+  // Sans visionneuse : iframe hors iPhone (une seule page y est rendue : l'action seule, par la feuille de partage).
+  function _iframeRecit(vue, url) {
+    if (window.ktaEstIos()) { _elargirRecit(false); return; }
+    const ifr = document.createElement("iframe");
+    ifr.className = "kta-jrn-recit-iframe";
+    ifr.src = url;
+    ifr.title = "PDF";
+    vue.appendChild(ifr);
+    _elargirRecit(true);
+  }
+
   function _renderRecitDocs(r) {
     const box = document.getElementById("kta-jrn-recit-docs");
     if (!box) return;
@@ -852,17 +877,30 @@
         _histGet(d.id).then(function(rec) {
           if (!rec || !rec.blob) { _toast(_t("jrn.recits.pdfIntrouvable"), "warn"); return; }
           if (_recitUrl) { try { URL.revokeObjectURL(_recitUrl); } catch(e) {} }
-          _recitUrl = URL.createObjectURL(rec.blob);
+          // Blob retypé : une copie du ZIP peut être en application/octet-stream (iframe qui télécharge).
+          const blob = window.ktaBlobPdf(rec.blob);
+          _recitUrl = URL.createObjectURL(blob);
           const vue = document.getElementById("kta-jrn-recit-pdfbox");
           if (!vue) return;
-          const vieux = vue.querySelector("iframe");
-          if (vieux) { try { vieux.src = ""; } catch(e) {} }
+          _viderVuePdf(vue);
           vue.innerHTML = '<div class="kta-jrn-recit-pdfmeta">' + _esc(rec.name || "histoire.pdf") +
                             ' · ' + Math.round((rec.size || 0) / 1024) + ' Ko</div>' +
-                          '<iframe class="kta-jrn-recit-iframe" src="' + _recitUrl + '" title="PDF"></iframe>';
-          // La fiche ne s'élargit (2 colonnes sur PC) QUE quand un PDF est ouvert.
-          const boite = document.getElementById("kta-jrn-recit-boite");
-          if (boite) boite.classList.add("kta-jrn-recit-avecpdf");
+                          '<div class="kta-jrn-recit-pdfactions"></div>';
+          vue.querySelector(".kta-jrn-recit-pdfactions").appendChild(window.ktaActionPdf(blob, rec.name, _recitUrl));
+          const url = _recitUrl;
+          const vp = window.KtaVisionneusePdf;
+          if (!vp || !vp.disponible()) { _iframeRecit(vue, url); return; }
+          const hote = document.createElement("div");
+          hote.className = "kta-jrn-recit-vpdf";
+          vue.appendChild(hote);
+          _elargirRecit(true);
+          vp.ouvrir(hote, blob, { nom: rec.name }).catch(function(err) {
+            // Autre document ouvert ou fiche fermée entre-temps : rien à remplacer.
+            if (!hote.isConnected || (err && err.name === "AbortError")) return;
+            console.warn("[JournalUi] visionneuse indisponible, repli :", err && err.message);
+            hote.remove();
+            _iframeRecit(vue, url);
+          });
         });
       });
     });
@@ -878,12 +916,10 @@
           r.docs.splice(i, 1);
           const vue = document.getElementById("kta-jrn-recit-pdfbox");
           if (vue) {
-            const ifr = vue.querySelector("iframe");
-            if (ifr) { try { ifr.src = ""; } catch(e) {} }
+            _viderVuePdf(vue);
             vue.innerHTML = "";
           }
-          const boite = document.getElementById("kta-jrn-recit-boite");
-          if (boite) boite.classList.remove("kta-jrn-recit-avecpdf");
+          _elargirRecit(false);
           if (_recitUrl) { try { URL.revokeObjectURL(_recitUrl); } catch(e) {} _recitUrl = null; }
           _toast(_t("jrn.recits.pdfSupprime"), "info");
           _renderRecitDocs(r);

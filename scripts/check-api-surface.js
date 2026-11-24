@@ -87,6 +87,22 @@ function charger(fichier, nomGlobal, prealables) {
     win.ktaLargeurFrontPourPxParMetre(0) === null);
   t("px/m : sans carte → null", win.ktaPxParMetreOsm(null) === null);
 
+  // Structure en ligne dans un export (export avancé, PDF, « Télécharger le plan ») : UNE règle.
+  const LS = win.ktaLargeurLigneStructurePourRatio;
+  if (typeof LS !== "function") { t("structure en ligne : ktaLargeurLigneStructurePourRatio exposé", false); }
+  else {
+    const front = { weight: 10 }, arc = { weight: 6, rayures: { color: "#ff0000" } };
+    t("structure en ligne : front = loi du front, à toute résolution",
+      [0.5, 1, 2, 4].every(r => LS(front, r) === win.ktaLargeurFrontPourRatio(r)));
+    t("structure en ligne : arc (rayures) = loi du trait rayé, plus fin que le front",
+      [1, 2].every(r => LS(arc, r) === win.ktaLargeurRayePourRatio(r)) && LS(arc, 2) < LS(front, 2));
+    const sc = win.APP_CONFIG.scale;
+    win.APP_CONFIG.scale = 0;
+    t("structure en ligne : plan non calibré → weight × ratio (front et arc)", LS(front, 2) === 20 &&
+      LS(arc, 1) === 6 && LS({}, 1) === 5);
+    win.APP_CONFIG.scale = sc;
+  }
+
   // Épaisseur des traits : facteur d'ÉCRAN borné, jamais dans les lois (les exports les appellent telles quelles).
   // Sans localStorage (ici absent), le choix vit en mémoire.
   const ET = win.KtaEpaisseurTraits;

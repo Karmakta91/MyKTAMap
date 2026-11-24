@@ -337,12 +337,15 @@ window.MajPlan = (function () {
                             base: c.cible.nouveau ? null : bases.get(c.cible.id) } };
         })
       });
-      // Légende des types référencés (types créés sur le terrain compris), reprise par la légende du plan.
+      // Légende des types référencés (types créés sur le terrain compris), reprise par la légende du plan. Les
+      // anciens tags du plan rendus modifiables voyagent même si aucun de leurs points n'est versé : la nouvelle
+      // version garde leur libellé et leur image (createConf.js > _appliquerMaj).
       const tout = { data: [], roads: [], zones: [], structures: [] };
       res.calques.forEach(function (c) {
         ["data", "roads", "zones", "structures"].forEach(function (k) { tout[k] = tout[k].concat(c.payload[k]); });
       });
-      const legende = typeof window.ktaLegendePourCalque === "function" ? window.ktaLegendePourCalque(tout) : null;
+      const iconesPlan = Object.keys((window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {});
+      const legende = typeof window.ktaLegendePourCalque === "function" ? window.ktaLegendePourCalque(tout, iconesPlan) : null;
 
       const entree = window.PlanRegistry.findById(window._currentLoadedPlanId);
       if (!entree) { _erreur(t("maj.err.planInconnu")); btn.disabled = false; return; }

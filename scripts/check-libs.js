@@ -23,6 +23,7 @@ const t = (n, c, info) => {
 // 🩸 three.js n'écrit que sa révision (« 186 » pour 0.186.x) : le correctif se vérifie octet par octet au paquet.
 // 🩸 Une police (woff2, compressée) n'a pas d'en-tête lisible : sa version se lit dans le package.json du paquet,
 // copié tel quel à côté d'elle ; `presents` = fichiers qui doivent exister (ceux que l'app charge et précache).
+// 🩸 PDF.js : `build/*.min.mjs` du paquet embarqués sous l'extension .js (octets identiques), cf lib/VERSIONS.md.
 const LIBS = {
   leaflet:     { fichiers: ["lib/leaflet/leaflet.js", "lib/leaflet/leaflet-src.js"], motif: /Leaflet (\d+\.\d+\.\d+)/ },
   jszip:       { fichiers: ["lib/jszip.min.js"],          motif: /JSZip v(\d+\.\d+\.\d+)/ },
@@ -32,11 +33,15 @@ const LIBS = {
                  accord: (trouve, declaree) => /^0\.\d+\.\d+$/.test(declaree || "") && declaree.split(".")[1] === trouve },
   "@fontsource/bodoni-moda": { fichiers: ["lib/bodoni-moda/package.json"], motif: /"version": "(\d+\.\d+\.\d+)"/,
                  presents: ["lib/bodoni-moda/bodoni-moda-latin-600-normal.woff2",
-                   "lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2", "lib/bodoni-moda/LICENSE"] }
+                   "lib/bodoni-moda/bodoni-moda-latin-700-normal.woff2", "lib/bodoni-moda/LICENSE"] },
+  "pdfjs-dist": { fichiers: ["lib/pdfjs/pdf.min.js", "lib/pdfjs/pdf.worker.min.js"], motif: /pdfjsVersion = (\d+\.\d+\.\d+)/,
+                 presents: ["lib/pdfjs/LICENSE", "lib/pdfjs/wasm/openjpeg_nowasm_fallback.js",
+                   "lib/pdfjs/wasm/jbig2_nowasm_fallback.js", "lib/pdfjs/standard_fonts/LiberationSans-Regular.ttf",
+                   "lib/pdfjs/standard_fonts/FoxitSerif.pfb"] }
 };
 const LIGNE = {
   leaflet: "**Leaflet**", jszip: "**JSZip**", jspdf: "**jsPDF**", html2canvas: "**html2canvas**", three: "**three.js**",
-  "@fontsource/bodoni-moda": "**Bodoni Moda**"
+  "@fontsource/bodoni-moda": "**Bodoni Moda**", "pdfjs-dist": "**PDF.js**"
 };
 
 let manifeste = {};

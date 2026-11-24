@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.31.0` (23/11/2026)
+## 📦 Version courante — `v2.32.0` (24/11/2026)
 
-> 🛣️ **v2.31.0 — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles** : **Détecter les galeries** (outil 🛣️ Tracés, Éditeur de données, Générateur) trace l'axe des galeries de l'image en tracés, un par galerie, piliers contournés, bouts accrochés exactement au réseau existant. **🪣 Remplir au clic** suit aussi le trait d'un **front de taille** (arrêt au carrefour, un deuxième toucher prolonge), accepte les massifs jusqu'à 80 m, retire une erreur d'un toucher ou de Ctrl+Z, et **affine les contours** (lissage en mètres, quasi-rectangles redressés) ; un seul détecteur et un seul mode de clic à la fois. Curseur **Opacité** pour l'image principale du plan. L'export image et le PDF dessinent les **points précis** et gardent les **petits piliers** lisibles. 🚨 Une **alerte d'urgence passe devant** une alerte d'information. Détail : journal ci-dessous.
+> 📄 **v2.32.0 — Visionneuse PDF hors ligne, tags au nom libre et icônes changées dans l'app, GPS dès l'ajout d'un point** : les PDF du Mode Histoire et du Carnet s'affichent **dans l'app**, page après page, hors ligne et sur iPhone ; **tous** les PDF d'un plan ZIP sont enregistrés, avec « Ouvrir / Enregistrer » (partage iPhone). **« Créer un nouveau tag »** prend un nom libre qui devient une icône personnalisée de la Légende, et **« Personnaliser la légende »** change son image depuis l'appareil ou rend modifiables les anciens tags courts du plan, régénération comprise. Les **coordonnées GPS** s'affichent dès « Ajouter un point ». L'itinéraire ne raccorde plus deux galeries **à travers un mur** ; un écart négatif entre niveaux est signalé. **Remplir un front** calcule hors du fil principal (plus de gel) et va jusqu'au bout des traits épais ; « Télécharger le plan » suit la loi du terrain ; la case V2 du Générateur est dite recommandée (indispensable pour OSM).
 
 ---
 
@@ -214,11 +214,12 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `style-meminspector.css` | Inspecteur mémoire et rapports de crash, chargé à la demande |
 | `style-secours.css` | Mode Secours, chargé à la demande |
 | `vue3d.css` | Vue 3D plein écran, chargée par `js/vue3d.js` à son ouverture |
+| `style-visionneuse-pdf.css` | Visionneuse PDF, chargée par `js/visionneusePdf.js` à sa première ouverture |
 | `style-stats-globales.css` | Modale Statistiques du plan, chargée à la demande |
 
 ---
 
-## 🟢 L'application : modules JS (159 modules)
+## 🟢 L'application : modules JS (160 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -344,6 +345,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `mdParser.js` | Sous-ensemble Markdown XSS-safe (note libre du Mode Histoire) |
 | `devMode.js` | Mode Développeur, activé sans mot de passe (confirmation) : logs détaillés, ConfAdmin, inspecteur SW, outils d'extension |
 | `modeHistoire.js` | Mode Histoire : note libre Markdown et documents PDF du plan |
+| `visionneusePdf.js` | Visionneuse PDF du Mode Histoire et du Carnet (une page par canvas, rendue au défilement, pincement, plein écran) ; PDF.js importé à la première ouverture |
 
 ### 🌍 Interop géo (KMZ / GPX / SIG / OSM)
 
@@ -465,7 +467,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `bienvenue.js` | Écran « Bienvenue » (présentation qui défile, « Entrer », code d'accès) — chargé par `unlockGate.js` |
 | `confadmin.js` | Script de `confadmin.html` (génération de `data/index.json`) — chargé par `confadmin.html` |
 | `ktaSplashWorker.js` | Worker du splash : dessine les galeries dans un canvas transféré — lancé par `ktaSplash.js` |
-| `ktaDetectionWorker.js` | Worker de la détection des structures : calcule un bloc d'image (importe `ktaDetection.js`) — lancé par `ktaDetection.js` |
+| `ktaDetectionWorker.js` | Worker de la détection des structures : calcule un bloc d'image et le suivi de trait de « Remplir » sur un front (importe `ktaDetection.js`) — lancé par `ktaDetection.js` |
 | `vue3d.js` | Vue 3D autour de la position du tracker — chargé par `js/interface.js` au toucher du bouton cube de la barre de droite ; three.js importé à la première ouverture ; précaché par `sw.js` |
 
 ---
@@ -495,7 +497,7 @@ docs/                   ← Documentation du projet, jamais servie (sauf docs/ap
   BACKLOG.md            ← Ce qui reste à faire (Maintenant / Ensuite / Plus tard / Entrant, check-backlog.js)
   IDEES.md · DECISIONS_FERMEES.md ← Pistes non engagées · sujets enterrés, acceptés, leçons
   ETUDE_*.md            ← Études de chantier qui font foi (identifiant stable, guidage, calage en projection, remblais, vérifier le plan)
-  RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → trempage, dérogations
+  RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → test sur dev, dérogations, relevé
   TILING.md · MATHS.md  ← Tuilage V1 / V2 et hors-ligne d'un plan serveur · les maths de l'app, renvoyées au code
   IA_POUR_LES_NULS.md   ← Méthode de travail avec l'IA (rôles, hooks, garde-fous, porte), transposable
   INSTALLATION_SELFHOST.md ← Installation auto-hébergée de l'édition communautaire
@@ -506,7 +508,8 @@ docs/                   ← Documentation du projet, jamais servie (sauf docs/ap
                           commit-msg (data/ hors Git, docs d'un bump, noms réels) ; activer : git config core.hooksPath .githooks
 .github/                ← workflows/ci.yml (syntaxe, commits reçus, pre-commit complet), docker.yml (image ghcr sur tag),
                           release.yml (release GitHub au bump sur main), smoke.yml (smoke à la demande),
-                          sonde-integrite.yml (code servi = dépôt, toutes les heures) ; dependabot.yml (veille des dépendances)
+                          sonde-integrite.yml (code servi = dépôt et échéance des certificats TLS, toutes les heures) ;
+                          dependabot.yml (veille des dépendances)
 .claude/                ← Réglages de l'IA de code : hooks guard-git.js (git interdits) et check-syntax.js (node -c après
                           chaque écriture), skills add-icon-tag / add-zone-type / release
 .design-sync/           ← Synchronisation de la charte avec le projet de maquettes (jetons seuls)
@@ -577,7 +580,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-maj-plan.js` | « Mettre à jour le plan » qui perd un objet, écrase un calque ou laisse une trace destructrice | pre-commit |
 | `check-map-listeners.js` | Listener posé sur la map Leaflet avec une garde anti-doublon hors de la map | pre-commit |
 | `check-modal-lifecycle.js` | Rien : avertit d'un timer, écouteur ou blob URL hors `ModalLifecycle` dans un module migré | pre-commit (consultatif) |
-| `check-mur-ligne.js` | Mur en ligne qui ne coupe plus l'itinéraire, qui coupe un autre niveau, ou piliers / fronts devenus obstacles | pre-commit |
+| `check-mur-ligne.js` | Mur en ligne qui ne coupe plus l'itinéraire (tracé ou lien de jonction imparfaite), qui coupe un autre niveau, ou piliers / fronts devenus obstacles | pre-commit |
 | `check-no-pro-leak.js` | Fichier ou motif du dépôt pro privé dans ce dépôt public | pre-commit + ci-commits |
 | `check-noms-reels.js` | Nom réel lié aux relevés dans un fichier, un chemin ou un message de commit (empreintes sha256) | pre-commit + commit-msg + ci-commits |
 | `check-notifs.js` | Toast dessiné hors du goulot `OOMGuard.showToast`, ou important / erreur masqué par « Silence » | pre-commit |
@@ -640,6 +643,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `release/etat-sites.ps1` | Lecture seule : version réellement servie par dev et prod, comparée aux branches |
 | `release/merge-main.ps1` | Passage `Karma_dev` → `main` par KARMA : arbre propre, versions, garde-fous, Sonar, CI verte, merge, tag |
 | `release/sonar-scan.ps1` | Analyse SonarQube locale et verdict de la porte qualité (marche 1ter de la porte de release) |
+| `release/sonde-certificats.sh` | Échec si un certificat TLS des cinq domaines expire dans moins de `SEUIL_JOURS` jours (défaut 20 ; workflow `sonde-integrite.yml`, job `certificats`) |
 | `release/sonde-integrite.js` | Compare le code servi par un site au dépôt (workflow `sonde-integrite.yml`) |
 
 **`smoke/` — harnais navigateur** (Playwright, `npm install` dans `scripts/smoke/` ; jamais dans les hooks) — mode
@@ -663,6 +667,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-calques-groupe.js` | Rendus de session (modifications, ⏪ ⏩, Convertir, 🔄 Modifier, vue 3D d'édition) sans calque mort dans `layerEditor`, ≡ sans fantôme, tas stable |
 | `smoke/checkup-calque-modif-source.js` | Un calque en « Modifier » est lu par sa copie seule : itinéraire, graphe, obstacles, comptes, recherche, vue 3D, exports, carte de chaleur |
 | `smoke/checkup-carnet-documents.js` | Un PDF livré dans le ZIP d'un plan remonte au Carnet (onglet Récits) |
+| `smoke/checkup-pdf-zip.js` | Trois PDF dans le ZIP d'un plan : tous en blob: `application/pdf`, copiés au Carnet sous leur vrai nom, bouton « Ouvrir / Enregistrer » (partage annulé sans message) ou lien de téléchargement, document introuvable jamais servi en lien, plan en dossier ; agent iPhone, Chromium et WebKit |
 | `smoke/checkup-dossier-hors-ligne.js` | « Tout garder hors ligne » d'un dossier sur plans serveur fictifs (manquant, à jour, plus récent) |
 | `smoke/checkup-recoller-piliers.js` | Lignes qui forment ensemble une boucle (carré en 2 lignes, rectangle en 3) recollées en un pilier depuis la sélection multiple : case et compte, ktaConfirm, jonctions fusionnées, uid neufs, paire à 8 px et T intacts, ⏪ unique |
 | `smoke/checkup-bord-piliers.js` | Contour des piliers et murs (session et calque) entre 0,5 et 1 px au zoom minimal, remplissage inchangé, épaisseur d'origine au zoom maximal ; le front garde sa loi |
@@ -765,6 +770,8 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
 | `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
+| `smoke/checkup-icones-legende.js` | Icônes de Légende : nouveau tag rechargé avec son icône, « Changer l'icône » (image réduite, refus d'un fichier illisible), « Rendre modifiable » un ancien tag court du plan, puis « Mettre à jour le plan » et le ZIP régénéré ouvert seul dans un navigateur neuf |
+| `smoke/checkup-tag-nouveau.js` | Nouveau tag d'un POI : nom libre devenu icône de Légende, gardé au rechargement et par « Modifier » (ancien tag court compris) |
 | `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
 | `smoke/checkup-transparence-calques.js` | Opacité d'un calque image réglée au curseur des filtres ≡ : sans réglage rien ne change, valeur retenue par calque et par plan et réappliquée au rechargement (calque standard et calé), export PNG composé comme à l'écran, détection qui lit l'image pleine, indépendante du fond OSM sous le plan ; Chromium et WebKit |
 | `smoke/checkup-transparence-plan-de-base.js` | Opacité de l'image principale réglée au curseur sous « Afficher le plan de base » : sans réglage rien ne change, un seul curseur, valeur retenue par plan et réappliquée au rechargement, multipliée par la transparence du fond OSM, tuiles V1 et V2 atteintes, export PNG atténué comme à l'écran, détection qui lit l'image pleine ; Chromium et WebKit |
@@ -775,8 +782,9 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-urgence-devant.js` | Une alerte d'urgence passe devant une information affichée ou en attente (extension d'essai, sans serveur) : l'information revient après, sans acquittement ni signal « à l'écran » avant d'être affichée ; une urgence à l'écran n'est jamais recouverte |
 | `smoke/checkup-distance-totale.js` | 📏 Distance totale : niveau affiché compté, case « Tous les niveaux » retenue par plan, changement de niveau, 3D, plan à un niveau |
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue pour le niveau mesuré |
-| `smoke/checkup-niveaux-verticaux.js` | Sol, hauteur et écart par niveau : Générateur (ZIP rouvert puis relu), `getNiveauVertical`, ⚙️ Réglages (écart négatif, pref, ↺), téléphone |
+| `smoke/checkup-niveaux-verticaux.js` | Sol, hauteur et écart par niveau : Générateur (ZIP rouvert puis relu), `getNiveauVertical`, ⚙️ Réglages (écart négatif saisi et signalé, pref, ↺), téléphone |
 | `smoke/checkup-rendu-3d-defaut.js` | Rendu 3D par défaut d'un plan : Générateur (champ, ZIP généré relu), vue 3D ouverte sur le rendu du plan-config, choix retenu prioritaire après rechargement, repli Mixte (absent, inconnu) |
+| `smoke/checkup-visionneuse-pdf.js` | Visionneuse PDF : Mode Histoire et Carnet (12 pages jsPDF, canvas non blanc, rendu paresseux, zoom bouton et Ctrl + molette, plein écran, libération à la fermeture), appareil sans les API du build moderne (pas de visionneuse, iframe ou « Ouvrir / Enregistrer »), hors ligne par le précache (Chromium) ; WebKit sans Carnet ni hors ligne (limites du banc) |
 | `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice, réglages ⚙️ Portée et Lampe (intensité, faisceau, Plein jour), cavage comblé jusqu'aux structures, zoom de la vue plongeante, scène refaite quand les données changent vue ouverte (session, annulation, calque rapatrié puis restitué, légende, rafale, geste), dessin en vue plongeante avec les outils de la carte (§ 28 : pilier, murs, zone, tracé, mesure, niveau de la 3D, gestes, extinction, greffe, lecture seule, plan au sol), zone reliée à plusieurs niveaux (§ 29 : vue et obstacle sur chacun des siens, scène refaite au décochage), vue d'édition (§ 30 : caméra libre au doigt, ⌖, survol, niveau sans passage, bandeau, segments et angles de la mesure, panneaux lisibles, plan au sol au point visé, parois et sol unis 🧱 coupé, vue retenue par plan, tuile ⚙️ sur la colonne 🛠️) ; mesures sur un plan dense synthétique (portée de 20 à 100 m, plongée dézoomée, scène refaite, `KTA_V3D_PERF=dessin`) |
 
 ---
@@ -879,6 +887,25 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.32.0 (24/11/2026) — Visionneuse PDF hors ligne, tags au nom libre et icônes changées dans l'app, GPS dès l'ajout d'un point (branche `Karma_dev`)
+
+> Écart avec la prod v2.31.0.
+
+- 🎨 **Icônes de Légende : changer l'image, rendre modifiables les anciens tags** (`js/legendCustomization.js > ouvrirEditeur`, `imageEnIcone`, `listAnciensTags`, `rendreModifiable`, `js/map.js > _enregistrerIconesCustom`, `js/editor.js > afficherFormulaire`, `js/sessionExporter.js > _legendePourPayload`, `js/majPlan.js`, `js/createConf.js > _appliquerMaj`, `css/style.css`, `lang/*.json` `legend.editor.*`, `gen.icons.imageLegende*`, guides, `checkup-icones-legende.js`) : dans « Personnaliser la légende », **Changer l'icône** sur chaque icône personnalisée (image de l'appareil réduite à 64 px, gardée en data-URI ; illisible → message) ; les tags courts d'un plan plus ancien sont listés avec **Rendre modifiable** (même tag, libellé lisible, points inchangés), puis renommables et à l'image modifiable. La nouvelle image gagne partout, y compris dans les résolveurs qui lisent `icons` du plan d'abord, et « Mettre à jour le plan » l'écrit dans le nouveau plan. Corrigé au passage sur le parcours d'un nouveau tag : sur un plan importé, son icône était une adresse `blob:` morte au rechargement, une icône de la session n'était plus enregistrée sur la carte après un rechargement, et « Mettre à jour le plan » n'emportait pas sa définition (le plan régénéré, ouvert ailleurs, montrait ses points sans libellé ni icône). La section Icônes de l'éditeur ne se referme plus à chaque changement.
+
+- 🧱 **Itinéraire : plus de raccord à travers un mur** (`js/pathfinder.js > _enrichirGrapheAvecCroisements / _lienCoupe`, guides, `multilevel-pathfinding.md` §14 et §31.1 bis, `check-mur-ligne.js` § Jonctions imparfaites) : une galerie qui s'arrête à moins de 15 px d'une autre y est raccordée par l'itinéraire (tolérance du dessin à la main), même quand un mur (ligne) ou une zone ⛔ inaccessible passait entre les deux : l'itinéraire traversait le mur, alors que le même trait dessiné en tracé était refusé (mesuré sur une scène fictive : 400 px tout droit au lieu de 800 par le détour). Ce lien n'est plus posé quand il croise un obstacle dur de son niveau ; le candidat suivant, de son côté du mur, reste possible. Case « Respecter… » décochée : le lien revient. Arc de soutènement, pilier à bras et Comblé ne coupent pas ces liens ; croisements exacts et passages entre niveaux inchangés.
+- 📉 **Niveaux : écart négatif signalé** (`js/profondeurNiveaux.js > _incoherences`, `lang/*.json` `prof.incoherent.ecart` / `.suite`, guides, `multilevel-pathfinding.md` § Hauteur et écart, `checkup-niveaux-verticaux.js`) : un écart négatif oublié fait passer le sol d'un niveau sous le plafond de celui du dessous, et la 3D mélange les deux niveaux. La table des niveaux (Générateur et ⚙️ Réglages du plan) l'avertit maintenant sous la table, ligne marquée, sans rien bloquer (un écart négatif peut être voulu) ; avant, seuls un ordre faux ou un chevauchement d'au moins une hauteur de galerie l'étaient. Le texte de l'avertissement disait « la vue 3D les pose côte à côte » : faux, elle les entremêle (ouvert là où l'un des deux a un vide), à la même altitude au pire, jamais inversés ; corrigé en fr/en/es et dans les guides.
+
+- 🏷️ **Nouveau tag au nom libre, gardé après un rechargement** (`js/editor.js > afficherFormulaire`, `_buildTypeOptionsHTML`, `lang/*.json` `editor.field.newTag*`, guides, `checkup-tag-nouveau.js`) : « Créer un nouveau tag » prend un nom libre (espaces, accents) et crée une icône personnalisée de la Légende (id `cust-…`, icône par défaut, renommable, partie avec la session et les exports) ; même nom → même entrée. Avant, le nom était réduit à un identifiant (`puits_du_nord`) et un tag créé par « Nouveau tag » vit sur le point seul ; après un rechargement, la liste « Type » ne le proposait plus, la fiche « Modifier » s'ouvrait sur « Aucun tag » et Enregistrer l'effaçait. La liste reprend les tags des points de session et celui du point ouvert ; valeurs et libellés échappés.
+
+- 🌐 **Coordonnées GPS dès l'ajout d'un point** (`js/editor.js > afficherFormulaire`, `js/utils.js > ktaGpsTexte`, `css/style.css`, guides, `checkup-georef-reglages.js`) : sur un plan géoréférencé, il fallait enregistrer le point puis rouvrir sa fiche pour lire ses coordonnées. La fenêtre « Ajouter un point » (et « Modifier ») les affiche sous X / Y, même calcul et même texte que la fiche, avec le bouton copier.
+
+- 📄 **Visionneuse PDF dans l'app, hors ligne comprise** (`js/visionneusePdf.js`, `css/style-visionneuse-pdf.css`, PDF.js 6.5.438 dans `lib/pdfjs/`, `js/modeHistoire.js`, `js/journalUi.js`, `sw.js`, `lib/VERSIONS.md`, `scripts/check-libs.js`, `lang/*.json`, guides, `session-data.md` § Mode Histoire, `checkup-visionneuse-pdf.js`) : les PDF du Mode Histoire et du Carnet › Récits s'affichent dans la fenêtre, page après page, sur iPhone comme ailleurs (avant : sur iPhone, seulement « Ouvrir / Enregistrer » ; sur Android, l'iframe n'affichait rien). Une page est dessinée quand elle approche de l'écran et libérée quand elle s'en éloigne ; zoom au pincement (Ctrl + molette, boutons − et + au PC), ajuster à la largeur, plein écran. PDF.js (build moderne) n'est chargé qu'à la première ouverture, jamais au démarrage, et il est précaché par le Service Worker avec son worker, ses polices standard et ses décodeurs JavaScript (~3 Mo bruts) : la visionneuse marche hors connexion. Elle n'est proposée que si le navigateur a les fonctions récentes qu'exige ce build (Safari / iOS 26.2 au minimum, détecté, jamais déduit de l'appareil) ; sinon, ou si le document ne s'ouvre pas (mot de passe…), l'affichage d'avant reste : « Ouvrir / Enregistrer » sur iPhone, iframe ailleurs. Fermer la fenêtre libère document, worker et images. Aide ❓ du Mode Histoire remise à jour (elle parlait encore d'« Ouvrir dans un onglet » sur iPhone). Non essayée sur un vrai iPhone.
+
+- 📕 **PDF d'un plan : tous utilisables, et « Ouvrir / Enregistrer » sur iPhone** (`js/main.js > startImportedPlan`, `js/homeLoader.js > guessMime`, `js/config.js > resolveServerPaths`, `js/utils.js > ktaActionPdf`, `js/modeHistoire.js`, `js/journalUi.js`, `lang/*.json`, guides, `session-data.md` § Mode Histoire, `checkup-pdf-zip.js`) : un plan ZIP livré avec plusieurs PDF n'enregistrait que le premier ; les autres retombaient sur leur chemin dans le ZIP, lu comme une adresse du site, et toucher le document téléchargeait la page d'erreur ou la page de l'app (en « .html » sur iPhone). Ils ne se copiaient pas non plus dans le Carnet, qui en montrait moins que le plan. Tous les PDF du ZIP sont maintenant enregistrés, typés `application/pdf` (avant : sans type, l'iframe téléchargeait au lieu d'afficher), copiés au Carnet sous leur vrai nom (une copie ancienne nommée `histoire-N.pdf` est refaite). Un plan serveur en dossier cherche ses PDF dans son dossier. Un document qui ne se lit pas (pas de PDF au bout du chemin) est dit introuvable, jamais servi en lien. Mode Histoire et Carnet ont un bouton « Ouvrir / Enregistrer » (feuille de partage de l'appareil : aperçu, Enregistrer dans Fichiers) quand l'appareil sait partager le fichier, sinon un lien « Télécharger le PDF » ; sur iPhone, plus d'iframe dans le Carnet (une seule page y était rendue).
+- 🧱 **Générateur : la case V2 est dite recommandée, étapes faisables après la génération étoilées** (`lang/*.json` `gen.v2.*`, `gen.apres.*`, guides, `AI_CONTEXT.md`) : présentée comme une option de performance pour les gros plans, elle est aussi indispensable à la Vue OSM et au plan sur la carte OSM de l'accueil (un plan V1 n'y apparaît pas). Libellé « Convertir en V2 tuile (recommandé) », aide et infobulle le disent. Case toujours décochée par défaut. La case porte un avertissement visible « lourd au téléphone » (Générateur, import KMZ et GPX ; l'avertissement à la coche reste). Détecter, Légende et Géoréférencement portent une étoile : une note en tête du Générateur (mode Avancé) dit qu'elles se font aussi dans l'app après la génération, sur l'appareil, et qu'ici elles partent dans le ZIP pour tous (`js/createConf.js`, `css/style.css`).
+- 🚦 **Outillage : alerte d'échéance des certificats TLS** (`scripts/release/sonde-certificats.sh`, `.github/workflows/sonde-integrite.yml` job `certificats`, `infra-versioning.md`) : toutes les heures, la sonde lit la date d'expiration des certificats de myktamap.fr, www, dev, pro et doc ; à moins de 20 jours (`SEUIL_JOURS`), le run échoue et GitHub prévient par e-mail. Un domaine injoignable en TLS n'est qu'un avertissement. Raison : certbot renouvelle à 30 jours, un échec silencieux ne se verrait sinon qu'à la coupure. Même script à la main depuis le poste.
 
 #### v2.31.0 (23/11/2026) — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles (branche `Karma_dev`)
 
@@ -10328,6 +10355,8 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 </details>
 
 ### 🗂️ Résumés des versions précédentes
+
+> 🛣️ **v2.31.0 — Détecter les galeries, Remplir au clic complet, opacité de l'image principale, exports plus fidèles** : **Détecter les galeries** (outil 🛣️ Tracés, Éditeur de données, Générateur) trace l'axe des galeries de l'image en tracés, un par galerie, piliers contournés, bouts accrochés exactement au réseau existant. **🪣 Remplir au clic** suit aussi le trait d'un **front de taille** (arrêt au carrefour, un deuxième toucher prolonge), accepte les massifs jusqu'à 80 m, retire une erreur d'un toucher ou de Ctrl+Z, et **affine les contours** (lissage en mètres, quasi-rectangles redressés) ; un seul détecteur et un seul mode de clic à la fois. Curseur **Opacité** pour l'image principale du plan. L'export image et le PDF dessinent les **points précis** et gardent les **petits piliers** lisibles. 🚨 Une **alerte d'urgence passe devant** une alerte d'information. Détail : journal ci-dessous.
 
 > 🏛️ **v2.30.0 — Pilier à bras, Remplir au clic, opacité des calques image, tracés enchaînés** : nouvelle structure **pilier à bras** posée d'un seul toucher (carré de 1 m barré d'une croix ; en 3D, une colonne de blocs en assises). Dans 🔎 Détecter, **🪣 Remplir au clic** dessine un pilier blanc cerné de noir d'un toucher ; la détection lit le niveau actif seulement (refus d'un niveau sans image) et tout son calque, même plus grand que l'image du plan ; les fronts fins ne disparaissent plus près des piliers clairs. Un curseur **Opacité** sous chaque calque image (filtres ≡). On **enchaîne les tracés** sans éteindre l'outil (⏪ et ⏩ le gardent allumé). Un niveau calé hors de l'image se zoome jusqu'à ses bords ; la sélection par zone prend les niveaux visibles. Détail : journal ci-dessous.
 

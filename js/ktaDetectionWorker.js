@@ -8,8 +8,11 @@
 // Lancé par js/ktaDetection.js > executeurWorker ; le calcul est celui de la page (même fichier, importScripts).
 // Messages reçus : { id, bloc, garder } (bloc = arguments de KtaDetection.detecterBloc, tampon d'image transféré ;
 //   `garder` : le bloc reste ici pour un recalcul, dans la limite du budget) ·
-//   { id, recalculer: { classes, reglages } } (les blocs gardés, sans relire l'image : curseurs de l'aperçu).
-// Message envoyé : { id, resultat } (bloc : résultat + `garde` ; recalcul : liste des résultats) ou { id, erreur }.
+//   { id, recalculer: { classes, reglages } } (les blocs gardés, sans relire l'image : curseurs de l'aperçu) ·
+//   { id, suivreTrait: { b, px, py, o } } (Remplir au clic sur un front : arguments de KtaDetection.suivreTrait,
+//   tampon transféré ; jamais gardé).
+// Message envoyé : { id, resultat } (bloc : résultat + `garde` ; recalcul : liste des résultats ; suivi : résultat
+//   de suivreTrait) ou { id, erreur }.
 // Garde-fou : scripts/check-detection.js · Doc : docs/architecture/plans-loader.md (Détecter les structures).
 "use strict";
 
@@ -20,6 +23,11 @@ const magasin = self.KtaDetection._magasin();
 self.onmessage = function (ev) {
   const m = ev.data || {};
   try {
+    if (m.suivreTrait) {
+      const a = m.suivreTrait;
+      self.postMessage({ id: m.id, resultat: self.KtaDetection.suivreTrait(a.b, a.px, a.py, a.o) });
+      return;
+    }
     if (m.recalculer) {
       self.postMessage({ id: m.id, resultat: magasin.recalculer(m.recalculer.classes, m.recalculer.reglages) });
       return;

@@ -420,7 +420,7 @@ merge sur la branche principale**.
 | 1ter | **Analyse de qualité SonarQube** (serveur local) sur le **nouveau code** : aucun nouveau bug, aucune nouvelle faille, points sensibles revus, duplication ≤ 3 % | machine | serveur injoignable : oui (tapé) · échec : non |
 | 2 | **Smoke test manuel** : 13 points **fixes** (démarrage, chargement, dessin, sauvegarde/restauration, export/réimport, mise à jour, pages annexes…) sur l'environnement de dev, cache vidé. 5 sont « noyau dur » (jamais dérogeables) | humain (~10 min) | par item, sauf 🔒 |
 | 3 | **Checkup ciblé** : scénarios destructifs sur les modules touchés par la release, y compris des checkups automatisés par sujet (langues, petite fenêtre, import multiple, dossiers) | humain + IA | par item |
-| 4 | **Trempage** : la release vit sur l'environnement de dev pendant l'usage réel, 24 à 48 h | humain | oui (hotfix urgent) |
+| 4 | **Test sur dev** : l'humain utilise la release sur l'environnement de dev, en usage réel, avant la prod | humain | oui (hotfix urgent) |
 
 **Le smoke manuel a une liste fixe, qu'on n'adapte pas par release.** Un item coûte une minute ; en douter
 coûte une régression.
@@ -497,7 +497,7 @@ script, lancé par le propriétaire seul, qui refuse d'aller plus loin au premie
 | 4bis | La **porte qualité Sonar** est verte sur le nouveau code (serveur éteint : `DEROGE` tapé) | Marche 1ter, que la CI ne peut pas jouer |
 | 5 | `main` local est à jour, la branche est **poussée telle quelle** et son commit porte la **marque verte** de la CI (illisible : `DEROGE` tapé) | On ne merge que ce que la CI a testé. Sur un dépôt privé, la « protection de branche » de GitHub est payante : ce contrôle en tient lieu |
 | 6 | Il **montre ce qui va partir** (la liste des commits) | Le dernier regard humain |
-| 7 | Il **demande de confirmer, en tapant `OUI`**, les marches 2 à 4 de la porte | Aucun script n'exécute l'app dans un navigateur : ce qu'il ne peut pas voir, il le demande |
+| 7 | Il **demande** les marches 2 à 4 de la porte, une par une (O/N) ; un « N » exige un motif, et le relevé (marches, dérogations) devient le message du merge et du tag | Aucun script n'exécute l'app dans un navigateur : ce qu'il ne peut pas voir, il le demande, et il l'écrit — un relevé à recopier à la main n'est jamais recopié |
 | 8 | Dernier appel (`MERGE` tapé), puis merge, tag de version et publication — chaque étape vérifiée, un conflit annulé proprement | Un échec au milieu ne doit pas laisser le propriétaire sur `main` sans qu'il le sache |
 
 Un mode `-DryRun` montre toute la séquence sans rien toucher. Répondre « OUI » sans avoir fait les marches ne
@@ -597,7 +597,7 @@ plateforme**, qui ne diffère que par sa licence.
 | Déploiement dev et prod | ✅ toutes les 5 min, CI verte exigée, pause par site | Scripts **hors dépôt** sur le serveur (§8.5) |
 | Export vers le dépôt client (pro) | ⚙️ semi : marque verte exigée, push par le propriétaire | `export-backend.ps1` (§8.7) |
 | Retour arrière | ❌ manuel, par le propriétaire | Menu d'administration du serveur (§8.6) |
-| Smoke manuel, checkup, trempage | ❌ humain | La porte (§7) |
+| Smoke manuel, checkup, test sur dev | ❌ humain ; le relevé, lui, est écrit par le script de merge | La porte (§7) |
 
 **Pourquoi le déploiement a pu devenir automatique** : il était manuel parce que c'est l'acte le plus visible. Il
 est devenu automatique **une fois** que trois choses existaient : une CI qui rejoue tout (§6), une marque verte que
@@ -958,7 +958,7 @@ elles manquent.
 | **Déploiement** | Mettre les fichiers sur le serveur qui les sert aux utilisateurs |
 | **Service worker / cache** | Le mécanisme qui permet à une app web de fonctionner hors ligne ; il faut renommer son cache à chaque version |
 | **Environnement de dev / prod** | Le serveur d'essai / le serveur des vrais utilisateurs |
-| **Trempage** | Laisser une version vivre en dev pendant l'usage réel avant de la mettre en prod |
+| **Test sur dev** | Utiliser une version en dev, en usage réel, avant de la mettre en prod |
 | **Audit** | Relecture systématique d'un aspect (réseau, sécurité, CI/CD, code mort, ergonomie…) |
 | **Vérification adversariale** | Un second agent IA tente de réfuter chaque constat du premier |
 | **Persona** | Le rôle qu'on fait jouer à un agent IA pour un audit (« ergonome de métier, non développeur ») |

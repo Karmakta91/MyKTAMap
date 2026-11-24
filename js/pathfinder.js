@@ -905,6 +905,7 @@
     avoidZones  = avoidZones  || [];   // zones à éviter (souple), même test géométrique que les inaccessibles
     const obstacles = _preparerObstacles(zonesInacc);   // zones inaccessibles + murs en ligne (DUR)
     const graph = _newGraph();
+    graph.obstacles = obstacles;   // relus par les liens de jonction imparfaite (_enrichirGrapheAvecCroisements)
     graph.masses = masses || null;
     if (Array.isArray(zonesCout) && zonesCout.length) {
       graph.zonesCout = _grilleZones(zonesCout);
@@ -1086,7 +1087,30 @@
     return libres;
   }
 
+  // Lien de jonction imparfaite (T, bout↔sommet) de p à q coupé par un obstacle dur (zone inaccessible, mur en ligne),
+  // les mêmes que ceux qui excluent un segment de tracé (graph.obstacles, posés par _buildGraph ; vides quand la
+  // contrainte est levée ou pour le graphe de navigation). `niveaux` : niveaux numériques du lien ; coupé seulement
+  // s'il l'est sur CHACUN (un nœud fusionné de deux étages garde le passage de l'étage sans obstacle).
+  // 🩸 Sans ce test, un bout libre à 15 px d'une galerie de l'autre côté d'un mur s'y raccordait : itinéraire à
+  // travers le mur, alors que le même trait dessiné en tracé était refusé.
+  function _lienCoupe(graph, p, q, niveaux) {
+    const ob = graph.obstacles;
+    if (!ob || (!ob.polys.length && !ob.grille) || !niveaux.length) return false;
+    return niveaux.every(function(n) {
+      return _segmentBloqueParZoneInaccess(p, q, n, ob.polys) || _segmentCoupeParMur(p, q, n, ob.grille);
+    });
+  }
+  // Niveaux numériques communs à deux nœuds (lien bout↔sommet) ; plan sans multi-niveau : [0].
+  function _niveauxCommuns(graph, a, b, mlOn) {
+    if (!mlOn) return [0];
+    const la = graph.nodeLevels[a], lb = graph.nodeLevels[b], out = [];
+    if (la && lb) la.forEach(function(l) { if (Number.isInteger(l) && lb.has(l)) out.push(l); });
+    return out;
+  }
+
   // `pois` / `ctxPois` : ceux passés ensuite à _injecterJonctionsPoi (bouts posés sur un passage entre niveaux).
+  // ⚠️ contrat : un lien des étapes 2 et 3 qui croise un obstacle dur n'est pas proposé (_lienCoupe), AVANT le tri
+  // des plus proches : le candidat suivant, de son côté du mur, reste possible.
   function _enrichirGrapheAvecCroisements(graph, pois, ctxPois) {
     // Snapshot AVANT enrichissement, sinon boucle infinie sur les segments virtuels ajoutés.
     const segs = graph.segments.slice();
@@ -1206,7 +1230,8 @@
           const proj = _projectOnSegment(ep.point, b1, b2);
 
           // t ∈ ]0,05 ; 0,95[ : évite le double comptage avec les croisements aux extrémités.
-          if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95) {
+          if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95 &&
+              !_lienCoupe(graph, ep.point, proj, [_mlOn ? segB.level : 0])) {
             propT.push({ ep: ep.nodeIdx, j: j, proj: proj });
             _noterProche(ep.nodeIdx, _memeTrace(graph, ep.nodeIdx, segB.a) && _memeTrace(graph, ep.nodeIdx, segB.b),
                          proj.dist);
@@ -1265,7 +1290,8 @@
         const unBout = bouts.has(idxA) || bouts.has(idxB);
         if (!unBout && (d > PROXIMITE_INTERIEURS_PX || _memeTrace(graph, idxA, idxB))) continue;
         // Au-dessus du seuil de fusion (sinon déjà fusionnés au build).
-        if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE) {
+        if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE &&
+            !_lienCoupe(graph, pA, pB, _niveauxCommuns(graph, idxA, idxB, _mlOn))) {
           propE.push({ a: idxA, b: idxB, d: d, bout: unBout });
           if (unBout) {
             const meme = _memeTrace(graph, idxA, idxB);

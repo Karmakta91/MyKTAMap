@@ -355,7 +355,7 @@ Un clic sur les compteurs du haut ouvre le **tableau de bord** du plan :
 
 #### 🌐 Coordonnées GPS dans les fiches
 
-Si ton plan est **géoréférencé**, la fiche de chaque point (les tiens comme ceux du plan) affiche ses coordonnées, par exemple `🌐 48.85660° N, 2.35220° E`, à environ 1 m près. Le bouton **📋** les copie au format `lat, lng`, prêt à coller dans une application de cartes ou un SMS — pratique pour transmettre l'emplacement d'un puits que tu viens d'ajouter. Les tracés, zones et structures n'ont pas de coordonnée unique, donc pas de ligne GPS. Plan non géoréférencé : pas de ligne.
+Si ton plan est **géoréférencé**, la fiche de chaque point (les tiens comme ceux du plan) affiche ses coordonnées, par exemple `🌐 48.85660° N, 2.35220° E`, à environ 1 m près. Le bouton **📋** les copie au format `lat, lng`, prêt à coller dans une application de cartes ou un SMS — pratique pour transmettre l'emplacement d'un puits que tu viens d'ajouter. La fenêtre **Ajouter un point** les affiche déjà, avec le même bouton, avant même d'enregistrer. Les tracés, zones et structures n'ont pas de coordonnée unique, donc pas de ligne GPS. Plan non géoréférencé : pas de ligne.
 
 #### 🔄 Changer de plan
 
@@ -399,6 +399,8 @@ Dans la Légende, **✏️ Modifier**. Pour chaque type de tracé, zone ou struc
 - **👁️ Masquer** retire l'entrée de la boîte de légende seulement. Pour masquer des objets sur la carte, c'est **≡ Filtres**.
 - **➕ Ajouter une entrée** crée ton propre type (tracé, zone, structure, icône) avec sa couleur, aussitôt dessinable. Raccourci : la ligne **Nouveau type…** des menus Tracés, Zones et Structures, qui sélectionne le type créé.
 - **🗑️ Supprimer** un type à toi : si des objets l'utilisent encore, l'app t'annonce combien avant de confirmer.
+- **Changer l'icône** d'une icône à toi : le bouton image de sa ligne ouvre la galerie ou les fichiers de l'appareil. L'image, réduite à 64 px, remplace l'icône aussitôt sur la carte et part avec ta session, tes exports et « Mettre à jour le plan ». Une image illisible est refusée avec un message. Les icônes des types intégrés ne se changent pas.
+- **Rendre modifiable** : un plan plus ancien peut porter des tags au nom court (« puits_nord »), listés en bas des icônes. Ce bouton en fait une icône à toi, de même tag, nommée « Puits nord » : tu peux la renommer et changer son image ; les points gardent leur tag.
 
 Tout est sauvegardé **par plan**, et voyage avec tes exports (session, calque de données, ZIP Avancé). Si des objets utilisent un type absent de la légende, un bandeau en tête de la Légende les compte : ils s'affichent en couleur de repli jusqu'à ce que tu recrées ou réimportes l'entrée.
 
@@ -919,7 +921,9 @@ Jusqu'à **10 documents PDF par plan** : rapport, plan papier scanné, article, 
 - **📥 Importer un PDF** en ajoute un ; **🗑️ Retirer** supprime celui affiché. La liste apparaît dès qu'il y en a plusieurs.
 - Les documents livrés avec le plan (📕) passent en tête de liste. Ils sont copiés sur ton appareil à la première ouverture ; si tu les retires, ils reviennent à la prochaine ouverture du plan.
 - Avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**.
-- Sur iPhone, **↗️ Ouvrir dans un onglet** affiche le document en plein écran.
+- Le document s'affiche **dans la fenêtre**, page après page, même **hors connexion** : fais défiler, **pince pour zoomer** (sur ordinateur : Ctrl + molette, ou les boutons **−** et **+** en bas), le bouton d'ajustement revient à la largeur de la fenêtre et le bouton **plein écran** l'agrandit à tout l'écran (re-touche-le pour revenir). Le numéro de la page lue s'affiche à gauche des boutons.
+- **Ouvrir / Enregistrer** passe le document à ton appareil : aperçu, **Enregistrer dans Fichiers**, Livres… Si l'appareil ne sait pas partager un fichier, un lien **Télécharger le PDF** le remplace. Sur ordinateur et Android, **↗️ Ouvrir dans un onglet** l'ouvre aussi dans le lecteur du navigateur (recherche, impression).
+- Sur un appareil trop ancien pour l'afficher (iPhone avant iOS 26.2, navigateur pas à jour), ou si le document ne s'ouvre pas (protégé par mot de passe…), tu gardes **Ouvrir / Enregistrer** ; sur ordinateur et Android, le lecteur du navigateur prend la place dans la fenêtre.
 - Tes documents se consultent aussi depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
 
 **Export** : la note et les documents partent avec l'export de session et sont **ajoutés** au plan à la réimportation (rien n'est écrasé). L'export **anonymisé** les laisse de côté. Tout reste sur ton appareil.
@@ -934,7 +938,7 @@ Le bouton **✏️** de la barre latérale allume ou éteint le mode ajout. Allu
 2. Renseigne le **Nom** (obligatoire), le **Type** et, si tu veux, une **Description**
 3. Valide avec **✅ Ajouter**
 
-**Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique (dont ![](../../icon/fontis.png) **Fontis**, un effondrement du ciel en cloche), ⛏️ Patrimoine (![](../../icon/ossuaire.png) **Ossuaire**, ![](../../icon/outil.png) **Outil de carrier**), 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : un nom court en minuscules, chiffres, `_` ou `-` (ex. `fontaine`) ; il prend l'icône par défaut.
+**Le type** donne l'icône du point. Les types sont rangés par familles — 🕳️ Puits, 🪜 Accès (**vert = ouvert, rouge = fermé**), ⚠️ Signalétique (dont ![](../../icon/fontis.png) **Fontis**, un effondrement du ciel en cloche), ⛏️ Patrimoine (![](../../icon/ossuaire.png) **Ossuaire**, ![](../../icon/outil.png) **Outil de carrier**), 🚨 Secours — et la 🗺️ Légende les montre tous. **— Aucun tag (défaut) —** garde l'icône par défaut. **➕ Créer un nouveau tag…** ajoute un type à ta session : tu lui donnes un nom libre, espaces et accents compris (ex. « Fontaine du carrier »). Il rejoint ta 🗺️ Légende avec l'icône par défaut, tu peux l'y renommer et changer son icône, et il part avec ta session et tes exports. Un nom déjà créé reprend le même type.
 
 **⚠️ Type Danger : date de constat.** Un point de type **Danger** porte une **📅 Date de constat**, le jour où le danger a été vu : pré-remplie à aujourd'hui, modifiable, à vider si tu ne la connais pas (un point Danger plus ancien reste sans date tant que tu n'en mets pas). Sa bulle affiche « Constaté le … » et rappelle que **l'état d'un site n'est pas certifié : un danger relevé peut avoir changé depuis sa date de constat.** La date part avec l'export de session, le KMZ, le GPX et le GeoJSON (relue par l'import KMZ et GPX), jamais avec l'export anonymisé.
 
@@ -1055,7 +1059,7 @@ Sur un plan multi-niveau, les éléments de **2e masse** se rangent automatiquem
 
 Un **arc de soutènement** se pose **en travers** de la galerie, en deux touches d'une paroi à l'autre : un arc = un objet, à répéter pour chaque arc. Il ne gêne ni l'itinéraire, ni le tracker, ni la vue 3D, où il devient un arc en pierre de taille posé sur deux piliers, d'une paroi à l'autre, la clé au plafond : on passe dessous. Dans ≡ Légende, sa pastille est rayée comme sur la carte ; les exports image et PDF gardent les rayures, le KMZ et la Vue OSM n'en gardent que le trait bleu.
 
-Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itinéraire passe ailleurs, ou échoue en le disant. La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire le relâche avec les zones ⛔ ; le Mode Secours et « Je suis perdu » le respectent toujours. Renommé ou recoloré dans ≡ Légende, il garde ce rôle. Un mur arrivé en **front de taille** ou en ligne d'un import se convertit en mur (ligne) depuis sa fiche (🧹 Effacer et corriger).
+Un **mur (ligne)** coupe toute galerie qu'il croise **sur son niveau** : l'itinéraire passe ailleurs, ou échoue en le disant. La case **Respecter les zones inaccessibles et les murs (ligne)** de la fenêtre Itinéraire le relâche avec les zones ⛔ ; le Mode Secours et « Je suis perdu » le respectent toujours. Renommé ou recoloré dans ≡ Légende, il garde ce rôle. Une galerie qui s'arrête à quelques pixels d'une autre est raccordée à elle par l'itinéraire, sauf si un mur (ligne) ou une zone inaccessible passe entre les deux : alors elle reste séparée de ce côté. Un mur arrivé en **front de taille** ou en ligne d'un import se convertit en mur (ligne) depuis sa fiche (🧹 Effacer et corriger).
 
 ### Détecter piliers et fronts sur l'image du plan
 
@@ -1307,7 +1311,7 @@ Chaque niveau a trois chiffres, réglés dans **⚙️ Réglages › 📐 Plan �
 - **Hauteur** : la hauteur de ses galeries (2 m sinon). La vue 3D et ⛏️ Volume exploité s'en servent.
 - **Écart** : l'épaisseur entre le plafond du niveau et le sol du niveau du dessus. **Négatif** quand les deux niveaux s'entremêlent : −1,5 = le plafond monte 1,5 m au-dessus du sol du niveau du dessus. Changer l'écart déplace ce niveau **et ceux du dessous**.
 
-Si deux niveaux qui se suivent ont des chiffres qui ne vont pas ensemble (le sol du niveau du dessus plus bas que celui du dessous, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un), un avertissement ⚠️ s'affiche sous la table et la ligne est marquée ; rien n'est bloqué, la vue 3D les pose côte à côte.
+Si deux niveaux qui se suivent ont des chiffres qui ne vont pas ensemble (le sol du niveau du dessus plus bas que celui du dessous, deux niveaux qui se chevauchent d'au moins la hauteur de l'un, ou un **écart négatif** : le sol d'un niveau passe sous le plafond de celui du dessous), un avertissement ⚠️ s'affiche sous la table et la ligne est marquée. Rien n'est bloqué : un écart négatif peut être voulu. La vue 3D ne sépare pas ces niveaux, elle les entremêle (là où l'un des deux a une galerie, c'est ouvert), à la même altitude au pire, jamais inversés. Un écart négatif oublié donne des niveaux qui se mélangent en 3D : vérifie le chiffre.
 
 Le créateur du plan les propose dans le Générateur ; ce que tu corriges ici reste sur ton appareil et prime. **↺ Valeurs du plan** revient à celles du plan. Renseigner les sols allonge les itinéraires qui passent par un puits : leur longueur cesse d'être mesurée à plat.
 
@@ -1382,7 +1386,7 @@ Pour réunir des sorties déjà coupées : **📔 Mon carnet → 🔗 Fusionner 
 
 #### 📖 L'onglet Récits
 
-Le second onglet du carnet, **📖 Récits**, rassemble les notes et les PDF du **Mode Histoire** de **tous tes plans, sans en charger aucun** : la note s'affiche mise en forme et se **modifie sur place** (c'est la même note que dans le plan), les PDF s'ouvrent, se suppriment (🗑️) ou s'ajoutent (**➕ Ajouter un PDF**). Un PDF fourni dans le ZIP d'un plan apparaît ici dès que tu as ouvert ce plan une fois.
+Le second onglet du carnet, **📖 Récits**, rassemble les notes et les PDF du **Mode Histoire** de **tous tes plans, sans en charger aucun** : la note s'affiche mise en forme et se **modifie sur place** (c'est la même note que dans le plan), les PDF s'ouvrent (même visionneuse que le Mode Histoire), se suppriment (🗑️) ou s'ajoutent (**➕ Ajouter un PDF**). Un PDF fourni dans le ZIP d'un plan apparaît ici dès que tu as ouvert ce plan une fois.
 
 **Bon à savoir :** tout reste sur ton appareil ; chaque sortie se supprime depuis sa fiche ; au-delà de **500 sorties**, les plus anciennes sont effacées ; le carnet voyage avec l'export de profil.
 
@@ -2055,7 +2059,7 @@ Dépose ton export **sur la zone « 📦 Ajouter un plan » de l'accueil** ou da
 
 #### 🧱 Convertir en V2 tuilé
 
-Pour un plan lourd (image de plus de 50 Mo ou de plus de 8 000 px), la case **🧱 Convertir en V2 tuile (performance)** découpe l'image en **tuiles** : l'app ne charge plus que les morceaux affichés, ce qui réduit fortement la mémoire utilisée.
+La case **🧱 Convertir en V2 tuile (recommandé)** découpe l'image en **tuiles** : l'app ne charge plus que les morceaux affichés. Elle est **recommandée pour tout plan** : sans elle, la **Vue OSM** ne s'ouvre pas et le plan n'apparaît pas sur la carte OpenStreetMap de l'accueil. Sur un plan lourd (image de plus de 50 Mo ou de plus de 8 000 px), elle réduit en plus fortement la mémoire utilisée.
 
 1. Choisis une image principale, ou charge le ZIP du plan à convertir.
 2. Coche-la et lis l'avertissement : la conversion est lourde.

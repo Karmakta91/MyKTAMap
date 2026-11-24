@@ -355,7 +355,7 @@ A click on the top counters opens the map's **dashboard**:
 
 #### 🌐 GPS coordinates in popups
 
-If your map is **georeferenced**, the popup of every point (yours and the map's) shows its coordinates, for example `🌐 48.85660° N, 2.35220° E`, to about 1 m. The **📋** button copies them in `lat, lng` format, ready to paste into a maps app or a text message — handy to pass on the location of a shaft you have just added. Paths, zones and structures have no single coordinate, so no GPS line. Map not georeferenced: no line.
+If your map is **georeferenced**, the popup of every point (yours and the map's) shows its coordinates, for example `🌐 48.85660° N, 2.35220° E`, to about 1 m. The **📋** button copies them in `lat, lng` format, ready to paste into a maps app or a text message — handy to pass on the location of a shaft you have just added. The **Add a point** window already shows them, with the same button, before you even save. Paths, zones and structures have no single coordinate, so no GPS line. Map not georeferenced: no line.
 
 #### 🔄 Switching maps
 
@@ -399,6 +399,8 @@ In the Legend, **✏️ Edit**. For each path, zone or structure type:
 - **👁️ Hide** removes the entry from the legend box only. To hide objects on the map, use **≡ Filters**.
 - **➕ Add an entry** creates your own type (path, zone, structure, icon) with its colour, drawable right away. Shortcut: the **New type…** row of the Paths, Zones and Structures menus, which selects the new type.
 - **🗑️ Delete** one of your types: if objects still use it, the app tells you how many before confirming.
+- **Change the icon** of one of your icons: the image button on its row opens the device's gallery or files. The image, reduced to 64 px, replaces the icon at once on the map and travels with your session, your exports and “Update the map”. An unreadable image is refused with a message. Built-in types keep their icons.
+- **Make editable**: an older map may carry tags with a short name (“shaft_north”), listed at the bottom of the icons. This button turns one into an icon of your own, with the same tag, named “Shaft north”: you can rename it and change its image; points keep their tag.
 
 Everything is saved **per map**, and travels with your exports (session, data layer, Advanced ZIP). If objects use a type missing from the legend, a banner at the top of the Legend counts them: they show in a fallback colour until you recreate or re-import the entry.
 
@@ -919,7 +921,9 @@ Up to **10 PDF documents per map**: report, scanned paper map, article, topo sur
 - **📥 Import a PDF** adds one; **🗑️ Remove** deletes the one shown. The list appears as soon as there are several.
 - Documents shipped with the map (📕) come first in the list. They are copied to your device the first time you open it; if you remove them, they come back the next time the map is opened.
 - Warning beyond **25 MB** in total, refusal beyond **100 MB**.
-- On iPhone, **↗️ Open in a tab** shows the document full screen.
+- The document shows **in the window**, page after page, even **offline**: scroll, **pinch to zoom** (on a computer: Ctrl + wheel, or the **−** and **+** buttons at the bottom), the fit button goes back to the window width and the **full screen** button enlarges it to the whole screen (tap it again to go back). The number of the page you are reading shows left of the buttons.
+- **Open / Save** hands the document to your device: preview, **Save to Files**, Books… If the device cannot share a file, a **Download the PDF** link replaces it. On computers and Android, **↗️ Open in a tab** also opens it in the browser's reader (search, print).
+- On a device too old to show it (iPhone before iOS 26.2, out-of-date browser), or if the document does not open (password-protected…), you keep **Open / Save**; on computers and Android, the browser's reader takes its place in the window.
 - Your documents can also be viewed from **📔 My logbook → 📖 Stories**, without loading the map.
 
 **Export**: the note and the documents go with the session export and are **added** to the map on re-import (nothing is overwritten). The **anonymized** export leaves them out. Everything stays on your device.
@@ -934,7 +938,7 @@ The **✏️** button in the sidebar turns add mode on or off. When it is on, ev
 2. Fill in the **Name** (required), the **Type** and, if you like, a **Description**
 3. Confirm with **✅ Add**
 
-**The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage (including ![](../../icon/fontis.png) **Fontis**, a bell-shaped collapse of the ceiling), ⛏️ Heritage (![](../../icon/ossuaire.png) **Ossuary**, ![](../../icon/outil.png) **Quarryman's tool**), 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: a short name in lowercase letters, digits, `_` or `-` (e.g. `fountain`); it uses the default icon.
+**The type** sets the point's icon. Types are grouped into families — 🕳️ Shafts, 🪜 Access (**green = open, red = closed**), ⚠️ Signage (including ![](../../icon/fontis.png) **Fontis**, a bell-shaped collapse of the ceiling), ⛏️ Heritage (![](../../icon/ossuaire.png) **Ossuary**, ![](../../icon/outil.png) **Quarryman's tool**), 🚨 Rescue — and the 🗺️ Legend shows them all. **— No tag (default) —** keeps the default icon. **➕ Create a new tag…** adds a type to your session: you give it a free name, spaces and accents included (e.g. “Quarryman's fountain”). It joins your 🗺️ Legend with the default icon, you can rename it and change its icon there, and it travels with your session and your exports. A name already created reuses the same type.
 
 **⚠️ Danger type: date observed.** A point of type **Danger** carries a **📅 Date observed**, the day the hazard was seen: pre-filled with today, editable, to be cleared if you don't know it (an older Danger point stays without a date until you add one). Its popup shows "Observed on …" and reminds you that **the condition of a site is not certified: a recorded hazard may have changed since the date it was observed.** The date goes out with the session export, KMZ, GPX and GeoJSON (read back by the KMZ and GPX import), never with the anonymized export.
 
@@ -1055,7 +1059,7 @@ On a multi-level map, **2nd-mass** elements are automatically placed **on level 
 
 A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where it becomes a dressed-stone arch on two piers, from one wall to the other, its keystone at the ceiling: you walk under it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
 
-A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
+A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A gallery that stops a few pixels short of another is joined to it by the route, unless a wall (line) or an impassable area lies between the two: then it stays separate on that side. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 
 ### Detect pillars and fronts on the map image
 
@@ -1306,7 +1310,7 @@ Each level has three figures, set in **⚙️ Settings › 📐 Map › 📉 Lev
 - **Height**: the height of its galleries (otherwise 2 m). The 3D view and ⛏️ Mined volume use it.
 - **Gap**: the thickness between the level's ceiling and the floor of the level above. **Negative** when the two levels interlock: −1.5 = the ceiling rises 1.5 m above the floor of the level above. Changing the gap moves this level **and the ones below it**.
 
-If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, or two levels overlapping by at least the height of one of them), a ⚠️ warning shows under the table and the row is marked; nothing is blocked, the 3D view sets them side by side.
+If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, two levels overlapping by at least the height of one of them, or a **negative gap**: the floor of a level goes below the ceiling of the one beneath), a ⚠️ warning shows under the table and the row is marked. Nothing is blocked: a negative gap can be intended. The 3D view does not separate these levels, it interlocks them (wherever either one has a gallery, it is open), at the same altitude at worst, never swapped. A forgotten negative gap makes levels blend together in 3D: check the figure.
 
 The map creator suggests them in the Generator; what you correct here stays on your device and takes priority. **↺ Map values** goes back to the map's own. Filling in floors lengthens routes that use a shaft: their length is no longer measured flat.
 
@@ -1381,7 +1385,7 @@ To join outings that were already split: **📔 My logbook → 🔗 Merge outing
 
 #### 📖 The Stories tab
 
-The logbook's second tab, **📖 Stories**, gathers the notes and PDFs of the **History Mode** of **all your maps, without loading any of them**: the note is shown formatted and can be **edited in place** (it is the same note as in the map), PDFs open, can be deleted (🗑️) or added (**➕ Add a PDF**). A PDF supplied in a map's ZIP appears here as soon as you have opened that map once.
+The logbook's second tab, **📖 Stories**, gathers the notes and PDFs of the **History Mode** of **all your maps, without loading any of them**: the note is shown formatted and can be **edited in place** (it is the same note as in the map), PDFs open (same viewer as History Mode), can be deleted (🗑️) or added (**➕ Add a PDF**). A PDF supplied in a map's ZIP appears here as soon as you have opened that map once.
 
 **Good to know:** everything stays on your device; each outing can be deleted from its record; beyond **500 outings**, the oldest are deleted; the logbook travels with the profile export.
 
@@ -2054,7 +2058,7 @@ Good to know: holes in polygons are ignored; beyond 20,000 objects a warning is 
 
 #### 🧱 Convert to V2 tiles
 
-For a heavy map (image over 50 MB or over 8,000 px), the **🧱 Convert to V2 tiles (performance)** box cuts the image into **tiles**: the app then only loads the pieces on screen, which greatly reduces memory use.
+The **🧱 Convert to V2 tiles (recommended)** box cuts the image into **tiles**: the app then only loads the pieces on screen. It is **recommended for every map**: without it, **OSM View** does not open and the map does not appear on the home OpenStreetMap map. On a heavy map (image over 50 MB or over 8,000 px), it also greatly reduces memory use.
 
 1. Choose a main image, or load the ZIP of the map to convert.
 2. Tick it and read the warning: the conversion is heavy.

@@ -1,8 +1,8 @@
 {
-  "version": "v2.31.0",
-  "released": "2026-11-23",
+  "version": "v2.32.0",
+  "released": "2026-11-24",
   "notes": [
-    "🛣️ Détecter les galeries : depuis l'outil Tracés, l'app trace l'axe des galeries de l'image en tracés raccordés au réseau ; 🪣 Remplir au clic suit aussi le trait d'un front de taille, accepte les gros massifs et retire une erreur d'un toucher ou de Ctrl+Z.",
-    "🌫️ Opacité réglable de l'image principale du plan, contours de piliers affinés, points précis et petits piliers lisibles dans l'export image et le PDF ; 🚨 une alerte d'urgence passe devant les autres."
+    "📄 Les PDF d'un plan s'ouvrent dans l'app, page après page, même hors ligne et sur iPhone ; tous les PDF du plan sont utilisables, avec « Ouvrir / Enregistrer ».",
+    "🏷️ Un nouveau tag prend un nom libre et rejoint ta Légende, où tu changes son icône depuis ton appareil ; les coordonnées GPS s'affichent dès l'ajout d'un point, et l'itinéraire ne passe plus à travers un mur."
   ]
 }

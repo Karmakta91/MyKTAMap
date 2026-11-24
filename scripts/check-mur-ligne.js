@@ -9,6 +9,8 @@
  *   • un front (ligne) peut devenir un mur en ligne, l'inverse aussi ; un pilier non ;
  *   • un segment de tracé qui croise un mur en ligne du même niveau n'est pas dans le graphe ; le même segment
  *     passe quand on lève la contrainte (`respecterInaccessibles: false`) ;
+ *   • un lien de jonction imparfaite (bout libre en T, bout↔bout) qui croise un mur en ligne ou une zone
+ *     inaccessible n'est pas posé, le candidat suivant de son côté l'est ; arc, pilier à bras, Comblé ne coupent pas ;
  *   • un mur en ligne d'un AUTRE niveau, un mur polygone, un front ne coupent rien ;
  *   • les murs des calques comptent, le Secours / Perdu (computeReachable) et l'inter-plans aussi ;
  *   • l'import SIG « une couleur par niveau » garde la clé `mur-ligne` (sinon le mur perdrait son rôle) ;
@@ -208,6 +210,62 @@ async function dist(w, opts) {
       { cleType: "type", cleNiveau: "niv", couleurParNiveau: true, mapTraces: { arc: "struct:arc" } });
     t("SIG : un arc garde sa clé sous « une couleur par niveau »", (ra.structures[0] || {}).type === "arc");
   })();
+
+  // ───────── Jonctions imparfaites (pathfinder.js > _enrichirGrapheAvecCroisements > _lienCoupe) ─────────
+  // T : galerie A (y = 100), branche B qui finit à 10 px sous A (bout libre, raccordé par la tolérance), détour C.
+  // Un obstacle dur entre le bout de B et A coupe le lien : 400 px tout droit, 800 px par le détour.
+  const TA = { type: "principal", points: [{ x: 0, y: 100 }, { x: 400, y: 100 }] };
+  const TB = { type: "principal", points: [{ x: 200, y: 110 }, { x: 200, y: 300 }] };
+  const TC = { type: "principal", points: [{ x: 400, y: 100 }, { x: 400, y: 300 }, { x: 200, y: 300 }] };
+  const WT = [{ x: 0, y: 100 }, { x: 200, y: 300 }];
+  const MUR_T = [{ x: 150, y: 105 }, { x: 250, y: 105 }];
+  const BANDE = [{ x: 150, y: 102 }, { x: 250, y: 102 }, { x: 250, y: 108 }, { x: 150, y: 108 }];
+  const jt = async function (roads, wps, structs, zones, cfg, opts) {
+    const w = bac(["js/pathfinder.js"], {
+      APP_CONFIG: Object.assign({ scale: 4, multiLevel: false, imageHeight: 1000 }, cfg || {}),
+      getAllEmbeddedRoads: () => roads, getStructures: () => structs || [], getZones: () => zones || []
+    });
+    try { return Math.round((await w.Pathfinder.computeRoute(wps, opts || {})).totalDistance); }
+    catch (e) { return e.code || "ERR"; }
+  };
+  const murT = [{ type: "mur-ligne", points: MUR_T }];
+  t("jonction T : sans obstacle, le bout libre se raccorde (400)", await jt([TA, TB, TC], WT) === 400);
+  t("jonction T : un mur en ligne entre le bout et la galerie coupe le lien, détour (800)",
+    await jt([TA, TB, TC], WT, murT) === 800);
+  t("jonction T : une zone inaccessible entre les deux le coupe aussi (800)",
+    await jt([TA, TB, TC], WT, [], [{ type: "inaccessible", points: BANDE }]) === 800);
+  t("jonction T : sans détour, le mur ferme le passage (pas de chemin)", await jt([TA, TB], WT, murT) === "NO_PATH");
+  t("jonction T : … la case « respecter » décochée rend le lien (400)",
+    await jt([TA, TB, TC], WT, murT, [], null, { respecterInaccessibles: false }) === 400);
+  t("jonction T : un arc de soutènement ne coupe pas le lien (400)",
+    await jt([TA, TB, TC], WT, [{ type: "arc", points: MUR_T }]) === 400);
+  t("jonction T : un pilier à bras ne coupe pas le lien (400)",
+    await jt([TA, TB, TC], WT, [{ type: "pilier-bras", points: BANDE }]) === 400);
+  t("jonction T : un Comblé coûte sans couper (sans détour, chemin trouvé)",
+    typeof await jt([TA, TB], WT, [], [{ type: "remblais", points: BANDE }]) === "number");
+  t("jonction T : un mur à côté du lien, pas en travers, ne change rien (400)",
+    await jt([TA, TB, TC], WT, [{ type: "mur-ligne", points: [{ x: 210, y: 102 }, { x: 260, y: 108 }] }]) === 400);
+  t("jonction T, multi-niveau : un mur d'un autre niveau ne coupe pas (400)",
+    await jt([TA, TB, TC], WT, [{ type: "mur-ligne", points: MUR_T, level: 1 }], [], { multiLevel: true }) === 400);
+  t("jonction T, multi-niveau : un mur du niveau des galeries coupe (800)",
+    await jt([TA, TB, TC], WT, [{ type: "mur-ligne", points: MUR_T, level: 0 }], [], { multiLevel: true }) === 800);
+  // Bout↔bout : A finit à x = 200, B commence à x = 208 (même ligne), mur vertical entre les deux, détour par y = 300.
+  const EA = { type: "principal", points: [{ x: 0, y: 100 }, { x: 200, y: 100 }] };
+  const EB = { type: "principal", points: [{ x: 208, y: 100 }, { x: 400, y: 100 }] };
+  const ED = { type: "principal", points: [{ x: 0, y: 100 }, { x: 0, y: 300 }, { x: 400, y: 300 }, { x: 400, y: 100 }] };
+  const WE = [{ x: 0, y: 100 }, { x: 400, y: 100 }];
+  t("jonction bout↔bout : sans obstacle, raccordée (400)", await jt([EA, EB, ED], WE) === 400);
+  t("jonction bout↔bout : un mur en ligne entre les deux bouts la coupe, détour (800)",
+    await jt([EA, EB, ED], WE, [{ type: "mur-ligne", points: [{ x: 204, y: 50 }, { x: 204, y: 150 }] }]) === 800);
+  // Bout de Q (200, 104) : A à 4 px derrière un mur, B à 8 px de son côté. Sans filtre AVANT le tri des plus
+  // proches, B était écarté (8 > 4 + 3) et le trajet passait par A à travers le mur (223) ; filtré : par B (215).
+  const QA = { type: "principal", points: [{ x: 0, y: 100 }, { x: 400, y: 100 }] };
+  const QB = { type: "principal", points: [{ x: 208, y: 0 }, { x: 208, y: 120 }, { x: 400, y: 300 }] };
+  const QQ = { type: "principal", points: [{ x: 200, y: 104 }, { x: 200, y: 300 }] };
+  const WQ = [{ x: 208, y: 115 }, { x: 200, y: 300 }];
+  t("jonction T : sans mur, le bout se raccorde au plus proche (223)", await jt([QA, QB, QQ], WQ) === 223);
+  t("jonction T : le plus proche derrière un mur, le suivant de son côté est pris (215)",
+    await jt([QA, QB, QQ], WQ, [{ type: "mur-ligne", points: [{ x: 150, y: 102 }, { x: 204, y: 102 }] }]) === 215);
 
   // ───────── 4. Perf : relevé dense fictif ─────────
   // 70 × 70 galeries en grille (≈ 9 700 segments) et 3 000 murs de 2 segments : le test naïf ferait ~6·10⁷

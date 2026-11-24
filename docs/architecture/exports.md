@@ -8,7 +8,7 @@
 ### 0. 🎨 v1.76.0 — styles résolus + la légende voyage (résumé, détails dans `rendering-leaflet.md` §0)
 
 - **Plus aucune table de couleurs dans les exports** : toutes les pipes canvas (`exporter.js`, `utils.js`) et le KML (`kmzExport.js`) demandent `ktaResolveStyle(cat, clé, {flat:true})` — l'aplat de repli remplace les hachures (CanvasPattern) d'`inaccessible`. Les **largeurs/alphas KML restent locaux** (unité ≠ Leaflet, figés par `scripts/check-kml-styles.js`) ; tout type hors intégrés reçoit son `<Style>` KML : un type personnalisé, celui de sa légende ; un type **sans entrée de légende** (id brut d'un calque, personnalisé supprimé), le **repli de la carte** — zone → `remblais`, structure → `mur` (`kmzExport.js > REPLI_KML`, aligné sur `zones.js` / `structures.js` par le garde-fou) ; un tracé inconnu n'a pas de style (la carte le peint en blanc, comme le trait par défaut de Google Earth).
-- **La légende voyage** : payload `devmap-data` → champ `customLegend` **restreint aux types référencés** (`sessionExporter.js > _legendePourPayload`) ; lu par `createConf.js > _absorberLegendeCalque` (conflit : **l'existant du plan gagne**, ré-import idempotent, garde-fou `check-legend-roundtrip.js`). ZIP session Avancé → `session_legend.json`. Option KMZ/GPX « Légende personnalisée » → **fusion plan + session** (`_legendeCompleteAExporter`, la session prime).
+- **La légende voyage** : payload `devmap-data` → champ `customLegend` **restreint aux types référencés** (`sessionExporter.js > _legendePourPayload` : types des tracés, zones, structures **et tags des points**, une icône personnalisée comprise) ; lu par `createConf.js > _absorberLegendeCalque` (conflit : **l'existant du plan gagne**, ré-import idempotent, garde-fou `check-legend-roundtrip.js` ; « Mettre à jour le plan » seul fait gagner les entrées de la session, cf `plans-loader.md`). ZIP session Avancé → `session_legend.json`. Option KMZ/GPX « Légende personnalisée » → **fusion plan + session** (`_legendeCompleteAExporter`, la session prime).
 - **Granularité fine de la conversion** : le bucket `autres` (types non built-in) est **émis** en `roads_<type>.json` etc. (`_emettreTypesRestants`) — avant, les objets custom étaient silencieusement supprimés de l'export.
 
 ### Zone jonction : comme le tracé jonction dans chaque export (décision produit)
@@ -588,9 +588,17 @@ d'origine, plancher 0,5 px ; le remplissage ne change pas.
   et calque, résolutions 1 et 2, export rapide).
 - **Hors de cette loi** : les **zones** (contour `weight × scale` ; un fond translucide reste lisible sous un trait,
   et l'écran ne l'affine pas non plus) et les **structures en ligne** (fronts, mur en ligne, arc, perso en ligne) :
-  leur trait EST l'objet, il n'a pas de plein à dégager ; dans l'export avancé / PDF il suit déjà la loi du
-  terrain ci-dessus (`_largeurLigneStructExp`). ⚠️ « Télécharger le plan » les dessine encore à `style.weight`
-  (`drawPolyline`), sans la loi du terrain.
+  leur trait EST l'objet, il n'a pas de plein à dégager ; il suit la loi du terrain ci-dessus.
+
+**Structures en ligne (fronts, mur en ligne, arc, perso en ligne)** : une seule règle,
+`structures.js > ktaLargeurLigneStructurePourRatio(style, ratio)` — plan calibré : la largeur d'un front
+(`ktaLargeurFrontPourRatio`), celle du trait rayé pour un style à `rayures` (arc : `ktaLargeurRayePourRatio`, 0,6 ×
+front, plancher 2 px) ; plan non calibré : `weight × ratio`. Sans facteur d'appareil.
+- **Export avancé / PDF** : `exporter.js > _largeurLigneStructExp` (ratio = résolution), session et calques.
+- **« Télécharger le plan »** : `utils.js > telechargerPlan > largeurLigneStruct` (ratio 1), session et calques ;
+  les tracés gardent `style.weight`. 🩸 À `style.weight`, un front sortait à 10 px là où l'export avancé ×1 le
+  trace à 2,4 px (relevé à 3 px/m) : un réseau dense devenait un aplat. `checkup-export-petits-piliers.js`
+  (épaisseurs lues au trait : front, mur en ligne et arc, mêmes valeurs que l'export avancé ×1).
 
 #### 69.4 Point précis d'un POI : dessiné par l'export image avancé et le PDF
 

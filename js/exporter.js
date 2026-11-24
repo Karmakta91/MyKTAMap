@@ -1813,12 +1813,11 @@
         ? window.ktaLargeurFrontPourRatio(scale)
         : ((style && style.weight) || 5) * scale;
     }
-    // Structure en ligne : largeur du front, ou du trait rayé (arc) plus fin, comme à l'écran (majLargeurFronts).
+    // Structure en ligne : largeur du front, ou du trait rayé (arc) plus fin, comme à l'écran (majLargeurFronts) ;
+    // même règle que « Télécharger le plan » (structures.js > ktaLargeurLigneStructurePourRatio).
     function _largeurLigneStructExp(style) {
-      if (!(style && style.rayures)) return _largeurFrontExp(style);
-      if (!_planCalibre) return ((style && style.weight) || 5) * scale;
-      return (typeof window.ktaLargeurRayePourRatio === "function")
-        ? window.ktaLargeurRayePourRatio(scale) : style.weight * scale;
+      return (typeof window.ktaLargeurLigneStructurePourRatio === "function")
+        ? window.ktaLargeurLigneStructurePourRatio(style, scale) : ((style && style.weight) || 5) * scale;
     }
     // Rayures d'un style (arc) sur le chemin courant de `ctx`, déjà tracé (structures.js > ktaPeindreRayures).
     function _rayuresExp(style) {

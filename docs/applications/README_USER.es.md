@@ -355,7 +355,7 @@ Un clic en los contadores de arriba abre el **panel de control** del mapa:
 
 #### 🌐 Coordenadas GPS en las fichas
 
-Si tu mapa está **georreferenciado**, la ficha de cada punto (los tuyos y los del mapa) muestra sus coordenadas, por ejemplo `🌐 48.85660° N, 2.35220° E`, con una precisión de 1 m aproximadamente. El botón **📋** las copia en formato `lat, lng`, listas para pegar en una aplicación de mapas o en un SMS — práctico para transmitir la ubicación de un pozo que acabas de añadir. Los trazados, zonas y estructuras no tienen una coordenada única, así que no tienen línea GPS. Mapa no georreferenciado: sin línea.
+Si tu mapa está **georreferenciado**, la ficha de cada punto (los tuyos y los del mapa) muestra sus coordenadas, por ejemplo `🌐 48.85660° N, 2.35220° E`, con una precisión de 1 m aproximadamente. El botón **📋** las copia en formato `lat, lng`, listas para pegar en una aplicación de mapas o en un SMS — práctico para transmitir la ubicación de un pozo que acabas de añadir. La ventana **Añadir un punto** ya las muestra, con el mismo botón, antes incluso de guardar. Los trazados, zonas y estructuras no tienen una coordenada única, así que no tienen línea GPS. Mapa no georreferenciado: sin línea.
 
 #### 🔄 Cambiar de mapa
 
@@ -399,6 +399,8 @@ En la Leyenda, **✏️ Modificar**. Para cada tipo de trazado, zona o estructur
 - **👁️ Ocultar** retira la entrada solo del recuadro de la leyenda. Para ocultar objetos en el mapa, usa **≡ Filtros**.
 - **➕ Añadir una entrada** crea tu propio tipo (trazado, zona, estructura, icono) con su color, dibujable al momento. Atajo: la línea **Nuevo tipo…** de los menús Trazados, Zonas y Estructuras, que selecciona el tipo creado.
 - **🗑️ Eliminar** uno de tus tipos: si aún hay objetos que lo usan, la app te dice cuántos antes de confirmar.
+- **Cambiar el icono** de un icono tuyo: el botón de imagen de su línea abre la galería o los archivos del dispositivo. La imagen, reducida a 64 px, sustituye al icono al momento en el mapa y viaja con tu sesión, tus exportaciones y «Actualizar el mapa». Una imagen ilegible se rechaza con un mensaje. Los iconos de los tipos integrados no se cambian.
+- **Hacer editable**: un mapa más antiguo puede llevar etiquetas de nombre corto («pozo_norte»), listadas al final de los iconos. Este botón la convierte en un icono tuyo, con la misma etiqueta, llamado «Pozo norte»: puedes renombrarlo y cambiar su imagen; los puntos conservan su etiqueta.
 
 Todo se guarda **por mapa** y viaja con tus exportaciones (sesión, capa de datos, ZIP Avanzado). Si hay objetos que usan un tipo ausente de la leyenda, un aviso en cabecera de la Leyenda los cuenta: se muestran con un color de reserva hasta que vuelvas a crear o reimportar la entrada.
 
@@ -919,7 +921,9 @@ Hasta **10 documentos PDF por mapa**: informe, mapa en papel escaneado, artícul
 - **📥 Importar un PDF** añade uno; **🗑️ Quitar** elimina el que se muestra. La lista aparece en cuanto hay varios.
 - Los documentos incluidos con el mapa (📕) van al principio de la lista. Se copian en tu dispositivo la primera vez que lo abres; si los quitas, vuelven la próxima vez que se abra el mapa.
 - Aviso a partir de **25 MB** acumulados, rechazo a partir de **100 MB**.
-- En iPhone, **↗️ Abrir en una pestaña** muestra el documento a pantalla completa.
+- El documento se muestra **en la ventana**, página tras página, incluso **sin conexión**: desplázate, **pellizca para hacer zoom** (en ordenador: Ctrl + rueda, o los botones **−** y **+** de abajo), el botón de ajuste vuelve al ancho de la ventana y el botón de **pantalla completa** lo amplía a toda la pantalla (tócalo otra vez para volver). El número de la página que lees aparece a la izquierda de los botones.
+- **Abrir / Guardar** pasa el documento a tu dispositivo: vista previa, **Guardar en Archivos**, Libros… Si el dispositivo no puede compartir un archivo, lo sustituye un enlace **Descargar el PDF**. En ordenador y Android, **↗️ Abrir en una pestaña** también lo abre en el lector del navegador (búsqueda, impresión).
+- En un dispositivo demasiado antiguo para mostrarlo (iPhone anterior a iOS 26.2, navegador sin actualizar), o si el documento no se abre (protegido con contraseña…), conservas **Abrir / Guardar**; en ordenador y Android, el lector del navegador ocupa su lugar en la ventana.
 - Tus documentos también se consultan desde **📔 Mi cuaderno → 📖 Relatos**, sin cargar el mapa.
 
 **Exportación**: la nota y los documentos se van con la exportación de sesión y se **añaden** al mapa al reimportarla (no se sobrescribe nada). La exportación **anonimizada** los deja fuera. Todo se queda en tu dispositivo.
@@ -934,7 +938,7 @@ El botón **✏️** de la barra lateral activa o desactiva el modo añadir. Act
 2. Rellena el **Nombre** (obligatorio), el **Tipo** y, si quieres, una **Descripción**
 3. Confirma con **✅ Añadir**
 
-**El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización (con ![](../../icon/fontis.png) **Fontis**, un hundimiento del techo en campana), ⛏️ Patrimonio (![](../../icon/ossuaire.png) **Osario**, ![](../../icon/outil.png) **Herramienta de cantero**), 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: un nombre corto en minúsculas, cifras, `_` o `-` (p. ej. `fuente`); usa el icono por defecto.
+**El tipo** da el icono del punto. Los tipos se agrupan por familias — 🕳️ Pozos, 🪜 Acceso (**verde = abierto, rojo = cerrado**), ⚠️ Señalización (con ![](../../icon/fontis.png) **Fontis**, un hundimiento del techo en campana), ⛏️ Patrimonio (![](../../icon/ossuaire.png) **Osario**, ![](../../icon/outil.png) **Herramienta de cantero**), 🚨 Rescate — y la 🗺️ Leyenda los muestra todos. **— Sin tag (por defecto) —** conserva el icono por defecto. **➕ Crear un nuevo tag…** añade un tipo a tu sesión: le das un nombre libre, con espacios y acentos (p. ej. «Fuente del cantero»). Se añade a tu 🗺️ Leyenda con el icono por defecto, puedes renombrarlo y cambiar su icono allí, y viaja con tu sesión y tus exportaciones. Un nombre ya creado reutiliza el mismo tipo.
 
 **⚠️ Tipo Peligro: fecha de constatación.** Un punto de tipo **Peligro** lleva una **📅 Fecha de constatación**, el día en que se vio el peligro: rellenada con hoy, modificable, para vaciar si no la conoces (un punto Peligro más antiguo sigue sin fecha mientras no le pongas una). Su ventana muestra «Constatado el …» y recuerda que **el estado de un sitio no está certificado: un peligro registrado puede haber cambiado desde su fecha de constatación.** La fecha sale con la exportación de sesión, el KMZ, el GPX y el GeoJSON (releída por la importación KMZ y GPX), nunca con la exportación anonimizada.
 
@@ -1055,7 +1059,7 @@ En un mapa multinivel, los elementos de **2ª masa** se colocan automáticamente
 
 Un **arco de sostenimiento** se coloca **de través** en la galería, en dos toques de una pared a otra: un arco = un objeto, a repetir para cada arco. No molesta ni al itinerario, ni al rastreador, ni a la vista 3D, donde se convierte en un arco de piedra tallada sobre dos pilares, de una pared a otra, con la clave en el techo: se pasa por debajo. En ≡ Leyenda su muestra está rayada como en el mapa; las exportaciones de imagen y PDF conservan las rayas, el KMZ y la Vista OSM solo el trazo azul.
 
-Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerario pasa por otro lado, o falla y lo dice. La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario lo relaja junto con las zonas ⛔; el Modo Rescate y «Estoy perdido» lo respetan siempre. Renombrado o recoloreado en ≡ Leyenda, conserva ese papel. Un muro llegado como **frente de cantera** o como línea de una importación se convierte en muro (línea) desde su ficha (🧹 Borrar y corregir).
+Un **muro (línea)** corta toda galería que cruza **en su nivel**: el itinerario pasa por otro lado, o falla y lo dice. La casilla **Respetar las zonas inaccesibles y los muros (línea)** de la ventana Itinerario lo relaja junto con las zonas ⛔; el Modo Rescate y «Estoy perdido» lo respetan siempre. Renombrado o recoloreado en ≡ Leyenda, conserva ese papel. Una galería que se detiene a pocos píxeles de otra queda unida a ella por el itinerario, salvo si un muro (línea) o una zona inaccesible pasa entre las dos: entonces queda separada por ese lado. Un muro llegado como **frente de cantera** o como línea de una importación se convierte en muro (línea) desde su ficha (🧹 Borrar y corregir).
 
 ### Detectar pilares y frentes en la imagen del mapa
 
@@ -1306,7 +1310,7 @@ Cada nivel tiene tres cifras, que se ajustan en **⚙️ Ajustes › 📐 Mapa �
 - **Altura**: la altura de sus galerías (si no, 2 m). La vista 3D y ⛏️ Volumen explotado la usan.
 - **Separación**: el espesor entre el techo del nivel y el suelo del nivel de arriba. **Negativa** cuando los dos niveles se entrelazan: −1,5 = el techo sube 1,5 m por encima del suelo del nivel de arriba. Cambiar la separación desplaza este nivel **y los de debajo**.
 
-Si dos niveles seguidos tienen cifras que no encajan (el suelo del nivel de arriba más bajo que el de abajo, o dos niveles que se solapan al menos la altura de uno de ellos), aparece un aviso ⚠️ debajo de la tabla y la fila queda marcada; nada se bloquea, la vista 3D los coloca uno junto al otro.
+Si dos niveles seguidos tienen cifras que no encajan (el suelo del nivel de arriba más bajo que el de abajo, dos niveles que se solapan al menos la altura de uno de ellos, o una **separación negativa**: el suelo de un nivel pasa por debajo del techo del de abajo), aparece un aviso ⚠️ debajo de la tabla y la fila queda marcada. Nada se bloquea: una separación negativa puede ser voluntaria. La vista 3D no separa esos niveles, los entrelaza (donde uno de los dos tiene una galería, está abierto), a la misma altitud en el peor caso, nunca invertidos. Una separación negativa olvidada mezcla los niveles en 3D: comprueba la cifra.
 
 El creador del mapa los propone en el Generador; lo que corriges aquí se queda en tu dispositivo y prevalece. **↺ Valores del mapa** vuelve a los del mapa. Indicar los suelos alarga las rutas que pasan por un pozo: su longitud deja de medirse en plano.
 
@@ -1381,7 +1385,7 @@ Para unir salidas ya partidas: **📔 Mi cuaderno → 🔗 Fusionar salidas**, m
 
 #### 📖 La pestaña Relatos
 
-La segunda pestaña del cuaderno, **📖 Relatos**, reúne las notas y los PDF del **Modo Historia** de **todos tus mapas, sin cargar ninguno**: la nota se muestra con formato y se **edita ahí mismo** (es la misma nota que en el mapa), los PDF se abren, se eliminan (🗑️) o se añaden (**➕ Añadir un PDF**). Un PDF incluido en el ZIP de un mapa aparece aquí en cuanto has abierto ese mapa una vez.
+La segunda pestaña del cuaderno, **📖 Relatos**, reúne las notas y los PDF del **Modo Historia** de **todos tus mapas, sin cargar ninguno**: la nota se muestra con formato y se **edita ahí mismo** (es la misma nota que en el mapa), los PDF se abren (mismo visor que el Modo Historia), se eliminan (🗑️) o se añaden (**➕ Añadir un PDF**). Un PDF incluido en el ZIP de un mapa aparece aquí en cuanto has abierto ese mapa una vez.
 
 **Conviene saber:** todo se queda en tu dispositivo; cada salida se elimina desde su ficha; por encima de **500 salidas**, las más antiguas se borran; el cuaderno viaja con la exportación del perfil.
 
@@ -2054,7 +2058,7 @@ A tener en cuenta: los huecos de los polígonos se ignoran; por encima de 20 000
 
 #### 🧱 Convertir a teselas V2
 
-Para un mapa pesado (imagen de más de 50 MB o de más de 8000 px), la casilla **🧱 Convertir a teselas V2 (rendimiento)** corta la imagen en **teselas**: la app ya solo carga los trozos visibles, lo que reduce mucho la memoria utilizada.
+La casilla **🧱 Convertir a teselas V2 (recomendado)** corta la imagen en **teselas**: la app ya solo carga los trozos visibles. Se **recomienda para todo mapa**: sin ella, la **Vista OSM** no se abre y el mapa no aparece en el mapa OpenStreetMap de inicio. En un mapa pesado (imagen de más de 50 MB o de más de 8000 px), además reduce mucho la memoria utilizada.
 
 1. Elige una imagen principal, o carga el ZIP del mapa que vas a convertir.
 2. Márcala y lee el aviso: la conversión es pesada.

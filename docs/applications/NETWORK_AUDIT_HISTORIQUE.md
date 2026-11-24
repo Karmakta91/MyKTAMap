@@ -8,6 +8,10 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.32.0 (visionneuse PDF, icônes de Légende, GPS à l'ajout)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** La visionneuse PDF (PDF.js, embarquée dans l'app et mise en cache à l'installation, environ 3 Mo) lit les PDF déjà présents sur l'appareil, sans rien envoyer. Une icône changée dans « Personnaliser la légende » est une image de l'appareil, réduite et gardée dans la session. Les coordonnées GPS du formulaire d'ajout sont calculées sur l'appareil à partir du géoréférencement du plan. Côté outillage seulement, une sonde horaire lit la date d'expiration des certificats TLS de nos domaines depuis GitHub : l'app n'en fait rien.
+
 ### v2.31.0 (Détecter les galeries, Remplir un front, alerte d'urgence devant)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** Détecter les galeries, Remplir au clic sur un front, l'affinage des contours et l'opacité de l'image principale travaillent sur l'appareil, à partir des images déjà affichées. Les points précis et les petits piliers sont dessinés dans l'export sur l'appareil. L'alerte d'urgence qui passe devant ne change que l'ordre d'affichage d'alertes déjà reçues.

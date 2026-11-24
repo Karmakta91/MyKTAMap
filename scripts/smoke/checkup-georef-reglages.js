@@ -11,7 +11,8 @@
 //   • fond OSM allumé : recalculé sur le nouveau calage SANS être rallumé (kta:georefChange) ;
 //   • plan rouvert depuis l'accueil : le calage des Réglages reste (le ZIP redonne pourtant A/B) ;
 //   • garde-fou : un calage local périmé (points hors du plan) laisse la place au calage embarqué ;
-//   • la limite (plan régénéré) est dite dans la fenêtre.
+//   • la limite (plan régénéré) est dite dans la fenêtre ;
+//   • le formulaire d'ajout d'un POI affiche ses coordonnées GPS avant l'enregistrement (même texte que la fiche).
 // Usage : node scripts/smoke/checkup-georef-reglages.js (SMOKE_PORT pour une autre copie) · doc : vue-osm.md § 2.2
 // =====================================================================
 "use strict";
@@ -123,6 +124,27 @@ function lireSources(attendu) {
     const dims = await page.evaluate(function () { return { W: window.APP_CONFIG.imageWidth, H: window.APP_CONFIG.imageHeight }; });
     const eff0 = await page.evaluate(function () { return window.OsmView.getGeorefEffectif(); });
     verifier(eff0 && Math.abs(eff0.pointB.lat - ouvert.embarque.pointB.lat) < 1e-9, "calage embarqué lu au départ", eff0 && eff0.pointB);
+
+    console.log("— Formulaire d'ajout d'un POI : GPS avant l'enregistrement —");
+    const form = await page.evaluate(function (d) {
+      const x = Math.round(d.W / 3), y = Math.round(d.H / 2);
+      let copie = null;
+      const orig = window.kta_copierGps;
+      window.kta_copierGps = function (t) { copie = t; };
+      window.afficherFormulaire(x, y);
+      const val = document.querySelector("#kta-poi-modal .kta-popup-gps-val");
+      const btn = document.getElementById("kta-poi-gps-copy");
+      if (btn) btn.click();
+      window.kta_copierGps = orig;
+      const fiche = document.createElement("div");
+      fiche.innerHTML = window.buildPointPopupHtml({ nom: "Essai", x: x, y: y, tags: [] }, true);
+      const vf = fiche.querySelector(".kta-popup-gps-val");
+      const m = document.getElementById("kta-poi-modal"); if (m) m.remove();
+      return { form: val ? val.textContent : null, fiche: vf ? vf.textContent : null, copie: copie };
+    }, dims);
+    verifier(form.form && /° [NS], .*° [EW]$/.test(form.form), "coordonnées GPS affichées dans le formulaire d'ajout", form);
+    verifier(form.form === form.fiche, "même texte que la fiche du point enregistré", form);
+    verifier(form.copie === form.form, "le bouton copie ces coordonnées", form);
 
     // Fond allumé, espion sur les transformations qu'il calcule
     await page.evaluate(function () {

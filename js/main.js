@@ -1208,8 +1208,13 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   const files = Array.from(assetFiles || []);
   const allLogicalPaths = [];
   if (rawConfig.plan?.baseImage)      allLogicalPaths.push(rawConfig.plan.baseImage);
-  // PDF embarqué du Mode Histoire.
+  // PDF du Mode Histoire : le tableau ET la chaîne (= son premier élément, ou seul champ d'un plan ancien).
+  // 🩸 Un PDF non enregistré ici retombe sur son chemin brut du ZIP, lu comme une adresse du site : page 404 ou
+  // index.html du Service Worker téléchargée à la place du document.
   if (rawConfig.plan?.histoirePdf)    allLogicalPaths.push(rawConfig.plan.histoirePdf);
+  if (Array.isArray(rawConfig.plan?.histoirePdfs)) {
+    rawConfig.plan.histoirePdfs.forEach(function(p) { if (p) allLogicalPaths.push(p); });
+  }
   (rawConfig.imageLayers || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
   (rawConfig.dataLayers  || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
 

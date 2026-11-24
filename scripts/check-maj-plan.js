@@ -141,8 +141,9 @@ t("API : MajPlan.ouvrir et _interne.{grouper, slug, construire, libelleGroupe}",
   t("Générateur : fichier de la ligne choisi à la main > fichier de l'assistant > fichier d'origine > <id>.json",
     /_getFile\(lid \+ "_file", null\) \|\| item\._ktaFichierMaj \|\|[\s\S]{0,120}item\.dataset\.ktaFichier[\s\S]{0,80}_getFile\(null, dlId \+ "\.json"\)/.test(GEN));
   t("Générateur : état de mise à jour remis à zéro à chaque ouverture", /_plannerMode       = "nouveau";\s+_plannerMaj        = null;/.test(GEN));
-  t("légende des types versés : même sous-ensemble que la conversion", /window\.ktaLegendePourCalque = function\(payload\) \{ return _legendePourPayload/.test(SE) &&
-    /ktaLegendePourCalque\(tout\)/.test(MP));
+  t("légende des types versés : même sous-ensemble que la conversion, anciens tags du plan rendus modifiables compris",
+    /window\.ktaLegendePourCalque = function\(payload, idsIcones\) \{ return _legendePourPayload\(payload \|\| \{\}, idsIcones\)/.test(SE) &&
+    /ktaLegendePourCalque\(tout, iconesPlan\)/.test(MP));
   t("plan local : remplacement sous le MÊME id (session, calage, photos restent attachés), retrait proposé AVANT",
     /if \(avant\) await _proposerNettoyage\(etat, false\);[\s\S]{0,500}chargerZipFichier\(fichier, [\s\S]{0,80}\{ planId: entree\.id, storeBlob: true/.test(MP));
   {

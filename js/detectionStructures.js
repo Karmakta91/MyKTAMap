@@ -971,23 +971,29 @@ window.KtaDetectionUI = (function () {
   //   jamais modifié ; ce qui le double est coupé, un front tout entier déjà là est refusé.
   // 🩸 Au-delà de la plus grande fenêtre, le front s'arrête au bord lu (toast) : un toucher plus loin le prolonge et
   //   raccorde ; une lecture à résolution réduite amincirait le trait sous le seuil des traits fins.
+  // 🩸 Le suivi tourne dans le worker de la détection (_e.ex, ktaDetection.js > executeurWorker), sinon dans la page :
+  //   un long front dans un réseau dense lit 4 096 px et figeait l'app plusieurs secondes. Pendant le calcul le
+  //   parcours peut changer de mode : le résultat n'est gardé que dans le même mode, sur le même aperçu (vivant).
   async function _suivreEn(x, y) {
     if (_e.remplissage) return;
-    const e = _e, E = _emprise();
+    const e = _e, E = _emprise(), remplis = e.remplis;
+    const vivant = function () { return _e === e && e.etape === "remplir" && e.remplis === remplis; };
     if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
     e.remplissage = true;
     try {
       let r = null;
       const existants = _frontsRaccord(e.ctx.niveau(e.typeRemplir));
+      if (!e.ex) e.ex = window.KtaDetection.executeurWorker() || window.KtaDetection.executeurLocal();
       for (let k = 0; k < FENETRES_FRONT.length; k++) {
         const n = FENETRES_FRONT[k];
         const x0 = Math.max(E.x0, Math.floor(x - n / 2)), y0 = Math.max(E.y0, Math.floor(y - n / 2));
         const x1 = Math.min(E.x1, Math.ceil(x + n / 2)), y1 = Math.min(E.y1, Math.ceil(y + n / 2));
         const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, 1);
-        if (_e !== e) return;
+        if (!vivant() || !e.ex) return;
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-        r = window.KtaDetection.suivreTrait(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1,
+        r = await e.ex.suivreTrait(b, x - x0, y - y0, { x0: x0, y0: y0, echelle: 1,
           affiner: _toleranceAffiner(), existants: existants });
+        if (!vivant()) return;
         if (r.refus || !r.bord || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
       }
       if (r.refus) {

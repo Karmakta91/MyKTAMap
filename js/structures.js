@@ -14,7 +14,8 @@
 //   ktaPeindreRayures, ktaArcsAuDessus, ktaPoseUnClic, ktaCarrePilierBras, ktaSegmentsCroix, ktaPeindreCroix,
 //   ktaPolygoneStructure,
 //   ktaLargeurRayePourRatio, majLargeurFronts, brancherLargeurFronts,
-//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio}, ktaPxParMetreOsm, ktaStructuresAuDessus,
+//   ktaLargeur{FrontPourRatio,FrontPourPxParMetre,TracePourRatio,LigneStructurePourRatio}, ktaPxParMetreOsm,
+//   ktaStructuresAuDessus,
 //   KtaEpaisseurTraits (réglage d'appareil : facteur d'écran des traits, jamais appliqué aux exports),
 //   ktaMursSousPiliers / ktaOrdonnerMursCarte (un mur sous les piliers et fronts de son niveau, carte et exports).
 // ⚠️ Aucune couleur ici : la source est js/styleResolver.js (l'utilisateur choisit dans ≡ Légende).
@@ -267,6 +268,16 @@ window.ktaBordSurfacePourLargeur = function (wOrig, wFront) {
 };
 window.ktaLargeurTracePourRatio = function (ratio) {
   return Math.max(1, Math.round(_largeurFrontPourRatio(ratio) * FRONT_FACTEUR_TRACE * 10) / 10);
+};
+// Structure en ligne (front, mur en ligne ; arc rayé, plus fin) dans un EXPORT rendu à `ratio` px de sortie par px de
+// plan : la loi du terrain sur un plan calibré, `style.weight × ratio` sinon (sans px/m, aucune largeur réelle ;
+// l'export garde l'épaisseur de la légende plutôt que les paliers d'écran).
+// ⚠️ contrat : une seule règle pour l'export avancé, le PDF (exporter.js) et « Télécharger le plan »
+//   (utils.js > telechargerPlan) ; sans facteur d'appareil (KtaEpaisseurTraits).
+window.ktaLargeurLigneStructurePourRatio = function (style, ratio) {
+  const r = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+  if (!(window.APP_CONFIG && Number(window.APP_CONFIG.scale) > 0)) return ((style && style.weight) || 5) * r;
+  return style && style.rayures ? window.ktaLargeurRayePourRatio(r) : _largeurFrontPourRatio(r);
 };
 
 // ── Épaisseur des traits : réglage d'APPAREIL (Configuration de l'accueil › Affichage) ──────────────

@@ -29,7 +29,8 @@
  * Remplir au clic sur un front (suivreTrait) : front droit, coudé, carrefours en T et en X (arrêt au carrefour),
  * front qui touche un pilier plein (arrêt à son bord), trait de rappel de 1 px en travers (pas de carrefour), toucher
  * sur le fond ou le pilier refusé, raccord EXACT du toucher suivant sur le front posé (jamais modifié), doublon
- * refusé, affiner sur un bord dentelé, échelle 0,5 ; contre-épreuves sans retrait des masses, sans filtre des traits
+ * refusé, affiner sur un bord dentelé, échelle 0,5, front coupé par le bord du bloc (bout « bord », 3 à 8 px) ;
+ * contre-épreuves sans retrait des masses, sans filtre des traits
  * fins, sans existant (aucune accroche).
  * Contre-épreuves (sabotages) : remplissage sans fermeture (le trou de 1 px fuit), sans marge, sans ouverture,
  * sans dédoublonnage des blocs, sans comblement des trous,
@@ -524,6 +525,16 @@ function verifierFronts() {
   const e5 = D.suivreTrait(demi, 40, 16, { x0: 0, y0: 0, echelle: 0.5 });
   t("échelle 0,5 : front droit rendu en px du plan (axe y ≈ 32, bout vers x 140)", e5 && !e5.refus &&
     ys(e5).every(y => Math.abs(y - 32) <= 2) && Math.abs(Math.max(...xs(e5)) - 139) <= 4, resume(e5));
+
+  // Front coupé par le bord du bloc lu : bout « bord » (l'appelant relit plus grand), quelle que soit l'épaisseur
+  // (le squelette recule d'environ la demi-épaisseur), et un vrai bout à 80 px du bord reste « bout ».
+  const auBord = [3, 4, 6, 8].map(function (ep) {
+    const c = image(300, 80).rect(0, 38, 220, ep, NOIR), r = D.suivreTrait({ data: c.data, w: c.W, h: c.H }, 100, 39,
+      { x0: 0, y0: 0, echelle: 1 });
+    return { ep: ep, bouts: r && r.bouts, bord: r && r.bord };
+  });
+  t("front coupé par le bord du bloc (3 à 8 px d'épaisseur) : bout « bord » à gauche, « bout » à droite",
+    auBord.every(q => q.bord === true && q.bouts[0] === "bord" && q.bouts[1] === "bout"), auBord);
 }
 
 (async function main() {
@@ -1298,6 +1309,51 @@ function verifierFronts() {
   t("worker : bloc gardé (garde), recalcul sans le renvoyer (taille 60 px → plus de masse)",
     envoyes[2] && envoyes[2].resultat.garde === true && Array.isArray(envoyes[3] && envoyes[3].resultat) &&
     envoyes[3].resultat.length === 1 && envoyes[3].resultat[0].masses.length === 0, [envoyes[2], envoyes[3]]);
+  // Remplir au clic sur un front : même calcul dans le worker et par executeurLocal (repli sans Worker) qu'en direct
+  {
+    const pf = plancheFronts(), oF = { x0: 0, y0: 0, echelle: 1, existants: [{ points: [{ x: 300, y: 32 }, { x: 350, y: 32 }] }] };
+    const bloc = () => ({ data: new Uint8ClampedArray(pf.data), w: pf.W, h: pf.H });
+    const direct = JSON.stringify([D.suivreTrait(bloc(), 80, 32, oF), D.suivreTrait(bloc(), 220, 152, oF),
+      D.suivreTrait(bloc(), 2, 2, oF)]);
+    const parWorker = [80, 220, 2].map(function (x, i) {
+      self.onmessage({ data: { id: 20 + i, suivreTrait: { b: bloc(), px: x, py: x === 2 ? 2 : (x === 80 ? 32 : 152),
+        o: oF } } });
+      return envoyes[envoyes.length - 1];
+    });
+    t("worker : suivreTrait répond { id, resultat } identique au calcul direct (front, carrefour, refus)",
+      parWorker.every((m, i) => m.id === 20 + i) && JSON.stringify(parWorker.map(m => m.resultat)) === direct,
+      parWorker.map(m => m.id));
+    const exL = D.executeurLocal();
+    const parLocal = await Promise.all([[80, 32], [220, 152], [2, 2]].map(c => exL.suivreTrait(bloc(), c[0], c[1], oF)));
+    exL.fermer();
+    t("executeurLocal : suivreTrait (repli sans Worker) identique au calcul direct", JSON.stringify(parLocal) === direct);
+    self.onmessage({ data: { id: 30, suivreTrait: { b: null, px: 1, py: 1, o: {} } } });
+    t("worker : un suivreTrait en erreur revient en { id, erreur }", envoyes[envoyes.length - 1].id === 30 &&
+      typeof envoyes[envoyes.length - 1].erreur === "string");
+  }
+  // Exécuteur par worker : fermer() rejette un suivreTrait en attente (AbortError), jamais un bloc en attente
+  {
+    const postes = [];
+    let termine = false;
+    const FauxWorker = function () { this.postMessage = (m, tr) => postes.push({ m: m, tr: tr || [] }); this.terminate = () => { termine = true; }; };
+    const ctxW = vm.createContext({ Worker: FauxWorker, Uint8Array, Uint8ClampedArray, Int32Array, Float64Array,
+      Float32Array, Uint16Array, Uint32Array, Int16Array, Int8Array, Math, Map, Set, Promise, console, setTimeout,
+      Object, Array, Number, JSON, Error, Infinity, NaN });
+    ctxW.self = ctxW;
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8"), ctxW);
+    const exW = ctxW.KtaDetection.executeurWorker("x.js");
+    const im1 = image(10, 10);
+    let issueT = null, issueB = "en attente";
+    exW.suivreTrait({ data: im1.data, w: 10, h: 10 }, 1, 1, {}).catch(err => { issueT = err && err.name; });
+    exW.executer({ data: image(10, 10).data, w: 10, h: 10 }).then(() => { issueB = "résolu"; },
+      () => { issueB = "rejeté"; });
+    exW.fermer();
+    await new Promise(r => setTimeout(r, 0));
+    t("executeurWorker : suivreTrait envoyé (tampon transféré), fermer() le rejette en AbortError, le bloc reste en " +
+      "attente", postes.length === 2 && !!postes[0].m.suivreTrait &&
+      postes[0].tr.length === 1 && postes[0].tr[0] === postes[0].m.suivreTrait.b.data.buffer && termine && issueT === "AbortError" &&
+      issueB === "en attente", { postes: postes.length, issueT, issueB });
+  }
 
   // ── Limites { x0, y0, x1, y1 } : emprise d'un calque qui déborde de l'image (bornes négatives) ──
   {

@@ -22,7 +22,8 @@
 // Galeries → tracés (section « Galeries ») : axes du masque d'une galerie (pipette : réglage `galerie` de detecter ;
 // remplirGalerie), bouché puis percé des structures posées, et reseauGaleries (un tracé par galerie, accroché).
 // Remplir au clic sur un front (suivreTrait) : le trait touché suivi jusqu'à ses bouts ou au premier carrefour, sans
-// les masses ni les traits fins de sa couleur, raccordé exactement aux fronts existants (graphe des galeries).
+// les masses ni les traits fins de sa couleur, raccordé exactement aux fronts existants (graphe des galeries) ; lancé
+// dans le worker par executeurWorker().suivreTrait.
 // Expose : KtaDetection = { detecter, detecterBloc, recalculer, mesurerExemple, reglagesDepuisExemples,
 //   reglagesPourTaille, depuisMetres, REGLAGES, executeurWorker, executeurLocal, rgbVersLab, deltaE,
 //   remplir, REMPLIR, plafondRemplir, toleranceAffinage, AFFINER, reseauGaleries, remplirGalerie,
@@ -893,7 +894,11 @@
   // Exécuteur par worker (js/ktaDetectionWorker.js) : un bloc à la fois, tampon d'image TRANSFÉRÉ (pas copié) et,
   // avec `garder`, conservé par le worker pour recalculer.
   // → { executer(bloc, garder) → Promise<résultat (+ garde)>, recalculer(classes, reglages) → Promise<[résultats]>,
-  //     fermer() } ; null sans Worker (executeurLocal le remplace).
+  //     suivreTrait(b, px, py, o) → Promise<résultat de suivreTrait>, fermer() } ; null sans Worker (executeurLocal
+  //     le remplace).
+  // 🩸 fermer() rejette (AbortError) un suivreTrait en attente : l'appelant garde un verrou « une lecture à la fois »
+  //   jusqu'à la réponse. Un bloc en attente, lui, reste sans réponse : un rejet tardif ferait échouer, dans la page,
+  //   la détection relancée entre-temps sur le même parcours.
   function executeurWorker(url) {
     if (typeof Worker === "undefined") return null;
     let w;
@@ -910,10 +915,10 @@
       attente.forEach(function (a) { a.ko(new Error((ev && ev.message) || "worker")); });
       attente.clear();
     };
-    const envoyer = function (msg, transfert) {
+    const envoyer = function (msg, transfert, aRejeter) {
       return new Promise(function (ok, ko) {
         const id = suivant++;
-        attente.set(id, { ok: ok, ko: ko });
+        attente.set(id, { ok: ok, ko: ko, aRejeter: !!aRejeter });
         msg.id = id;
         w.postMessage(msg, transfert || []);
       });
@@ -926,7 +931,17 @@
       recalculer: function (classes, reglages) {
         return envoyer({ recalculer: { classes: classes, reglages: reglages } });
       },
-      fermer: function () { try { w.terminate(); } catch (err) { /* déjà arrêté */ } attente.clear(); }
+      suivreTrait: function (b, px, py, o) {
+        const tampon = b.data && b.data.buffer ? b.data.buffer : null;
+        return envoyer({ suivreTrait: { b: b, px: px, py: py, o: o || {} } }, tampon ? [tampon] : [], true);
+      },
+      fermer: function () {
+        try { w.terminate(); } catch (err) { /* déjà arrêté */ }
+        attente.forEach(function (a) {
+          if (a.aRejeter) a.ko(Object.assign(new Error("annulé"), { name: "AbortError" }));
+        });
+        attente.clear();
+      }
     };
   }
   // Même interface, dans la page (sans Worker, et dans Node pour les tests) : un bloc par tâche.
@@ -943,6 +958,9 @@
         });
       },
       recalculer: function (classes, reglages) { return Promise.resolve(mag.recalculer(classes, reglages)); },
+      suivreTrait: function (b, px, py, o) {
+        return new Promise(function (ok) { setTimeout(function () { ok(suivreTrait(b, px, py, o)); }, 0); });
+      },
       fermer: function () { mag.vider(); }
     };
   }
@@ -2180,17 +2198,19 @@
     const cw = Math.min(W - 1, bx1 + 3) - cx0 + 1, ch = Math.min(H - 1, by1 + 3) - cy0 + 1;
     const comp = new Uint8Array(cw * ch);   // encre de la composante, dans le cadre
     for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) if (etat[(cy0 + j) * W + cx0 + i] === 1) comp[j * cw + i] = 1;
-    // bord du BLOC lu (pas du cadre) : l'appelant relit plus grand
-    const auBord = function (pt) {
-      const bx = (pt.x - ox) * e, by = (pt.y - oy) * e;
-      return bx < FRONT.bord || by < FRONT.bord || bx > W - FRONT.bord || by > H - FRONT.bord;
+    // bord du BLOC lu (pas du cadre) : l'appelant relit plus grand. `demi` = demi-épaisseur du trait (px du bloc).
+    // 🩸 Le squelette d'un trait coupé par le bord recule d'environ sa demi-épaisseur : un front de 4 px finissait à
+    //   3,5 px du bord, passait pour un bout libre et n'était jamais relu plus grand (coupé à la première fenêtre).
+    const auBord = function (pt, demi) {
+      const bx = (pt.x - ox) * e, by = (pt.y - oy) * e, m = FRONT.bord + (demi || 0);
+      return bx < m || by < m || bx > W - m || by > H - m;
     };
     return _suivreCadre(comp, cw, ch, (y0p - cy0) * cw + (x0p - cx0), e,
       ox + cx0 / e, oy + cy0 / e, { x: ox + (px + 0.5) / e, y: oy + (py + 0.5) / e }, re, auBord, o);
   }
   // Suite de suivreTrait dans le cadre de calcul (W × H, coin plan ox, oy) : T = encre de la composante touchée,
-  //   p0 = pixel d'encre touché (indice du cadre), cible = point touché (px plan), auBord(point plan) = bout au bord
-  //   du bloc lu.
+  //   p0 = pixel d'encre touché (indice du cadre), cible = point touché (px plan), auBord(point plan, demi-épaisseur
+  //   en px du bloc) = bout au bord du bloc lu.
   function _suivreCadre(T, W, H, p0, e, ox, oy, cible, re, auBord, o) {
     const N = W * H;
     const med = function (t) { t.sort(function (a, b) { return a - b; }); return t[t.length >> 1]; };
@@ -2254,7 +2274,7 @@
     const genre = function (nd, p) {
       if (A.a === A.b) return "boucle";
       if (_degre(g, nd) >= 3) return "carrefour";
-      return auBord(p) ? "bord" : "bout";
+      return auBord(p, dmed / 3) ? "bord" : "bout";
     };
     const bouts = [genre(A.a, pts[0]), genre(A.b, pts[pts.length - 1])];
     const demi = dmed / 3 / e;

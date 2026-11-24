@@ -106,6 +106,13 @@ function _buildTypeOptionsHTML(selectedTag) {
     if (!EDITOR_EXCLURE.includes(k)) tagsSet.add(k);
   });
   EDITOR_EXCLURE.forEach(function(k) { tagsSet.delete(k); });
+  // 🩸 Un tag créé à la volée (« Nouveau tag ») vit sur le POINT seul : PLAN_CONFIG.icons ne le garde pas au
+  // rechargement. Sans les tags des points de session et celui du point ouvert, la liste s'ouvrait sur « Aucun tag »
+  // et Enregistrer effaçait le tag.
+  (Array.isArray(listePoints) ? listePoints : []).forEach(function(p) {
+    if (p && Array.isArray(p.tags) && p.tags[0] && !EDITOR_EXCLURE.includes(p.tags[0])) tagsSet.add(String(p.tags[0]));
+  });
+  if (selectedTag) tagsSet.add(String(selectedTag));
 
   // Les ICÔNES CUSTOM de la légende sont des tags sélectionnables (icône résolue par _iconMap[id], enregistrée
   // par map.js et mise à jour par onCustomEntriesChange).
@@ -132,7 +139,7 @@ function _buildTypeOptionsHTML(selectedTag) {
     const label = EDITOR_TAG_LABELS[tag] ? window.I18n.t("editor.tag." + tag)
                 : (customIconLabels[tag] || tag);
     const sel   = tag === selectedTag ? ' selected' : '';
-    return `<option value="${tag}"${sel}>${label}</option>`;
+    return `<option value="${window.ktaEsc(tag)}"${sel}>${window.ktaEsc(label)}</option>`;
   }).join("");
 
   html += '<option value="__new__">' + window.I18n.t("editor.options.newTag") + '</option>';
@@ -198,6 +205,17 @@ function afficherFormulaire(x, y, existingPoint) {
   // objectURL révoquées à la fermeture (fuite mémoire sinon).
   const _photoObjectUrls = new Set();
 
+  // Coordonnées GPS dès l'ouverture (plan géoréférencé), sans attendre l'enregistrement : même texte que la fiche.
+  const _gpsTxt = (typeof window.ktaGpsTexte === "function") ? window.ktaGpsTexte(x, y) : "";
+  const _gpsLigne = _gpsTxt
+    ? '<div class="kta-popup-gps" title="' + _esc(window.I18n.t("poi.gpsComputed")) + '">' +
+        '<span class="kta-popup-gps-icon">' + window.ktaIcone("globe") + '</span>' +
+        '<code class="kta-popup-gps-val">' + _esc(_gpsTxt) + '</code>' +
+        '<button class="kta-popup-gps-copy" id="kta-poi-gps-copy" type="button" title="' +
+          _esc(window.I18n.t("poi.copyGps")) + '">' + window.ktaIcone("copy") + '</button>' +
+      '</div>'
+    : "";
+
   const modal = document.createElement("div");
   modal.id = "kta-poi-modal";
   modal.className = "kta-readme-modal-overlay";
@@ -215,6 +233,7 @@ function afficherFormulaire(x, y, existingPoint) {
           <div style="font-size:13px; color:var(--kta-texte-3); padding:4px 0;">
             X : <strong style="color:var(--kta-texte);">${x}</strong> — Y : <strong style="color:var(--kta-texte);">${y}</strong>
           </div>
+          ${_gpsLigne}
         </div>
 
         <div class="kta-aide-section">
@@ -291,6 +310,10 @@ function afficherFormulaire(x, y, existingPoint) {
   const btnClose    = document.getElementById("kta-poi-close");
   const btnAnnuler  = document.getElementById("kta-poi-annuler");
   const btnValider  = document.getElementById("kta-poi-valider");
+  const btnGps      = document.getElementById("kta-poi-gps-copy");
+  if (btnGps) btnGps.addEventListener("click", function() {
+    if (typeof window.kta_copierGps === "function") window.kta_copierGps(_gpsTxt);
+  });
 
   const photoGrid       = document.getElementById("kta-poi-photos-grid");
   const photoCounter    = document.getElementById("kta-poi-photos-counter");
@@ -617,8 +640,36 @@ function afficherFormulaire(x, y, existingPoint) {
 
     let tag = selectType.value;
 
-    // Nouveau tag créé à la volée.
-    if (tag === "__new__") {
+    // Nouveau tag créé à la volée : un libellé libre (espaces, accents) qui devient une icône personnalisée de la
+    // Légende (id `cust-…`, icône par défaut) : gardée au rechargement, partie avec le ZIP de session et les exports,
+    // renommable dans la Légende. Même libellé qu'une icône personnalisée existante → on la reprend. Sans
+    // LegendCustomization : repli sur un tag court (minuscules, chiffres, _ ou -).
+    const _LC = window.LegendCustomization;
+    const _lcOk = !!(_LC && typeof _LC.addCustomEntry === "function" && typeof _LC.listCustomEntries === "function");
+    if (tag === "__new__" && _lcOk) {
+      const libelle = inputNewTag.value.trim().replace(/\s+/g, " ");
+      if (!libelle) { setErr(window.I18n.t("editor.err.tagInvalid")); inputNewTag.focus(); return; }
+      const deja = (_LC.listCustomEntries("icones") || []).find(function(e) {
+        return e && e.id && e.iconUrl && String(e.label || "").toLowerCase() === libelle.toLowerCase();
+      });
+      if (deja) {
+        tag = deja.id;
+      } else {
+        const icones = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+        const defautPlan = (icones.default && !/marker-icon\.png$/.test(icones.default)) ? icones.default : null;
+        const defautApp = window._ktaIconeDefaut || "icon/default.png";
+        // 🩸 L'icône par défaut d'un plan local est une URL blob:, morte au rechargement : l'entrée part avec celle
+        // de l'app, puis reçoit la copie en data-URI de celle du plan dès qu'elle est lue (imageEnIcone).
+        const blob = !!defautPlan && /^blob:/.test(defautPlan);
+        tag = _LC.addCustomEntry({ category: "icones", label: libelle, iconUrl: (defautPlan && !blob) ? defautPlan : defautApp });
+        if (!tag) { setErr(window.I18n.t("editor.err.tagInvalid")); return; }
+        if (blob && typeof _LC.imageEnIcone === "function") {
+          const id = tag;
+          _LC.imageEnIcone(defautPlan).then(function(u) { _LC.updateCustomEntry(id, { iconUrl: u }); })
+            .catch(function(e) { console.warn("[Editor] icône par défaut du plan non recopiée :", e && e.message); });
+        }
+      }
+    } else if (tag === "__new__") {
       const nouveau = inputNewTag.value.trim().toLowerCase().replace(/\s+/g, "_");
       if (!nouveau) { setErr(window.I18n.t("editor.err.tagInvalid")); inputNewTag.focus(); return; }
       if (!/^[a-z0-9_-]+$/.test(nouveau)) {

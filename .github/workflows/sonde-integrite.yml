@@ -3,6 +3,9 @@
 # Après un piratage du serveur, le risque est une page modifiée en place (le chiffrement protège ce qui est stocké,
 # pas le code servi). Lancée d'ici, HORS du serveur, toutes les heures : un écart fait échouer le run, et GitHub
 # prévient par e-mail. Détails et limites : scripts/release/sonde-integrite.js.
+# Job « certificats », indépendant du premier : échec si un certificat TLS des cinq domaines (dev compris : la
+# poignée de main TLS passe avant le 403 de nginx) expire dans moins de SEUIL_JOURS jours, pour qu'un
+# renouvellement raté se voie avant la coupure. Détails : scripts/release/sonde-certificats.sh.
 name: Sonde d'intégrité
 
 on:
@@ -30,3 +33,13 @@ jobs:
           node-version: 22
       - name: Code servi = dépôt
         run: node scripts/release/sonde-integrite.js "${{ matrix.site }}"
+
+  certificats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SEUIL_JOURS: "20"
+    steps:
+      - uses: actions/checkout@v5
+      - name: Certificats TLS loin de l'échéance
+        run: bash scripts/release/sonde-certificats.sh

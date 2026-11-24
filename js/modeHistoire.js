@@ -15,10 +15,13 @@
 //     (plan.histoirePdfs / histoirePdf, résolus via RUNTIME_ASSETS) sont COPIÉS en IDB au chargement du plan
 //     (syncDocsEmbarques) : visibles dans Carnet > Récits sans charger le plan, et supprimables (recréés à la
 //     réouverture). L'affichage direct de l'embarqué reste en repli si la copie échoue.
-// Affichage : iframe sur desktop/Android, bouton de téléchargement sur iOS (iframe PDF peu fiable).
+// Affichage : visionneuse maison (visionneusePdf.js) partout où le navigateur a les API qu'elle exige ; sinon, ou
+//   si le document ne s'y rend pas, iframe (PC, Android) ou « Ouvrir / Enregistrer » seul (iOS, utils.js >
+//   ktaActionPdf). Toujours depuis un Blob vérifié (%PDF) et typé application/pdf, jamais un lien vers un chemin.
 // Expose window.ModeHistoire : open(), openTab("note"|"pdf"), close(), isOpen(), syncDocsEmbarques(),
 //   importSessionData(), _onPlanSwitch (fermeture au changement de plan, URLs révoquées).
-// 🩸 Vider l'iframe AVANT de la retirer : sinon WebKit garde la bitmap du PDF en mémoire.
+// 🩸 Vider l'iframe AVANT de la retirer : sinon WebKit garde la bitmap du PDF en mémoire ; libérer la visionneuse
+//   (KtaVisionneusePdf.liberer) avant de vider le conteneur : document, worker et canvas partent avec elle.
 // =========================
 
 (function() {
@@ -34,6 +37,7 @@
   // Id du document sélectionné ; EMBED_ID = pseudo-id du PDF du ZIP (pas en IDB, non supprimable).
   const EMBED_ID = "__embed__";
   let _docSelectionne = null;
+  let _jetonRendu = 0;
 
   // ── IDB des documents PDF ──
   // v2 : N documents par plan (`keyPath: "id"` + index `by_plan`) ; v1 : un PDF par plan (`keyPath: "planId"`).
@@ -168,14 +172,18 @@
       let octets = 0;
       docs.forEach(function(d) {
         octets += Number(d.size) || 0;
-        if (d.embarque && d.embedIdx !== undefined && d.embedIdx !== null) parRang[d.embedIdx] = true;
+        if (d.embarque && d.embedIdx !== undefined && d.embedIdx !== null) parRang[d.embedIdx] = d;
       });
 
       // Mêmes plafonds (nombre ET poids) qu'un import manuel : un plan ne remplit pas la base à lui seul.
       let places = MAX_DOCS_PAR_PLAN - docs.length;
       const aFaire = [];
       embarques.forEach(function(e, i) {
-        if (parRang[i]) return;              // déjà copié : on ne refetch MÊME PAS
+        const copie = parRang[i];
+        // Déjà copié sous son vrai nom : on ne refetch MÊME PAS. Une copie au nom générique (`histoire-N.pdf`, posée
+        // quand le nom du fichier du ZIP se perdait) est refaite à la même clé, sans prendre de place.
+        if (copie && (copie.name === e.name || !/^histoire-\d+\.pdf$/.test(copie.name || ""))) return;
+        if (copie) { octets -= Number(copie.size) || 0; aFaire.push({ rang: i, url: e.url, name: e.name }); return; }
         if (places <= 0) return;
         places--;
         aFaire.push({ rang: i, url: e.url, name: e.name });
@@ -188,6 +196,12 @@
           return fetch(item.url).then(function(r) {
             if (!r.ok) throw new Error("HTTP " + r.status);
             return r.blob();
+          }).then(function(brut) {
+            // 🩸 Une réponse 200 peut être l'index.html du Service Worker (navigation hors ligne) : jamais en base.
+            return window.ktaContenuPdf(brut).then(function(estPdf) {
+              if (!estPdf) throw new Error("contenu qui n'est pas un PDF");
+              return window.ktaBlobPdf(brut);
+            });
           }).then(function(blob) {
             const taille = blob.size || 0;
             if (octets + taille > MAX_TOTAL_BYTES) {
@@ -199,7 +213,7 @@
               id:       _idEmbed(planId, item.rang),
               planId:   String(planId),
               blob:     blob,
-              name:     item.name || "histoire.pdf",
+              name:     window.ktaNomPdf(item.name || "histoire.pdf"),
               size:     taille,
               addedAt:  Date.now(),
               embarque: true,      // → libellé « livré avec le plan »
@@ -311,10 +325,32 @@
       const url = _resoudreCheminEmbed(p);
       if (!url) return;
       const base = (typeof p === "string" && p.indexOf("blob:") !== 0)
-        ? String(p).split("/").pop() : ("histoire-" + (i + 1) + ".pdf");
+        ? String(p).split("/").pop() : (_nomDuFichierZip(p) || ("histoire-" + (i + 1) + ".pdf"));
       out.push({ url: url, name: base });
     });
     return out;
+  }
+
+  // Un plan ZIP a des blob: URL dans PLAN_CONFIG (config.js > cloneAndResolvePlanConfig) : le vrai nom du fichier
+  // se retrouve dans l'entrée RUNTIME_ASSETS de même URL.
+  function _nomDuFichierZip(url) {
+    const assets = window.RUNTIME_ASSETS || {};
+    const cles = Object.keys(assets);
+    for (let i = 0; i < cles.length; i++) {
+      const e = assets[cles[i]];
+      if (e && e.url === url) return (e.file && e.file.name) || cles[i].split("/").pop();
+    }
+    return null;
+  }
+
+  // Remplace la blob URL vivante (une seule à la fois : bitmap épinglée sur iOS) par celle d'un Blob typé PDF.
+  function _poserUrl(blob) {
+    if (_pdfBlobUrl) {
+      try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {}
+      _pdfBlobUrl = null;
+    }
+    _pdfBlobUrl = URL.createObjectURL(blob);
+    return _pdfBlobUrl;
   }
 
 
@@ -325,19 +361,26 @@
     return _idbListe(_currentPlanId());
   }
 
-  // Une seule blob URL vivante : la précédente est révoquée (bitmap épinglée sur iOS).
+  // Document de la base : Blob retypé en PDF (les copies anciennes sont en application/octet-stream).
   function _urlDeDoc(id) {
     return _idbGetDoc(id).then(function(rec) {
       if (!rec || !rec.blob) return null;
-      if (_pdfBlobUrl) {
-        try { URL.revokeObjectURL(_pdfBlobUrl); } catch(e) {}
-        _pdfBlobUrl = null;
-      }
-      _pdfBlobUrl = URL.createObjectURL(rec.blob);
+      const blob = window.ktaBlobPdf(rec.blob);
       _sessionPdfMeta = { id: rec.id, name: rec.name, size: rec.size };
-      return { url: _pdfBlobUrl, name: rec.name, size: rec.size, id: rec.id,
+      return { url: _poserUrl(blob), blob: blob, name: rec.name, size: rec.size, id: rec.id,
                fourni: !!rec.embarque };
     });
+  }
+
+  // Document livré avec le plan, affiché en direct (copie absente) : lu, vérifié (%PDF), retypé. null si le
+  // chemin ne mène à aucun PDF — jamais un lien vers ce chemin (404, ou index.html du Service Worker hors ligne).
+  function _blobEmbarque(url) {
+    return fetch(url).then(function(r) {
+      if (!r.ok) return null;
+      return r.blob().then(function(brut) {
+        return window.ktaContenuPdf(brut).then(function(estPdf) { return estPdf ? window.ktaBlobPdf(brut) : null; });
+      });
+    }).catch(function() { return null; });
   }
 
   // Ajoute un document (ne remplace rien) après contrôle des plafonds.
@@ -660,6 +703,10 @@
 
     if (!opts.force && wrap.getAttribute("data-rendu") === "1") return;
 
+    if (window.KtaVisionneusePdf) window.KtaVisionneusePdf.liberer(wrap);
+    const oldVpdf = wrap.querySelector(".kta-histoire-pdf-vpdf");
+    if (oldVpdf) oldVpdf.remove();
+    wrap.classList.remove("kta-histoire-pdf-avec-vpdf");
     // 🩸 Vider l'iframe AVANT de la retirer (bitmap PDF épinglée sur WebKit).
     const oldIframe = wrap.querySelector("iframe");
     if (oldIframe) { try { oldIframe.src = ""; } catch(e) {} oldIframe.remove(); }
@@ -667,7 +714,11 @@
     if (fallback) fallback.remove();
     const actions = wrap.querySelector(".kta-histoire-pdf-actions");
     if (actions) actions.remove();
+    const introuvable = wrap.querySelector(".kta-histoire-pdf-introuvable");
+    if (introuvable) introuvable.remove();
     wrap.setAttribute("data-rendu", "1");
+    // Lecture asynchrone du document : seul le DERNIER rendu demandé affiche (deux clics rapides, un seul visible).
+    const jeton = ++_jetonRendu;
 
     if (toolbar) toolbar.style.display = "flex";
 
@@ -714,10 +765,15 @@
 
       if (sel.embarque) {
         if (meta) meta.textContent = window.I18n.t("histoire.pdf.embarqueMeta");
-        _displayPdfInWrap(sel.url, sel.nomFichier || "histoire.pdf");
+        _blobEmbarque(sel.url).then(function(blob) {
+          if (jeton !== _jetonRendu) return;
+          if (!blob) { _afficherIntrouvable(); return; }
+          _displayPdfInWrap(_poserUrl(blob), sel.nomFichier || "histoire.pdf", blob);
+        });
         return;
       }
       _urlDeDoc(sel.id).then(function(info) {
+        if (jeton !== _jetonRendu) return;
         if (!info) { _docSelectionne = null; _renderPdf({ force: true }); return; }
         if (meta) {
           meta.textContent = window.I18n.t(
@@ -725,9 +781,19 @@
               name: info.name, kb: Math.round((info.size || 0) / 1024)
             });
         }
-        _displayPdfInWrap(info.url, info.name);
+        _displayPdfInWrap(info.url, info.name, info.blob);
       });
     });
+  }
+
+  function _afficherIntrouvable() {
+    const wrap = document.getElementById("kta-histoire-pdf-wrap");
+    if (!wrap) return;
+    const p = document.createElement("p");
+    p.className = "kta-histoire-pdf-introuvable kta-tx-warn";
+    p.innerHTML = window.ktaIcone("triangle-alert") + " ";
+    p.appendChild(document.createTextNode(window.I18n.t("histoire.pdf.introuvable")));
+    wrap.appendChild(p);
   }
 
   // Clic = afficher ; liste masquée s'il n'y a qu'un document.
@@ -763,36 +829,66 @@
     });
   }
 
-  function _displayPdfInWrap(url, name) {
+  // `url` = blob: URL typée PDF de `blob` (jamais un chemin : cf _blobEmbarque).
+  // Visionneuse d'abord ; échec (chargement, rendu, document protégé) → affichage sans visionneuse, au même endroit.
+  function _displayPdfInWrap(url, name, blob) {
     const wrap = document.getElementById("kta-histoire-pdf-wrap");
     if (!wrap) return;
+    const vp = window.KtaVisionneusePdf;
+    if (!vp || !vp.disponible()) { _afficherSansVisionneuse(wrap, url, name, blob); return; }
+    // Avec la visionneuse, la barre d'actions passe AU-DESSUS du document (pas en surimpression sur la page 1).
+    wrap.classList.add("kta-histoire-pdf-avec-vpdf");
+    _poserActions(wrap, url, name, blob);
+    const hote = document.createElement("div");
+    hote.className = "kta-histoire-pdf-vpdf";
+    wrap.appendChild(hote);
+    vp.ouvrir(hote, blob, { nom: name }).catch(function(err) {
+      // Conteneur vidé entre-temps (autre document, fermeture) : rien à remplacer.
+      if (!hote.isConnected || (err && err.name === "AbortError")) return;
+      console.warn("[ModeHistoire] visionneuse indisponible, repli :", err && err.message);
+      hote.remove();
+      wrap.classList.remove("kta-histoire-pdf-avec-vpdf");
+      const actions = wrap.querySelector(".kta-histoire-pdf-actions");
+      if (actions) actions.remove();
+      _afficherSansVisionneuse(wrap, url, name, blob);
+    });
+  }
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
-                  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  // Barre en surimpression : « Ouvrir dans un onglet » hors iPhone (lecteur du navigateur : recherche, impression)
+  // et l'action Ouvrir / Enregistrer.
+  function _poserActions(wrap, url, name, blob) {
+    const bloc = document.createElement("div");
+    bloc.className = "kta-histoire-pdf-actions";
+    if (!window.ktaEstIos()) {
+      bloc.insertAdjacentHTML("beforeend",
+        '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
+           'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
+           'title="' + window.I18n.t("histoire.pdf.openTab.title") + '">' +
+          window.ktaIcone("external-link") + ' ' + window.I18n.t("histoire.pdf.openTab") +
+        '</a>');
+    }
+    bloc.appendChild(window.ktaActionPdf(blob, name, url));
+    wrap.appendChild(bloc);
+  }
 
-    const safeName = String(name || "histoire.pdf").replace(/"/g, "&quot;");
+  function _afficherSansVisionneuse(wrap, url, name, blob) {
+    const isIOS = window.ktaEstIos();
 
+    // iPhone : pas d'iframe (une seule page rendue), pas de lien target=_blank (le navigateur intégré à la PWA
+    // installée ne voit pas ses blob: URL) ; l'action ktaActionPdf passe par la feuille de partage.
     if (isIOS) {
-      wrap.insertAdjacentHTML("beforeend",
-        '<div class="kta-histoire-pdf-fallback">' +
-          '<p style="margin-bottom:12px;">' + window.I18n.t("histoire.pdf.ios.info") + '</p>' +
-          '<a class="kta-btn kta-btn-primary" href="' + url + '" download="' + safeName + '" target="_blank" rel="noopener noreferrer">' +
-            window.I18n.t("histoire.pdf.ios.open") +
-          '</a>' +
-        '</div>'
-      );
+      const bloc = document.createElement("div");
+      bloc.className = "kta-histoire-pdf-fallback";
+      const info = document.createElement("p");
+      info.style.marginBottom = "12px";
+      info.textContent = window.I18n.t("histoire.pdf.ios.info");
+      bloc.appendChild(info);
+      bloc.appendChild(window.ktaActionPdf(blob, name, url));
+      wrap.appendChild(bloc);
     } else {
       // Bouton « Ouvrir » en plus de l'iframe : si la CSP du serveur bloque l'iframe (frame-src), et pour qui
       // préfère un onglet dédié (zoom natif, copie du texte).
-      wrap.insertAdjacentHTML("beforeend",
-        '<div class="kta-histoire-pdf-actions">' +
-          '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
-             'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
-             'title="' + window.I18n.t("histoire.pdf.openTab.title") + '">' +
-            window.ktaIcone("external-link") + ' ' + window.I18n.t("histoire.pdf.openTab") +
-          '</a>' +
-        '</div>'
-      );
+      _poserActions(wrap, url, name, blob);
       const iframe = document.createElement("iframe");
       iframe.className = "kta-histoire-pdf-iframe";
       iframe.src = url;
@@ -824,6 +920,7 @@
       const ta = document.getElementById("kta-histoire-note");
       if (ta) _saveNote(ta.value);
     }
+    if (window.KtaVisionneusePdf) window.KtaVisionneusePdf.liberer(_modal);
     // Vider l'iframe AVANT le remove (bitmap PDF iOS).
     const iframe = _modal.querySelector("iframe");
     if (iframe) {

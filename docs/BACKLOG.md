@@ -33,7 +33,7 @@
 
 - **Certificats TLS : renouvellement de dev et pro** — contrôlés le 23/11/2026 : tous valides (TLS 1.3), mais dev et pro
   expirent le 03/01/2027 sans avoir jamais été renouvelés (certbot agit à 30 jours, vers le 04/12). Sur le VPS :
-  `certbot certificates`, minuteur certbot, `certbot renew --dry-run`. Idée liée : alerte d'échéance dans la sonde.
+  `certbot certificates`, minuteur certbot, `certbot renew --dry-run`. Alerte posée : sonde horaire en échec à 20 jours.
   `qui: KARMA · action: dry-run certbot sur le VPS, puis Claude recontrôle les dates le 05/12 · fini: dev et pro à une nouvelle
   échéance (avril 2027) · depuis: 23/11/2026 · taille: XS`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
@@ -43,24 +43,10 @@
 
 ## Ensuite
 
-- **Masse au sol : rampe douce placée par l'utilisateur** — QCM 14/11 : une ou plusieurs rampes, « Placer une pente » puis toucher un bord bas ;
-  pente déduite (hauteur ÷ longueur jusqu'au bord opposé) ; les autres bords en front vertical ; chevrons en 2D vers le
-  haut. Sans rampe placée, talus 30° automatique inchangé. Priorité KARMA (« un gros plus »), juste après talus honnête.
-  `qui: Claude · action: lot après talus honnête · fini: rampe en 2D (chevrons) et 3D, fiche, KMZ, checkup
-  · depuis: 14/11/2026 · taille: M`
 - **Sol abaissé qui débouche sur le niveau du dessous** — décidé 14/11 (après le lot 4 de la masse au sol) : en 3D, le
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
-- **Masse au sol en 3D (remblais, lot 4)** — sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ;
-  mesure de perf. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lot 4 de ETUDE_REMBLAIS.md · fini: checkup-vue-3d vert, perf mesurée · depuis: 11/11/2026
-  · taille: L`
-- **Remblais : volume exploité par paliers et itinéraire (lots 5 et 6)** — volume par paliers ; coût de la masse au
-  sol séparé de la distance, temps du guidage. `docs/ETUDE_REMBLAIS.md`.
-  `qui: Claude · action: lots 5 puis 6 de ETUDE_REMBLAIS.md · fini: volume et itinéraire conformes à l'étude
-  · depuis: 11/11/2026 · taille: M`
-
 - **Niveaux visibles 2D : décocher un niveau, « Tout afficher »** — ✅ mesuré 17/11 (CPU ×4, 4 000 structures, 2 500
   tracés, 1 510 zones, 5 niveaux) : décocher 1 niveau sur 5 = 2,2 s, « Tout afficher » = 2,1 s (couches de session
   recréées). Pistes : ne traiter que l'écart, puis garder les couches des niveaux masqués (~1 Mo pour 10 000).
@@ -70,16 +56,11 @@
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
-- **Jonctions qui traversent un mur, mode strict par plan** — les liens de jonction imparfaite
-  (`pathfinder.js > _enrichirGrapheAvecCroisements`) ignorent murs en ligne et zones inaccessibles ; idée KARMA d'un
-  mode strict par plan (tolérance 0). ⚠️ D'abord rejouer l'itinéraire réel : suit-il un VRAI tracé à travers le mur ?
-  `qui: Claude · action: rejouer le trajet, refuser un lien qui croise un obstacle dur, topo du mode strict · fini: lien
-  coupé par un mur ligne fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
-- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
-  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
-  des niveaux, et correction du message faux `prof.incoherent.suite`. Validé par KARMA le 18/11/2026.
-  `qui: Claude · action: avertissement dans la table des niveaux + message corrigé · fini: écart négatif signalé,
-  checkup · depuis: 12/11/2026 · taille: S`
+- **Mode strict par plan (jonctions imparfaites)** — idée KARMA : tolérance 0 sur un plan choisi. ✅ vérifié 24/11/2026 :
+  un lien de tolérance qui croise un mur en ligne ou une zone inaccessible n'est plus posé (`pathfinder.js > _lienCoupe`).
+  Reste le mode strict lui-même : topo (options et reco) dans le rapport du lot `niveaux-jonctions`.
+  `qui: KARMA · action: choisir une option du topo du mode strict · fini: option choisie, ou idée close dans
+  DECISIONS_FERMEES · depuis: 05/11/2026 · taille: S`
 
 ## Plus tard
 
@@ -143,15 +124,17 @@
 
 ## Entrant
 
-- **Remplir un front : calcul hors du fil principal** — `ktaDetection.js > suivreTrait` tourne sur le fil principal : un
-  front de plus de ~1 000 px sans carrefour dans un réseau dense lit 4 096 px et fige l'app ~4 s au PC (mesuré au lot
-  remplir-front, 23/11/2026) ; réseau ordinaire ~80 ms. Le passer au worker de la détection, comme la détection auto.
-  `qui: Claude · action: suivreTrait dans le worker · fini: aucune tâche longue de plus de 200 ms au cas mesuré, checkup · depuis: 23/11/2026 · taille: S`
+- **Vérifier le plan : bout coupé du réseau par un mur** — depuis le correctif des jonctions (51ace966), l'itinéraire
+  refuse un lien de jonction imparfaite qui traverse un mur en ligne ou une zone inaccessible ; mais 🔗 Raccords et
+  Vérifier le plan (C5, `KtaRaccords.detecter`) voient toujours ce bout comme raccordé : l'auteur n'apprend pas que
+  l'itinéraire ne passe plus là. Cas rare (vu au lot niveaux-jonctions, 24/11/2026).
+  `qui: Claude · action: signaler dans Vérifier le plan un bout dont le seul lien est coupé (mêmes obstacles que
+  pathfinder.js > _lienCoupe) · fini: cas fictif signalé, check-verifier-plan rouge puis vert · depuis: 24/11/2026 · taille: S`
 
-- **Télécharger le plan : structures en ligne à la loi du terrain** — `utils.js > telechargerPlan` dessine les structures
-  en ligne (mur-ligne, front, arc) à `style.weight`, alors que l'export avancé et le PDF suivent la loi du terrain
-  (`exporter.js > _largeurLigneStructExp`). Vu au lot exports lisibles, 22/11/2026.
-  `qui: Claude · action: aligner telechargerPlan sur la loi du terrain · fini: même épaisseur que l'export avancé, checkup · depuis: 22/11/2026 · taille: XS`
+- **Safari ancien : aperçu PDF de repli vide** — sur un Safari trop ancien pour la visionneuse (avant 26.2), le repli
+  est une iframe sur un blob:, que WebKit refuse sous `frame-ancestors 'none'` (🔬 hypothèse, vu au lot
+  visionneuse-pdf, 24/11/2026). Le bouton « Ouvrir / Enregistrer » reste. Défaut antérieur au lot.
+  `qui: Claude · action: reproduire sous WebKit puis topo · fini: repli lisible ou retiré au profit du bouton, checkup · depuis: 24/11/2026 · taille: S`
 
 - **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
   fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas

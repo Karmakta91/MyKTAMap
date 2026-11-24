@@ -11,11 +11,14 @@
 // plan » (utils.js > telechargerPlan, canvas saisi avant l'encodage) : des pixels de la couleur de remplissage du
 // canon à l'intérieur de chaque carré (avant : contour de weight × résolution, carré entièrement noir), et un
 // contour encore présent (pixels sombres). Un front et un mur en ligne gardent leur trait (couleur du canon).
+// Structures en ligne (front, mur en ligne, arc) : « Télécharger le plan » les trace à la MÊME épaisseur que l'export
+// avancé à la résolution 1, celle de la loi du terrain (structures.js > ktaLargeurLigneStructurePourRatio), pas à
+// `style.weight` (épaisseurs lues au trait, `stroke` espionné ; à 3 px/m la loi donne 2,4 px au front, 2 px à l'arc).
 // Pilier à bras : contrôlé à la résolution 2 seulement (à 3 px, sa croix couvre le centre, voulu ;
 // checkup-pilier-bras.js le suit à sa taille).
 // Usage : node scripts/smoke/checkup-export-petits-piliers.js (SMOKE_PORT pour une autre copie) · code :
-// exporter.js > _contourSurfaceExp, utils.js > telechargerPlan > drawPolygon, structures.js >
-// ktaBordSurfacePourLargeur · doc : exports.md §69.1
+// exporter.js > _contourSurfaceExp, utils.js > telechargerPlan > drawPolygon / largeurLigneStruct, structures.js >
+// ktaBordSurfacePourLargeur / ktaLargeurLigneStructurePourRatio · doc : exports.md §69.1
 // =====================================================================
 "use strict";
 
@@ -54,7 +57,9 @@ function objets(cx, cy, m) {
       { uid: "ck_pp_mur", type: "mur", level: 0, points: carre(3, 0) },
       { uid: "ck_pp_f1", type: "front-1", level: 0, points: [{ x: cx, y: cy + 16 * m }, { x: cx + 6 * m, y: cy + 16 * m }] },
       { uid: "ck_pp_ml", type: "mur-ligne", level: 0,
-        points: [{ x: cx + 16 * m, y: cy + 16 * m }, { x: cx + 22 * m, y: cy + 16 * m }] }
+        points: [{ x: cx + 16 * m, y: cy + 16 * m }, { x: cx + 22 * m, y: cy + 16 * m }] },
+      { uid: "ck_pp_arc", type: "arc", level: 0,
+        points: [{ x: cx + 32 * m, y: cy + 16 * m }, { x: cx + 38 * m, y: cy + 16 * m }] }
     ],
     calque: [
       { uid: "ck_pp_cp1", type: "pilier-1", level: 0, points: carre(0, 1) },
@@ -119,6 +124,26 @@ function installerMesure() {
     return { uid: a.uid, type: a.type, ligne: !!a.ligne, plein: plein, sombre: sombre, total: total };
   });
   };
+  // Épaisseurs des traits à bouts ronds (structures en ligne ; les contours de surface n'ont pas de bouts ronds),
+  // par couleur de trait, pendant `fn` : CanvasRenderingContext2D.prototype.stroke espionné.
+  window.__ckEpaisseurs = async function (fn) {
+    const orig = CanvasRenderingContext2D.prototype.stroke, vu = {};
+    CanvasRenderingContext2D.prototype.stroke = function () {
+      if (this.lineCap === "round") {
+        const k = String(this.strokeStyle).toLowerCase();
+        (vu[k] = vu[k] || []).push(Math.round(this.lineWidth * 100) / 100);
+      }
+      return orig.apply(this, arguments);
+    };
+    try { await fn(); } finally { CanvasRenderingContext2D.prototype.stroke = orig; }
+    return vu;
+  };
+  // Couleur du canon telle que le canvas la rend dans strokeStyle (#rrggbb).
+  window.__ckCouleurTrait = function (c) {
+    const k = document.createElement("canvas").getContext("2d");
+    k.strokeStyle = c;
+    return String(k.strokeStyle).toLowerCase();
+  };
 }
 
 async function jouer(nav, moteur) {
@@ -158,7 +183,7 @@ async function jouer(nav, moteur) {
         { id: "ck-pp", label: "Calque checkup", file: a.fichier, visible: true }]);
       window.dataLayerGroups["ck-pp"] = window.L.layerGroup().addTo(window.map);
     }, { O: O, fichier: CALQUE });
-    const attendus = O.session.map(function (s) {
+    const attendus = O.session.filter(function (s) { return s.type !== "arc"; }).map(function (s) {
       return Object.assign({}, s, { ligne: s.type === "front-1" || s.type === "mur-ligne" });
     }).concat(O.calque);
 
@@ -210,6 +235,45 @@ async function jouer(nav, moteur) {
           ") de 1 m lisible, plein à l'intérieur et contour présent", e);
       });
     }
+
+    // ── Structures en ligne : même épaisseur dans « Télécharger le plan » que dans l'export avancé ×1 ──
+    const ep = await page.evaluate(async function () {
+      const caches = [];
+      Object.keys(window.dataLayerGroups).forEach(function (id) {
+        const g = window.dataLayerGroups[id];
+        if (id !== "ck-pp" && g && window.map.hasLayer(g)) { window.map.removeLayer(g); caches.push(g); }
+      });
+      const avance = await window.__ckEpaisseurs(function () {
+        return window.MyKTAMapExporterGenererCanvas({
+          ann: { points: false, roads: false, zones: false, structures: true },
+          scale: 1, bg: "white", imageLayers: {}, dataLayers: { "ck-pp": true }
+        });
+      });
+      const origB = HTMLCanvasElement.prototype.toBlob, clic = HTMLAnchorElement.prototype.click;
+      HTMLCanvasElement.prototype.toBlob = function (cb) { cb(new Blob(["x"])); };
+      HTMLAnchorElement.prototype.click = function () {};
+      let rapide;
+      try { rapide = await window.__ckEpaisseurs(function () { return window.telechargerPlan(); }); } finally {
+        HTMLCanvasElement.prototype.toBlob = origB;
+        HTMLAnchorElement.prototype.click = clic;
+        caches.forEach(function (g) { window.map.addLayer(g); });
+      }
+      // 🩸 Mur en ligne et arc peuvent partager leur couleur de trait : on compare les listes d'épaisseurs de la
+      // couleur (triées), et la loi du type doit y être, jamais `weight`.
+      const trie = function (l) { return (l || []).slice().sort(function (a, b) { return a - b; }); };
+      return ["front-1", "mur-ligne", "arc"].map(function (t) {
+        const st = window.ktaResolveStyle("structures", t, { flat: true }), k = window.__ckCouleurTrait(st.color);
+        return { type: t, weight: st.weight, loi: window.ktaLargeurLigneStructurePourRatio(st, 1),
+                 avance: trie(avance[k]), rapide: trie(rapide[k]) };
+      });
+    });
+    ep.forEach(function (e) {
+      verifier(e.loi !== e.weight, e.type + " : la loi du terrain (" + e.loi + " px) diffère de l'épaisseur de la " +
+        "légende (" + e.weight + " px), le contrôle porte", e);
+      verifier(e.rapide.indexOf(e.loi) >= 0 && e.rapide.indexOf(e.weight) < 0 &&
+        e.rapide.join() === e.avance.join(), "Télécharger le plan : " + e.type + " tracé à la loi du terrain (" +
+        e.loi + " px), mêmes épaisseurs que l'export avancé ×1 (" + e.avance.join(", ") + ")", e);
+    });
 
     verifier(erreurs.length === 0, "aucune erreur de page", erreurs.slice(0, 4));
     await page.evaluate(function () {

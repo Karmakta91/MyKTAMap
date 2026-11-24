@@ -134,8 +134,8 @@ imite le site en ligne, ETag sans gzip) :
   téléchargement de ~7 Mo). Une coupure dans cette fenêtre laisse l'app sans hors-ligne ; la pastille de l'accueil
   le montre. La promesse hors ligne vaut pour qui est entré une fois en ligne, précache fini.
 - **Installation** : précache en `cache: "no-cache"` (`sw.js > _cacheAddDiag`) — revalidé par ETag, un fichier inchangé
-  répond 304 et ne repart pas. Mesuré, première visite page + SW : 23,8 → 15,8 Mo ; réinstallation après un correctif :
-  15,9 → 1,7 Mo (13 fichiers, 229 réponses 304). Puis `skipWaiting()` + `clients.claim()`.
+  répond 304 et ne repart pas. Mesuré, première visite page + SW : 20,8 Mo, dont ~3 Mo de visionneuse PDF ;
+  réinstallation après un correctif : 15,9 → 1,7 Mo (13 fichiers, 229 réponses 304). Puis `skipWaiting()` + `clients.claim()`.
 - **Correctif sans bump** : la page **contrôlée** lit `deploiement.json` (commit servi, écrit par le script de
   déploiement à la racine, ou sous `data/` pour une installation qui sert son propre dossier de données) ; le SW
   répond toujours 200 `{ commit | null }` (réseau seul, jamais de 404 ni de page de l'app). Commit différent de
@@ -287,13 +287,19 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
   (`docs/RELEASE_GATE.md`) lançable sans poste, depuis un téléphone ; la marche 2 (12 points sur dev, à la main)
   reste manuelle.
 - **`docker.yml`** : job `ci-verte` (attend la CI du commit taggé, 20 min max) avant toute image ghcr.io.
-- **`sonde-integrite.yml`** (toutes les heures, et à la main) : le code SERVI par myktamap.fr est-il celui du dépôt ?
+- **`sonde-integrite.yml`** (toutes les heures, et à la main) : le code SERVI par myktamap.fr est-il celui du dépôt, et
+  ses certificats TLS sont-ils loin de l'échéance ?
   (dev.myktamap.fr n'est plus sondé : réservé au réseau Tailscale, il répond 403 aux exécuteurs GitHub ; à la main
   depuis le poste relié : `node scripts/release/sonde-integrite.js https://dev.myktamap.fr`.) `scripts/release/sonde-integrite.js` lit `/deploiement.json` (commit déployé : connu du dépôt et
   descendant de sa branche), puis compare l'empreinte de chaque fichier de code suivi (html, js, css, json) servi au
   contenu Git. Un écart = run en échec = e-mail. Raison : après un piratage du serveur, le chiffrement protège ce qui
   est stocké, pas une page modifiée en place — il faut le SAVOIR. Tourne hors du serveur ; limite : on ne voit que ce
   qui nous est servi. À la main : `node scripts/release/sonde-integrite.js https://myktamap.fr`.
+  Second job, `certificats`, indépendant : `scripts/release/sonde-certificats.sh` lit la date d'expiration TLS de
+  myktamap.fr, www, dev, pro et doc (`openssl s_client`, 15 s par domaine) ; une échéance à moins de `SEUIL_JOURS`
+  jours (20 ; certbot renouvelle à 30) fait échouer le run, un domaine injoignable en TLS n'est qu'un avertissement.
+  dev est compris : la poignée de main TLS passe avant le 403 de nginx. À la main, à l'identique :
+  `bash scripts/release/sonde-certificats.sh` (`SEUIL_JOURS=60` pour voir l'échec).
 - **`merge-main.ps1`** : refuse si la branche n'est pas poussée telle quelle ou si sa CI n'est pas verte — il lit
   la même marque `refs/ci/verte/<branche>` que le VPS (`git ls-remote`, sans jeton ni coffre d'identifiants Windows,
   donc utilisable dans une session SSH ouverte depuis le téléphone) ; marque illisible = `DEROGE`. Tient lieu de

@@ -12,7 +12,8 @@
 // true / false explicites, undefined = suivre le niveau supérieur.
 // Expose window.LegendCustomization : getLabel, isVisible, getSource, getColor/getBorderColor, listEntries,
 //   listCustomEntries, findCustomEntry, setSession*, add/update/removeCustomEntry, countUsages,
-//   listOrphanTypes, resetSession, onCustomEntriesChange, ouvrirEditeur, ouvrirAddDialog ;
+//   listOrphanTypes, resetSession, onCustomEntriesChange, ouvrirEditeur, ouvrirAddDialog, imageEnIcone,
+//   listAnciensTags, rendreModifiable ;
 //   hooks loadSessionState / getSessionState (SessionPersist), loadPlanState (main.js après PLAN_CONFIG),
 //   lireAvecEtats (lecture d'une légende d'un plan non chargé).
 // Catégories : icones · traces · zones · structures.
@@ -175,8 +176,11 @@ window.LegendCustomization = (function() {
     };
   }
 
+  // Prévient les abonnés (map.js > _enregistrerIconesCustom) : les icônes d'une session restaurée ou rendue par
+  // l'échange du Générateur s'enregistrent sur la carte, et celles qui en sortent reviennent à leur repli.
   function loadSessionState(state) {
     _sessionState = _normalize(state);
+    _fireCustomChange();
   }
 
   function getSessionState() {
@@ -672,6 +676,75 @@ window.LegendCustomization = (function() {
     return CATEGORIES.slice();
   }
 
+  // ── Images des icônes ──────────
+  // Image (File / Blob, ou URL même origine : blob:, data:, chemin) → PNG data-URI de ICONE_PX de côté au plus,
+  // jamais agrandie. ⚠️ contrat : une icône de légende est TOUJOURS un data-URI, autonome : elle part telle quelle
+  // avec la session, son ZIP, les exports et la régénération du plan. 🩸 Une URL blob: (image d'un plan local)
+  // meurt au rechargement de la page : gardée en session, elle donnait une icône cassée.
+  // → Promise<string>, rejetée si l'image est illisible.
+  const ICONE_PX = 64;
+  function imageEnIcone(source) {
+    return new Promise(function(resolve, reject) {
+      let url = null, aRevoquer = false;
+      if (source && typeof source === "object" && typeof Blob !== "undefined" && source instanceof Blob) {
+        url = URL.createObjectURL(source); aRevoquer = true;
+      } else if (typeof source === "string" && source) {
+        url = source;
+      }
+      if (!url) { reject(new Error("source vide")); return; }
+      const img = new Image();
+      const fin = function() { if (aRevoquer) { try { URL.revokeObjectURL(url); } catch(e) {} } };
+      img.onload = function() {
+        try {
+          // Un SVG sans dimensions intrinsèques rend 0 × 0 : dessiné au carré.
+          const w0 = img.naturalWidth || ICONE_PX, h0 = img.naturalHeight || ICONE_PX;
+          const k = Math.min(1, ICONE_PX / Math.max(w0, h0));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(w0 * k));
+          c.height = Math.max(1, Math.round(h0 * k));
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          const out = c.toDataURL("image/png");
+          fin();
+          if (!/^data:image\/png;base64,/.test(out)) { reject(new Error("canvas illisible")); return; }
+          resolve(out);
+        } catch(e) { fin(); reject(e); }
+      };
+      img.onerror = function() { fin(); reject(new Error("image illisible")); };
+      img.src = url;
+    });
+  }
+
+  // Anciens tags courts du plan : clés de PLAN_CONFIG.icons hors catalogue (DEFAULT_LABELS.icones), ni `cust-…`,
+  // ni déjà rendues modifiables. → [{ tag, iconUrl }]. Le tag sert d'id d'entrée : il doit passer _normalize.
+  const ID_ENTREE_SUR = /^[\w.:-]{1,80}$/;
+  function listAnciensTags() {
+    const icones = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+    return Object.keys(icones).filter(function(tag) {
+      return tag !== "default" && tag !== "track" && !/^cust-/.test(tag) && ID_ENTREE_SUR.test(tag) &&
+        !Object.prototype.hasOwnProperty.call(DEFAULT_LABELS.icones, tag) && !findCustomEntry(tag) &&
+        typeof icones[tag] === "string" && icones[tag];
+    }).sort(function(x, y) { return x.localeCompare(y); })
+      .map(function(tag) { return { tag: tag, iconUrl: icones[tag] }; });
+  }
+
+  // « montag_2-b » → « Montag 2 b ».
+  function libelleDeTag(tag) {
+    const t = String(tag || "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : String(tag || "");
+  }
+
+  // « Rendre modifiable » : l'ancien tag devient une icône de légende de MÊME id (les points ne changent pas),
+  // renommable, dont l'image se change. Image recopiée en data-URI (cf imageEnIcone) ; illisible → celle du plan
+  // telle quelle. → Promise<id|null>.
+  async function rendreModifiable(tag) {
+    const ancien = listAnciensTags().find(function(a) { return a.tag === tag; });
+    if (!ancien) return null;
+    let iconUrl = ancien.iconUrl;
+    try { iconUrl = await imageEnIcone(ancien.iconUrl); }
+    catch(e) { console.warn("[LegendCustomization] image de « " + tag + " » non recopiée :", e && e.message); }
+    return addCustomEntry({ id: tag, category: "icones", label: libelleDeTag(tag), iconUrl: iconUrl });
+  }
+
   // ── Éditeur autonome (modale) ──────────
   // Même panneau que la modale Export PNG, ouvrable de partout (« ✏️ Modifier » de la Légende).
   // Les setters persistent via _persistSession. opts = { onChange, onClose }.
@@ -700,6 +773,8 @@ window.LegendCustomization = (function() {
             window.I18n.t("legend.editor.hintVisibilite") +
           '</p>' +
           '<div id="kta-legend-editor-list"></div>' +
+          // Un seul sélecteur pour toutes les lignes (« Changer l'icône ») ; pas de `capture` : galerie ou fichiers.
+          '<input type="file" accept="image/*" id="kta-legend-editor-fichier" hidden>' +
         '</div>' +
         '<div style="padding:12px 16px; border-top:1px solid var(--kta-bordure); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
           '<div style="display:flex; gap:8px;">' +
@@ -766,6 +841,11 @@ window.LegendCustomization = (function() {
       const btnRm = isCustomEntry
         ? '<button type="button" class="kta-legend-rm" title="' + window.I18n.t("legend.editor.rmCustomTitle") + '" ' + dataAttrs + '>' + window.ktaIcone("trash-2") + '</button>'
         : '';
+      // Icône personnalisée : son image se change (les icônes des types intégrés, non).
+      const btnIcone = (isCustomEntry && e.category === "icones")
+        ? '<button type="button" class="kta-legend-icone" title="' + window.I18n.t("legend.editor.changerIcone") + '" ' +
+            'aria-label="' + window.I18n.t("legend.editor.changerIcone") + '" ' + dataAttrs + '>' + window.ktaIcone("image") + '</button>'
+        : '';
 
       // Sélecteurs de couleur pour les types dessinables, BUILT-IN comme CUSTOM (mêmes carrés, à chaud).
       // Les ICÔNES (images) gardent la pastille statique. La couleur affichée vient de `listEntries`,
@@ -805,27 +885,52 @@ window.LegendCustomization = (function() {
                '<input type="text" class="kta-legend-label" placeholder="' + placeholder + '" ' +
                  'value="' + value + '" ' + dataAttrs + '>' +
                _sourceBadge(e.source) +
+               btnIcone +
                btnRm +
+             '</div>';
+    }
+
+    // Ancien tag court du plan (clé de PLAN_CONFIG.icons hors catalogue) : montré tel quel, « Rendre modifiable ».
+    function _renderAncienRow(a) {
+      return '<div class="kta-legend-row kta-legend-row-ancien" data-tag="' + _esc(a.tag) + '">' +
+               '<span class="kta-legend-vis"></span>' +
+               '<img src="' + _esc(a.iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">' +
+               '<span class="kta-legend-ancien-nom">' + _esc(a.tag) + '</span>' +
+               '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-legend-rendre" data-tag="' + _esc(a.tag) + '" ' +
+                 'title="' + window.I18n.t("legend.editor.rendreTitle") + '">' +
+                 window.ktaIcone("pencil") + ' ' + window.I18n.t("legend.editor.rendre") +
+               '</button>' +
              '</div>';
     }
 
     function _render() {
       const cont = document.getElementById("kta-legend-editor-list");
       if (!cont) return;
+      // Sections dépliées gardées d'un rendu à l'autre : changer une icône ou rendre un tag modifiable ne
+      // referme pas la section Icônes (fermée à l'ouverture).
+      const ouvertes = {};
+      cont.querySelectorAll("details.kta-legend-cat[data-cat]").forEach(function(d) { ouvertes[d.getAttribute("data-cat")] = d.open; });
       let html = "";
       CATEGORIES.forEach(function(cat) {
         const title = categoryTitle(cat);
         const entries = listEntries(cat);
         const customs = listCustomEntries(cat);
         const isIcones = (cat === "icones");
-        const sectionOpen = isIcones ? "" : "open";
-        html += '<details class="kta-legend-cat" ' + sectionOpen + '>' +
+        // 🩸 Pas d'anciens tags pendant l'échange du Générateur (persistance suspendue) : il édite la légende d'un
+        // AUTRE plan que PLAN_CONFIG, ses clés `icons` ne sont pas celles-ci.
+        const anciens = (isIcones && !_persistSuspendu) ? listAnciensTags() : [];
+        const sectionOpen = (cat in ouvertes ? ouvertes[cat] : !isIcones) ? "open" : "";
+        html += '<details class="kta-legend-cat" data-cat="' + cat + '" ' + sectionOpen + '>' +
                   '<summary>' + categoryIcon(cat) + _esc(title) +
-                    ' <span class="kta-legend-count">(' + (entries.length + customs.length) + ')</span>' +
+                    ' <span class="kta-legend-count">(' + (entries.length + customs.length + anciens.length) + ')</span>' +
                   '</summary>' +
                   '<div class="kta-legend-cat-body">';
         entries.forEach(function(e) { html += _renderEntryRow(e, false); });
         customs.forEach(function(e) { html += _renderEntryRow(e, true); });
+        if (anciens.length) {
+          html += '<p class="kta-legend-anciens-aide">' + window.I18n.t("legend.editor.anciensAide") + '</p>';
+          anciens.forEach(function(a) { html += _renderAncienRow(a); });
+        }
         html += '</div></details>';
       });
       cont.innerHTML = html;
@@ -894,6 +999,23 @@ window.LegendCustomization = (function() {
         if (e.target.matches(".kta-legend-label")) _applyFromUI(e.target);
       });
       body.addEventListener("click", async function(e) {
+        const btnIcone = e.target.closest ? e.target.closest(".kta-legend-icone") : null;
+        const btnRendre = e.target.closest ? e.target.closest(".kta-legend-rendre") : null;
+        if (btnIcone) {
+          const fichier = document.getElementById("kta-legend-editor-fichier");
+          if (!fichier) return;
+          fichier.setAttribute("data-custom-id", btnIcone.getAttribute("data-custom-id") || "");
+          fichier.value = "";
+          fichier.click();
+          return;
+        }
+        if (btnRendre) {
+          btnRendre.disabled = true;
+          const id = await rendreModifiable(btnRendre.getAttribute("data-tag"));
+          _render();
+          if (id && opts.onChange) opts.onChange();
+          return;
+        }
         if (e.target.matches(".kta-legend-rm")) {
           const id = e.target.getAttribute("data-custom-id");
           if (id) {
@@ -922,6 +1044,27 @@ window.LegendCustomization = (function() {
             if (opts.onChange) opts.onChange();
           }
         }
+      });
+    }
+
+    const champFichier = document.getElementById("kta-legend-editor-fichier");
+    if (champFichier) {
+      champFichier.addEventListener("change", async function() {
+        const id = champFichier.getAttribute("data-custom-id");
+        const f = champFichier.files && champFichier.files[0];
+        champFichier.value = "";
+        if (!id || !f) return;
+        let iconUrl;
+        try { iconUrl = await imageEnIcone(f); }
+        catch(err) {
+          console.warn("[LegendCustomization] image refusée :", err && err.message);
+          window.ktaAlerte(window.I18n.t("legend.editor.imageIllisible", { nom: f.name || "" }),
+            { type: "erreur", zIndex: 100100 });   // au-dessus de l'éditeur (100050)
+          return;
+        }
+        updateCustomEntry(id, { iconUrl: iconUrl });
+        _render();
+        if (opts.onChange) opts.onChange();
       });
     }
 
@@ -1215,6 +1358,10 @@ window.LegendCustomization = (function() {
     categoryIcon:          categoryIcon,
     listCategories:        listCategories,
 
-    ouvrirEditeur:         ouvrirEditeur
+    ouvrirEditeur:         ouvrirEditeur,
+    // Icônes : image → data-URI réduit, anciens tags courts du plan rendus modifiables.
+    imageEnIcone:          imageEnIcone,
+    listAnciensTags:       listAnciensTags,
+    rendreModifiable:      rendreModifiable
   };
 })();
