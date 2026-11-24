@@ -238,7 +238,7 @@ function Echec-Ci($t) { if ($DryRun) { Ko $t } else { Stop-Net $t } }
 $sha = (git rev-parse HEAD).Trim()
 $court = $sha.Substring(0, 7)
 $mCi = "non vérifiée (dry run)"
-$distantSha = (git rev-parse "origin/$branche" 2>$null)
+$distantSha = (git rev-parse --verify --quiet "origin/$branche")   # --quiet : rien sur stderr (Stop le prendrait pour une erreur)
 if (-not $distantSha -or $distantSha.Trim() -ne $sha) {
   Echec-Ci "$branche locale ≠ origin/$branche : pousse d'abord, la CI doit avoir testé exactement ce commit ($court)."
 } else {
