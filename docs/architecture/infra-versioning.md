@@ -134,8 +134,8 @@ imite le site en ligne, ETag sans gzip) :
   téléchargement de ~7 Mo). Une coupure dans cette fenêtre laisse l'app sans hors-ligne ; la pastille de l'accueil
   le montre. La promesse hors ligne vaut pour qui est entré une fois en ligne, précache fini.
 - **Installation** : précache en `cache: "no-cache"` (`sw.js > _cacheAddDiag`) — revalidé par ETag, un fichier inchangé
-  répond 304 et ne repart pas. Mesuré, première visite page + SW : 23,8 → 15,8 Mo ; réinstallation après un correctif :
-  15,9 → 1,7 Mo (13 fichiers, 229 réponses 304). Puis `skipWaiting()` + `clients.claim()`.
+  répond 304 et ne repart pas. Mesuré, première visite page + SW : 20,8 Mo, dont ~3 Mo de visionneuse PDF ;
+  réinstallation après un correctif : 15,9 → 1,7 Mo (13 fichiers, 229 réponses 304). Puis `skipWaiting()` + `clients.claim()`.
 - **Correctif sans bump** : la page **contrôlée** lit `deploiement.json` (commit servi, écrit par le script de
   déploiement à la racine, ou sous `data/` pour une installation qui sert son propre dossier de données) ; le SW
   répond toujours 200 `{ commit | null }` (réseau seul, jamais de 404 ni de page de l'app). Commit différent de

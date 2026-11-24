@@ -143,6 +143,11 @@
 
 ## Entrant
 
+- **Safari ancien : aperçu PDF de repli vide** — sur un Safari trop ancien pour la visionneuse (avant 26.2), le repli
+  est une iframe sur un blob:, que WebKit refuse sous `frame-ancestors 'none'` (🔬 hypothèse, vu au lot
+  visionneuse-pdf, 24/11/2026). Le bouton « Ouvrir / Enregistrer » reste. Défaut antérieur au lot.
+  `qui: Claude · action: reproduire sous WebKit puis topo · fini: repli lisible ou retiré au profit du bouton, checkup · depuis: 24/11/2026 · taille: S`
+
 - **Remplir un front : calcul hors du fil principal** — `ktaDetection.js > suivreTrait` tourne sur le fil principal : un
   front de plus de ~1 000 px sans carrefour dans un réseau dense lit 4 096 px et fige l'app ~4 s au PC (mesuré au lot
   remplir-front, 23/11/2026) ; réseau ordinaire ~80 ms. Le passer au worker de la détection, comme la détection auto.
