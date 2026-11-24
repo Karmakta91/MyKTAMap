@@ -7003,7 +7003,7 @@
   "bienvenue.prive.titre": "Nothing <span class=\"kta-bv-feutre\">leaves</span> your device",
   "bienvenue.prive.intro": "Once opened with a connection, the app works entirely offline. Your annotations, sessions and maps stay on your device: nothing is sent to a server or to a third-party service.",
   "bienvenue.prive.l1": "Free, no account, no ads, no audience tracking.",
-  "bienvenue.prive.l2": "Only outside site contacted: OpenStreetMap, for the Map view background, can be turned off.",
+  "bienvenue.prive.l2": "Only outside sites contacted: OpenStreetMap and IGN (if you pick an IGN base map), for the Map view background, can be turned off.",
   "bienvenue.prive.l3": "The network log shows every request the app makes; the network audit is public.",
   "bienvenue.prive.l4": "Everything can be exported at any time and erased in two clicks.",
   "bienvenue.prive.encart": "Open code under the CC BY-NC-SA 4.0 licence: you can read and audit it. Non-commercial use.",

@@ -7003,7 +7003,7 @@
   "bienvenue.prive.titre": "Nada <span class=\"kta-bv-feutre\">sale</span> de tu dispositivo",
   "bienvenue.prive.intro": "Una vez abierta con conexión, la app funciona totalmente sin conexión. Tus anotaciones, sesiones y planos se quedan en tu dispositivo: no se envía nada a un servidor ni a un servicio de terceros.",
   "bienvenue.prive.l1": "Gratuita, sin cuenta, sin publicidad, sin medición de audiencia.",
-  "bienvenue.prive.l2": "Único sitio externo contactado: OpenStreetMap, para el fondo de la Vista mapa, desactivable.",
+  "bienvenue.prive.l2": "Únicos sitios externos contactados: OpenStreetMap y el IGN (si eliges un fondo IGN), para el fondo de la Vista mapa, desactivable.",
   "bienvenue.prive.l3": "El registro de red muestra cada petición de la app; la auditoría de red es pública.",
   "bienvenue.prive.l4": "Todo se exporta en cualquier momento y se borra en dos clics.",
   "bienvenue.prive.encart": "Código abierto bajo licencia CC BY-NC-SA 4.0: puedes leerlo y auditarlo. Uso no comercial.",
