@@ -580,7 +580,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-maj-plan.js` | « Mettre à jour le plan » qui perd un objet, écrase un calque ou laisse une trace destructrice | pre-commit |
 | `check-map-listeners.js` | Listener posé sur la map Leaflet avec une garde anti-doublon hors de la map | pre-commit |
 | `check-modal-lifecycle.js` | Rien : avertit d'un timer, écouteur ou blob URL hors `ModalLifecycle` dans un module migré | pre-commit (consultatif) |
-| `check-mur-ligne.js` | Mur en ligne qui ne coupe plus l'itinéraire, qui coupe un autre niveau, ou piliers / fronts devenus obstacles | pre-commit |
+| `check-mur-ligne.js` | Mur en ligne qui ne coupe plus l'itinéraire (tracé ou lien de jonction imparfaite), qui coupe un autre niveau, ou piliers / fronts devenus obstacles | pre-commit |
 | `check-no-pro-leak.js` | Fichier ou motif du dépôt pro privé dans ce dépôt public | pre-commit + ci-commits |
 | `check-noms-reels.js` | Nom réel lié aux relevés dans un fichier, un chemin ou un message de commit (empreintes sha256) | pre-commit + commit-msg + ci-commits |
 | `check-notifs.js` | Toast dessiné hors du goulot `OOMGuard.showToast`, ou important / erreur masqué par « Silence » | pre-commit |
@@ -888,6 +888,8 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
 #### Pas encore publié (après v2.31.0, branche `Karma_dev`)
+
+- 🧱 **Itinéraire : plus de raccord à travers un mur** (`js/pathfinder.js > _enrichirGrapheAvecCroisements / _lienCoupe`, guides, `multilevel-pathfinding.md` §14 et §31.1 bis, `check-mur-ligne.js` § Jonctions imparfaites) : une galerie qui s'arrête à moins de 15 px d'une autre y est raccordée par l'itinéraire (tolérance du dessin à la main), même quand un mur (ligne) ou une zone ⛔ inaccessible passait entre les deux : l'itinéraire traversait le mur, alors que le même trait dessiné en tracé était refusé (mesuré sur une scène fictive : 400 px tout droit au lieu de 800 par le détour). Ce lien n'est plus posé quand il croise un obstacle dur de son niveau ; le candidat suivant, de son côté du mur, reste possible. Case « Respecter… » décochée : le lien revient. Arc de soutènement, pilier à bras et Comblé ne coupent pas ces liens ; croisements exacts et passages entre niveaux inchangés.
 
 - 🏷️ **Nouveau tag au nom libre, gardé après un rechargement** (`js/editor.js > afficherFormulaire`, `_buildTypeOptionsHTML`, `lang/*.json` `editor.field.newTag*`, guides, `checkup-tag-nouveau.js`) : « Créer un nouveau tag » prend un nom libre (espaces, accents) et crée une icône personnalisée de la Légende (id `cust-…`, icône par défaut, renommable, partie avec la session et les exports) ; même nom → même entrée. Avant, le nom était réduit à un identifiant (`puits_du_nord`) et un tag créé par « Nouveau tag » vit sur le point seul ; après un rechargement, la liste « Type » ne le proposait plus, la fiche « Modifier » s'ouvrait sur « Aucun tag » et Enregistrer l'effaçait. La liste reprend les tags des points de session et celui du point ouvert ; valeurs et libellés échappés.
 

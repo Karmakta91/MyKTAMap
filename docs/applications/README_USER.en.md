@@ -1057,7 +1057,7 @@ On a multi-level map, **2nd-mass** elements are automatically placed **on level 
 
 A **support arch** is placed **across** the gallery, in two taps from one wall to the other: one arch = one object, repeat it for each arch. It gets in the way of neither the route, the tracker nor the 3D view, where it becomes a dressed-stone arch on two piers, from one wall to the other, its keystone at the ceiling: you walk under it. In ≡ Legend its swatch is striped as on the map; image and PDF exports keep the stripes, KMZ and the OSM view keep only the blue stroke.
 
-A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
+A **wall (line)** cuts every gallery it crosses **on its level**: the route goes elsewhere, or fails and says so. The **Respect impassable areas and walls (line)** box in the Route window relaxes it together with ⛔ zones; Rescue Mode and "I'm lost" always respect it. Renamed or recoloured in ≡ Legend, it keeps this role. A gallery that stops a few pixels short of another is joined to it by the route, unless a wall (line) or an impassable area lies between the two: then it stays separate on that side. A wall that arrived as a **quarry face** or as a line from an import converts to a wall (line) from its card (🧹 Erase and correct).
 
 ### Detect pillars and fronts on the map image
 
