@@ -1,0 +1,143 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+/* Visionneuse PDF (js/visionneusePdf.js) : chargée à la première ouverture par _loadCssOnce, précachée par sw.js.
+   La visionneuse remplit son hôte (Mode Histoire : .kta-histoire-pdf-vpdf ; Carnet : .kta-jrn-recit-vpdf). */
+
+.kta-vpdf {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--kta-fond);
+  color: var(--kta-texte);
+  overflow: hidden;
+}
+.kta-vpdf-defil {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Le pincement est traité par la visionneuse : le navigateur garde le défilement, pas le zoom de page. */
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+  outline: none;
+}
+.kta-vpdf-defil:focus-visible { box-shadow: inset 0 0 0 2px var(--kta-focus); }
+.kta-vpdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 64px;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
+}
+.kta-vpdf-feuille {
+  position: relative;
+  flex: 0 0 auto;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.kta-vpdf-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Commandes flottantes en bas : en haut, la barre d'actions du Mode Histoire est déjà posée. */
+.kta-vpdf-barre {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--kta-surface);
+  border: 1px solid var(--kta-info-bord-fort);
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  white-space: nowrap;
+}
+.kta-vpdf-numero,
+.kta-vpdf-taux {
+  font-size: 12px;
+  color: var(--kta-texte-2);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.kta-vpdf-taux { min-width: 44px; text-align: center; }
+.kta-vpdf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--kta-interaction);
+  cursor: pointer;
+}
+.kta-vpdf-btn:hover { background: var(--kta-info-fond); }
+.kta-vpdf-btn:focus-visible { outline: 2px solid var(--kta-focus); outline-offset: 1px; }
+.kta-vpdf-btn svg { width: 18px; height: 18px; }
+.kta-vpdf-attente {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--kta-texte-3);
+  background: var(--kta-fond);
+}
+/* Plein écran sans API du navigateur (iPhone) : la visionneuse, déplacée sous <body>, couvre tout. */
+.kta-vpdf.kta-vpdf-plein {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 100002;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+           env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.kta-vpdf:fullscreen { width: 100%; height: 100%; }
+
+/* Hôtes. Mode Histoire : barre d'actions au-dessus de la visionneuse (en surimpression, elle cachait le haut de la
+   page 1), visionneuse dans la hauteur restante. */
+.kta-histoire-pdf-wrap.kta-histoire-pdf-avec-vpdf {
+  display: flex;
+  flex-direction: column;
+}
+.kta-histoire-pdf-avec-vpdf .kta-histoire-pdf-actions {
+  position: static;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 6px;
+  border-bottom: 1px solid var(--kta-info-bord);
+}
+.kta-histoire-pdf-vpdf {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.kta-jrn-recit-vpdf {
+  width: 100%;
+  height: 48vh;
+  height: 48dvh;
+  border: 1px solid var(--kta-info-bord);
+  border-radius: 6px;
+  overflow: hidden;
+}
+@media (min-width: 1024px) {
+  .kta-jrn-recit-avecpdf .kta-jrn-recit-vpdf { flex: 1 1 auto; height: auto; min-height: 0; }
+}

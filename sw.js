@@ -244,6 +244,28 @@ const ASSETS_TO_CACHE = [
   "./css/style-meminspector.css",
   "./css/style-stats-globales.css",
   "./css/style-filtres.css",
+  // Visionneuse PDF (Mode Histoire, Carnet) : feuille et PDF.js chargés à la première ouverture, jamais au démarrage ;
+  // précachés pour que la visionneuse s'ouvre hors ligne (~3 Mo : bibliothèque, worker, polices standard, décodeurs
+  // JPEG 2000 et JBIG2 en JavaScript). Pas de cmaps : un PDF à police CJK non embarquée s'affiche sans ce texte.
+  "./css/style-visionneuse-pdf.css",
+  "./lib/pdfjs/pdf.min.js",
+  "./lib/pdfjs/pdf.worker.min.js",
+  "./lib/pdfjs/wasm/openjpeg_nowasm_fallback.js",
+  "./lib/pdfjs/wasm/jbig2_nowasm_fallback.js",
+  "./lib/pdfjs/standard_fonts/FoxitDingbats.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitFixed.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitFixedBold.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitFixedItalic.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitSerif.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitSerifBold.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitSerifItalic.pfb",
+  "./lib/pdfjs/standard_fonts/FoxitSymbol.pfb",
+  "./lib/pdfjs/standard_fonts/LiberationSans-Bold.ttf",
+  "./lib/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf",
+  "./lib/pdfjs/standard_fonts/LiberationSans-Italic.ttf",
+  "./lib/pdfjs/standard_fonts/LiberationSans-Regular.ttf",
   // Écran Bienvenue (instance sans mot de passe) : feuille, script et polices chargés par unlockGate.js
   // seulement quand l'écran s'affiche ; précachés pour un premier lancement qui se poursuit hors ligne.
   "./css/bienvenue.css",
@@ -421,6 +443,7 @@ const ASSETS_TO_CACHE = [
   // mdParser — parser MD inline minimaliste (utilisé par modeHistoire)
   "./js/mdParser.js",
   "./js/modeHistoire.js",
+  "./js/visionneusePdf.js",
   "./js/kmzExport.js",
   // Vue OSM (plan au-dessus OpenStreetMap)
   "./js/osmView.js",

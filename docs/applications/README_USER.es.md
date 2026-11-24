@@ -919,7 +919,9 @@ Hasta **10 documentos PDF por mapa**: informe, mapa en papel escaneado, artícul
 - **📥 Importar un PDF** añade uno; **🗑️ Quitar** elimina el que se muestra. La lista aparece en cuanto hay varios.
 - Los documentos incluidos con el mapa (📕) van al principio de la lista. Se copian en tu dispositivo la primera vez que lo abres; si los quitas, vuelven la próxima vez que se abra el mapa.
 - Aviso a partir de **25 MB** acumulados, rechazo a partir de **100 MB**.
-- **Abrir / Guardar** pasa el documento a tu dispositivo: vista previa, **Guardar en Archivos**, Libros… (en iPhone, así es como se muestra). Si el dispositivo no puede compartir un archivo, lo sustituye un enlace **Descargar el PDF**. En ordenador y Android, el documento también se muestra en la ventana, con **↗️ Abrir en una pestaña**.
+- El documento se muestra **en la ventana**, página tras página, incluso **sin conexión**: desplázate, **pellizca para hacer zoom** (en ordenador: Ctrl + rueda, o los botones **−** y **+** de abajo), el botón de ajuste vuelve al ancho de la ventana y el botón de **pantalla completa** lo amplía a toda la pantalla (tócalo otra vez para volver). El número de la página que lees aparece a la izquierda de los botones.
+- **Abrir / Guardar** pasa el documento a tu dispositivo: vista previa, **Guardar en Archivos**, Libros… Si el dispositivo no puede compartir un archivo, lo sustituye un enlace **Descargar el PDF**. En ordenador y Android, **↗️ Abrir en una pestaña** también lo abre en el lector del navegador (búsqueda, impresión).
+- En un dispositivo demasiado antiguo para mostrarlo (iPhone anterior a iOS 26.2, navegador sin actualizar), o si el documento no se abre (protegido con contraseña…), conservas **Abrir / Guardar**; en ordenador y Android, el lector del navegador ocupa su lugar en la ventana.
 - Tus documentos también se consultan desde **📔 Mi cuaderno → 📖 Relatos**, sin cargar el mapa.
 
 **Exportación**: la nota y los documentos se van con la exportación de sesión y se **añaden** al mapa al reimportarla (no se sobrescribe nada). La exportación **anonimizada** los deja fuera. Todo se queda en tu dispositivo.
@@ -1381,7 +1383,7 @@ Para unir salidas ya partidas: **📔 Mi cuaderno → 🔗 Fusionar salidas**, m
 
 #### 📖 La pestaña Relatos
 
-La segunda pestaña del cuaderno, **📖 Relatos**, reúne las notas y los PDF del **Modo Historia** de **todos tus mapas, sin cargar ninguno**: la nota se muestra con formato y se **edita ahí mismo** (es la misma nota que en el mapa), los PDF se abren, se eliminan (🗑️) o se añaden (**➕ Añadir un PDF**). Un PDF incluido en el ZIP de un mapa aparece aquí en cuanto has abierto ese mapa una vez.
+La segunda pestaña del cuaderno, **📖 Relatos**, reúne las notas y los PDF del **Modo Historia** de **todos tus mapas, sin cargar ninguno**: la nota se muestra con formato y se **edita ahí mismo** (es la misma nota que en el mapa), los PDF se abren (mismo visor que el Modo Historia), se eliminan (🗑️) o se añaden (**➕ Añadir un PDF**). Un PDF incluido en el ZIP de un mapa aparece aquí en cuanto has abierto ese mapa una vez.
 
 **Conviene saber:** todo se queda en tu dispositivo; cada salida se elimina desde su ficha; por encima de **500 salidas**, las más antiguas se borran; el cuaderno viaja con la exportación del perfil.
 

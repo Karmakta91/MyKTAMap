@@ -214,11 +214,12 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `style-meminspector.css` | Inspecteur mémoire et rapports de crash, chargé à la demande |
 | `style-secours.css` | Mode Secours, chargé à la demande |
 | `vue3d.css` | Vue 3D plein écran, chargée par `js/vue3d.js` à son ouverture |
+| `style-visionneuse-pdf.css` | Visionneuse PDF, chargée par `js/visionneusePdf.js` à sa première ouverture |
 | `style-stats-globales.css` | Modale Statistiques du plan, chargée à la demande |
 
 ---
 
-## 🟢 L'application : modules JS (159 modules)
+## 🟢 L'application : modules JS (160 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -344,6 +345,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `mdParser.js` | Sous-ensemble Markdown XSS-safe (note libre du Mode Histoire) |
 | `devMode.js` | Mode Développeur, activé sans mot de passe (confirmation) : logs détaillés, ConfAdmin, inspecteur SW, outils d'extension |
 | `modeHistoire.js` | Mode Histoire : note libre Markdown et documents PDF du plan |
+| `visionneusePdf.js` | Visionneuse PDF du Mode Histoire et du Carnet (une page par canvas, rendue au défilement, pincement, plein écran) ; PDF.js importé à la première ouverture |
 
 ### 🌍 Interop géo (KMZ / GPX / SIG / OSM)
 
@@ -780,6 +782,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-volume-exploite.js` | ⛏️ Volume exploité : secteur ♦️, piliers de session et de calque coupés, remblais, hauteur retenue pour le niveau mesuré |
 | `smoke/checkup-niveaux-verticaux.js` | Sol, hauteur et écart par niveau : Générateur (ZIP rouvert puis relu), `getNiveauVertical`, ⚙️ Réglages (écart négatif, pref, ↺), téléphone |
 | `smoke/checkup-rendu-3d-defaut.js` | Rendu 3D par défaut d'un plan : Générateur (champ, ZIP généré relu), vue 3D ouverte sur le rendu du plan-config, choix retenu prioritaire après rechargement, repli Mixte (absent, inconnu) |
+| `smoke/checkup-visionneuse-pdf.js` | Visionneuse PDF : Mode Histoire et Carnet (12 pages jsPDF, canvas non blanc, rendu paresseux, zoom bouton et Ctrl + molette, plein écran, libération à la fermeture), appareil sans les API du build moderne (pas de visionneuse, iframe ou « Ouvrir / Enregistrer »), hors ligne par le précache (Chromium) ; WebKit sans Carnet ni hors ligne (limites du banc) |
 | `smoke/checkup-vue-3d.js` | Vue 3D : rien au démarrage, tuile grisée sans échelle, ouverture depuis la tuile, scène, mur sous le pilier, butée, vue plongeante, perte et reprise du contexte WebGL, « Je suis ici ? », WebGL absent, collisions (6 obstacles, 12 angles, pas rapides), pas rapide, inclinaison, boussole, modes galerie et mixte (galerie qui débouche sur une chambre), halo des dangers, ⭐ des favoris, membres d'une extension factice, réglages ⚙️ Portée et Lampe (intensité, faisceau, Plein jour), cavage comblé jusqu'aux structures, zoom de la vue plongeante, scène refaite quand les données changent vue ouverte (session, annulation, calque rapatrié puis restitué, légende, rafale, geste), dessin en vue plongeante avec les outils de la carte (§ 28 : pilier, murs, zone, tracé, mesure, niveau de la 3D, gestes, extinction, greffe, lecture seule, plan au sol), zone reliée à plusieurs niveaux (§ 29 : vue et obstacle sur chacun des siens, scène refaite au décochage), vue d'édition (§ 30 : caméra libre au doigt, ⌖, survol, niveau sans passage, bandeau, segments et angles de la mesure, panneaux lisibles, plan au sol au point visé, parois et sol unis 🧱 coupé, vue retenue par plan, tuile ⚙️ sur la colonne 🛠️) ; mesures sur un plan dense synthétique (portée de 20 à 100 m, plongée dézoomée, scène refaite, `KTA_V3D_PERF=dessin`) |
 
 ---
@@ -884,6 +887,8 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
 
 #### Pas encore publié (après v2.31.0, branche `Karma_dev`)
+
+- 📄 **Visionneuse PDF dans l'app, hors ligne comprise** (`js/visionneusePdf.js`, `css/style-visionneuse-pdf.css`, PDF.js 6.5.438 dans `lib/pdfjs/`, `js/modeHistoire.js`, `js/journalUi.js`, `sw.js`, `lib/VERSIONS.md`, `scripts/check-libs.js`, `lang/*.json`, guides, `session-data.md` § Mode Histoire, `checkup-visionneuse-pdf.js`) : les PDF du Mode Histoire et du Carnet › Récits s'affichent dans la fenêtre, page après page, sur iPhone comme ailleurs (avant : sur iPhone, seulement « Ouvrir / Enregistrer » ; sur Android, l'iframe n'affichait rien). Une page est dessinée quand elle approche de l'écran et libérée quand elle s'en éloigne ; zoom au pincement (Ctrl + molette, boutons − et + au PC), ajuster à la largeur, plein écran. PDF.js (build moderne) n'est chargé qu'à la première ouverture, jamais au démarrage, et il est précaché par le Service Worker avec son worker, ses polices standard et ses décodeurs JavaScript (~3 Mo bruts) : la visionneuse marche hors connexion. Elle n'est proposée que si le navigateur a les fonctions récentes qu'exige ce build (Safari / iOS 26.2 au minimum, détecté, jamais déduit de l'appareil) ; sinon, ou si le document ne s'ouvre pas (mot de passe…), l'affichage d'avant reste : « Ouvrir / Enregistrer » sur iPhone, iframe ailleurs. Fermer la fenêtre libère document, worker et images. Aide ❓ du Mode Histoire remise à jour (elle parlait encore d'« Ouvrir dans un onglet » sur iPhone). Non essayée sur un vrai iPhone.
 
 - 📕 **PDF d'un plan : tous utilisables, et « Ouvrir / Enregistrer » sur iPhone** (`js/main.js > startImportedPlan`, `js/homeLoader.js > guessMime`, `js/config.js > resolveServerPaths`, `js/utils.js > ktaActionPdf`, `js/modeHistoire.js`, `js/journalUi.js`, `lang/*.json`, guides, `session-data.md` § Mode Histoire, `checkup-pdf-zip.js`) : un plan ZIP livré avec plusieurs PDF n'enregistrait que le premier ; les autres retombaient sur leur chemin dans le ZIP, lu comme une adresse du site, et toucher le document téléchargeait la page d'erreur ou la page de l'app (en « .html » sur iPhone). Ils ne se copiaient pas non plus dans le Carnet, qui en montrait moins que le plan. Tous les PDF du ZIP sont maintenant enregistrés, typés `application/pdf` (avant : sans type, l'iframe téléchargeait au lieu d'afficher), copiés au Carnet sous leur vrai nom (une copie ancienne nommée `histoire-N.pdf` est refaite). Un plan serveur en dossier cherche ses PDF dans son dossier. Un document qui ne se lit pas (pas de PDF au bout du chemin) est dit introuvable, jamais servi en lien. Mode Histoire et Carnet ont un bouton « Ouvrir / Enregistrer » (feuille de partage de l'appareil : aperçu, Enregistrer dans Fichiers) quand l'appareil sait partager le fichier, sinon un lien « Télécharger le PDF » ; sur iPhone, plus d'iframe dans le Carnet (une seule page y était rendue).
 - 🧱 **Générateur : la case V2 est dite recommandée, étapes faisables après la génération étoilées** (`lang/*.json` `gen.v2.*`, `gen.apres.*`, guides, `AI_CONTEXT.md`) : présentée comme une option de performance pour les gros plans, elle est aussi indispensable à la Vue OSM et au plan sur la carte OSM de l'accueil (un plan V1 n'y apparaît pas). Libellé « Convertir en V2 tuile (recommandé) », aide et infobulle le disent. Case toujours décochée par défaut. La case porte un avertissement visible « lourd au téléphone » (Générateur, import KMZ et GPX ; l'avertissement à la coche reste). Détecter, Légende et Géoréférencement portent une étoile : une note en tête du Générateur (mode Avancé) dit qu'elles se font aussi dans l'app après la génération, sur l'appareil, et qu'ici elles partent dans le ZIP pour tous (`js/createConf.js`, `css/style.css`).

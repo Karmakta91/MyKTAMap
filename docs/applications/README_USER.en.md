@@ -919,7 +919,9 @@ Up to **10 PDF documents per map**: report, scanned paper map, article, topo sur
 - **📥 Import a PDF** adds one; **🗑️ Remove** deletes the one shown. The list appears as soon as there are several.
 - Documents shipped with the map (📕) come first in the list. They are copied to your device the first time you open it; if you remove them, they come back the next time the map is opened.
 - Warning beyond **25 MB** in total, refusal beyond **100 MB**.
-- **Open / Save** hands the document to your device: preview, **Save to Files**, Books… (on iPhone, this is how it is shown). If the device cannot share a file, a **Download the PDF** link replaces it. On computers and Android, the document also shows in the window, with **↗️ Open in a tab**.
+- The document shows **in the window**, page after page, even **offline**: scroll, **pinch to zoom** (on a computer: Ctrl + wheel, or the **−** and **+** buttons at the bottom), the fit button goes back to the window width and the **full screen** button enlarges it to the whole screen (tap it again to go back). The number of the page you are reading shows left of the buttons.
+- **Open / Save** hands the document to your device: preview, **Save to Files**, Books… If the device cannot share a file, a **Download the PDF** link replaces it. On computers and Android, **↗️ Open in a tab** also opens it in the browser's reader (search, print).
+- On a device too old to show it (iPhone before iOS 26.2, out-of-date browser), or if the document does not open (password-protected…), you keep **Open / Save**; on computers and Android, the browser's reader takes its place in the window.
 - Your documents can also be viewed from **📔 My logbook → 📖 Stories**, without loading the map.
 
 **Export**: the note and the documents go with the session export and are **added** to the map on re-import (nothing is overwritten). The **anonymized** export leaves them out. Everything stays on your device.
@@ -1381,7 +1383,7 @@ To join outings that were already split: **📔 My logbook → 🔗 Merge outing
 
 #### 📖 The Stories tab
 
-The logbook's second tab, **📖 Stories**, gathers the notes and PDFs of the **History Mode** of **all your maps, without loading any of them**: the note is shown formatted and can be **edited in place** (it is the same note as in the map), PDFs open, can be deleted (🗑️) or added (**➕ Add a PDF**). A PDF supplied in a map's ZIP appears here as soon as you have opened that map once.
+The logbook's second tab, **📖 Stories**, gathers the notes and PDFs of the **History Mode** of **all your maps, without loading any of them**: the note is shown formatted and can be **edited in place** (it is the same note as in the map), PDFs open (same viewer as History Mode), can be deleted (🗑️) or added (**➕ Add a PDF**). A PDF supplied in a map's ZIP appears here as soon as you have opened that map once.
 
 **Good to know:** everything stays on your device; each outing can be deleted from its record; beyond **500 outings**, the oldest are deleted; the logbook travels with the profile export.
 

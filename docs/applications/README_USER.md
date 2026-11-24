@@ -919,7 +919,9 @@ Jusqu'à **10 documents PDF par plan** : rapport, plan papier scanné, article, 
 - **📥 Importer un PDF** en ajoute un ; **🗑️ Retirer** supprime celui affiché. La liste apparaît dès qu'il y en a plusieurs.
 - Les documents livrés avec le plan (📕) passent en tête de liste. Ils sont copiés sur ton appareil à la première ouverture ; si tu les retires, ils reviennent à la prochaine ouverture du plan.
 - Avertissement au-delà de **25 Mo** cumulés, refus au-delà de **100 Mo**.
-- **Ouvrir / Enregistrer** passe le document à ton appareil : aperçu, **Enregistrer dans Fichiers**, Livres… (sur iPhone, c'est ainsi qu'il s'affiche). Si l'appareil ne sait pas partager un fichier, un lien **Télécharger le PDF** le remplace. Sur ordinateur et Android, le document s'affiche aussi dans la fenêtre, avec **↗️ Ouvrir dans un onglet**.
+- Le document s'affiche **dans la fenêtre**, page après page, même **hors connexion** : fais défiler, **pince pour zoomer** (sur ordinateur : Ctrl + molette, ou les boutons **−** et **+** en bas), le bouton d'ajustement revient à la largeur de la fenêtre et le bouton **plein écran** l'agrandit à tout l'écran (re-touche-le pour revenir). Le numéro de la page lue s'affiche à gauche des boutons.
+- **Ouvrir / Enregistrer** passe le document à ton appareil : aperçu, **Enregistrer dans Fichiers**, Livres… Si l'appareil ne sait pas partager un fichier, un lien **Télécharger le PDF** le remplace. Sur ordinateur et Android, **↗️ Ouvrir dans un onglet** l'ouvre aussi dans le lecteur du navigateur (recherche, impression).
+- Sur un appareil trop ancien pour l'afficher (iPhone avant iOS 26.2, navigateur pas à jour), ou si le document ne s'ouvre pas (protégé par mot de passe…), tu gardes **Ouvrir / Enregistrer** ; sur ordinateur et Android, le lecteur du navigateur prend la place dans la fenêtre.
 - Tes documents se consultent aussi depuis **📔 Mon carnet → 📖 Récits**, sans charger le plan.
 
 **Export** : la note et les documents partent avec l'export de session et sont **ajoutés** au plan à la réimportation (rien n'est écrasé). L'export **anonymisé** les laisse de côté. Tout reste sur ton appareil.
@@ -1382,7 +1384,7 @@ Pour réunir des sorties déjà coupées : **📔 Mon carnet → 🔗 Fusionner 
 
 #### 📖 L'onglet Récits
 
-Le second onglet du carnet, **📖 Récits**, rassemble les notes et les PDF du **Mode Histoire** de **tous tes plans, sans en charger aucun** : la note s'affiche mise en forme et se **modifie sur place** (c'est la même note que dans le plan), les PDF s'ouvrent, se suppriment (🗑️) ou s'ajoutent (**➕ Ajouter un PDF**). Un PDF fourni dans le ZIP d'un plan apparaît ici dès que tu as ouvert ce plan une fois.
+Le second onglet du carnet, **📖 Récits**, rassemble les notes et les PDF du **Mode Histoire** de **tous tes plans, sans en charger aucun** : la note s'affiche mise en forme et se **modifie sur place** (c'est la même note que dans le plan), les PDF s'ouvrent (même visionneuse que le Mode Histoire), se suppriment (🗑️) ou s'ajoutent (**➕ Ajouter un PDF**). Un PDF fourni dans le ZIP d'un plan apparaît ici dès que tu as ouvert ce plan une fois.
 
 **Bon à savoir :** tout reste sur ton appareil ; chaque sortie se supprime depuis sa fiche ; au-delà de **500 sorties**, les plus anciennes sont effacées ; le carnet voyage avec l'export de profil.
 

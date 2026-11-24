@@ -15,11 +15,13 @@
 //     (plan.histoirePdfs / histoirePdf, résolus via RUNTIME_ASSETS) sont COPIÉS en IDB au chargement du plan
 //     (syncDocsEmbarques) : visibles dans Carnet > Récits sans charger le plan, et supprimables (recréés à la
 //     réouverture). L'affichage direct de l'embarqué reste en repli si la copie échoue.
-// Affichage : iframe sur desktop/Android, bouton « Ouvrir / Enregistrer » (utils.js > ktaActionPdf) sur iOS ;
-//   toujours depuis un Blob vérifié (%PDF) et typé application/pdf, jamais un lien vers un chemin du plan.
+// Affichage : visionneuse maison (visionneusePdf.js) partout où le navigateur a les API qu'elle exige ; sinon, ou
+//   si le document ne s'y rend pas, iframe (PC, Android) ou « Ouvrir / Enregistrer » seul (iOS, utils.js >
+//   ktaActionPdf). Toujours depuis un Blob vérifié (%PDF) et typé application/pdf, jamais un lien vers un chemin.
 // Expose window.ModeHistoire : open(), openTab("note"|"pdf"), close(), isOpen(), syncDocsEmbarques(),
 //   importSessionData(), _onPlanSwitch (fermeture au changement de plan, URLs révoquées).
-// 🩸 Vider l'iframe AVANT de la retirer : sinon WebKit garde la bitmap du PDF en mémoire.
+// 🩸 Vider l'iframe AVANT de la retirer : sinon WebKit garde la bitmap du PDF en mémoire ; libérer la visionneuse
+//   (KtaVisionneusePdf.liberer) avant de vider le conteneur : document, worker et canvas partent avec elle.
 // =========================
 
 (function() {
@@ -701,6 +703,10 @@
 
     if (!opts.force && wrap.getAttribute("data-rendu") === "1") return;
 
+    if (window.KtaVisionneusePdf) window.KtaVisionneusePdf.liberer(wrap);
+    const oldVpdf = wrap.querySelector(".kta-histoire-pdf-vpdf");
+    if (oldVpdf) oldVpdf.remove();
+    wrap.classList.remove("kta-histoire-pdf-avec-vpdf");
     // 🩸 Vider l'iframe AVANT de la retirer (bitmap PDF épinglée sur WebKit).
     const oldIframe = wrap.querySelector("iframe");
     if (oldIframe) { try { oldIframe.src = ""; } catch(e) {} oldIframe.remove(); }
@@ -824,10 +830,48 @@
   }
 
   // `url` = blob: URL typée PDF de `blob` (jamais un chemin : cf _blobEmbarque).
+  // Visionneuse d'abord ; échec (chargement, rendu, document protégé) → affichage sans visionneuse, au même endroit.
   function _displayPdfInWrap(url, name, blob) {
     const wrap = document.getElementById("kta-histoire-pdf-wrap");
     if (!wrap) return;
+    const vp = window.KtaVisionneusePdf;
+    if (!vp || !vp.disponible()) { _afficherSansVisionneuse(wrap, url, name, blob); return; }
+    // Avec la visionneuse, la barre d'actions passe AU-DESSUS du document (pas en surimpression sur la page 1).
+    wrap.classList.add("kta-histoire-pdf-avec-vpdf");
+    _poserActions(wrap, url, name, blob);
+    const hote = document.createElement("div");
+    hote.className = "kta-histoire-pdf-vpdf";
+    wrap.appendChild(hote);
+    vp.ouvrir(hote, blob, { nom: name }).catch(function(err) {
+      // Conteneur vidé entre-temps (autre document, fermeture) : rien à remplacer.
+      if (!hote.isConnected || (err && err.name === "AbortError")) return;
+      console.warn("[ModeHistoire] visionneuse indisponible, repli :", err && err.message);
+      hote.remove();
+      wrap.classList.remove("kta-histoire-pdf-avec-vpdf");
+      const actions = wrap.querySelector(".kta-histoire-pdf-actions");
+      if (actions) actions.remove();
+      _afficherSansVisionneuse(wrap, url, name, blob);
+    });
+  }
 
+  // Barre en surimpression : « Ouvrir dans un onglet » hors iPhone (lecteur du navigateur : recherche, impression)
+  // et l'action Ouvrir / Enregistrer.
+  function _poserActions(wrap, url, name, blob) {
+    const bloc = document.createElement("div");
+    bloc.className = "kta-histoire-pdf-actions";
+    if (!window.ktaEstIos()) {
+      bloc.insertAdjacentHTML("beforeend",
+        '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
+           'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
+           'title="' + window.I18n.t("histoire.pdf.openTab.title") + '">' +
+          window.ktaIcone("external-link") + ' ' + window.I18n.t("histoire.pdf.openTab") +
+        '</a>');
+    }
+    bloc.appendChild(window.ktaActionPdf(blob, name, url));
+    wrap.appendChild(bloc);
+  }
+
+  function _afficherSansVisionneuse(wrap, url, name, blob) {
     const isIOS = window.ktaEstIos();
 
     // iPhone : pas d'iframe (une seule page rendue), pas de lien target=_blank (le navigateur intégré à la PWA
@@ -844,16 +888,7 @@
     } else {
       // Bouton « Ouvrir » en plus de l'iframe : si la CSP du serveur bloque l'iframe (frame-src), et pour qui
       // préfère un onglet dédié (zoom natif, copie du texte).
-      wrap.insertAdjacentHTML("beforeend",
-        '<div class="kta-histoire-pdf-actions">' +
-          '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
-             'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
-             'title="' + window.I18n.t("histoire.pdf.openTab.title") + '">' +
-            window.ktaIcone("external-link") + ' ' + window.I18n.t("histoire.pdf.openTab") +
-          '</a>' +
-        '</div>'
-      );
-      wrap.querySelector(".kta-histoire-pdf-actions").appendChild(window.ktaActionPdf(blob, name, url));
+      _poserActions(wrap, url, name, blob);
       const iframe = document.createElement("iframe");
       iframe.className = "kta-histoire-pdf-iframe";
       iframe.src = url;
@@ -885,6 +920,7 @@
       const ta = document.getElementById("kta-histoire-note");
       if (ta) _saveNote(ta.value);
     }
+    if (window.KtaVisionneusePdf) window.KtaVisionneusePdf.liberer(_modal);
     // Vider l'iframe AVANT le remove (bitmap PDF iOS).
     const iframe = _modal.querySelector("iframe");
     if (iframe) {
