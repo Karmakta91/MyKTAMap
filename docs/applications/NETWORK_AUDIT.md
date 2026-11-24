@@ -190,7 +190,10 @@ un fond IGN**, `data.geopf.fr` (voir « À propos des fonds IGN » plus bas),
      porte aussi « Enregistrer hors ligne » (voir « Cache offline OSM »).
    - **Modale Vue OSM full-screen** (Mode Secours : bouton 🌍 du scénario,
      capture du briefing PDF). Couvre les tuiles plan V2 projetées + POI +
-     Tracker + Roads + Iti + Zones + Structures.
+     Tracker + Roads + Iti + Zones + Structures. Si la modale ne peut pas
+     s'ouvrir, le briefing dessine une carte hors écran : avec le fond choisi
+     si la Vue OSM est autorisée, **sans aucune tuile** sinon (case décochée
+     ou incognito).
    - **Widget mini-preview HOME** (page d'accueil) : si l'opt-in est ON,
      la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
      plan georef sélectionné par défaut (= lastOpened). Sinon la colonne
@@ -468,10 +471,11 @@ carte est présent. Une case suffit à le couper :
 3. Décoche **🗺️ Vue OSM (OpenStreetMap)**
 
 Décochée, la case coupe tous les fonds de carte (OpenStreetMap comme IGN) : ni le widget de
-l'accueil, ni la modale Vue OSM, ni le fond sous le plan ne chargent de tuile, et le préchargement
-« 💾 Save Offline » n'est plus accessible. Ton refus est mémorisé et
+l'accueil, ni la modale Vue OSM, ni le fond sous le plan, ni la carte du briefing pompiers du Mode
+Secours ne chargent de tuile (le PDF garde le cadre du plan et les équipes sur fond blanc), et le
+préchargement « 💾 Save Offline » n'est plus accessible. Ton refus est mémorisé et
 **aucune mise à jour ne revient dessus**. Le **mode incognito** coupe lui
-aussi la Vue OSM.
+aussi la Vue OSM, et tous ces fonds de la même façon.
 
 Pour le vérifier : **📋 Voir le journal réseau** (requêtes de l'app) et
 **F12 → Réseau** (tout, y compris les images de carte) — tu ne dois plus

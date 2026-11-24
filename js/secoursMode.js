@@ -5568,18 +5568,43 @@
     }
   }
 
-  // Fond du repli hors écran : le choix de l'appareil, si OSM est autorisé, hors incognito et en ligne.
+  // Fond du repli hors écran : null (aucune tuile) sans la case Vue OSM ou en incognito ; hors ligne, OSM (le
+  // service worker sert les tuiles enregistrées, une tuile IGN partirait au réseau pour rien) ; sinon le choix
+  // de l'appareil.
+  // 🔒 null = aucune couche de tuiles créée : ni OSM ni IGN, la capture garde le cadre du plan et les équipes sur fond
+  //   blanc (promesse de NETWORK_AUDIT : la case coupe tous les fonds de carte).
   function _idFondBriefing() {
     const F = window.KtaFondsCarte;
     const autorise = !!(window.OsmView && window.OsmView.isOptedIn && window.OsmView.isOptedIn());
     let incognito = false;
     try { incognito = !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
     catch(e) { incognito = false; }
+    if (!autorise || incognito || !F) return null;
     const enLigne = typeof navigator === "undefined" || navigator.onLine !== false;
-    return (autorise && !incognito && enLigne) ? F.courant().id : F.OSM;
+    return enLigne ? F.courant().id : F.OSM;
+  }
+
+  // Crédit du fond de la dernière capture (texte brut, pour la légende du PDF) ; null = capture sans tuile.
+  let _creditCapture = null;
+  // Texte d'une attribution HTML de la table des fonds (constantes de js/fondsCarte.js, jamais de l'utilisateur).
+  // 🩸 Helvetica de jsPDF = latin1 : le tiret demi-cadratin devient un trait d'union.
+  function _texteCredit(html) {
+    const d = document.createElement("div");
+    d.innerHTML = html;
+    return (d.textContent || "").replace(/–/g, "-").replace(/\s+/g, " ").trim();
+  }
+  // Crédit lu dans le contrôle d'attribution (masqué à l'écran) de la carte Vue OSM capturée : il suit le fond
+  // affiché et le repli IGN → OSM ; le préfixe « Leaflet » n'est pas un crédit de fond.
+  function _creditVueOsm(mapDiv) {
+    const c = mapDiv && mapDiv.querySelector(".leaflet-control-attribution");
+    if (!c) return null;
+    const morceaux = _texteCredit(c.innerHTML).split("|").map(function(m) { return m.trim(); })
+      .filter(function(m) { return m && m !== "Leaflet"; });
+    return morceaux.length ? morceaux.join(", ") : null;
   }
 
   async function _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext) {
+    _creditCapture = null;
     if (typeof window.html2canvas !== "function") {
       console.warn("[Briefing] html2canvas non chargé — capture skip (fallback liens)");
       return null;
@@ -5608,6 +5633,7 @@
           logging: false, scale: 1,
           ignoreElements: function(el) { return !!(el.classList && el.classList.contains("leaflet-control-container")); }
         });
+        _creditCapture = _creditVueOsm(mapDivExisting);
         return canvas.toDataURL("image/jpeg", 0.85);
       } catch(e) {
         console.warn("[Briefing] Capture DOM directe échec :", e.message);
@@ -5699,6 +5725,7 @@
           ignoreElements: function(el) { return !!(el.classList && el.classList.contains("leaflet-control-container")); }
           });
           captured = canvas.toDataURL("image/jpeg", 0.85);
+          _creditCapture = _creditVueOsm(map);
           console.log("[Briefing] Capture Vue OSM via open/close masqué : OK");
         }
       } catch(eCap) {
@@ -5713,7 +5740,8 @@
       // Sinon : repli offscreen ci-dessous.
     }
 
-    // Repli offscreen : tuiles OSM + rectangle du plan + équipes GPS, sans plan orienté ni POI/tracés/zones.
+    // Repli offscreen : fond de carte (aucun sans la case Vue OSM ou en incognito) + rectangle du plan + équipes GPS,
+    // sans plan orienté ni POI/tracés/zones.
     // Pour une capture complète, ouvrir la Vue OSM AVANT le briefing.
     if (!window.OsmView || typeof window.OsmView.getPlanGpsBbox !== "function") {
       return null;
@@ -5739,13 +5767,16 @@
         dragging: false
       });
       map.fitBounds(bbox, { padding: [60, 60], maxZoom: 17 });
+      // Sans fond de carte, la capture garde un fond blanc (le conteneur Leaflet a sa propre couleur de fond).
+      map.getContainer().style.background = "#ffffff"; // couleur-inline-ok : rendu hors écran exporté en image, hors thème
 
       // Fond de l'appareil (js/fondsCarte.js) ; une tuile IGN en erreur est remplacée par la tuile OSM. Seul le
       // fond change ici : la palette du Secours reste la sienne.
-      // 🔒 Sans la case Vue OSM ou en incognito, jamais de tuile IGN : ce repli reste sur OpenStreetMap.
+      // 🔒 Sans la case Vue OSM ou en incognito : aucune couche, donc aucune requête de tuile (_idFondBriefing).
       // ⚠️ crossOrigin : html2canvas (useCORS, allowTaint: false) ne garde que des tuiles servies en CORS.
-      const tileLayer = window.KtaFondsCarte.creerCouche(_idFondBriefing(), { crossOrigin: "anonymous" });
-      tileLayer.addTo(map);
+      const idFond = _idFondBriefing();
+      const tileLayer = idFond ? window.KtaFondsCarte.creerCouche(idFond, { crossOrigin: "anonymous" }) : null;
+      if (tileLayer) tileLayer.addTo(map);
 
       // Rectangle du plan (jaune charte semi-transparent).
       L.rectangle(bbox, {
@@ -5805,7 +5836,8 @@
           done = true;
           setTimeout(resolve, 600);
         };
-        tileLayer.on("load", finish);
+        // sans fond : rien à charger, seul le rendu des marqueurs est attendu
+        if (tileLayer) tileLayer.on("load", finish); else finish();
         setTimeout(function() { if (!done) { done = true; resolve(); } }, 7000);
       });
 
@@ -5819,6 +5851,11 @@
         scale: 1
       });
 
+      if (tileLayer) {
+        const F = window.KtaFondsCarte;
+        _creditCapture = _texteCredit(F.fond(idFond).attribution) +
+          (idFond !== F.OSM && tileLayer.ktaReplis ? ", " + _texteCredit(F.ATTR_OSM) : "");
+      }
       return canvas.toDataURL("image/jpeg", 0.85);
     } catch(e) {
       console.warn("[Briefing] Capture canvas exception :", e.message);
@@ -5878,6 +5915,8 @@
         pdf.setFontSize(7); pdf.setTextColor(140);
         pdf.text(t("secours.surf.osmCaption"),
                  margin, y);
+        // Crédit du fond de carte réellement capturé (aucun quand la capture n'a pas de tuile).
+        if (_creditCapture) { y += 3; pdf.text(t("secours.surf.fondCredit", { credit: _creditCapture }), margin, y); }
         pdf.setTextColor(0); y += 6;
       }
     } catch(eCap) {

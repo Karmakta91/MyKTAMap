@@ -130,7 +130,10 @@ Refusé avec un message si la Vue OSM est coupée ou en incognito ;
 couper la Vue OSM pendant qu&#39;il est affiché l&#39;éteint. Son panneau
 porte aussi « Enregistrer hors ligne » (voir « Cache offline OSM »).</li><li><strong>Modale Vue OSM full-screen</strong> (Mode Secours : bouton 🌍 du scénario,
 capture du briefing PDF). Couvre les tuiles plan V2 projetées + POI +
-Tracker + Roads + Iti + Zones + Structures.</li><li><strong>Widget mini-preview HOME</strong> (page d&#39;accueil) : si l&#39;opt-in est ON,
+Tracker + Roads + Iti + Zones + Structures. Si la modale ne peut pas
+s&#39;ouvrir, le briefing dessine une carte hors écran : avec le fond choisi
+si la Vue OSM est autorisée, <strong>sans aucune tuile</strong> sinon (case décochée
+ou incognito).</li><li><strong>Widget mini-preview HOME</strong> (page d&#39;accueil) : si l&#39;opt-in est ON,
 la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
 plan georef sélectionné par défaut (= lastOpened). Sinon la colonne
 est <strong>masquée entièrement</strong> — aucune tuile OSM n&#39;est requêtée même
@@ -326,10 +329,11 @@ sans geste de ta part, l&#39;accueil affiche ce fond (et contacte donc <code>til
 carte est présent. Une case suffit à le couper :</p>
 <ol><li><strong>Page d&#39;accueil → ⚙️ Configuration</strong></li><li>Section <strong>🔒 Confidentialité &amp; Audit</strong></li><li>Décoche <strong>🗺️ Vue OSM (OpenStreetMap)</strong></li></ol>
 <p>Décochée, la case coupe tous les fonds de carte (OpenStreetMap comme IGN) : ni le widget de
-l&#39;accueil, ni la modale Vue OSM, ni le fond sous le plan ne chargent de tuile, et le préchargement
-« 💾 Save Offline » n&#39;est plus accessible. Ton refus est mémorisé et
+l&#39;accueil, ni la modale Vue OSM, ni le fond sous le plan, ni la carte du briefing pompiers du Mode
+Secours ne chargent de tuile (le PDF garde le cadre du plan et les équipes sur fond blanc), et le
+préchargement « 💾 Save Offline » n&#39;est plus accessible. Ton refus est mémorisé et
 <strong>aucune mise à jour ne revient dessus</strong>. Le <strong>mode incognito</strong> coupe lui
-aussi la Vue OSM.</p>
+aussi la Vue OSM, et tous ces fonds de la même façon.</p>
 <p>Pour le vérifier : <strong>📋 Voir le journal réseau</strong> (requêtes de l&#39;app) et
 <strong>F12 → Réseau</strong> (tout, y compris les images de carte) — tu ne dois plus
 voir que ton domaine.</p>
