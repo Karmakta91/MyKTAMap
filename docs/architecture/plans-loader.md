@@ -827,12 +827,11 @@ les marges le décaleraient. Transparence : le curseur des Filtres, comme tout c
 collision avec l'ancien ; les garder rattache les photos (index du ZIP par uid) et les liaisons (`pointUid`). Favoris,
 session et réglages par plan restent sur le plan d'origine.
 
-**🩸 Photos sur le même appareil** : les photos sont rangées par identifiant tous plans confondus ; au chargement,
-une photo du ZIP déjà en base n'est pas restaurée (`main.js > startImportedPlan`, « déjà là ») — elle reste à l'ancien
-plan et le nouveau n'en aurait aucune. « Ajouter à mes plans » recopie donc celles que le ZIP embarque
-(`planHD.js > _copierPhotos`) sous un identifiant neuf, rattachées au même point, `meta.copieDe` = id d'origine, sans
-marque `origine: "plan"` (le tri du chargement suivant ne les retire jamais). Le ZIP téléchargé et ouvert ailleurs les
-restaure normalement.
+**🩸 Photos sur le même appareil** : les photos sont rangées par identifiant tous plans confondus. Le chargement
+(`main.js > startImportedPlan`) donne au nouveau plan, sous un identifiant neuf, chaque photo du ZIP déjà en base pour
+un AUTRE plan (`meta.copieDe` = id d'origine, origine « plan », même point). `planHD.js > _copierPhotos` passe
+ensuite : il retrouve ces copies par `copieDe` et ne recopie rien (filet pour une photo que le ZIP n'aurait pas
+pu restaurer). Le ZIP téléchargé et ouvert ailleurs les restaure normalement.
 
 **Liaisons inter-plan** : celles du plan d'origine sont recopiées pour le nouveau (`liaisonsPourNouveauPlan` puis
 `InterPlanLinks.importLinks`) : id neuf, côté d'origine renvoyé vers le nouveau plan, à ×k ; l'ancien garde les

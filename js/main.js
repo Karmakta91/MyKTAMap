@@ -1398,15 +1398,24 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
             window._majOverlayChargement(window.I18n.t("main.loading.photosRestore", { n: photoIds.length }));
           }
           // 🩸 Jamais d'effacement global (deletePhotosForPlan) : il emporterait les photos de l'utilisateur et
-          // leurs rattachements. Règle : photo du ZIP déjà présente → gardée telle quelle ; absente → restaurée,
-          // marquée origine « plan » ; seules les « plan » disparues du ZIP sont retirées ; une photo sans
+          // leurs rattachements. Règle : photo du ZIP déjà présente DANS CE PLAN → gardée telle quelle ; absente →
+          // restaurée, marquée origine « plan » ; seules les « plan » disparues du ZIP sont retirées ; une photo sans
           // marque (prise par l'user, ou restaurée anciennement) n'est jamais touchée — au pire périmée, jamais perdue.
+          // 🩸 Les photos sont rangées par identifiant, tous plans confondus : le même ZIP importé deux fois
+          // (« Garder les deux », copie d'un plan) trouve ses identifiants pris par l'autre plan. La copie reçoit
+          // alors la photo sous un identifiant neuf, `meta.copieDe` = l'identifiant du ZIP ; le point la retrouve
+          // par son uid (`pointId`), rien à réécrire dans la session. Clé de comparaison = copieDe || id.
           const _dansIndex = new Set(photoIds.map(String));
+          const _dejaIci = new Set();
           try {
             const _existantes = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
             for (const rec of _existantes) {
-              if (rec && rec.meta && rec.meta.origine === "plan" && !_dansIndex.has(String(rec.id))) {
+              if (!rec) continue;
+              const cle = String((rec.meta && rec.meta.copieDe) || rec.id);
+              if (rec.meta && rec.meta.origine === "plan" && !_dansIndex.has(cle)) {
                 await window.MyKTAMapPhotos.deletePhoto(rec.id);
+              } else {
+                _dejaIci.add(cle);
               }
             }
           } catch(e) { console.warn("[Loader] tri des photos du plan :", e); }
@@ -1414,8 +1423,12 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
           let restoredCount = 0;
           for (const pid of photoIds) {
             const info = idxObj.photos[pid] || {};
+            if (_dejaIci.has(String(pid))) continue;   // déjà dans ce plan : on n'écrase rien
+            let _idCible = pid, _meta = { origine: "plan" };   // seules celles-ci peuvent être retirées
             try {
-              if (await window.MyKTAMapPhotos.getPhoto(pid)) continue;   // déjà là : on n'écrase rien
+              const ailleurs = await window.MyKTAMapPhotos.getPhoto(pid);
+              if (ailleurs && String(ailleurs.planId) === String(planId)) continue;
+              if (ailleurs) { _idCible = window.MyKTAMapPhotos.generateId(); _meta = { origine: "plan", copieDe: String(pid) }; }
             } catch(e) { /* lecture impossible : on restaure */ }
             const filename = "data/photos/" + (info.file || (pid + ".jpg"));
             const blobFile = findMatchingFile(filename, files);
@@ -1428,7 +1441,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 return new Blob([buf], { type: info.mime || "image/jpeg" });
               });
               await window.MyKTAMapPhotos.restorePhoto({
-                id:      pid,
+                id:      _idCible,
                 planId:  planId,
                 pointId: String(info.pointId || ""),
                 blob:    blob,
@@ -1436,7 +1449,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
                 size:    info.size || blob.size,
                 createdAt: info.createdAt,   // dates facultatives, validées par restorePhoto
                 priseLe: info.priseLe,
-                meta:    { origine: "plan" }   // seules celles-ci peuvent être retirées
+                meta:    _meta
               }, { source: "import" });   // restauration de l'app (≠ dépôt d'une extension)
               restoredCount++;
             } catch(e) {
