@@ -588,9 +588,17 @@ d'origine, plancher 0,5 px ; le remplissage ne change pas.
   et calque, résolutions 1 et 2, export rapide).
 - **Hors de cette loi** : les **zones** (contour `weight × scale` ; un fond translucide reste lisible sous un trait,
   et l'écran ne l'affine pas non plus) et les **structures en ligne** (fronts, mur en ligne, arc, perso en ligne) :
-  leur trait EST l'objet, il n'a pas de plein à dégager ; dans l'export avancé / PDF il suit déjà la loi du
-  terrain ci-dessus (`_largeurLigneStructExp`). ⚠️ « Télécharger le plan » les dessine encore à `style.weight`
-  (`drawPolyline`), sans la loi du terrain.
+  leur trait EST l'objet, il n'a pas de plein à dégager ; il suit la loi du terrain ci-dessus.
+
+**Structures en ligne (fronts, mur en ligne, arc, perso en ligne)** : une seule règle,
+`structures.js > ktaLargeurLigneStructurePourRatio(style, ratio)` — plan calibré : la largeur d'un front
+(`ktaLargeurFrontPourRatio`), celle du trait rayé pour un style à `rayures` (arc : `ktaLargeurRayePourRatio`, 0,6 ×
+front, plancher 2 px) ; plan non calibré : `weight × ratio`. Sans facteur d'appareil.
+- **Export avancé / PDF** : `exporter.js > _largeurLigneStructExp` (ratio = résolution), session et calques.
+- **« Télécharger le plan »** : `utils.js > telechargerPlan > largeurLigneStruct` (ratio 1), session et calques ;
+  les tracés gardent `style.weight`. 🩸 À `style.weight`, un front sortait à 10 px là où l'export avancé ×1 le
+  trace à 2,4 px (relevé à 3 px/m) : un réseau dense devenait un aplat. `checkup-export-petits-piliers.js`
+  (épaisseurs lues au trait : front, mur en ligne et arc, mêmes valeurs que l'export avancé ×1).
 
 #### 69.4 Point précis d'un POI : dessiné par l'export image avancé et le PDF
 

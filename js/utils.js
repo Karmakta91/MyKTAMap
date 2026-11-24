@@ -3366,12 +3366,13 @@ async function telechargerPlan() {
       ctx.drawImage(img, x - anchorX, toCanvasY(y) - anchorY, w, h);
     }
 
-    function drawPolyline(points, style) {
+    // `largeur` : épaisseur imposée (structure en ligne), sinon `style.weight` (tracés).
+    function drawPolyline(points, style, largeur) {
       if (!points || points.length === 0) return;
 
       ctx.save();
       ctx.strokeStyle = style.color || "white";
-      ctx.lineWidth = style.weight || 3;
+      ctx.lineWidth = largeur || style.weight || 3;
       ctx.globalAlpha = style.opacity ?? 1;
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
@@ -3389,6 +3390,13 @@ async function telechargerPlan() {
         window.ktaPeindreRayures(ctx, style.rayures.color, ctx.lineWidth, ctx.globalAlpha);
       }
       ctx.restore();
+    }
+
+    // 🩸 Structure en ligne (front, mur en ligne, arc) à la loi du terrain, comme l'export avancé et le PDF : à
+    // `style.weight`, un relevé dense sortait en aplat. Image à l'échelle du plan : ratio 1.
+    function largeurLigneStruct(style) {
+      return (typeof window.ktaLargeurLigneStructurePourRatio === "function")
+        ? window.ktaLargeurLigneStructurePourRatio(style, 1) : (style.weight || 3);
     }
 
     function isLayerVisible(layer) {
@@ -3582,7 +3590,7 @@ async function telechargerPlan() {
               const minPts = isPolyline ? 2 : 3;
               if (!s.points || s.points.length < minPts) return;
               _poser(function () {
-                if (isPolyline) drawPolyline(s.points, style);
+                if (isPolyline) drawPolyline(s.points, style, largeurLigneStruct(style));
                 else drawPolygon(s.points, style, true);
               }, s);
               if (typeof _diag.embStructs !== "number") _diag.embStructs = 0;
@@ -3660,7 +3668,7 @@ async function telechargerPlan() {
           const minPts = isPolyline ? 2 : 3;
           if (!s.points || s.points.length < minPts) return;
           _poser(function () {
-            if (isPolyline) drawPolyline(s.points, style);
+            if (isPolyline) drawPolyline(s.points, style, largeurLigneStruct(style));
             else drawPolygon(s.points, style, true);
           }, s);
         });

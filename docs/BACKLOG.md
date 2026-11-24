@@ -134,11 +134,6 @@
   visionneuse-pdf, 24/11/2026). Le bouton « Ouvrir / Enregistrer » reste. Défaut antérieur au lot.
   `qui: Claude · action: reproduire sous WebKit puis topo · fini: repli lisible ou retiré au profit du bouton, checkup · depuis: 24/11/2026 · taille: S`
 
-- **Télécharger le plan : structures en ligne à la loi du terrain** — `utils.js > telechargerPlan` dessine les structures
-  en ligne (mur-ligne, front, arc) à `style.weight`, alors que l'export avancé et le PDF suivent la loi du terrain
-  (`exporter.js > _largeurLigneStructExp`). Vu au lot exports lisibles, 22/11/2026.
-  `qui: Claude · action: aligner telechargerPlan sur la loi du terrain · fini: même épaisseur que l'export avancé, checkup · depuis: 22/11/2026 · taille: XS`
-
 - **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
   fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
   fictifs : liseré noir de 2 px autour de l'image ; carrés de 3 × 3 px tous les 7 px autour d'un pilier.
