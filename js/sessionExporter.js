@@ -510,7 +510,9 @@
 
   // Légende des types qu'un contenu de calque référence ({ data, roads, zones, structures } → état de légende ou
   // null) : même sous-ensemble que la conversion, pour l'assistant « Mettre à jour le plan » (js/majPlan.js).
-  window.ktaLegendePourCalque = function(payload) { return _legendePourPayload(payload || {}); };
+  // `idsIcones` (facultatif) : ids d'icônes à emporter même sans point dans le contenu (anciens tags du plan rendus
+  // modifiables : la régénération doit garder leur libellé et leur image).
+  window.ktaLegendePourCalque = function(payload, idsIcones) { return _legendePourPayload(payload || {}, idsIcones); };
 
   // ── Entrée publique ──────────────
   // ouvrirExportSessionModal(initialTab, solo, opts)
@@ -2493,8 +2495,9 @@
   // `photos` (facultatif) : embarquées au format du ZIP session (photos/_index.json + blobs).
   // 🩸 La légende voyage avec le calque : sans la DÉFINITION des types `cust-…`, un plan régénéré affiche
   // tracés en blanc, zones en gris, structures en bleu, sans moyen de réparer depuis ≡ Légende. Seuls les types
-  // que le fichier référence sont embarqués.
-  function _legendePourPayload(payload) {
+  // que le fichier référence sont embarqués. Les points comptent aussi : une icône personnalisée (`cust-…`, ou
+  // ancien tag rendu modifiable) perdue en route rend ses points à l'icône par défaut, sans libellé.
+  function _legendePourPayload(payload, idsIcones) {
     const LC = window.LegendCustomization;
     if (!LC || typeof LC.getSessionState !== "function") return null;
     let etat;
@@ -2502,7 +2505,11 @@
     if (!etat) return null;
 
     // Types réellement présents, par catégorie de légende.
-    const parCat = { traces: new Set(), zones: new Set(), structures: new Set() };
+    const parCat = { icones: new Set(), traces: new Set(), zones: new Set(), structures: new Set() };
+    (payload.data       || []).forEach(function(o) {
+      if (o && Array.isArray(o.tags)) o.tags.forEach(function(t) { if (typeof t === "string" && t) parCat.icones.add(t); });
+    });
+    (Array.isArray(idsIcones) ? idsIcones : []).forEach(function(t) { if (typeof t === "string" && t) parCat.icones.add(t); });
     (payload.roads      || []).forEach(function(o) { if (o && o.type) parCat.traces.add(o.type); });
     (payload.zones      || []).forEach(function(o) { if (o && o.type) parCat.zones.add(o.type); });
     (payload.structures || []).forEach(function(o) { if (o && o.type) parCat.structures.add(o.type); });

@@ -300,15 +300,63 @@ function creerIcones(iconConfig) {
   // Icônes custom de la légende (catégorie `icones`) enregistrées comme n'importe quel tag (id `cust-…`),
   // et RÉ-enregistrées à chaque changement de légende (utilisables tout de suite). `_iconMap` étant le
   // résolveur unique, choisirIcone, getIconUrlForPoint et les exports suivent.
+  // ⚠️ contrat : une entrée dont l'id est une clé de `icons` du plan (ancien tag rendu modifiable) recopie son
+  // image dans PLAN_CONFIG.icons[id] : la plupart des résolveurs (getIconUrlForPoint, exports, recherche,
+  // tableur…) lisent PLAN_CONFIG.icons AVANT _iconMap. Entrée retirée → l'image d'origine du plan revient.
+  // Jamais de clé `cust-…` dans PLAN_CONFIG.icons (editor.js > afficherFormulaire). 🩸 Une image blob: est morte
+  // après un rechargement : elle ne remplace jamais celle du plan.
+  // Les marqueurs déjà posés dont l'icône change sont repeints (setIcon) : la carte suit sans recharger.
+  const iconesPlan = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || iconConfig;
+  const iconesOrigine = Object.assign({}, iconesPlan);
+  let customEnregistres = {};   // id → url posée au dernier passage
   function _enregistrerIconesCustom() {
     const LC = window.LegendCustomization;
     if (!LC || typeof LC.listCustomEntries !== "function") return;
     let entries;
     try { entries = LC.listCustomEntries("icones") || []; } catch(e) { return; }
+    const avant = customEnregistres;
+    const maintenant = {};
+    const changes = new Set();
     entries.forEach(function(e) {
-      if (e && e.id && e.iconUrl) window._iconMap[e.id] = _mkIcon(e.iconUrl, 50, 50, 25, 25);
+      if (!e || !e.id || !e.iconUrl) return;
+      const duPlan = Object.prototype.hasOwnProperty.call(iconesOrigine, e.id) && e.id !== "default" && e.id !== "track";
+      if (duPlan && /^blob:/.test(e.iconUrl)) return;
+      maintenant[e.id] = e.iconUrl;
+      if (avant[e.id] === e.iconUrl && window._iconMap[e.id]) return;
+      window._iconMap[e.id] = _mkIcon(e.iconUrl, 50, 50, 25, 25, duPlan ? e.id : undefined);
+      if (duPlan) iconesPlan[e.id] = e.iconUrl;
+      changes.add(e.id);
+    });
+    Object.keys(avant).forEach(function(id) {
+      if (maintenant[id]) return;
+      changes.add(id);
+      if (Object.prototype.hasOwnProperty.call(iconesOrigine, id)) {
+        iconesPlan[id] = iconesOrigine[id];
+        window._iconMap[id] = iconesOrigine[id] ? _mkIcon(iconesOrigine[id], 50, 50, 25, 25, id) : makeDefaultIcon();
+      } else {
+        delete window._iconMap[id];
+      }
+    });
+    customEnregistres = maintenant;
+    if (changes.size) _repeindreMarqueurs(changes);
+  }
+  // Marqueurs qui portent un des tags changés (`_ktaTags`, posé à la création : editor.js > _ajouterMarker,
+  // utils.js > ajouterPointsDepuisJSON). Session : rendu complet (il repose aussi l'état donné par une
+  // extension) ; calques : setIcon, sur la liste complète (_ktaDataMarkers couvre les marqueurs hors écran).
+  function _repeindreMarqueurs(tags) {
+    const touche = function(l) { return Array.isArray(l._ktaTags) && l._ktaTags.some(function(t) { return tags.has(t); }); };
+    let session = false;
+    if (window.layerEditor && typeof window.layerEditor.eachLayer === "function") {
+      window.layerEditor.eachLayer(function(l) { if (l instanceof L.Marker && touche(l)) session = true; });
+    }
+    if (session && typeof window.renderEditorPoints === "function") window.renderEditorPoints();
+    (window._ktaDataMarkers || []).forEach(function(l) {
+      if (l && touche(l)) { try { l.setIcon(choisirIcone({ tags: l._ktaTags })); } catch(e) {} }
     });
   }
+  // 🩸 Appelée par l'abonné posé UNE fois (premier plan) : passer par window pour que ce soit la closure du plan
+  // COURANT (ses icônes d'origine, son mode scaledMarkers), pas celle du premier plan ouvert.
+  window._ktaEnregistrerIconesCustom = _enregistrerIconesCustom;
   _enregistrerIconesCustom();
   if (window.LegendCustomization &&
       typeof window.LegendCustomization.onCustomEntriesChange === "function" &&
@@ -316,7 +364,7 @@ function creerIcones(iconConfig) {
     // creerIcones est rejouée à chaque changement de plan : listener posé une seule fois.
     window._ktaCustomIconSubBound = true;
     window.LegendCustomization.onCustomEntriesChange(function() {
-      _enregistrerIconesCustom();
+      if (typeof window._ktaEnregistrerIconesCustom === "function") window._ktaEnregistrerIconesCustom();
     });
   }
 

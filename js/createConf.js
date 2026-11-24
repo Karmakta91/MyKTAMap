@@ -1576,7 +1576,10 @@ function _ouvrirEditeurLegendePlan(etat) {
 // Absorbe la légende embarquée dans un calque de données importé.
 // Règle de conflit : l'existant GAGNE. On n'ajoute que ce qui manque : réimporter est sans effet et un
 // calque ne repeint pas en silence la légende de l'auteur. Ce qui est écarté est journalisé.
-function _absorberLegendeCalque(legende) {
+// `opts.entreesGagnent` (mise à jour du plan seulement) : une entrée de même id REMPLACE celle du plan — c'est la
+// légende que l'utilisateur voit (la session prime), une icône changée ou un renommage doivent passer.
+function _absorberLegendeCalque(legende, opts) {
+  const entreesGagnent = !!(opts && opts.entreesGagnent);
   if (!legende || typeof legende !== "object") return;
   const cible = _plannerPlanLegend && typeof _plannerPlanLegend === "object"
                   ? _plannerPlanLegend
@@ -1600,6 +1603,12 @@ function _absorberLegendeCalque(legende) {
   const idsPresents = new Set(cible.customEntries.map(function(e) { return e && e.id; }));
   (Array.isArray(legende.customEntries) ? legende.customEntries : []).forEach(function(e) {
     if (!e || !e.id) return;
+    if (idsPresents.has(e.id) && entreesGagnent) {
+      const i = cible.customEntries.findIndex(function(x) { return x && x.id === e.id; });
+      cible.customEntries[i] = e;
+      ajoutes++;
+      return;
+    }
     if (idsPresents.has(e.id)) { ignores++; return; }
     idsPresents.add(e.id);
     cible.customEntries.push(e);
@@ -1743,7 +1752,10 @@ function _appliquerMaj() {
     const nom = document.getElementById(item.dataset.layerId + "_file_nom");
     if (nom) nom.textContent = window.I18n.t("gen.maj.fichierLigne", { fichier: c.id + ".json" });
   });
-  if (maj.legende) _absorberLegendeCalque(maj.legende);
+  if (maj.legende) {
+    _absorberLegendeCalque(maj.legende, { entreesGagnent: true });
+    _iconesDepuisLegende(maj.legende);
+  }
   const cb = document.getElementById("pl_photos");
   if (cb) cb.checked = true;
   _majVisibiliteCheckboxPhotos();
@@ -1753,6 +1765,28 @@ function _appliquerMaj() {
   _plannerZipStatus(window.I18n.t("gen.maj.statut", { remplaces: remplaces, nouveaux: nouveaux }) +
     (echelle ? " " + echelle : "") + (calage ? " " + calage : ""), false);
   if (refuses.length) _plannerErreur(window.I18n.t("gen.maj.tropDeCalques", { ids: refuses.join(", ") }));
+}
+
+// Ancien tag du plan rendu modifiable (entrée d'icône de même id qu'une ligne « Icônes ») dont l'image a changé :
+// la ligne prend l'image de l'entrée (data-URI), écrite telle quelle dans `icons` du nouveau plan-config. Ainsi
+// tout lecteur de `icons` (accueil, carte OSM, plan ouvert sans sa légende) voit la nouvelle image. Jamais pour
+// un id `cust-…` : il n'a pas de ligne, son image vit dans la légende du plan.
+function _iconesDepuisLegende(legende) {
+  (Array.isArray(legende && legende.customEntries) ? legende.customEntries : []).forEach(function(e) {
+    if (!e || e.category !== "icones" || typeof e.iconUrl !== "string" || e.iconUrl.indexOf("data:image/") !== 0) return;
+    document.querySelectorAll(".kta-planner-icon-row").forEach(function(row) {
+      const tagEl = row.querySelector("[id$='_tag']");
+      if (!tagEl || tagEl.value.trim() !== e.id || row._customFile) return;
+      row.dataset.ktaPath = e.iconUrl;
+      const img = row.querySelector("img");
+      if (img) img.src = e.iconUrl;
+      const chemin = row.querySelector(".kta-planner-icon-path");
+      if (chemin) {
+        chemin.innerHTML = window.ktaIcone("link") + " " + window.ktaEsc(window.I18n.t("gen.icons.imageLegendeLabel"));
+        chemin.title = window.I18n.t("gen.icons.imageLegendeTitle");
+      }
+    });
+  });
 }
 
 // Calage GPS saisi dans l'app (Réglages, Recaler, Export externe : KmzExport.getCalibration(planId)) : il gagne sur
@@ -2184,10 +2218,14 @@ function _ajouterIconRow(tag, defaultPath, file, isSysteme) {
 
   // Icône SVG intégrée (ex. entree_plan) : `defaultPath` = data-URI de plusieurs centaines de caractères qui
   // déborderait et élargirait la modale. On affiche un libellé court ; le <img src> garde la data-URL.
+  // Data-URI non SVG : image venue de « Personnaliser la légende » (ancien tag rendu modifiable, image changée).
   const _isDataUrl = typeof _pathReel === "string" && _pathReel.indexOf("data:") === 0;
+  const _imageLegende = _isDataUrl && _pathReel.indexOf("data:image/svg") !== 0;
   const _pathLabel = file ? file.name
-                    : (_isDataUrl ? window.ktaIcone("link") + " " + window.I18n.t("gen.icons.svgLabel") : (_pathReel || "—"));
-  const _pathTitle = _isDataUrl ? window.I18n.t("gen.icons.svgTitle") : (_pathReel || "");
+                    : (_isDataUrl ? window.ktaIcone("link") + " " + (_imageLegende ? window.I18n.t("gen.icons.imageLegendeLabel")
+                                                                   : window.I18n.t("gen.icons.svgLabel")) : (_pathReel || "—"));
+  const _pathTitle = !_isDataUrl ? (_pathReel || "")
+                   : window.I18n.t(_imageLegende ? "gen.icons.imageLegendeTitle" : "gen.icons.svgTitle");
 
   row.innerHTML = `
     <div class="kta-planner-icon-thumb" id="${id}_thumb">

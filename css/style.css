@@ -15380,6 +15380,37 @@ body.kta-theme-light .kta-group-flyout-sep {
   border-color: rgba(255, 80, 80, 0.6);
 }
 
+/* « Changer l'icône » d'une icône personnalisée, à côté de la corbeille. */
+.kta-legend-icone {
+  background: transparent;
+  border: 1px solid var(--kta-bordure);
+  color: var(--kta-interaction);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.kta-legend-icone:hover,
+.kta-legend-icone:focus-visible { border-color: var(--kta-interaction); }
+
+/* Ancien tag court du plan, avant « Rendre modifiable » : nom brut, non éditable. */
+.kta-legend-anciens-aide {
+  margin: 8px 0 2px 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--kta-texte-3);
+}
+.kta-legend-ancien-nom {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--kta-texte-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Sélecteur de couleur d'un type built-in (éditeur de légende) : même place que la pastille (16 px, flex
    fixe). Le padding interne de <input type="color"> (liseré) est annulé via les pseudo-éléments swatch. */
 .kta-legend-color,

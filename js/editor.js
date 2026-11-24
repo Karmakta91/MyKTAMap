@@ -656,10 +656,18 @@ function afficherFormulaire(x, y, existingPoint) {
         tag = deja.id;
       } else {
         const icones = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
-        const iconUrl = (icones.default && !/marker-icon\.png$/.test(icones.default)) ? icones.default
-                      : (window._ktaIconeDefaut || "icon/default.png");
-        tag = _LC.addCustomEntry({ category: "icones", label: libelle, iconUrl: iconUrl });
+        const defautPlan = (icones.default && !/marker-icon\.png$/.test(icones.default)) ? icones.default : null;
+        const defautApp = window._ktaIconeDefaut || "icon/default.png";
+        // 🩸 L'icône par défaut d'un plan local est une URL blob:, morte au rechargement : l'entrée part avec celle
+        // de l'app, puis reçoit la copie en data-URI de celle du plan dès qu'elle est lue (imageEnIcone).
+        const blob = !!defautPlan && /^blob:/.test(defautPlan);
+        tag = _LC.addCustomEntry({ category: "icones", label: libelle, iconUrl: (defautPlan && !blob) ? defautPlan : defautApp });
         if (!tag) { setErr(window.I18n.t("editor.err.tagInvalid")); return; }
+        if (blob && typeof _LC.imageEnIcone === "function") {
+          const id = tag;
+          _LC.imageEnIcone(defautPlan).then(function(u) { _LC.updateCustomEntry(id, { iconUrl: u }); })
+            .catch(function(e) { console.warn("[Editor] icône par défaut du plan non recopiée :", e && e.message); });
+        }
       }
     } else if (tag === "__new__") {
       const nouveau = inputNewTag.value.trim().toLowerCase().replace(/\s+/g, "_");
