@@ -497,7 +497,7 @@ docs/                   ← Documentation du projet, jamais servie (sauf docs/ap
   BACKLOG.md            ← Ce qui reste à faire (Maintenant / Ensuite / Plus tard / Entrant, check-backlog.js)
   IDEES.md · DECISIONS_FERMEES.md ← Pistes non engagées · sujets enterrés, acceptés, leçons
   ETUDE_*.md            ← Études de chantier qui font foi (identifiant stable, guidage, calage en projection, remblais, vérifier le plan)
-  RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → trempage, dérogations
+  RELEASE_GATE.md       ← Porte de release : garde-fous → smoke → checkup ciblé → test sur dev, dérogations, relevé
   TILING.md · MATHS.md  ← Tuilage V1 / V2 et hors-ligne d'un plan serveur · les maths de l'app, renvoyées au code
   IA_POUR_LES_NULS.md   ← Méthode de travail avec l'IA (rôles, hooks, garde-fous, porte), transposable
   INSTALLATION_SELFHOST.md ← Installation auto-hébergée de l'édition communautaire

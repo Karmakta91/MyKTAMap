@@ -14,13 +14,17 @@
 #      (`sonar-scan.ps1` ; serveur éteint = dérogation tapée, jamais en silence) ;
 #   5. `main` est à jour vis-à-vis du dépôt distant (sinon le merge diverge), et la CI GitHub du commit
 #      à merger est VERTE (branche poussée telle quelle ; protection de branche payante en dépôt privé) ;
-#   6. il te montre ce qui va partir, puis attend une confirmation TAPÉE.
+#   6. il te montre ce qui va partir, puis attend une confirmation TAPÉE ;
+#   7. il ÉCRIT le relevé de release (marches, dérogations et leur motif) dans le
+#      message du merge et du tag : `git show vX.Y.Z` le relit, rien à recopier.
 #
 # 🩸 CE QU'IL NE PEUT PAS VÉRIFIER, et qu'il te DEMANDE donc explicitement :
 # les marches 2 à 4 de `docs/RELEASE_GATE.md` — smoke test sur dev, checkup
-# ciblé, trempage. Aucun script n'exécute l'app dans un navigateur ; c'est
-# exactement le trou que la porte de release existe pour combler. Répondre
-# « oui » sans les avoir faites, c'est se mentir à soi-même, pas au script.
+# ciblé, test sur dev. Aucun script n'exécute l'app dans un navigateur ; c'est
+# exactement le trou que la porte de release existe pour combler. Chaque « N »
+# exige un motif (motif · risque · rattrapage), écrit au relevé comme
+# dérogation accordée par KARMA. 🔒 Le relevé part sur le dépôt PUBLIC :
+# `check-noms-reels.js` le relit avant le merge.
 #
 # Usage :
 #   powershell -ExecutionPolicy Bypass -File scripts\release\merge-main.ps1
@@ -40,6 +44,25 @@ function Ok($t)    { Write-Host "  [OK] $t" -ForegroundColor Green }
 function Ko($t)    { Write-Host "  [KO] $t" -ForegroundColor Red }
 function Info($t)  { Write-Host "  $t" -ForegroundColor Gray }
 function Stop-Net($t) { Write-Host ""; Write-Host "⛔ $t" -ForegroundColor Red; Write-Host ""; exit 1 }
+
+# Relevé de release : chaque marche y laisse sa ligne, une dérogation y porte le motif tapé par KARMA.
+$aujourdhui = Get-Date -Format "dd/MM/yyyy"
+$derogations = 0
+function Demander-Motif($quoi) {
+  Write-Host "    Motif · risque accepté · rattrapage, en une ligne." -ForegroundColor Gray
+  Write-Host "    Rien de réel (réseau, lieu, plan) : le relevé part sur le dépôt public." -ForegroundColor Gray
+  $m = ("" + (Read-Host "    Dérogation « $quoi »")).Trim()
+  if (-not $m) { Stop-Net "Pas de motif, pas de dérogation : merge annulé." }
+  $script:derogations++
+  return "dérogée — $m — accordée par KARMA le $aujourdhui"
+}
+# O = franchie ; N = dérogation (motif obligatoire) ; autre réponse = arrêt.
+function Demander-Marche($quoi, $question) {
+  $r = ("" + (Read-Host "  $question (O/N)")).Trim().ToUpper()
+  if ($r -eq "O" -or $r -eq "OUI") { return "OK" }
+  if ($r -eq "N" -or $r -eq "NON") { return (Demander-Motif $quoi) }
+  Stop-Net "Réponse attendue : O ou N. Merge annulé."
+}
 
 # Toujours travailler depuis la racine du dépôt, quel que soit le dossier courant.
 $racine = (git rev-parse --show-toplevel 2>$null)
@@ -139,6 +162,7 @@ function Trouver-GitBash {
 }
 
 Titre "4. Garde-fous"
+$m1 = "sautés (-SkipGuards : passés à la main juste avant)"
 if ($SkipGuards) {
   Info "sautés (-SkipGuards)"
 } else {
@@ -173,6 +197,7 @@ if ($SkipGuards) {
     Stop-Net "La suite pre-commit sort en erreur (code $code) malgré $verts assertions vertes."
   }
   Ok "$verts assertions vertes, 0 rouge"
+  $m1 = "$verts assertions vertes, 0 rouge"
 }
 
 # ───────── 4bis. analyse SonarQube ─────────
@@ -183,13 +208,14 @@ if ($SkipGuards) {
 Titre "4bis. Analyse SonarQube"
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $racine "scripts\release\sonar-scan.ps1")
 $codeSonar = $LASTEXITCODE
+$m1ter = "porte qualité OK sur le nouveau code"
 if ($codeSonar -eq 2) {
   Stop-Net "Porte qualité SonarQube en échec sur le nouveau code. On corrige avant de merger."
 }
 if ($codeSonar -ne 0) {
   $rep = Read-Host "  Analyse Sonar impossible. Continuer sans ? (tape DEROGE, puis consigne-le dans le relevé)"
   if ($rep -ne "DEROGE") { Stop-Net "Merge annulé : relance Sonar puis ce script." }
-  Info "Sonar dérogé (déclaré par KARMA) — à consigner dans le relevé de release"
+  $m1ter = "analyse impossible, " + (Demander-Motif "Sonar")
 }
 
 # ───────── 5. le distant ─────────
@@ -211,6 +237,7 @@ Ok "main local est à jour"
 function Echec-Ci($t) { if ($DryRun) { Ko $t } else { Stop-Net $t } }
 $sha = (git rev-parse HEAD).Trim()
 $court = $sha.Substring(0, 7)
+$mCi = "non vérifiée (dry run)"
 $distantSha = (git rev-parse "origin/$branche" 2>$null)
 if (-not $distantSha -or $distantSha.Trim() -ne $sha) {
   Echec-Ci "$branche locale ≠ origin/$branche : pousse d'abord, la CI doit avoir testé exactement ce commit ($court)."
@@ -218,7 +245,10 @@ if (-not $distantSha -or $distantSha.Trim() -ne $sha) {
   $lsr = @(git ls-remote origin "refs/ci/verte/$branche" 2>$null)
   $lisible = ($LASTEXITCODE -eq 0)
   $vert = if ($lsr.Count) { ($lsr[0] -split "`t")[0].Trim() } else { "" }
-  if ($vert -eq $sha) { Ok "CI GitHub verte pour $court (marque refs/ci/verte/$branche)" }
+  if ($vert -eq $sha) {
+    Ok "CI GitHub verte pour $court (marque refs/ci/verte/$branche)"
+    $mCi = "verte (refs/ci/verte/$branche)"
+  }
   elseif ($lisible) {
     $quoi = if ($vert) { "la marque verte est sur $($vert.Substring(0, 7))" } else { "aucune marque verte" }
     Echec-Ci "$court pas (encore) marqué vert par la CI ($quoi) : CI en cours ou rouge — voir l'onglet Actions, puis relance."
@@ -227,6 +257,7 @@ if (-not $distantSha -or $distantSha.Trim() -ne $sha) {
     if (-not $DryRun) {
       $rep = Read-Host "  Merger sans avoir vu la CI verte ? (tape DEROGE, puis consigne-le dans le relevé)"
       if ($rep -cne "DEROGE") { Stop-Net "Merge annulé : CI non vérifiée." }
+      $mCi = "marque illisible, " + (Demander-Motif "CI GitHub")
     }
   }
 }
@@ -242,42 +273,67 @@ if ([int]$nb -gt 15) { Write-Host "     ... et $([int]$nb - 15) de plus" -Foregr
 # ───────── 7. la porte de release, ce que le script NE PEUT PAS voir ─────────
 Titre "7. Porte de release (docs/RELEASE_GATE.md)"
 Write-Host ""
-Write-Host "  Aucun script n'exécute l'app dans un navigateur. Les marches" -ForegroundColor Yellow
-Write-Host "  suivantes ne peuvent être confirmées que par toi :" -ForegroundColor Yellow
+Write-Host "  Aucun script n'exécute l'app dans un navigateur : ces marches, toi seul les confirmes." -ForegroundColor Yellow
+Write-Host "  N = dérogation, avec son motif ; tout part dans le relevé du merge et du tag." -ForegroundColor Yellow
 Write-Host ""
-Write-Host "    [ ] Marche 2 — smoke test 13 points sur dev.myktamap.fr, cache vidé"
-Write-Host "    [ ] Marche 3 — checkup ciblé des modules touchés par cette release"
-Write-Host "    [ ] Marche 4 — trempage 24-48 h sur dev, usage réel"
-Write-Host ""
-$rep = Read-Host "  Ces trois marches sont-elles franchies ? (tape OUI en majuscules)"
-if ($rep -ne "OUI") {
-  Stop-Net "Merge annule. main = deployable : la porte se franchit AVANT, pas apres."
+$m2 = Demander-Marche "smoke 13 points" "Marche 2 — smoke test 13 points fait sur dev.myktamap.fr, cache vidé ?"
+$m3 = Demander-Marche "checkup ciblé" "Marche 3 — checkup ciblé des modules touchés par cette release fait ?"
+if ($m3 -eq "OK") {
+  $quoi = ("" + (Read-Host "    Quels modules ? (ex. Légende, tags)")).Trim()
+  if ($quoi) { $m3 = "OK — $quoi" }
 }
-Ok "porte franchie (déclaré par KARMA)"
+$m4 = Demander-Marche "test sur dev" "Marche 4 — testé par toi sur dev, en usage réel, après le dernier commit ?"
+
+$releve = @(
+  "RELEASE GATE — $vJson ($aujourdhui), commit $court",
+  "M1 garde-fous : $m1",
+  "M1ter Sonar : $m1ter",
+  "CI GitHub : $mCi",
+  "M2 smoke 13 pts sur dev : $m2",
+  "M3 checkup ciblé : $m3",
+  "M4 test sur dev par KARMA : $m4"
+)
+Write-Host ""
+$releve | ForEach-Object { Write-Host "     $_" -ForegroundColor DarkGray }
+
+# 🔒 Le relevé devient le message du merge et du tag, publics : même contrôle que le hook commit-msg.
+# Fichiers en UTF-8 sans BOM (un BOM finirait en tête du message Git).
+$utf8 = New-Object System.Text.UTF8Encoding $false
+$msgMerge = Join-Path $env:TEMP ("mkm-merge-" + [guid]::NewGuid().ToString("N") + ".txt")
+$msgTag   = Join-Path $env:TEMP ("mkm-tag-" + [guid]::NewGuid().ToString("N") + ".txt")
+[System.IO.File]::WriteAllText($msgMerge, ("Merge branch '$branche' ($vJson)`n`n" + ($releve -join "`n") + "`n"), $utf8)
+[System.IO.File]::WriteAllText($msgTag, ("MyKTAMap $vJson`n`n" + ($releve -join "`n") + "`n"), $utf8)
+& node scripts/check-noms-reels.js --message $msgMerge
+if ($LASTEXITCODE -ne 0) {
+  Remove-Item $msgMerge, $msgTag -ErrorAction SilentlyContinue
+  Stop-Net "Le relevé contient un nom réel : reformule le motif, puis relance."
+}
+Ok "relevé écrit ($derogations dérogation(s))"
 
 # ───────── 8. le merge ─────────
 Titre "8. Merge et publication"
 if ($DryRun) {
   Info "DRY RUN — commandes qui seraient exécutées :"
   Info "  git checkout main"
-  Info ("  git merge --no-ff $branche -m " + [char]34 + "Merge branch '$branche' ($vJson)" + [char]34)
-  Info ("  git tag -a $vJson -m " + [char]34 + "MyKTAMap $vJson" + [char]34)
+  Info "  git merge --no-ff $branche -F <relevé ci-dessus>"
+  Info "  git tag -a $vJson -F <relevé ci-dessus>"
   Info "  git push origin main --follow-tags"
   Info "  git checkout $branche"
   Write-Host ""
+  Remove-Item $msgMerge, $msgTag -ErrorAction SilentlyContinue
   Write-Host "✅ DRY RUN terminé — rien n'a été modifié." -ForegroundColor Green
   exit 0
 }
 
 $confirm = Read-Host "  Dernier appel : merger $branche ($nb commits, $vJson) sur main ? (tape MERGE)"
-if ($confirm -ne "MERGE") { Stop-Net "Merge annulé." }
+if ($confirm -ne "MERGE") { Remove-Item $msgMerge, $msgTag -ErrorAction SilentlyContinue; Stop-Net "Merge annulé." }
 
 # 🩸 À partir d'ici on modifie l'état du dépôt. Chaque étape est vérifiée :
 # un échec au milieu laisserait KARMA sur main sans qu'il s'en aperçoive.
 git checkout main
 if ($LASTEXITCODE -ne 0) { Stop-Net "Impossible de passer sur main." }
 
-git merge --no-ff $branche -m "Merge branch '$branche' ($vJson)"
+git merge --no-ff $branche -F $msgMerge
 if ($LASTEXITCODE -ne 0) {
   git merge --abort
   git checkout $branche
@@ -290,10 +346,11 @@ $dejaTag = (git tag --list $vJson)
 if ($dejaTag) {
   Info "tag $vJson déjà présent — conservé tel quel"
 } else {
-  git tag -a $vJson -m "MyKTAMap $vJson"
+  git tag -a $vJson -F $msgTag
   Ok "tag $vJson posé"
 }
 
+Remove-Item $msgMerge, $msgTag -ErrorAction SilentlyContinue
 git push origin main --follow-tags
 if ($LASTEXITCODE -ne 0) {
   git checkout $branche
@@ -311,4 +368,8 @@ Write-Host "   Le déploiement PROD est automatique : dès que la CI de main est
 Write-Host "   dans les 5 minutes (auto-deploy.sh ; pause possible par le menu 0 du VPS)." -ForegroundColor Yellow
 Write-Host "   Ensuite : ouvrir /killsw.html une fois, et vérifier la version en pied de page." -ForegroundColor Yellow
 Write-Host "   Ce qui tourne vraiment, dev et prod : scripts\release\etat-sites.ps1" -ForegroundColor Yellow
+Write-Host "   Relevé de la porte : git show $vJson" -ForegroundColor Yellow
+if ($derogations -gt 0) {
+  Write-Host "   $derogations dérogation(s) : un rattrapage à faire = une entrée de docs/BACKLOG.md." -ForegroundColor Yellow
+}
 Write-Host ""

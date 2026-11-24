@@ -47,7 +47,7 @@
   vérifie arbre propre, 3 sources de version, garde-fous, porte **SonarQube** locale, CI verte du commit, fait
   confirmer les marches 2-4 de la porte, merge, tague et publie ; puis `/killsw.html` une fois. Détails :
   `infra-versioning.md` (merge-main, §85).
-- **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 13 pts sur dev → checkup ciblé → trempage). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
+- **🚦 Porte de release** : AVANT tout merge `main`, franchir **`docs/RELEASE_GATE.md`** (guards auto → smoke 13 pts sur dev → checkup ciblé → test sur dev ; relevé écrit par `merge-main.ps1` dans le merge et le tag). `main` = déployable. Dérogations possibles sur items non-🔒, **accordées par KARMA seul**, consignées avec motif/risque/rattrapage.
 
 ## 🚨 Garde-fous — NE JAMAIS
 - `push main`, pousser un tag ou `site-public`, `push --force`, `reset --hard`, staging global (`add -A`/`.`,

@@ -18,7 +18,7 @@ unique : **aucun guard n'exécute l'app dans un navigateur**. La porte comble ce
 | 1 | **Garde-fous automatiques** — la suite pre-commit complète verte (`.githooks/pre-commit`) **+ le guard de release** (`.githooks/commit-msg` : 3 sources de version cohérentes, docs à jour — cf. encadré sous le tableau) **+ la porte qualité SonarQube** (marche 1ter) | auto | ❌ noyau · ⚠️ doc · ⚠️ Sonar injoignable |
 | 2 | **Smoke test standard** — les 13 points ci-dessous, sur **dev.myktamap.fr**, cache vidé | KARMA (~10 min) | ⚠️ par item, sauf 🔒 |
 | 3 | **Checkup ciblé** — tableau destructif du/des modules **touchés par la release** (façon SIG, Légende) | KARMA + Claude | ⚠️ par item |
-| 4 | **Trempage** — la release vit sur dev pendant l'usage réel de KARMA (24-48 h) | KARMA | ⚠️ (hotfix urgent = cas typique) |
+| 4 | **Test sur dev** — KARMA utilise la release sur dev.myktamap.fr, après le dernier commit, en usage réel | KARMA | ⚠️ (hotfix urgent = cas typique) |
 
 > **Marche 1 — le guard de release (`commit-msg`, depuis le 16/08/2026)** : dès qu'un commit bumpe `version.json`,
 > il est refusé si `sw.js > CACHE_NAME` ou `js/copyright.js > build` ne suivent pas (🔒 **noyau, jamais
@@ -51,12 +51,17 @@ injoignable = `DEROGE` tapé). Puis il montre
 ce qui va partir, merge en `--no-ff`, pose le tag de version et publie — chaque étape vérifiée, un merge en conflit
 étant annulé et la branche de travail restaurée.
 
-🩸 **Ce qu'il ne peut pas vérifier, il le DEMANDE** : les marches 2 à 4 (smoke, checkup, trempage) exigent une
-confirmation tapée. Aucun script n'exécute l'app dans un navigateur — c'est précisément le trou que cette porte
+🩸 **Ce qu'il ne peut pas vérifier, il le DEMANDE** : les marches 2 à 4 (smoke, checkup, test sur dev), une par
+une, en O/N. Un « N » exige un motif (motif · risque · rattrapage), écrit au relevé comme dérogation accordée par
+KARMA ; sans motif, le merge s'arrête. Même règle pour Sonar ou la CI dérogés par `DEROGE`. Aucun script n'exécute l'app dans un navigateur — c'est précisément le trou que cette porte
 existe pour combler, et l'automatiser serait le rouvrir. Répondre « OUI » sans avoir fait les marches ne trompe
 que soi-même.
 
-`-DryRun` montre la séquence complète sans rien modifier. `-SkipGuards` saute la suite pre-commit quand elle vient
+**Le relevé s'écrit tout seul** : le script en fait le message du commit de merge et du tag annoté, relu par
+`git show vX.Y.Z`. Il passe d'abord par `check-noms-reels.js` (le dépôt est public) : un motif qui cite un nom réel
+arrête le merge.
+
+`-DryRun` montre la séquence complète, relevé compris, sans rien modifier. `-SkipGuards` saute la suite pre-commit quand elle vient
 d'être passée à l'instant.
 
 ---
@@ -131,7 +136,8 @@ suivantes, **toutes** :
 1. **Qui** : KARMA seul accorde une dérogation. Claude peut la *proposer*, jamais l'accorder.
 2. **Quoi** : uniquement des items **non-🔒**. Le noyau dur ne se déroge pas, même en urgence.
 3. **Trace** : chaque dérogation est consignée dans le relevé de release (ci-dessous) avec
-   **motif · risque résiduel accepté · plan de rattrapage** (ou « assumé définitivement »).
+   **motif · risque résiduel accepté · plan de rattrapage** (ou « assumé définitivement ») — tapée par KARMA
+   dans `merge-main.ps1`, qui l'écrit. Une dérogation du commit de release reste une ligne `Docs-deroge:`.
 4. **Suivi** : une dérogation avec rattrapage devient une entrée de `docs/BACKLOG.md` —
    sinon elle s'évapore.
 
@@ -142,18 +148,20 @@ suivantes, **toutes** :
 
 ---
 
-## 📋 Relevé de release (recopier dans le commit de release ou en commentaire de PR)
+## 📋 Relevé de release (écrit par `merge-main.ps1` dans le message du merge et du tag)
 
 ```
-RELEASE GATE — vX.Y.Z (date)
-[ ] M1 guards auto : verts (commit <sha>)
-[ ] M1ter Sonar : porte qualité OK sur le nouveau code | dérogée (motif)
-[ ] M2 smoke 13 pts : OK sauf dérogations ci-dessous
-[ ] M3 checkup ciblé : <modules> — OK sauf dérogations
-[ ] M4 trempage dev : du <date> au <date>
-Dérogations :
-- (aucune) | <item> — motif · risque accepté · rattrapage (→ BACKLOG §x) — accordée par KARMA le <date>
+RELEASE GATE — vX.Y.Z (jj/mm/aaaa), commit <sha court>
+M1 garde-fous : <n> assertions vertes, 0 rouge | sautés (-SkipGuards : passés à la main juste avant)
+M1ter Sonar : porte qualité OK sur le nouveau code | analyse impossible, dérogée — <motif> — accordée par KARMA le <date>
+CI GitHub : verte (refs/ci/verte/<branche>) | marque illisible, dérogée — <motif> — …
+M2 smoke 13 pts sur dev : OK | dérogée — <motif · risque · rattrapage> — accordée par KARMA le <date>
+M3 checkup ciblé : OK — <modules> | dérogée — …
+M4 test sur dev par KARMA : OK | dérogée — …
 ```
+
+Relire : `git show vX.Y.Z` (tag) ou `git log --merges main`. Un rattrapage = une entrée de `docs/BACKLOG.md`
+(le script le rappelle en fin de merge).
 
 ### 🗂️ Dérogations consignées a posteriori
 

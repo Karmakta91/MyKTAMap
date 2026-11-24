@@ -69,9 +69,9 @@ Si un nouveau fichier `js/` ou une icône a été ajouté → vérifier qu'il es
 
 ## 6. 🚦 Porte de release (AVANT le merge main)
 La release préparée ne part pas en prod sans franchir **`docs/RELEASE_GATE.md`** :
-guards auto → smoke 13 points sur dev → checkup ciblé des modules touchés → trempage.
-Items non-🔒 dérogeables par **KARMA seul**, avec motif + risque + rattrapage consignés
-(le relevé de release est dans le gate). Rappeler à KARMA de recopier le relevé.
+guards auto → smoke 13 points sur dev → checkup ciblé des modules touchés → test sur dev.
+Items non-🔒 dérogeables par **KARMA seul** : `merge-main.ps1` lui demande chaque marche (O/N), le motif d'un « N »,
+et écrit le relevé dans le message du merge et du tag (`git show vX.Y.Z`).
 
 ## 7. Merge et déploiement (KARMA — pas Claude)
 - KARMA lance `scripts\release\merge-main.ps1` (merge, tag, Release). Le VPS déploie `main` tout seul dans les
