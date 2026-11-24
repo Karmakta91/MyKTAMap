@@ -1308,7 +1308,7 @@ Each level has three figures, set in **⚙️ Settings › 📐 Map › 📉 Lev
 - **Height**: the height of its galleries (otherwise 2 m). The 3D view and ⛏️ Mined volume use it.
 - **Gap**: the thickness between the level's ceiling and the floor of the level above. **Negative** when the two levels interlock: −1.5 = the ceiling rises 1.5 m above the floor of the level above. Changing the gap moves this level **and the ones below it**.
 
-If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, or two levels overlapping by at least the height of one of them), a ⚠️ warning shows under the table and the row is marked; nothing is blocked, the 3D view sets them side by side.
+If two successive levels have figures that do not fit together (the floor of the upper level lower than the one below, two levels overlapping by at least the height of one of them, or a **negative gap**: the floor of a level goes below the ceiling of the one beneath), a ⚠️ warning shows under the table and the row is marked. Nothing is blocked: a negative gap can be intended. The 3D view does not separate these levels, it interlocks them (wherever either one has a gallery, it is open), at the same altitude at worst, never swapped. A forgotten negative gap makes levels blend together in 3D: check the figure.
 
 The map creator suggests them in the Generator; what you correct here stays on your device and takes priority. **↺ Map values** goes back to the map's own. Filling in floors lengthens routes that use a shaft: their length is no longer measured flat.
 

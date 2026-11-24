@@ -1308,7 +1308,7 @@ Cada nivel tiene tres cifras, que se ajustan en **⚙️ Ajustes › 📐 Mapa �
 - **Altura**: la altura de sus galerías (si no, 2 m). La vista 3D y ⛏️ Volumen explotado la usan.
 - **Separación**: el espesor entre el techo del nivel y el suelo del nivel de arriba. **Negativa** cuando los dos niveles se entrelazan: −1,5 = el techo sube 1,5 m por encima del suelo del nivel de arriba. Cambiar la separación desplaza este nivel **y los de debajo**.
 
-Si dos niveles seguidos tienen cifras que no encajan (el suelo del nivel de arriba más bajo que el de abajo, o dos niveles que se solapan al menos la altura de uno de ellos), aparece un aviso ⚠️ debajo de la tabla y la fila queda marcada; nada se bloquea, la vista 3D los coloca uno junto al otro.
+Si dos niveles seguidos tienen cifras que no encajan (el suelo del nivel de arriba más bajo que el de abajo, dos niveles que se solapan al menos la altura de uno de ellos, o una **separación negativa**: el suelo de un nivel pasa por debajo del techo del de abajo), aparece un aviso ⚠️ debajo de la tabla y la fila queda marcada. Nada se bloquea: una separación negativa puede ser voluntaria. La vista 3D no separa esos niveles, los entrelaza (donde uno de los dos tiene una galería, está abierto), a la misma altitud en el peor caso, nunca invertidos. Una separación negativa olvidada mezcla los niveles en 3D: comprueba la cifra.
 
 El creador del mapa los propone en el Generador; lo que corriges aquí se queda en tu dispositivo y prevalece. **↺ Valores del mapa** vuelve a los del mapa. Indicar los suelos alarga las rutas que pasan por un pozo: su longitud deja de medirse en plano.
 

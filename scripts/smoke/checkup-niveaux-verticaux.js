@@ -12,6 +12,9 @@
 // C. ⚙️ Réglages du plan : lanceur « Niveaux : profondeur et hauteur » et son état ; fenêtre au-dessus des
 //    Réglages, écart −1,5 saisi au 0 et hauteur du −1 corrigée → prefs (seule la hauteur qui diffère du plan),
 //    écart relu −1,5 ; « ↺ Valeurs du plan » rend les valeurs du ZIP. Largeur téléphone (390) sans débordement.
+// D. Écart négatif (A et C) : avertissement non bloquant sous la table, ligne du niveau à l'écart négatif marquée,
+//    texte de suite qui dit ce que fait la vue 3D (entremêlés, jamais « côte à côte ») ; parti quand l'écart redevient
+//    positif.
 // Usage : node scripts/smoke/checkup-niveaux-verticaux.js (SMOKE_PORT pour une autre copie ; NV_SHOTS=<dossier>
 // pour des captures) · garde-fou logique : scripts/check-niveaux-verticaux.js · doc : multilevel-pathfinding.md
 // =====================================================================
@@ -90,6 +93,24 @@ function lireTable(page, sel) {
   }, sel);
 }
 
+// Avertissement d'incohérence sous une table : { texte, role, lignes marquées, attendu (écart négatif du 0 sous le +1,
+// 1,5 m), suite } ou { absent: true, … }.
+function avertissement(page, sel) {
+  return page.evaluate(function (sel) {
+    const r = document.querySelector(sel), a = r && r.querySelector(".kta-prof-incoherence");
+    const lignes = r ? Array.prototype.map.call(r.querySelectorAll(".kta-prof-ligne.kta-prof-incoherent"), function (l) {
+      return l.getAttribute("data-ligne");
+    }) : [];
+    return { absent: !a, texte: a ? a.textContent : "", role: a ? a.getAttribute("role") : null, lignes: lignes,
+      attendu: window.I18n.t("prof.incoherent.ecart", { haut: "+1", bas: "0", m: window.formatDistance(1.5, 1) }),
+      suite: window.I18n.t("prof.incoherent.suite") };
+  }, sel);
+}
+function avertiEcart(a) {
+  return !a.absent && a.role === "status" && a.texte.indexOf(a.attendu) >= 0 && a.texte.indexOf(a.suite) >= 0 &&
+    a.lignes.join(",") === "0" && !/côte à côte/.test(a.suite) && /entremêle/.test(a.suite);
+}
+
 function saisir(page, sel, valeur) {
   return page.evaluate(function (a) {
     const e = document.querySelector(a.sel);
@@ -156,11 +177,16 @@ function saisir(page, sel, valeur) {
       "ZIP rouvert : sols, « sans profondeur » et hauteurs repris tels quels", tb);
     verifier(tb && tb["0"].ecart.v === "2" && tb["-1"].ecart.v === "2.5" && tb["2"].ecart.off && tb["-2"].ecart.off,
       "écarts calculés (0 : 2 m, −1 : 2,5 m), sans appui au-dessus ou sans profondeur : grisés", tb);
+    const sansAvert = await avertissement(page, "#pl_niveaux_table");
+    verifier(sansAvert.absent && !sansAvert.lignes.length, "écarts positifs : aucun avertissement", sansAvert);
     await saisir(page, '#pl_niveaux_table .kta-prof-ecart[data-ecart="0"]', "-1.5");
     tb = await lireTable(page, "#pl_niveaux_table");
     verifier(tb && tb["0"].sol.v === "-21.5" && tb["-1"].sol.v === "-26.5" && tb["1"].sol.v === "-20" &&
       tb["-1"].ecart.v === "2.5",
       "écart −1,5 au 0 : sol du 0 à −21,5, le −1 suit (−26,5, son écart gardé), le +1 ne bouge pas", tb);
+    const avGen = await avertissement(page, "#pl_niveaux_table");
+    verifier(avertiEcart(avGen), "Générateur : écart négatif du 0 signalé (plafond du 0 à 1,5 m au-dessus du sol du +1), " +
+      "ligne 0 marquée, suite « entremêle »", avGen);
     await saisir(page, '#pl_niveaux_table .kta-prof-h[data-h="1"]', "2.4");
     await capture(page, "generateur");
     const [dl] = await Promise.all([
@@ -222,6 +248,12 @@ function saisir(page, sel, valeur) {
     verifier(tb && tb["0"].ecart.v === "2" && tb["0"].h.v === "3" && tb["-2"].sans, "fenêtre ⚙️ : la même table, valeurs du plan", tb);
     await saisir(page, '#kta-prof-table .kta-prof-ecart[data-ecart="0"]', "-1.5");
     await saisir(page, '#kta-prof-table .kta-prof-h[data-h="-1"]', "2.2");
+    const avReg = await avertissement(page, "#kta-prof-table");
+    verifier(avertiEcart(avReg), "⚙️ Réglages : même avertissement sous la table, non bloquant", avReg);
+    await saisir(page, '#kta-prof-table .kta-prof-ecart[data-ecart="0"]', "0.5");
+    const avRetire = await avertissement(page, "#kta-prof-table");
+    verifier(avRetire.absent && !avRetire.lignes.length, "écart repassé à 0,5 : l'avertissement s'en va", avRetire);
+    await saisir(page, '#kta-prof-table .kta-prof-ecart[data-ecart="0"]', "-1.5");
     await capture(page, "reglages-pc");
     await page.evaluate(function () { document.getElementById("kta-prof-ok").click(); });
     const apres = await page.evaluate(function () {

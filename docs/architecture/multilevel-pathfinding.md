@@ -1049,11 +1049,17 @@ l'écart saisi fait foi, négatif compris) et leurs deux hauteurs ; les **niveau
 de la vue 3D (`vue3d.js > _altitudeVoisin`, même dénivelé) et ses puits, escaliers et échelles, dessinés d'un niveau
 à l'autre à leur altitude réelle (`_etenduePassage`) ; l'**entremêlement** (écart négatif) : union des vides des
 niveaux montrés dans la tranche commune, structures d'un niveau entremêlé qui arrêtent le pas (`vue3d.js > _entreDe`,
-`_niveauxQuiBloquent` ; `tracking.md` § Niveaux entremêlés et zones jonction). **Données incohérentes** (sol d'un niveau au niveau de celui du
-dessous ou plus bas, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un) : signalées sous la table
-(`profondeurNiveaux.js > _majIncoherences`, ligne marquée, `role="status"`), jamais bloquantes ; la 3D reste
-dessinable (un voisin n'est jamais posé du mauvais côté, une paroi de puits jamais inversée). Preuves : `check-niveaux-verticaux.js` (accès, cascade, saisie de l'écart, sabotage vérifié),
-`scripts/smoke/checkup-niveaux-verticaux.js` (Générateur, ZIP relu, ⚙️, téléphone).
+`_niveauxQuiBloquent` ; `tracking.md` § Niveaux entremêlés et zones jonction). **Données incohérentes** : pour deux
+niveaux qui se suivent dans la table avec un sol chacun (H au-dessus, B au-dessous), chevauchement = `sol(B) +
+hauteur(B) − sol(H)` (l'écart de B changé de signe quand H = B + 1), arrondi au mm ; un message par paire, le plus
+grave : **ordre** (`sol(H) ≤ sol(B)`), **noyé** (chevauchement ≥ la plus petite des deux hauteurs), **écart négatif**
+(chevauchement > 0 : le sol de H passe sous le plafond de B ; ligne de B marquée, celle dont le champ Écart est
+négatif). Signalées sous la table (`profondeurNiveaux.js > _incoherences / _majIncoherences`, ligne marquée,
+`role="status"`), dans le Générateur comme dans ⚙️ (même table), **jamais bloquantes** (décision produit : un écart
+négatif peut être voulu). La suite du message dit ce que fait la 3D : elle ne sépare pas les deux niveaux, elle les
+entremêle (union des vides, `_entreDe`), à la même altitude au pire (`_altitudeVoisin` ramène un voisin du mauvais côté
+à 0), jamais inversés ; une paroi de puits n'est jamais inversée. Preuves : `check-niveaux-verticaux.js` (accès, cascade, saisie de l'écart, sabotage vérifié),
+`scripts/smoke/checkup-niveaux-verticaux.js` (Générateur, ZIP relu, ⚙️, écart négatif signalé puis retiré, téléphone).
 
 ### 🩸 Ce que le chantier a corrigé sans qu'on le cherche
 

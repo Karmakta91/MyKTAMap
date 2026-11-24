@@ -56,16 +56,11 @@
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
-- **Jonctions qui traversent un mur, mode strict par plan** — les liens de jonction imparfaite
-  (`pathfinder.js > _enrichirGrapheAvecCroisements`) ignorent murs en ligne et zones inaccessibles ; idée KARMA d'un
-  mode strict par plan (tolérance 0). ⚠️ D'abord rejouer l'itinéraire réel : suit-il un VRAI tracé à travers le mur ?
-  `qui: Claude · action: rejouer le trajet, refuser un lien qui croise un obstacle dur, topo du mode strict · fini: lien
-  coupé par un mur ligne fictif, itinéraire qui contourne · depuis: 05/11/2026 · taille: S`
-- **Garde contre un écart négatif entre niveaux** — un écart négatif oublié faisait passer le sol d'un niveau sous le
-  plafond de celui du dessous (bugs 3D sur un plan réel, 12/11). Proposé : avertissement non bloquant dans la table
-  des niveaux, et correction du message faux `prof.incoherent.suite`. Validé par KARMA le 18/11/2026.
-  `qui: Claude · action: avertissement dans la table des niveaux + message corrigé · fini: écart négatif signalé,
-  checkup · depuis: 12/11/2026 · taille: S`
+- **Mode strict par plan (jonctions imparfaites)** — idée KARMA : tolérance 0 sur un plan choisi. ✅ vérifié 24/11/2026 :
+  un lien de tolérance qui croise un mur en ligne ou une zone inaccessible n'est plus posé (`pathfinder.js > _lienCoupe`).
+  Reste le mode strict lui-même : topo (options et reco) dans le rapport du lot `niveaux-jonctions`.
+  `qui: KARMA · action: choisir une option du topo du mode strict · fini: option choisie, ou idée close dans
+  DECISIONS_FERMEES · depuis: 05/11/2026 · taille: S`
 
 ## Plus tard
 

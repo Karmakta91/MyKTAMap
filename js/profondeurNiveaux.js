@@ -117,9 +117,13 @@
   }
 
   // Données incohérentes de la table (signalées, jamais bloquantes : la vue 3D reste dessinable, vue3d.js >
-  // _altitudeVoisin) : de deux niveaux qui se suivent dans la table avec un sol chacun, celui du dessus a son sol au
-  // niveau de celui du dessous ou plus bas ; ou ils se chevauchent d'au moins la hauteur de l'un des deux (un niveau
-  // noyé dans l'autre). → [{ k (niveau du dessus), texte }].
+  // _altitudeVoisin, et entremêle les deux niveaux, vue3d.js > _entreDe). De deux niveaux qui se suivent dans la table
+  // avec un sol chacun (H au-dessus, B au-dessous), chevauchement = sol(B) + hauteur(B) − sol(H), soit l'écart de B
+  // changé de signe quand H = B + 1 (config.js > calculerNiveauVertical) ; un seul message par paire, le plus grave :
+  //   ordre : sol(H) ≤ sol(B) ; noyé : chevauchement ≥ la plus petite des deux hauteurs ; écart : chevauchement > 0
+  //   (écart négatif, le sol de H passe sous le plafond de B).
+  // ⚠️ contrat (décision produit) : un écart négatif peut être voulu (niveaux entremêlés), d'où un avertissement et
+  // jamais un refus. → [{ k (ligne marquée : H, ou B pour l'écart, la ligne dont le champ Écart est négatif), texte }].
   function _incoherences(racine, lu) {
     const cles = Array.prototype.map.call(racine.querySelectorAll(".kta-prof-ligne[data-ligne]"), function (l) {
       return l.getAttribute("data-ligne");
@@ -132,11 +136,13 @@
     for (let i = 0; i + 1 < cles.length; i++) {
       const kh = cles[i], kb = cles[i + 1], sh = lu.profondeurs[kh], sb = lu.profondeurs[kb];
       if (!Number.isFinite(sh) || !Number.isFinite(sb)) continue;
-      const hh = lu.hauteurs[kh] || _defautH(), hb = lu.hauteurs[kb] || _defautH(), chev = sb + hb - sh;
-      if (sh <= sb) out.push({ k: kh, texte: _t("prof.incoherent.ordre", { haut: nom(kh), bas: nom(kb) }) });
-      else if (chev >= Math.min(hh, hb)) {
-        out.push({ k: kh, texte: _t("prof.incoherent.noye", { haut: nom(kh), bas: nom(kb), m: m(chev) }) });
-      }
+      const hh = lu.hauteurs[kh] || _defautH(), hb = lu.hauteurs[kb] || _defautH();
+      // 🩸 Arrondi au mm comme calculerNiveauVertical : −25 + 2,5 − (−22,5) ne vaut pas 0 en flottant.
+      const chev = Math.round((sb + hb - sh) * 1000) / 1000;
+      const p = { haut: nom(kh), bas: nom(kb), m: m(chev) };
+      if (sh <= sb) out.push({ k: kh, texte: _t("prof.incoherent.ordre", p) });
+      else if (chev >= Math.min(hh, hb)) out.push({ k: kh, texte: _t("prof.incoherent.noye", p) });
+      else if (chev > 0) out.push({ k: kb, texte: _t("prof.incoherent.ecart", p) });
     }
     return out;
   }

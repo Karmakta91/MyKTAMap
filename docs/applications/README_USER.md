@@ -1309,7 +1309,7 @@ Chaque niveau a trois chiffres, réglés dans **⚙️ Réglages › 📐 Plan �
 - **Hauteur** : la hauteur de ses galeries (2 m sinon). La vue 3D et ⛏️ Volume exploité s'en servent.
 - **Écart** : l'épaisseur entre le plafond du niveau et le sol du niveau du dessus. **Négatif** quand les deux niveaux s'entremêlent : −1,5 = le plafond monte 1,5 m au-dessus du sol du niveau du dessus. Changer l'écart déplace ce niveau **et ceux du dessous**.
 
-Si deux niveaux qui se suivent ont des chiffres qui ne vont pas ensemble (le sol du niveau du dessus plus bas que celui du dessous, ou deux niveaux qui se chevauchent d'au moins la hauteur de l'un), un avertissement ⚠️ s'affiche sous la table et la ligne est marquée ; rien n'est bloqué, la vue 3D les pose côte à côte.
+Si deux niveaux qui se suivent ont des chiffres qui ne vont pas ensemble (le sol du niveau du dessus plus bas que celui du dessous, deux niveaux qui se chevauchent d'au moins la hauteur de l'un, ou un **écart négatif** : le sol d'un niveau passe sous le plafond de celui du dessous), un avertissement ⚠️ s'affiche sous la table et la ligne est marquée. Rien n'est bloqué : un écart négatif peut être voulu. La vue 3D ne sépare pas ces niveaux, elle les entremêle (là où l'un des deux a une galerie, c'est ouvert), à la même altitude au pire, jamais inversés. Un écart négatif oublié donne des niveaux qui se mélangent en 3D : vérifie le chiffre.
 
 Le créateur du plan les propose dans le Générateur ; ce que tu corriges ici reste sur ton appareil et prime. **↺ Valeurs du plan** revient à celles du plan. Renseigner les sols allonge les itinéraires qui passent par un puits : leur longueur cesse d'être mesurée à plat.
 
