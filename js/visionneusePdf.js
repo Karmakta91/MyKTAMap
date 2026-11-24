@@ -391,7 +391,7 @@
   Visionneuse.prototype._surIntersection = function (entrees) {
     const self = this;
     entrees.forEach(function (en) {
-      const i = parseInt(en.target.getAttribute("data-page"), 10);
+      const i = Number.parseInt(en.target.getAttribute("data-page"), 10);
       if (en.isIntersecting) self.visibles.add(i);
       else {
         self.visibles.delete(i);

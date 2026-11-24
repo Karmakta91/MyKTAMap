@@ -723,7 +723,8 @@ window.LegendCustomization = (function() {
       return tag !== "default" && tag !== "track" && !/^cust-/.test(tag) && ID_ENTREE_SUR.test(tag) &&
         !Object.prototype.hasOwnProperty.call(DEFAULT_LABELS.icones, tag) && !findCustomEntry(tag) &&
         typeof icones[tag] === "string" && icones[tag];
-    }).sort().map(function(tag) { return { tag: tag, iconUrl: icones[tag] }; });
+    }).sort(function(x, y) { return x.localeCompare(y); })
+      .map(function(tag) { return { tag: tag, iconUrl: icones[tag] }; });
   }
 
   // « montag_2-b » → « Montag 2 b ».
