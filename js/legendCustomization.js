@@ -704,14 +704,17 @@ window.LegendCustomization = (function() {
   //   typesRetires : clés rendues au plan ou au défaut ; retraits : ids d'entrées à supprimer.
   // ⚠️ contrat : une entrée encore utilisée par un objet n'est PAS supprimée (jamais de tag orphelin sans icône) ;
   // elle est rendue dans `gardes`. → { appliques, gardes }.
-  // 🔒 Tout passe par _normalize (texte, couleurs) et une icône n'est acceptée qu'en data-URI d'image : une URL
-  // venue d'un autre appareil ne doit pas faire charger une ressource tierce.
+  // 🔒 Tout passe par _normalize (texte, couleurs) et une icône n'est acceptée qu'en data-URI d'image (ou celle de
+  // l'entrée du plan de même id) : une URL venue d'un autre appareil ne doit pas faire charger une ressource tierce.
   function appliquerSession(lot) {
     const l = (lot && typeof lot === "object") ? lot : {};
     const entrantes = _normalize({ customEntries: Array.isArray(l.entrees) ? l.entrees : [] }).customEntries
       .filter(function(e) { return CATEGORIES.indexOf(e.category) >= 0; })
       .map(function(e) {
-        const icone = (typeof e.iconUrl === "string" && /^data:image\//.test(e.iconUrl)) ? e.iconUrl : null;
+        // L'icône de l'entrée du PLAN de même id (fichier du ZIP) est déjà la nôtre : gardée telle quelle.
+        const duPlan = _planState.customEntries.find(function(x) { return x.id === e.id; });
+        const icone = (typeof e.iconUrl === "string" &&
+          (/^data:image\//.test(e.iconUrl) || (duPlan && duPlan.iconUrl === e.iconUrl))) ? e.iconUrl : null;
         return {
           id: e.id, category: e.category, geometry: _defaultGeometry(e.category, e.geometry),
           label: e.label || "", lineColor: e.lineColor || null, fillColor: e.fillColor || null,

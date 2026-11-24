@@ -322,7 +322,8 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   (point par ses tags, tracé, zone ou structure, session ou calque du plan) n'est **pas** supprimée et revient dans
   `gardes` — jamais de tag orphelin sans icône ; l'extension rejoue le retrait plus tard.
   `usagesLegende(ids, planId?)` → `{ id: nombre d'objets }`. 🔒 Textes et couleurs passent par la normalisation de
-  `LegendCustomization` ; une icône reçue n'est gardée qu'en `data:image/…` (pas de ressource tierce chargée).
+  `LegendCustomization` ; une icône reçue n'est gardée qu'en `data:image/…`, ou si c'est celle de l'entrée du plan de même id (pas de
+  ressource tierce chargée).
   Le masquage (`hidden`) reste une préférence de l'appareil : ni lu ni écrit. Les trois rendent `null` sans plan
   prêt ou si le plan prêt n'est pas `planId` (même garde que `changementsDepuis`). Signal **`mktm:legende-session`**
   à chaque changement sauvegardé de la légende de session (personne ne l'écoute sans extension). Garde-fou :

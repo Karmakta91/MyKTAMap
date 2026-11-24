@@ -2730,6 +2730,13 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
     t("🔒 appliquerLegende : texte normalisé, icône hors data:image refusée", !/[<>]/.test(pris.label) && !pris.iconUrl);
     t("appliquerLegende : types renommés / rendus au défaut", LC.getLabel("zones", "eau") === "Flaque" &&
       LC.getColor("zones", "eau") === "#00ff00" && LC.getLabel("traces", "principal") !== "Grande galerie");
+    c.w.PLAN_CONFIG = { plan: { customLegend: { customEntries: [{ id: "cust-plan", category: "icones", label: "Du plan",
+      iconUrl: "icons/plan.png" }] } } };
+    LC.loadPlanState();
+    c.K.appliquerLegende({ entrees: [{ id: "cust-plan", category: "icones", label: "Du plan renommé", iconUrl: "icons/plan.png" },
+      { id: "cust-autre", category: "icones", label: "Autre", iconUrl: "icons/plan.png" }] }, "ext_1");
+    t("🔒 appliquerLegende : l'icône de l'entrée du plan de même id est gardée, pas pour un autre id",
+      LC.findCustomEntry("cust-plan").iconUrl === "icons/plan.png" && !LC.findCustomEntry("cust-autre").iconUrl);
     t("appliquerLegende : le masquage reste à l'appareil", LC.isVisible("zones", "eau") === true &&
       !("hidden" in c.K.legendeSession("ext_1")));
   }
