@@ -640,8 +640,28 @@ function afficherFormulaire(x, y, existingPoint) {
 
     let tag = selectType.value;
 
-    // Nouveau tag créé à la volée.
-    if (tag === "__new__") {
+    // Nouveau tag créé à la volée : un libellé libre (espaces, accents) qui devient une icône personnalisée de la
+    // Légende (id `cust-…`, icône par défaut) : gardée au rechargement, partie avec le ZIP de session et les exports,
+    // renommable dans la Légende. Même libellé qu'une icône personnalisée existante → on la reprend. Sans
+    // LegendCustomization : repli sur un tag court (minuscules, chiffres, _ ou -).
+    const _LC = window.LegendCustomization;
+    const _lcOk = !!(_LC && typeof _LC.addCustomEntry === "function" && typeof _LC.listCustomEntries === "function");
+    if (tag === "__new__" && _lcOk) {
+      const libelle = inputNewTag.value.trim().replace(/\s+/g, " ");
+      if (!libelle) { setErr(window.I18n.t("editor.err.tagInvalid")); inputNewTag.focus(); return; }
+      const deja = (_LC.listCustomEntries("icones") || []).find(function(e) {
+        return e && e.id && e.iconUrl && String(e.label || "").toLowerCase() === libelle.toLowerCase();
+      });
+      if (deja) {
+        tag = deja.id;
+      } else {
+        const icones = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+        const iconUrl = (icones.default && !/marker-icon\.png$/.test(icones.default)) ? icones.default
+                      : (window._ktaIconeDefaut || "icon/default.png");
+        tag = _LC.addCustomEntry({ category: "icones", label: libelle, iconUrl: iconUrl });
+        if (!tag) { setErr(window.I18n.t("editor.err.tagInvalid")); return; }
+      }
+    } else if (tag === "__new__") {
       const nouveau = inputNewTag.value.trim().toLowerCase().replace(/\s+/g, "_");
       if (!nouveau) { setErr(window.I18n.t("editor.err.tagInvalid")); inputNewTag.focus(); return; }
       if (!/^[a-z0-9_-]+$/.test(nouveau)) {

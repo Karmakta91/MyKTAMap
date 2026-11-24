@@ -770,7 +770,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-splash.js` | Splash de démarrage au téléphone et au PC |
 | `smoke/checkup-suppression-plan-docs.js` | Supprimer un plan et, sur demande, ses documents d'histoire |
 | `smoke/checkup-tableur-session.js` | L'Éditeur de données applique un fichier de session à la session (multi-niveau) |
-| `smoke/checkup-tag-nouveau.js` | Tag créé à la volée sur un POI : gardé au rechargement, proposé et conservé par « Modifier » |
+| `smoke/checkup-tag-nouveau.js` | Nouveau tag d'un POI : nom libre devenu icône de Légende, gardé au rechargement et par « Modifier » (ancien tag court compris) |
 | `smoke/checkup-toasts.js` | Toasts empilés et « J'accepte » des CGU, PC et téléphone, deux thèmes |
 | `smoke/checkup-transparence-calques.js` | Opacité d'un calque image réglée au curseur des filtres ≡ : sans réglage rien ne change, valeur retenue par calque et par plan et réappliquée au rechargement (calque standard et calé), export PNG composé comme à l'écran, détection qui lit l'image pleine, indépendante du fond OSM sous le plan ; Chromium et WebKit |
 | `smoke/checkup-transparence-plan-de-base.js` | Opacité de l'image principale réglée au curseur sous « Afficher le plan de base » : sans réglage rien ne change, un seul curseur, valeur retenue par plan et réappliquée au rechargement, multipliée par la transparence du fond OSM, tuiles V1 et V2 atteintes, export PNG atténué comme à l'écran, détection qui lit l'image pleine ; Chromium et WebKit |
@@ -889,7 +889,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 
 #### Pas encore publié (après v2.31.0, branche `Karma_dev`)
 
-- 🏷️ **Tag créé à la volée gardé après un rechargement** (`js/editor.js > _buildTypeOptionsHTML`, `checkup-tag-nouveau.js`) : un tag créé par « Nouveau tag » vit sur le point seul ; après un rechargement, la liste « Type » ne le proposait plus, la fiche « Modifier » s'ouvrait sur « Aucun tag » et Enregistrer l'effaçait. La liste reprend les tags des points de session et celui du point ouvert ; valeurs et libellés échappés.
+- 🏷️ **Nouveau tag au nom libre, gardé après un rechargement** (`js/editor.js > afficherFormulaire`, `_buildTypeOptionsHTML`, `lang/*.json` `editor.field.newTag*`, guides, `checkup-tag-nouveau.js`) : « Créer un nouveau tag » prend un nom libre (espaces, accents) et crée une icône personnalisée de la Légende (id `cust-…`, icône par défaut, renommable, partie avec la session et les exports) ; même nom → même entrée. Avant, le nom était réduit à un identifiant (`puits_du_nord`) et un tag créé par « Nouveau tag » vit sur le point seul ; après un rechargement, la liste « Type » ne le proposait plus, la fiche « Modifier » s'ouvrait sur « Aucun tag » et Enregistrer l'effaçait. La liste reprend les tags des points de session et celui du point ouvert ; valeurs et libellés échappés.
 
 - 🌐 **Coordonnées GPS dès l'ajout d'un point** (`js/editor.js > afficherFormulaire`, `js/utils.js > ktaGpsTexte`, `css/style.css`, guides, `checkup-georef-reglages.js`) : sur un plan géoréférencé, il fallait enregistrer le point puis rouvrir sa fiche pour lire ses coordonnées. La fenêtre « Ajouter un point » (et « Modifier ») les affiche sous X / Y, même calcul et même texte que la fiche, avec le bouton copier.
 
