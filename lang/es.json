@@ -3414,7 +3414,7 @@
   "osm_home.cache.statsCount": "📦 {count} teselas · {size}",
   "osm_home.cache.statsEmpty": "📦 caché vacía",
   "osm_home.cache.statsTitle": "Caché OSM sin conexión (compartida con Vista OSM + Modo Rescate)",
-  "osm_home.footer.tiles": "🔒 Teselas: tile.openstreetmap.org · ⛶ agrandar ·",
+  "osm_home.footer.tiles": "🔒 Teselas: {domaine} · ⛶ agrandar ·",
   "osm_home.fullscreen.enterTitle": "Abrir el modo OSM (pantalla completa)",
   "osm_home.fullscreen.exitTitle": "Cerrar el modo OSM",
   "osm_home.gps.accuracy": "Precisión: ±{acc} m",

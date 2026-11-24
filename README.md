@@ -356,7 +356,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `osmTilesCache.js` | Cache hors ligne des tuiles OpenStreetMap seules (IDB, servi par le SW) |
 | `osmView.js` | Modale Vue OSM : le plan projeté sur OpenStreetMap par son géoréférencement |
 | `fondOsmPlan.js` | Fond de carte (OSM ou IGN) sous le plan, dans la carte du plan, et son petit panneau (bouton carte du haut) |
-| `osmHomePreview.js` | Widget Vue OSM de l'accueil : plans géoréférencés empilés, sans charger de plan |
+| `osmHomePreview.js` | Widget Vue OSM de l'accueil : plans géoréférencés empilés sur le fond choisi, sans charger de plan |
 | `kmzImport.js` | Import KMZ → ZIP de plan MyKTAMap |
 | `gpxIO.js` | Export / import GPX 1.1 de la session |
 | `gpxImport.js` | Import GPX → ZIP de plan (canvas vierge calé sur l'emprise GPS) |
@@ -716,7 +716,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-niveau-objet.js` | Changer le niveau d'un objet de session sur un plan multi-niveau |
 | `smoke/checkup-fiche-plein-ecran.js` | Fiches dans une fenêtre au téléphone, Chromium et WebKit : case de la Configuration (défaut selon l'appareil, choix gardé après rechargement), fiche longue d'un point ouverte au toucher dans une boîte centrée sur un voile flouté, qui défile dans la boîte, en-tête au nom du point, carte immobile, « Y aller », ✕, Échap, toucher le voile, fiches d'un tracé, d'une zone et d'une structure, « Convertir » par-dessus, « Repositionner » puis toucher la carte, intervention Secours en cours ; bulle habituelle au PC ; captures avec `FPE_SHOTS=<dossier>` |
 | `smoke/checkup-fond-osm.js` | Fond OSM sous le plan : bouton grisé sans géoréf, interrupteur, transparence de l'image du plan, calage au pixel au zoom max, plan orienté, extinction, hors ligne, OSM refusé et incognito sans requête, « Ma position » |
-| `smoke/checkup-fonds-carte.js` | Fonds de carte de la Vue OSM (OSM, IGN aérien, IGN plan ; tuiles fabriquées) : sélecteur, attribution, sauvegarde hors ligne grisée en IGN, repli OSM hors couverture, choix partagé et retenu, aucune requête IGN sans la case Vue OSM ni en incognito |
+| `smoke/checkup-fonds-carte.js` | Fonds de carte (OSM, IGN aérien, IGN plan ; tuiles fabriquées) de la Vue OSM, du widget de l'accueil et du briefing Secours : sélecteur, attribution, sauvegarde hors ligne grisée en IGN, repli OSM hors couverture, choix partagé, suivi en direct et retenu, capture du briefing lisible avec les tuiles IGN, aucune requête IGN sans la case Vue OSM ni en incognito, sélecteurs à 390 px |
 | `smoke/checkup-osm-empilement.js` | Vue OSM : les POI restent au-dessus des tuiles du plan |
 | `smoke/checkup-osm-legende.js` | Légende du plan en lecture seule depuis les deux cartes OSM |
 | `smoke/checkup-osm-rotation.js` | Rotation manuelle des cartes OSM (widget de l'accueil en contexte téléphone, Vue OSM) : vrai geste CDP, page ni défilée ni zoomée, coins couverts à 45° (tuiles OSM et du plan), toucher et mesure sous rotation, Maj + molette, bouton nord, nord en haut à la recréation, autres cartes droites |

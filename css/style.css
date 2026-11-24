@@ -4817,6 +4817,16 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   background: #f4c542;
   color: var(--kta-sur-accent);
 }
+/* 💾 refusé en fond IGN (hors ligne = OSM seul) : touchable pour lire la raison, bordure pointillée, comme le
+   bouton du fond sous le plan (.kta-fond-osm-indispo). !important : le bouton porte sa couleur en style inline. */
+.kta-osm-home-bandeau .kta-osm-home-fullscreen.kta-osm-home-indispo,
+html.kta-theme-light .kta-osm-home-bandeau .kta-osm-home-fullscreen.kta-osm-home-indispo {
+  background: transparent !important;
+  color: var(--kta-texte-3) !important;
+  border-style: dashed !important;
+  border-color: var(--kta-texte-3) !important;
+  cursor: help;
+}
 /* Mobile : le sélecteur de plan seul sur la 1re ligne, opacité et boutons groupés sur la 2e (flex-wrap). */
 @media (max-width: 600px) {
   .kta-osm-home-bandeau select {
@@ -4839,6 +4849,7 @@ body.kta-instance-pro #splashLicense .kta-licence-pro { display: inline-block; }
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   text-align: center;
 }
+.kta-osm-home-attr a { color: inherit; text-decoration: underline; }
 
 /* 2e ligne du bandeau : bascules de catégories compactes */
 .kta-osm-home-tagchips {

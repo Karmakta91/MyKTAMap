@@ -5568,6 +5568,17 @@
     }
   }
 
+  // Fond du repli hors écran : le choix de l'appareil, si OSM est autorisé, hors incognito et en ligne.
+  function _idFondBriefing() {
+    const F = window.KtaFondsCarte;
+    const autorise = !!(window.OsmView && window.OsmView.isOptedIn && window.OsmView.isOptedIn());
+    let incognito = false;
+    try { incognito = !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
+    catch(e) { incognito = false; }
+    const enLigne = typeof navigator === "undefined" || navigator.onLine !== false;
+    return (autorise && !incognito && enLigne) ? F.courant().id : F.OSM;
+  }
+
   async function _captureOsmCanvasForBriefing(scenario, plan, options, overlayContext) {
     if (typeof window.html2canvas !== "function") {
       console.warn("[Briefing] html2canvas non chargé — capture skip (fallback liens)");
@@ -5729,10 +5740,11 @@
       });
       map.fitBounds(bbox, { padding: [60, 60], maxZoom: 17 });
 
-      const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        crossOrigin: "anonymous"
-      });
+      // Fond de l'appareil (js/fondsCarte.js) ; une tuile IGN en erreur est remplacée par la tuile OSM. Seul le
+      // fond change ici : la palette du Secours reste la sienne.
+      // 🔒 Sans la case Vue OSM ou en incognito, jamais de tuile IGN : ce repli reste sur OpenStreetMap.
+      // ⚠️ crossOrigin : html2canvas (useCORS, allowTaint: false) ne garde que des tuiles servies en CORS.
+      const tileLayer = window.KtaFondsCarte.creerCouche(_idFondBriefing(), { crossOrigin: "anonymous" });
       tileLayer.addTo(map);
 
       // Rectangle du plan (jaune charte semi-transparent).

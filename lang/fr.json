@@ -3392,7 +3392,7 @@
   "osm_home.cache.statsCount": "📦 {count} tuiles · {size}",
   "osm_home.cache.statsEmpty": "📦 cache vide",
   "osm_home.cache.statsTitle": "Cache OSM offline (partagé avec Vue OSM + Mode Secours)",
-  "osm_home.footer.tiles": "🔒 Tiles : tile.openstreetmap.org · ⛶ agrandir ·",
+  "osm_home.footer.tiles": "🔒 Tuiles : {domaine} · ⛶ agrandir ·",
   "osm_home.fullscreen.enterTitle": "Ouvrir le mode OSM (plein écran)",
   "osm_home.fullscreen.exitTitle": "Fermer le mode OSM",
   "osm_home.gps.accuracy": "Précision : ±{acc} m",

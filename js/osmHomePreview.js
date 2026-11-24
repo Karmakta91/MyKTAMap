@@ -22,6 +22,7 @@
 // check-style-canon (palette propre, pas de ktaResolveStyle).
 // ⚠️ _isOptedIn doit rester identique à OsmView.isOptedIn (osmView.js) ; défaut actif annoncé par bandeau.
 // 🔒 Pas d'opt-in → colonne masquée ; incognito → widget bloqué : aucun appel sortant dans les deux cas.
+// Fond : celui de l'appareil (js/fondsCarte.js, suivi en direct par kta:fondCarteChange) ; fond IGN → 💾 refusé.
 // Garde-fous : scripts/check-osm-defaut.js, check-osm-pile.js, check-osm-etiquettes.js, check-icon-catalog.js ·
 // Doc : docs/architecture/vue-osm.md.
 
@@ -30,11 +31,9 @@
 
   const LS_OPT_IN_KEY = "myktamap_osm_view_opt_in";
   const LS_LAST_SEL_KEY = "myktamap_osm_home_last_selected_plan";
-  const OSM_TILE_URL  = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const OSM_ATTR      = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
-  const OSM_MAX_ZOOM  = 19;
-
   let _mapInstance   = null;  // mini-carte
+  let _fondLayer     = null;  // fond de carte (couche de KtaFondsCarte.creerCouche)
+  let _statsCount    = 0;     // tuiles du cache hors ligne, relu par _majPied
   let _markerLayer   = null;  // markers du géoréf + ligne
   let _dataLayer     = null;  // parent des sous-couches par catégorie
   let _poiSubLayer       = null;
@@ -641,9 +640,10 @@
 
       // opacité par plan, filtres globaux et tags vivent dans la modale « 🎚️ Plans & filtres »
       '<div class="kta-osm-home-map" id="ktaOsmHomeMap"></div>' +
+      // pied : domaine contacté et attribution du fond affiché (_majPied), stats du cache hors ligne
       '<div class="kta-osm-home-footer">' +
-        window.I18n.t("osm_home.footer.tiles") + ' ' +
-        // stats du cache hors ligne
+        '<span id="ktaOsmHomeTuiles"></span> ' +
+        '<span id="ktaOsmHomeAttr" class="kta-osm-home-attr"></span> · ' +
         '<span id="ktaOsmHomeCacheStats" title="' + _escapeHtml(window.I18n.t("osm_home.cache.statsTitle")) + '">📦 …</span>' +
       '</div>';
 
@@ -697,6 +697,7 @@
     if (cacheBtn) {
       cacheBtn.addEventListener("click", _runCacheTilesHome);
     }
+    _majPied();
     _refreshCacheStatsHome();
 
     // mini-carte initialisée en différé (le DOM se peint d'abord)
@@ -732,6 +733,7 @@
       });
       _dataLayer   = null;
       _tilesLayer  = null;
+      _fondLayer   = null;   // appartenait à la carte détruite
       _poiSubLayer = null;
       _roadsSubLayer = null;
       _zonesSubLayer = null;
@@ -751,11 +753,7 @@
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_mapInstance);
     _brancherRotation();
 
-    L.tileLayer(OSM_TILE_URL, {
-      maxZoom: OSM_MAX_ZOOM,
-      attribution: OSM_ATTR,
-      crossOrigin: true
-    }).addTo(_mapInstance);
+    _poserFond();
 
     _markerLayer = L.featureGroup().addTo(_mapInstance);
     _tilesLayer  = L.layerGroup().addTo(_mapInstance); // en premier = sous les données
@@ -3278,13 +3276,12 @@
     if (!span || !window.OsmTilesCache) return;
     try {
       const s = await window.OsmTilesCache.getStats();
-      if (s.count > 0) {
-        span.textContent = window.I18n.t("osm_home.cache.statsCount", { count: s.count, size: window.OsmTilesCache.formatBytes(s.sizeBytes) });
-        span.style.color = "var(--kta-ok)";
-      } else {
-        span.textContent = window.I18n.t("osm_home.cache.statsEmpty");
-        span.style.opacity = "0.7";
-      }
+      _statsCount = s.count;
+      span.textContent = s.count > 0
+        ? window.I18n.t("osm_home.cache.statsCount",
+          { count: s.count, size: window.OsmTilesCache.formatBytes(s.sizeBytes) })
+        : window.I18n.t("osm_home.cache.statsEmpty");
+      _majPied();
     } catch(e) {
       span.textContent = "📦 ?";
     }
@@ -3293,6 +3290,11 @@
   async function _runCacheTilesHome() {
     if (!window.OsmTilesCache || !_mapInstance) return;
     const btn = document.getElementById("ktaOsmHomeCacheBtn");
+    // 🔒 Fond IGN : bouton grisé mais touchable, la raison s'affiche (au téléphone, pas de survol pour la lire)
+    if (!_fondEnregistrable()) {
+      _showHomeToast(window.I18n.t("fondscarte.horsLigne.osmSeul"), 4500, "warn");
+      return;
+    }
     if (!navigator.onLine) {
       _showHomeToast(window.I18n.t("osm_home.cache.noConnection"), 3500);
       return;
@@ -3331,10 +3333,10 @@
     }
   }
 
-  function _showHomeToast(msg, durationMs) {
+  function _showHomeToast(msg, durationMs, type) {
     durationMs = durationMs || 3500;
     if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast(msg, "info");
+      window.OOMGuard.showToast(msg, type || "info");
       return;
     }
     // repli : barre injectée dans le widget
@@ -3357,6 +3359,67 @@
     clearTimeout(bar._t);
     bar._t = setTimeout(function() { if (bar) bar.style.display = "none"; }, durationMs);
   }
+
+  // ── Fond de carte (table js/fondsCarte.js) ──────────
+  // 🔒 Hors ligne = OSM seul : la couche OSM lit le cache « Save Offline » (sw.js), une tuile IGN partirait au
+  // réseau pour rien. Les portes (opt-in, incognito) sont celles de mount : sans elles, pas de carte, pas de couche.
+  function _idFondAffiche() {
+    const F = window.KtaFondsCarte;
+    return (F && _isOnline()) ? F.courant().id : "osm";
+  }
+  function _fondEnregistrable() { return !window.KtaFondsCarte || window.KtaFondsCarte.estOsm(); }
+
+  // Couche du fond affiché : remplace la précédente (tilePane, donc sous les tuiles du plan et les données).
+  function _poserFond() {
+    const F = window.KtaFondsCarte;
+    if (!_mapInstance || !F) return;
+    if (_fondLayer) { try { _mapInstance.removeLayer(_fondLayer); } catch(e) {} }
+    _fondLayer = F.creerCouche(_idFondAffiche());
+    // ⚠️ La carte n'a pas de contrôle d'attribution (pied du widget) : le premier remplacement d'une tuile IGN
+    // par OSM se lit ici, au chargement de la tuile de remplacement.
+    _fondLayer.on("tileload", function() {
+      if (this.ktaReplis && !this._ktaPiedOsm) { this._ktaPiedOsm = true; _majPied(); }
+    });
+    _fondLayer.addTo(_mapInstance);
+    _majPied();
+  }
+
+  // Pied et bouton 💾 selon le fond : domaine contacté, attribution (plus celle d'OSM après un remplacement),
+  // cache refusé avec sa raison en fond IGN.
+  function _majPied() {
+    const F = window.KtaFondsCarte;
+    if (!F) return;
+    const affiche = F.fond(_idFondAffiche());
+    const repli = affiche.id !== F.OSM && !!(_fondLayer && _fondLayer.ktaReplis);
+    const tuiles = document.getElementById("ktaOsmHomeTuiles");
+    if (tuiles) {
+      tuiles.textContent = window.I18n.t("osm_home.footer.tiles", {
+        domaine: affiche.domaine + (repli ? ", " + F.fond(F.OSM).domaine : "") });
+    }
+    const attr = document.getElementById("ktaOsmHomeAttr");
+    // innerHTML : attributions de la table (constantes du module, liens compris), rien de l'utilisateur
+    if (attr) {
+      attr.innerHTML = affiche.attribution + (repli ? " · " + F.ATTR_OSM : "");
+      attr.setAttribute("data-fond", affiche.id);
+    }
+    const ok = _fondEnregistrable();
+    const btn = document.getElementById("ktaOsmHomeCacheBtn");
+    if (btn && !btn.disabled) {
+      btn.classList.toggle("kta-osm-home-indispo", !ok);
+      btn.setAttribute("aria-disabled", ok ? "false" : "true");
+      btn.title = window.I18n.t(ok ? "osm_home.cache.btnTitle" : "fondscarte.horsLigne.osmSeul");
+    }
+    const stats = document.getElementById("ktaOsmHomeCacheStats");
+    if (stats) {
+      stats.style.color = (ok && _statsCount > 0) ? "var(--kta-ok)" : "var(--kta-texte-3)";
+      stats.title = window.I18n.t(ok ? "osm_home.cache.statsTitle" : "fondscarte.horsLigne.osmSeul");
+    }
+  }
+
+  window.addEventListener("kta:fondCarteChange", function() {
+    if (_mapInstance && _mapInstance.getContainer().isConnected) _poserFond();
+    else _majPied();
+  });
 
   window.addEventListener("kta:osmOptInChange", refresh);
 
