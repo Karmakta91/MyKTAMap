@@ -8,7 +8,7 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
-### Pas encore publié (après v2.32.0) — fonds de carte IGN
+### v2.33.0 (fonds de carte IGN, plan en haute résolution)
 
 **Un domaine nouveau, seulement si tu le choisis : `data.geopf.fr` (Géoplateforme de l'IGN).** Le panneau du bouton 🌍 et le bandeau de la Vue carte proposent, à côté d'OpenStreetMap (toujours le fond par défaut), deux fonds IGN : photos aériennes et plan. Tant que tu ne choisis pas un fond IGN, aucune requête ne part vers l'IGN. Choisi, il demande les tuiles de la vue (couche et coordonnées de la tuile, rien du plan), aux mêmes moments qu'OpenStreetMap, et se coupe par la même case 🗺️ Vue carte et par le mode incognito. Hors couverture (hors de France), la tuile OpenStreetMap est demandée à la place. Le hors ligne reste OpenStreetMap seul : aucune tuile IGN n'est enregistrée sur l'appareil ni gardée par le service worker, et les boutons d'enregistrement sont grisés avec la raison. Le choix du fond est retenu sur l'appareil, jamais envoyé. La politique de sécurité du serveur (CSP) permet les images de `https://data.geopf.fr` (`img-src`), rien d'autre.
 
