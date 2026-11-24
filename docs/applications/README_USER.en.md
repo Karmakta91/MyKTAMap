@@ -302,7 +302,7 @@ If the area exceeds the map, an orange banner says so ("you could be anywhere"):
 - the **compass rose** on the left takes you back to the home screen;
 - the **map name** opens **🗂️ Switch map** (see below);
 - the **counters** 📍 points · 🛣️ paths · ⬛ zones · 🏛️ structures · 📸 photos open **📊 Session details**;
-- on the right: **📖** Story Mode, **🌍** OpenStreetMap background under the map (georeferenced map, see “🌍 OSM View”), **🚨** Emergency exit, **🔋** battery.
+- on the right: **📖** Story Mode, **🌍** basemap under the map, OpenStreetMap or IGN (georeferenced map, see “🌍 OSM View”), **🚨** Emergency exit, **🔋** battery.
 
 **At the bottom**, a status bar groups what is in progress: 📐 measurement, 📏 total path distance, 🗺️ route (distance, time, pace — tap it to open the route) and the **🧭 tracker** light (ON · steps · distance while tracking; tap it to open the Tracker menu). It wraps onto a second line if everything doesn't fit; the ▾▴ button collapses it.
 
@@ -874,19 +874,21 @@ By default, the route crosses only one border (your map and the destination map)
 The OSM View lays your **georeferenced** maps over the OpenStreetMap map, with their points, paths, zones and structures, in your legend colours. It is **on by default**: the background map comes from OpenStreetMap, which therefore sees the areas you look at; no data from your maps leaves the device. To turn it off: ⚙️ Configuration.
 
 - **On the home screen**, the **🌍 OSM View** widget; its **⛶** button opens the OSM mode full screen.
-- **On a map**, the **🌍** button in the top bar does not open the OSM View: it puts OpenStreetMap **under** the map (“OpenStreetMap background under the map”, below). Rescue Mode still opens the OSM View window.
+- **On a map**, the **🌍** button in the top bar does not open the OSM View: it puts a basemap **under** the map (“Basemap under the map”, below). Rescue Mode still opens the OSM View window.
 - A map only shows up once it has been **opened at least once**: that is when the app reads its georeferencing.
 - **Offline**: **💾 Save Offline** downloads the tiles of the visible area in advance.
+- **Basemap**: in the OSM View window bar, the **Basemap** list picks **OpenStreetMap** (default), **IGN – aerial photos** or **IGN – map**. The choice is kept on the device and also applies to the basemap under the map. The IGN basemaps cover France: elsewhere, OpenStreetMap shows instead. They contact the IGN (`data.geopf.fr`), only when you choose them, and are turned off with the OSM View. Offline stays OpenStreetMap only: with an IGN basemap, **💾 Save Offline** is greyed out.
 - Zooming in on a map shows more detailed images, read from the map file already on your device. Layers shipped hidden are shown and filtered like the others.
 
-**OpenStreetMap background under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel with four commands.
+**Basemap under the map**: on a georeferenced map, the **🌍** button in the top bar opens a small panel with five commands.
 
-- **OSM background under the map** turns it on or off. When it is on, the 🌍 button stays highlighted and the OpenStreetMap credit shows at the bottom left. Closing the panel does not turn it off.
+- **Basemap under the map** turns it on or off. When it is on, the 🌍 button stays highlighted and the basemap credit (OpenStreetMap or IGN) shows at the bottom left. Closing the panel does not turn it off.
+- **Basemap**: OpenStreetMap, IGN – aerial photos or IGN – map, as in the OSM View window (it is the same choice). Outside France, OpenStreetMap replaces the IGN and its credit is added.
 - **Map transparency**: at 0 %, the map hides OpenStreetMap; at 100 %, only OpenStreetMap is left. OpenStreetMap itself stays opaque. Each map remembers its own (50 % the first time). It adds to the base plan **Opacity** slider (≡ Filters): 50 % on each side leaves the plan at 25 %.
 - **My location**: your GPS position, once, without tracking. Refused when you are far from the map, and in incognito mode. Nothing is saved or sent.
-- **Save offline**: downloads the OpenStreetMap tiles of the whole map in advance (200 tiles at most), to have the background without a network. Progress shows in the command, then a message gives the count. Greyed out, with the reason, when offline, in incognito mode, or if the OSM View is turned off.
+- **Save offline**: downloads the OpenStreetMap tiles of the whole map in advance (200 tiles at most), to have the background without a network. Progress shows in the command, then a message gives the count. Greyed out, with the reason, when offline, in incognito mode, if the OSM View is turned off, or with an IGN basemap (“OSM only”: only OpenStreetMap can be saved).
 
-The background turns with the oriented map and is off every time a map opens (the transparency is remembered). Without georeferencing, the button is greyed out (hover over it to read why). If the OSM View is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, a line in the panel says so and only saved tiles are shown; at a zoom that was not saved, the closest saved tile is enlarged. Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
+The background turns with the oriented map and is off every time a map opens (the transparency is remembered). Without georeferencing, the button is greyed out (hover over it to read why). If the OSM View is turned off in ⚙️ Configuration, or in incognito mode, the background is refused. Offline, a line in the panel says so and only saved OpenStreetMap tiles are shown, even with an IGN basemap chosen; at a zoom that was not saved, the closest saved tile is enlarged. Zoomed in very close, OpenStreetMap gets blurry: it does not exist in more detail. Image, PDF and KMZ exports do not contain the background.
 
 **Search**: the bar in the title row looks for a map or a point among your georeferenced maps; the map flies to it. It reads your maps, without asking the Internet anything.
 

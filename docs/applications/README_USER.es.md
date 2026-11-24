@@ -302,7 +302,7 @@ Si la zona supera el mapa, un banner naranja lo indica («podrías estar en cual
 - la **rosa de los vientos** a la izquierda vuelve a la pantalla de inicio;
 - el **nombre del mapa** abre **🗂️ Cambiar de mapa** (ver más abajo);
 - los **contadores** 📍 puntos · 🛣️ trazados · ⬛ zonas · 🏛️ estructuras · 📸 fotos abren **📊 Detalles de la sesión**;
-- a la derecha: **📖** Modo Historia, **🌍** fondo OpenStreetMap bajo el plano (mapa georreferenciado, ver «🌍 Vista OSM»), **🚨** Salida de emergencia, **🔋** batería.
+- a la derecha: **📖** Modo Historia, **🌍** fondo de mapa bajo el plano, OpenStreetMap o IGN (mapa georreferenciado, ver «🌍 Vista OSM»), **🚨** Salida de emergencia, **🔋** batería.
 
 **Abajo**, una barra de estado reúne lo que está en curso: 📐 medición, 📏 distancia total de los trazados, 🗺️ itinerario (distancia, tiempo, ritmo — tócalo para abrir el itinerario) y el indicador **🧭 tracker** (ON · pasos · distancia durante el seguimiento; tócalo para abrir el menú del Tracker). Pasa a una segunda línea si no cabe todo; el botón ▾▴ la reduce.
 
@@ -874,19 +874,21 @@ Por defecto, el trayecto solo cruza una frontera (tu mapa y el mapa de llegada).
 La Vista OSM coloca tus mapas **georreferenciados** sobre el mapa de OpenStreetMap, con sus puntos, trazados, zonas y estructuras, en tus colores de leyenda. Está **activa por defecto**: el fondo de mapa procede de OpenStreetMap, que por tanto ve las zonas que miras; ningún dato de tus mapas sale del dispositivo. Para desactivarla: ⚙️ Configuración.
 
 - **En la pantalla de inicio**, el widget **🌍 Vista OSM**; su botón **⛶** abre el modo OSM a pantalla completa.
-- **En un mapa**, el botón **🌍** de la barra de arriba no abre la Vista OSM: pone OpenStreetMap **bajo** el plano («Fondo OpenStreetMap bajo el plano», más abajo). El Modo Rescate sigue abriendo la ventana Vista OSM.
+- **En un mapa**, el botón **🌍** de la barra de arriba no abre la Vista OSM: pone un fondo de mapa **bajo** el plano («Fondo de mapa bajo el plano», más abajo). El Modo Rescate sigue abriendo la ventana Vista OSM.
 - Un mapa solo aparece una vez que se ha **abierto al menos una vez**: es al abrirlo cuando la app lee su georreferenciación.
 - **Sin conexión**: **💾 Guardar sin conexión** descarga con antelación las teselas de la zona visible.
+- **Fondo**: en la barra de la ventana Vista OSM, la lista **Fondo** elige **OpenStreetMap** (por defecto), **IGN – fotos aéreas** o **IGN – mapa**. La elección se guarda en el dispositivo y vale también para el fondo bajo el plano. Los fondos IGN cubren Francia: en otros lugares, OpenStreetMap aparece en su lugar. Contactan con el IGN (`data.geopf.fr`), solo cuando los eliges, y se desactivan con la Vista OSM. Sin conexión sigue siendo solo OpenStreetMap: con un fondo IGN, **💾 Guardar sin conexión** aparece en gris.
 - Al acercar el zoom sobre un mapa se muestran imágenes más detalladas, leídas del archivo del mapa que ya está en tu dispositivo. Las capas incluidas ocultas se muestran y se filtran como las demás.
 
-**Fondo OpenStreetMap bajo el plano**: en un mapa georreferenciado, el botón **🌍** de la barra de arriba abre un pequeño panel con cuatro mandos.
+**Fondo de mapa bajo el plano**: en un mapa georreferenciado, el botón **🌍** de la barra de arriba abre un pequeño panel con cinco mandos.
 
-- **Fondo OSM bajo el plano** lo activa o lo desactiva. Activado, el botón 🌍 queda resaltado y el crédito de OpenStreetMap aparece abajo a la izquierda. Cerrar el panel no lo desactiva.
+- **Fondo bajo el plano** lo activa o lo desactiva. Activado, el botón 🌍 queda resaltado y el crédito del fondo (OpenStreetMap o IGN) aparece abajo a la izquierda. Cerrar el panel no lo desactiva.
+- **Fondo**: OpenStreetMap, IGN – fotos aéreas o IGN – mapa, como en la ventana Vista OSM (es la misma elección). Fuera de Francia, OpenStreetMap sustituye al IGN y se añade su crédito.
 - **Transparencia del plano**: al 0 %, el plano tapa OpenStreetMap; al 100 %, solo queda OpenStreetMap. OpenStreetMap sigue opaco. Cada mapa recuerda la suya (50 % la primera vez). Se suma al control **Opacidad** del plano base (≡ Filtros): 50 % de cada lado deja el plano al 25 %.
 - **Mi posición**: tu posición GPS, una vez, sin seguimiento. Se rechaza si estás lejos del mapa, y en modo incógnito. No se guarda ni se envía nada.
-- **Guardar sin conexión**: descarga de antemano los mosaicos de OpenStreetMap de todo el mapa (200 como máximo), para tener el fondo sin red. El progreso se ve en el mando y luego un mensaje da el recuento. En gris, con el motivo, sin conexión, en modo incógnito o si la Vista OSM está desactivada.
+- **Guardar sin conexión**: descarga de antemano los mosaicos de OpenStreetMap de todo el mapa (200 como máximo), para tener el fondo sin red. El progreso se ve en el mando y luego un mensaje da el recuento. En gris, con el motivo, sin conexión, en modo incógnito, si la Vista OSM está desactivada o con un fondo IGN («Solo OSM»: solo se guarda OpenStreetMap).
 
-El fondo gira con el mapa orientado y se desactiva cada vez que se abre un mapa (la transparencia se recuerda). Sin georreferenciación, el botón aparece en gris (pasa el cursor por encima para leer el motivo). Si la Vista OSM está desactivada en ⚙️ Configuración, o en modo incógnito, el fondo se rechaza. Sin conexión, una frase del panel lo recuerda y solo se muestran los mosaicos guardados; en un zoom no guardado, se amplía el mosaico guardado más cercano. Muy de cerca, OpenStreetMap se vuelve borroso: no existe con más detalle. Las exportaciones de imagen, PDF y KMZ no contienen el fondo.
+El fondo gira con el mapa orientado y se desactiva cada vez que se abre un mapa (la transparencia se recuerda). Sin georreferenciación, el botón aparece en gris (pasa el cursor por encima para leer el motivo). Si la Vista OSM está desactivada en ⚙️ Configuración, o en modo incógnito, el fondo se rechaza. Sin conexión, una frase del panel lo recuerda y solo se muestran los mosaicos de OpenStreetMap guardados, incluso con un fondo IGN elegido; en un zoom no guardado, se amplía el mosaico guardado más cercano. Muy de cerca, OpenStreetMap se vuelve borroso: no existe con más detalle. Las exportaciones de imagen, PDF y KMZ no contienen el fondo.
 
 **Búsqueda**: la barra de la línea de título busca un mapa o un punto entre tus mapas georreferenciados; el mapa vuela hasta él. Lee tus mapas, sin consultar nada en Internet.
 

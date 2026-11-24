@@ -6,8 +6,9 @@
 >
 > 🩸 **Ce n'est pas un réglage d'affichage.** Le widget du HOME monte une carte Leaflet dont le fond vient de
 > `tile.openstreetmap.org` : actif par défaut, **l'accueil contacte un tiers au chargement, sans clic**, pour
-> qui possède au moins un plan géoréférencé. C'est la seule requête sortante de l'app. Elle ne transporte
-> **aucune donnée de plan** — seulement les coordonnées des tuiles regardées.
+> qui possède au moins un plan géoréférencé. Avec les fonds IGN (seulement si l'utilisateur les choisit, § Fonds de
+> carte), ce sont les seules requêtes sortantes de l'app. Elles ne transportent **aucune donnée de plan** —
+> seulement les coordonnées des tuiles regardées.
 >
 > 🚨 **`isOptedIn` est DUPLIQUÉ** : `osmView.js` (modale) et `osmHomePreview.js` (widget). Les faire diverger
 > donne un widget affiché sans bouton dans la modale, ou l'inverse. `check-osm-defaut.js` **exécute les deux**
@@ -39,22 +40,69 @@
 > géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
 
 > Référence détaillée de la Vue OSM. Lue à la demande.
-> Sections : fond OSM sous le plan (`fondOsmPlan.js`) · §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline
+> Sections : fonds de carte (`fondsCarte.js`) · fond sous le plan (`fondOsmPlan.js`) · §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline
 
 ---
 
-## 🗺️ Fond OSM sous le plan (mode plan, `js/fondOsmPlan.js`)
+## 🗺️ Fonds de carte : OpenStreetMap, IGN aérien, IGN plan (`js/fondsCarte.js`)
+
+**Une seule table** (`window.KtaFondsCarte`) porte, pour chaque fond, son URL de tuile, son zoom max, son attribution
+et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmView.js`, `fondOsmPlan.js` ni
+`osmTilesCache.js`. Chargée par `index.html` avant `osmTilesCache.js`, précachée par `sw.js`.
+
+| id | Couche | URL | Zoom max | Attribution | Hors ligne |
+|---|---|---|---|---|---|
+| `osm` (défaut) | OpenStreetMap | `tile.openstreetmap.org/{z}/{x}/{y}.png` | 19 | « © OpenStreetMap » (lien copyright) | oui (`OsmTilesCache`) |
+| `ign-aerien` | `ORTHOIMAGERY.ORTHOPHOTOS`, JPEG | WMTS `data.geopf.fr`, `TILEMATRIXSET=PM` | 19 | « © IGN – Géoplateforme » (lien cartes.gouv.fr) | non |
+| `ign-plan` | `GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2`, PNG | idem | 19 | idem | non |
+
+- **Choix de l'appareil**, partagé par les vues : `localStorage` `myktamap_fond_carte_v1` (lecture et écriture en
+  try/catch ; écriture refusée → le choix vaut pour la page). `KtaFondsCarte.choisir(id)` émet `kta:fondCarteChange`
+  `{ id }` : la Vue OSM remplace sa couche, le fond sous le plan se redessine sans être rallumé. Non exporté avec le
+  profil (réglage d'appareil).
+- **Sélecteurs** (aucun bouton de plus, place au téléphone) : liste `#kta-osm-fond` dans le premier bandeau de la Vue
+  OSM ; liste `[data-fond-osm='fond']` dans le panneau du bouton carte du plan.
+- **Zooms** : le GetCapabilities de `data.geopf.fr` annonce les deux couches IGN sur la grille `PM_0_19` (zooms 0 à 19) ;
+  `PM` est servi aussi. Au-delà, la tuile 19 est agrandie (`maxNativeZoom`, ou le plafond du fond sous le plan).
+- **Hors couverture** : l'IGN répond 404 hors de ses données (mesuré une fois, à la main, en pleine mer). Une seule
+  règle, sans polygone de couverture à tenir à jour : **chaque tuile IGN en erreur est remplacée par la tuile OSM**
+  (`KtaFondsCarte.creerCouche` pour Leaflet, `fondOsmPlan.js > _imageOsm` pour le canvas), et l'attribution OSM
+  s'ajoute dès le premier remplacement. Une image refusée par la CSP tombe dans la même règle : un serveur dont la
+  CSP n'autorise pas encore `data.geopf.fr` montre de l'OSM sous l'étiquette IGN, avec les deux attributions.
+- 🔒 **Hors ligne = OSM seul** : `osmTilesCache.js` n'enregistre que des tuiles OSM (URL de la table, fond `osm`) ;
+  `sw.js` sort tôt pour `data.geopf.fr` (pas de `respondWith` : ni `CACHE_NAME`, ni cache IDB) ; fond IGN choisi,
+  « 💾 Sauvegarder hors-ligne » (Vue OSM) et « Enregistrer hors ligne » (fond sous le plan) sont grisés, raison
+  écrite (`fondscarte.horsLigne.osmSeul`, `fondosm.cache.indispo.fond`). Hors ligne avec un fond IGN, les tuiles
+  OSM enregistrées s'affichent (le repli tuile par tuile y mène tout seul).
+- 🔒 **Consentement** : la case « Vue OSM » couvre tous les fonds ; décochée ou en incognito, aucune requête IGN
+  (les portes sont celles des vues, la table n'émet rien). Textes : `home.privacy.osmToggle`, `home.netdoc.verify3`,
+  `verify4`, `osm.open.optInConfirm`, `netaudit.whitelist.ign`, `NETWORK_AUDIT.md`.
+- **CSP** : `img-src … https://data.geopf.fr` (`docker/nginx-docker.conf`, `docs/nginx-myktamap.conf`,
+  `docs/nginx-csp-config.conf`) ; pas dans `connect-src` (le service worker ne la récupère pas). Le serveur public
+  porte sa propre CSP hors de ce dépôt : sans la même ligne, le repli ci-dessus s'applique.
+- **Pas encore branchés** : le widget de l'accueil (`osmHomePreview.js`) et la carte du Mode Secours
+  (`secoursMode.js`) gardent OpenStreetMap ; les brancher = `KtaFondsCarte.creerCouche(KtaFondsCarte.courant().id)`
+  à la place de leur `L.tileLayer`, plus l'écoute de `kta:fondCarteChange`.
+
+🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue OSM), `checkup-fond-osm.js` F8 et F13 (fond sous le plan) : tuiles
+OSM et IGN fabriquées par le harnais, aucune requête réelle. `scripts/check-plan-offline.js` §9 : `sw.js` n'intercepte
+pas `data.geopf.fr`.
+
+---
+
+## 🗺️ Fond de carte sous le plan (mode plan, `js/fondOsmPlan.js`)
 
 En mode plan, le bouton carte de la barre du haut (`#kta-refonte-counter-osm`, `refonteInterface.js`) n'ouvre **plus**
 la fenêtre Vue OSM (décision produit) : il ouvre un petit panneau ancré sous lui (classes `.kta-group-flyout`, mode
-ancré, sans fond assombri) avec quatre commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
+ancré, sans fond assombri) avec cinq commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
 
 | Commande | Effet |
 |---|---|
-| Interrupteur « Fond OSM sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche OSM dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), attribution « © OpenStreetMap » fixée au-dessus de la barre d'état |
+| Interrupteur « Fond sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche du fond choisi dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), attribution du fond fixée au-dessus de la barre d'état (`data-fond`, plus « © OpenStreetMap » après un remplacement d'une tuile IGN ou hors ligne) |
+| Fond | liste des fonds de la table (§ Fonds de carte) ; changer redessine la couche allumée (images oubliées, génération suivante) sans l'éteindre |
 | Transparence du plan (0 → 100 %, 50 % au premier usage) | opacité de l'**image du plan** seulement : `tilePane` (tuiles V2) et overlays du fond (`_ktaBaseLayers` : rendu direct et repli V2 ; `_baseTiles` : tuiles V1), **multipliée** par le curseur d'opacité de l'image principale des filtres ≡ (`FondOsmPlan.facteurPlan` lu par `tiling.js > ktaAppliquerOpacitePlanDeBase`, seule à poser l'opacité ; `rendering-leaflet.md` § Opacité des images du plan). Le fond OSM reste opaque. Éteint : le curseur des filtres seul. **Retenue par plan** (décision produit) : localStorage `myktamap_fond_osm_v1_<planId>` ("0" à "100", lecture et écriture en try/catch), purgée et transférée avec les données du plan (`planRegistry.js > purgeAssociatedData`, `transferAssociatedData` → `FondOsmPlan.retirer` / `transferer`), exportée avec le profil (`profileExportImport.js > PER_PLAN_PREFIXES`) |
 | Ma position | un `getCurrentPosition` (jamais `watchPosition`, fix de moins de 10 s accepté), mêmes garde-fous que la fenêtre (§4) : refus hors de `OsmView.getPlanGpsBbox().pad(0.5)`, bloqué en incognito, rien de persisté ni d'envoyé. Point (`.kta-fond-osm-moi`) et cercle de précision posés sur le plan par `KmzExport.gpsToPlan`, en mémoire jusqu'au plan suivant |
-| Enregistrer hors ligne | l'emprise du plan (`OsmView.getPlanGpsBbox`) dans le cache « Save Offline » partagé, par le code du bouton 💾 : `OsmTilesCache.cacheTilesForBbox(bbox, z)` (seule implémentation, `cacheVisibleTiles` y passe aussi), `z = OsmTilesCache.zoomPourBbox(bbox, 18)` = le zoom le plus fin où l'emprise tient sur z − 1, z, z + 1 sous le plafond de 200 tuiles. Grisée, raison écrite dans la commande, si OSM est coupé, en incognito ou hors ligne (relu aux événements `online` / `offline`). Progression « fait / total » dans la commande, fin par un toast (compte des tuiles, déjà là, échecs, plafond) ; prévient la fenêtre Vue OSM (`recheckOfflineCache`) |
+| Enregistrer hors ligne | l'emprise du plan (`OsmView.getPlanGpsBbox`) dans le cache « Save Offline » partagé, par le code du bouton 💾 : `OsmTilesCache.cacheTilesForBbox(bbox, z)` (seule implémentation, `cacheVisibleTiles` y passe aussi), `z = OsmTilesCache.zoomPourBbox(bbox, 18)` = le zoom le plus fin où l'emprise tient sur z − 1, z, z + 1 sous le plafond de 200 tuiles. Grisée, raison écrite dans la commande, si OSM est coupé, en incognito, avec un fond IGN (« OSM seulement », raison complète au survol) ou hors ligne (relu aux événements `online` / `offline`). Progression « fait / total » dans la commande, fin par un toast (compte des tuiles, déjà là, échecs, plafond) ; prévient la fenêtre Vue OSM (`recheckOfflineCache`) |
 
 **Rendu.** Une `L.GridLayer` en canvas (`CoucheFondOsm`), pane `ktaFondOsm` z-index 150, sous `tilePane` (200). Pour
 chaque tuile de la carte du plan : les 3 coins (pixel projeté → `map.unproject` → pixel image → `KmzExport.planToGps`
@@ -79,8 +127,9 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
   rotation de la carte du plan relance `_update` de ces seules grilles (pas un parcours de tous les calques), et le
   patch `_installerPatchGrilles` (désormais posé pour toutes les cartes, `rot.grilles` vrai partout) élargit leur zone
   au rectangle tourné.
-- **Images OSM** : d'abord le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
-  décodage), puis le réseau seulement si en ligne, OSM autorisé et hors incognito ; 48 images décodées gardées (LRU),
+- **Images** : fond IGN, d'abord la tuile IGN si le réseau est permis (en erreur : la suite d'OSM, compteur
+  `replis`) ; puis le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
+  décodage), puis le réseau OSM seulement si en ligne, OSM autorisé et hors incognito ; 48 images décodées gardées (LRU),
   un échec n'est pas gardé. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
   jusqu'à 6 zooms plus large (morceau agrandi, `drawImage` sur un rectangle source) : « Enregistrer hors ligne » ne
   garde que 3 zooms, le fond serait vide à tous les autres. Éteindre coupe les images en vol (`src = ""`), vide le cache, remet chaque canvas à 0 × 0
@@ -90,8 +139,8 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
 géoréf effectif (`OsmView.getGeorefEffectif`, même cascade que la fenêtre, §2.2). Allumer est refusé avec un message
 si OSM est coupé (`OsmView.isOptedIn`, `ktaAlerte`) ou en incognito (toast) ; couper OSM pendant que le fond est
 affiché l'éteint (`kta:osmOptInChange`). Hors ligne : un toast à l'allumage, une phrase d'état en tête du panneau
-(`fondosm.horsLigne`, `.kta-tx-warn`, relue aux événements `online` / `offline` sans rouvrir), tuiles enregistrées
-seulement.
+(`fondosm.horsLigne`, ou `fondscarte.horsLigne.fondIgn` avec un fond IGN ; `.kta-tx-warn`, relue aux événements
+`online` / `offline` sans rouvrir), tuiles OSM enregistrées seulement.
 
 **À chaque plan ouvert** (décision produit) : interrupteur éteint (`mktm:plan-ferme`, `mktm:plan-pret`, et le polling
 2 s du bouton détecte une carte remplacée), point « Ma position » effacé ; la transparence, elle, reprend la valeur

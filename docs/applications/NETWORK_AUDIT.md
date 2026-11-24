@@ -3,8 +3,9 @@
 > Page de transparence technique. À jour pour la version **v2.32.0** (24 novembre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
-> **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
-> site extérieur qu'elle contacte** (OpenStreetMap, pour la Vue OSM).
+> **comment vérifier toi-même** que rien ne fuit, et **comment couper les sites
+> extérieurs qu'elle contacte** (les fonds de carte : OpenStreetMap, et l'IGN si
+> tu choisis un de ses fonds).
 
 ---
 
@@ -97,6 +98,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (français, anglais, espagnol) | **Aucune** (fichiers statiques same-origin, **network-first** + **cache-buster `?v=<build>`** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
 | `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
 | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic), fenêtre Vue OSM du Mode Secours, ou **fond OSM sous le plan** allumé à la main (bouton 🌍 du mode plan). **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
+| `https://data.geopf.fr/wmts?…&LAYER=…&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}` | `GET` | **Seulement si tu choisis un fond IGN** (« IGN – photos aériennes » ou « IGN – plan », dans le panneau du bouton 🌍 ou le bandeau de la Vue OSM), puis aux mêmes moments que la ligne OpenStreetMap ci-dessus. Coupé par la même case 🗺️ Vue OSM et par le mode incognito ; **jamais hors ligne** | Afficher les photos aériennes ou le plan de l'IGN (Géoplateforme) en fond du plan calibré GPS | **Aucune** (cookies omis, juste la couche et les coordonnées `{z}/{x}/{y}` de la tuile, comme pour OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -133,7 +135,8 @@ Le body attendu est exactement `"OK"`.
 > 🔎 **Contrôle du 13/09/2026 — aucune URL de service n'est codée en dur.** Tous les
 > appels de l'app (`version.json`, `alert.json`, `denylist.json`, `deploiement.json`, `data/index.json`, `data/reglages.json`,
 > `lang/*.json`, `ping.html`, licence pro) sont **relatifs à l'origine qui sert l'app** ;
-> la seule cible externe écrite en dur est `tile.openstreetmap.org` (Vue OSM). C'est
+> les seules cibles externes écrites en dur sont les fonds de carte, `tile.openstreetmap.org` et
+> `data.geopf.fr` (IGN), dans une seule table (`js/fondsCarte.js`). C'est
 > voulu : une copie de l'app servie ailleurs (self-host, kiosque, ou copie tierce) appelle
 > **sa propre** origine et jamais `myktamap.fr` — elle ne reçoit donc ni nos alertes, ni
 > notre liste de révocation, ni nos mises à jour, et nous ne recevons rien d'elle. C'est
@@ -161,9 +164,10 @@ contacte aucun tiers et n'envoie rien. Il n'a lieu que sur ton action
 
 ### À propos des tuiles OSM `tile.openstreetmap.org`
 
-En dehors de son propre serveur, l'app ne contacte qu'un seul domaine :
-`tile.openstreetmap.org`, pour afficher la carte OSM, **uniquement
-sous 3 conditions strictes simultanément réunies** :
+En dehors de son propre serveur, l'app ne contacte que les fonds de carte :
+`tile.openstreetmap.org` (le fond par défaut) et, **seulement si tu choisis
+un fond IGN**, `data.geopf.fr` (voir « À propos des fonds IGN » plus bas),
+**uniquement sous 3 conditions strictes simultanément réunies** :
 
 1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
    map mode → Géoréférencement). Sans georef, le bouton 🌍 du mode plan est
@@ -358,8 +362,31 @@ sous licence ODbL. Leur politique de logs CDN est publiée publiquement
 publicitaire, pas de monétisation, juste un référant HTTP standard et
 l'IP de la requête (comme toute requête web).
 
+### À propos des fonds IGN `data.geopf.fr`
+
+Le panneau du bouton 🌍 (fond sous le plan) et le bandeau de la Vue OSM
+proposent trois fonds : **OpenStreetMap** (par défaut), **IGN – photos
+aériennes** et **IGN – plan**. Les deux fonds IGN viennent de la
+Géoplateforme de l'IGN (`data.geopf.fr`, service WMTS public, sans clé).
+
+- **Aucune requête IGN tant que tu ne choisis pas un fond IGN.** Le choix
+  est retenu sur l'appareil (`localStorage`, clé `myktamap_fond_carte_v1`),
+  pour toutes les cartes ; il n'est ni envoyé ni exporté.
+- **Mêmes portes qu'OpenStreetMap** : case 🗺️ Vue OSM décochée ou mode
+  incognito, aucune tuile IGN n'est demandée non plus.
+- **Couverture France** : hors couverture, le serveur IGN répond « pas de
+  tuile » ; l'app demande alors la tuile OpenStreetMap à la place, et
+  l'attribution OpenStreetMap s'affiche à côté de celle de l'IGN.
+- **Jamais hors ligne** : seules les tuiles OpenStreetMap s'enregistrent
+  (« Save Offline », « Enregistrer hors ligne »). Fond IGN choisi, ces
+  boutons sont grisés et disent pourquoi. Le service worker laisse passer
+  les tuiles IGN au réseau sans les garder. Hors ligne, un fond IGN choisi
+  montre les tuiles OpenStreetMap enregistrées.
+- Ce qui part : la couche et les coordonnées de la tuile (comme pour OSM),
+  l'IP et l'en-tête standard du navigateur. Rien du plan.
+
 Si tu préfères ne contacter aucun service tiers, **décoche la case 🗺️ Vue OSM** (elle est activée par
-défaut) : l'app ne contacte alors plus que son propre serveur (cf. « Couper le seul site extérieur »).
+défaut) : l'app ne contacte alors plus que son propre serveur (cf. « Couper les sites extérieurs »).
 
 ---
 
@@ -427,11 +454,12 @@ Méthode 1. Tu peux le lire en intégralité pour comprendre la mécanique.
 
 ---
 
-## 🗺️ Couper le seul site extérieur : la case Vue OSM
+## 🗺️ Couper les sites extérieurs : la case Vue OSM
 
 L'app n'envoie **aucune** de tes données. Toutes ses requêtes vont vers
-**son propre serveur** — sauf une : le **fond de carte OpenStreetMap** de la
-Vue OSM (`tile.openstreetmap.org`). C'est le seul tiers que l'app contacte. La case est **activée PAR DÉFAUT** :
+**son propre serveur** — sauf les **fonds de carte** : OpenStreetMap
+(`tile.openstreetmap.org`) et, seulement si tu choisis un fond IGN, la Géoplateforme de l'IGN (`data.geopf.fr`). Ce
+sont les seuls tiers que l'app contacte. La case est **activée PAR DÉFAUT** :
 sans geste de ta part, l'accueil affiche ce fond (et contacte donc `tile.openstreetmap.org`) dès qu'un plan calé sur la
 carte est présent. Une case suffit à le couper :
 
@@ -439,8 +467,8 @@ carte est présent. Une case suffit à le couper :
 2. Section **🔒 Confidentialité & Audit**
 3. Décoche **🗺️ Vue OSM (OpenStreetMap)**
 
-Décochée, la case coupe tout ce qui touche OpenStreetMap : ni le widget de
-l'accueil ni la modale Vue OSM ne chargent de tuile, et le préchargement
+Décochée, la case coupe tous les fonds de carte (OpenStreetMap comme IGN) : ni le widget de
+l'accueil, ni la modale Vue OSM, ni le fond sous le plan ne chargent de tuile, et le préchargement
 « 💾 Save Offline » n'est plus accessible. Ton refus est mémorisé et
 **aucune mise à jour ne revient dessus**. Le **mode incognito** coupe lui
 aussi la Vue OSM.
@@ -489,7 +517,8 @@ Tu peux vérifier la CSP appliquée :
 
 La directive clé est `connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org` — le
 navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la
-Vue OSM, rien ne lui est envoyé).
+Vue OSM, rien ne lui est envoyé). Les images des fonds IGN sont permises par `img-src` seulement
+(`https://data.geopf.fr`) : une image ne peut rien emporter que l'adresse de la tuile.
 
 **Deuxième directive : quel code a le droit de tourner (`script-src`).** L'application ne
 contient aucun code écrit directement dans ses pages (`onclick="…"`, blocs `<script>`, liens `javascript:`) :

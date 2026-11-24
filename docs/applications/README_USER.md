@@ -302,7 +302,7 @@ Si la zone dépasse le plan, un bandeau orange le signale (« tu pourrais être 
 - la **rose des vents** à gauche ramène à l'accueil ;
 - le **nom du plan** ouvre **🗂️ Changer de plan** (voir plus bas) ;
 - les **compteurs** 📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures · 📸 photos ouvrent **📊 Détails de la session** ;
-- à droite : **📖** Mode Histoire, **🌍** fond OpenStreetMap sous le plan (plan géoréférencé, voir « 🌍 Vue OSM »), **🚨** Sortie d'urgence, **🔋** batterie.
+- à droite : **📖** Mode Histoire, **🌍** fond de carte sous le plan, OpenStreetMap ou IGN (plan géoréférencé, voir « 🌍 Vue OSM »), **🚨** Sortie d'urgence, **🔋** batterie.
 
 **En bas**, une barre d'état regroupe ce qui est en cours : 📐 mesure, 📏 distance totale des tracés, 🗺️ itinéraire (distance, temps, allure — touche-le pour ouvrir l'itinéraire) et le voyant **🧭 tracker** (ON · pas · distance pendant le suivi ; touche-le pour ouvrir le menu Tracker). Elle passe à la ligne si tout ne tient pas ; le bouton ▾▴ la réduit.
 
@@ -874,19 +874,21 @@ Par défaut, le trajet ne franchit qu'une frontière (ton plan et le plan d'arri
 La Vue OSM pose tes plans **géoréférencés** sur la carte OpenStreetMap, avec leurs points, tracés, zones et structures, dans tes couleurs de légende. Elle est **active par défaut** : le fond de carte vient d'OpenStreetMap, qui voit donc les zones que tu regardes ; aucune donnée de tes plans ne sort. Pour la couper : ⚙️ Configuration.
 
 - **Sur l'accueil**, le widget **🌍 Vue OSM** ; son bouton **⛶** ouvre le mode OSM en plein écran.
-- **Sur un plan**, le bouton **🌍** de la barre du haut n'ouvre pas la Vue OSM : il pose OpenStreetMap **sous** le plan (« Fond OpenStreetMap sous le plan », ci-dessous). Le Mode Secours, lui, ouvre la fenêtre Vue OSM.
+- **Sur un plan**, le bouton **🌍** de la barre du haut n'ouvre pas la Vue OSM : il pose un fond de carte **sous** le plan (« Fond de carte sous le plan », ci-dessous). Le Mode Secours, lui, ouvre la fenêtre Vue OSM.
 - Un plan n'y apparaît qu'une fois **ouvert au moins une fois** : c'est à l'ouverture que l'app lit son géoréférencement.
 - **Hors connexion** : **💾 Sauvegarder hors-ligne** télécharge à l'avance les tuiles de la zone visible.
+- **Fond** : dans le bandeau de la fenêtre Vue OSM, la liste **Fond** choisit **OpenStreetMap** (par défaut), **IGN – photos aériennes** ou **IGN – plan**. Le choix est retenu sur l'appareil et vaut aussi pour le fond sous le plan. Les fonds IGN couvrent la France : ailleurs, OpenStreetMap s'affiche à leur place. Ils contactent l'IGN (`data.geopf.fr`), seulement quand tu les choisis, et se coupent avec la Vue OSM. Le hors ligne reste OpenStreetMap seul : avec un fond IGN, **💾 Sauvegarder hors-ligne** est grisé.
 - Zoomer sur un plan affiche des images plus détaillées, lues dans le fichier du plan déjà sur ton appareil. Les calques livrés masqués s'y affichent et se filtrent comme les autres.
 
-**Fond OpenStreetMap sous le plan** : sur un plan géoréférencé, le bouton **🌍** de la barre du haut ouvre un petit panneau à quatre commandes.
+**Fond de carte sous le plan** : sur un plan géoréférencé, le bouton **🌍** de la barre du haut ouvre un petit panneau à cinq commandes.
 
-- **Fond OSM sous le plan** l'allume ou l'éteint. Allumé, le bouton 🌍 reste en surbrillance et le crédit OpenStreetMap s'affiche en bas à gauche. Fermer le panneau ne l'éteint pas.
+- **Fond sous le plan** l'allume ou l'éteint. Allumé, le bouton 🌍 reste en surbrillance et le crédit du fond (OpenStreetMap ou IGN) s'affiche en bas à gauche. Fermer le panneau ne l'éteint pas.
+- **Fond** : OpenStreetMap, IGN – photos aériennes ou IGN – plan, comme dans la fenêtre Vue OSM (le choix est le même). Hors de France, OpenStreetMap remplace l'IGN, et son crédit s'ajoute.
 - **Transparence du plan** : à 0 %, le plan cache la carte ; à 100 %, on ne voit plus que la carte. La carte, elle, reste opaque. Chaque plan retient la sienne (50 % la première fois). Elle s'ajoute au curseur **Opacité** du plan de base (≡ Filtres) : 50 % de chaque côté, le plan est à 25 %.
 - **Ma position** : ta position GPS, une fois, sans suivi. Refusée si tu es loin du plan, et en mode incognito. Rien n'est enregistré ni envoyé.
-- **Enregistrer hors ligne** : télécharge à l'avance la carte OpenStreetMap de tout le plan (200 tuiles au plus), pour avoir le fond sans réseau. La progression s'affiche dans la commande, puis un message donne le compte. Grisée, avec la raison, hors connexion, en mode incognito, ou si la Vue OSM est coupée.
+- **Enregistrer hors ligne** : télécharge à l'avance la carte OpenStreetMap de tout le plan (200 tuiles au plus), pour avoir le fond sans réseau. La progression s'affiche dans la commande, puis un message donne le compte. Grisée, avec la raison, hors connexion, en mode incognito, si la Vue OSM est coupée, ou avec un fond IGN (« OSM seulement » : seul OpenStreetMap s'enregistre).
 
-Le fond tourne avec le plan orienté et s'éteint à chaque ouverture de plan (la transparence, elle, est retenue). Sans géoréférencement, le bouton est grisé (survole-le pour en lire la raison). Si la Vue OSM est coupée dans ⚙️ Configuration, ou en mode incognito, le fond est refusé. Hors connexion, une phrase du panneau le rappelle et seules les tuiles enregistrées s'affichent ; à un zoom qui n'a pas été enregistré, la carte enregistrée la plus proche est agrandie. Au plus près, la carte OSM devient floue : elle n'existe pas plus détaillée. Les exports image, PDF et KMZ ne contiennent pas le fond.
+Le fond tourne avec le plan orienté et s'éteint à chaque ouverture de plan (la transparence, elle, est retenue). Sans géoréférencement, le bouton est grisé (survole-le pour en lire la raison). Si la Vue OSM est coupée dans ⚙️ Configuration, ou en mode incognito, le fond est refusé. Hors connexion, une phrase du panneau le rappelle et seules les tuiles OpenStreetMap enregistrées s'affichent, même avec un fond IGN choisi ; à un zoom qui n'a pas été enregistré, la carte enregistrée la plus proche est agrandie. Au plus près, la carte OSM devient floue : elle n'existe pas plus détaillée. Les exports image, PDF et KMZ ne contiennent pas le fond.
 
 **Recherche** : la barre de la ligne de titre cherche un plan ou un point de tes plans géoréférencés ; la carte vole dessus. Elle lit tes plans, sans rien demander à Internet.
 
