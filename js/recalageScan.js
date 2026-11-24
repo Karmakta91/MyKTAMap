@@ -68,12 +68,15 @@
     return { x: M.a * p.x + M.b * p.y + M.e, y: M.c * p.x + M.d * p.y + M.f };
   }
 
-  // Applique M à tous les champs de coordonnées (docs/architecture/data-formats.md) et compte par tableau.
+  // Applique M à tous les champs de coordonnées (docs/architecture/data-formats.md) et compte par tableau ; les
+  // coordonnées portées par un objet (point précis, raccords, fin de rampe) comptent dans le tableau de l'objet.
+  // `opts.exact` : aucun arrondi (homothétie entière de « Régénérer en haute résolution », planHD.js).
   // 🩸 Le champ coordonnée OUBLIÉ est le bug classique de cette fonction : chaque tableau est éprouvé au garde-fou.
-  function transformerCoordsFichier(obj, M) {
+  function transformerCoordsFichier(obj, M, opts) {
     const compte = {};
     if (!obj || typeof obj !== "object" || !M) return compte;
-    const r2 = function (v) { return Math.round(v * 100) / 100; };   // centipixel : assez fin, JSON propre
+    const r2 = (opts && opts.exact) ? function (v) { return v; }
+      : function (v) { return Math.round(v * 100) / 100; };   // centipixel : assez fin, JSON propre
     const pt = function (p) {
       if (p && typeof p.x === "number" && typeof p.y === "number") {
         const x = p.x, y = p.y;
@@ -83,15 +86,37 @@
       }
       return 0;
     };
+    // Point précis (poiPrecis.js > lire) : { x, y }, chatière { pts }, ancienne forme { x, y, x2, y2 }.
+    // Raccords d'un passage entre niveaux : `accroches` [{ level, x, y }].
+    const ptPoint = function (row) {
+      let n = pt(row);
+      if (!row || typeof row !== "object") return n;
+      const pr = row.precis;
+      if (pr && typeof pr === "object") {
+        n += pt(pr);
+        if (typeof pr.x2 === "number" && typeof pr.y2 === "number") {
+          const q = { x: pr.x2, y: pr.y2 };
+          n += pt(q);
+          pr.x2 = q.x; pr.y2 = q.y;
+        }
+        if (Array.isArray(pr.pts)) n += pr.pts.reduce(function (s, p) { return s + pt(p); }, 0);
+      }
+      if (Array.isArray(row.accroches)) n += row.accroches.reduce(function (s, a) { return s + pt(a); }, 0);
+      return n;
+    };
     ["data", "editorPoints"].forEach(function (k) {
       if (!Array.isArray(obj[k])) return;
-      compte[k] = obj[k].reduce(function (n, row) { return n + pt(row); }, 0);
+      compte[k] = obj[k].reduce(function (n, row) { return n + ptPoint(row); }, 0);
     });
+    // Fin d'une rampe de masse au sol (`rampes[].fin`, px du plan) : elle suit le contour.
     ["roads", "zones", "structures"].forEach(function (k) {
       if (!Array.isArray(obj[k])) return;
       compte[k] = 0;
       obj[k].forEach(function (g) {
         if (g && Array.isArray(g.points)) compte[k] += g.points.reduce(function (n, p) { return n + pt(p); }, 0);
+        if (g && Array.isArray(g.rampes)) {
+          compte[k] += g.rampes.reduce(function (n, r) { return n + ((r && r.fin) ? pt(r.fin) : 0); }, 0);
+        }
       });
     });
     // 🩸 measure a DEUX formes : calque `{points:[…]}`, session `[…]`. measureSurface : tableau direct.
