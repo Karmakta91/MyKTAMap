@@ -383,11 +383,11 @@ question 4, la préférence proposée est retenue.
 
 | Lot | Contenu | Taille |
 |---|---|---|
-| 0 | **« Vérifier le plan »**, au moins le contrôle des tracés coupés par une zone bloquante (lots de `ETUDE_VERIFIER_PLAN.md`) ; table unique des types durs (pathfinder, inter-plans) posée à cette occasion, `inaccessible` seul | M |
+| 0 | ✅ **« Vérifier le plan »** (fait : `verifierPlan.js`, contrôle C1), au moins le contrôle des tracés coupés par une zone bloquante (lots de `ETUDE_VERIFIER_PLAN.md`) ; table unique des types durs (pathfinder, inter-plans) posée à cette occasion, `inaccessible` seul | M |
 | 1 | ✅ **Comblé, révisé le 14/11** (fait, sauf la 3D) : libellés fr / en / es (« Comblé », *Filled to roof*, *Colmatado*) ; Comblé et effondrement en **zones à coût** (`pathfinder.js > TYPES_ZONES_COUT` : évités si un autre chemin existe, traversés et dits sinon, distance non gonflée), itinéraire, sortie d'urgence, inter-plans, Secours ; retirés des évitables et du brancard, case « Respecter… » inchangée ; « Vérifier le plan » C12 en « À revoir » ; défaut d'import vérifié (masse au sol) ; guides, Aide, `AI_CONTEXT.md`, `multilevel-pathfinding.md`. **3D faite** : Comblé jusqu'au ciel et effondrement découplé (`vue3d.js > HAUTEUR_ZONE`), obstacle débloqué le long d'un tracé qui le traverse (couloir : `galerieEmprise.js > CREUSABLES`, `dansCouloir` ; volume creusé : `vue3d.js > _volumeCreuse`), ruban au sol | M |
-| 2 | Maquette 2D de la masse au sol | S |
-| 3 | **Masse au sol, donnée et 2D** : type ajouté partout (21 fichiers, skill mis à jour), champ `comble`, fiche, Tableur, copies, KMZ / GeoJSON / SIG, légende, exports ; garde-fou d'aller-retour ; `data-formats.md` | L |
-| 4 | Masse au sol en 3D : sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ; checkup § 24 bis ; mesure de perf | L |
+| 2 | ✅ Maquette 2D de la masse au sol (fait, variante B retenue) | S |
+| 3 | ✅ **Masse au sol, donnée et 2D** (fait) : type ajouté partout (21 fichiers, skill mis à jour), champ `comble`, fiche, Tableur, copies, KMZ / GeoJSON / SIG, légende, exports ; garde-fou d'aller-retour ; `data-formats.md` | L |
+| 4 | ✅ **Masse au sol en 3D** (fait) : sol, talus, courbé / ramper / bloqué, ruban, panneaux, mini-carte ; `checkup-vue-3d.js > sectionMasseSol`, perf `perfMasseSol` (`KTA_V3D_PERF=masse`) | L |
 | 5 | ✅ **Volume exploité par paliers** (fait) : `volumeExploite.js > _masses`, Comblé entier, masse au sol par sa part en paliers exacts (le Comblé l'emporte), sol abaissé ajouté, talus négligé et dit ; `check-api-surface.js`, `session-data.md` § 49.3 bis | S |
 | 6 | ✅ **Itinéraire et temps du guidage** (fait) : `pathfinder.js > _coutMasseSegment` (vide point par point par `masseSol.js > masseCarte` / `sol` : ×1 / ×1,5 / ×3, coupé sous 0,5 m, sol abaissé ×1), distance vraie, sortie d'urgence et inter-plans, brancard sous 1,8 m, temps du guidage ralenti (`surcoutMasseTrajet`) ; consigne « ramper » plus tard (8 b) ; `check-zones-cout.js` § 10, `multilevel-pathfinding.md` | M |
 
