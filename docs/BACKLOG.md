@@ -124,6 +124,13 @@
 
 ## Entrant
 
+- **Vérifier le plan : bout coupé du réseau par un mur** — depuis le correctif des jonctions (51ace966), l'itinéraire
+  refuse un lien de jonction imparfaite qui traverse un mur en ligne ou une zone inaccessible ; mais 🔗 Raccords et
+  Vérifier le plan (C5, `KtaRaccords.detecter`) voient toujours ce bout comme raccordé : l'auteur n'apprend pas que
+  l'itinéraire ne passe plus là. Cas rare (vu au lot niveaux-jonctions, 24/11/2026).
+  `qui: Claude · action: signaler dans Vérifier le plan un bout dont le seul lien est coupé (mêmes obstacles que
+  pathfinder.js > _lienCoupe) · fini: cas fictif signalé, check-verifier-plan rouge puis vert · depuis: 24/11/2026 · taille: S`
+
 - **Safari ancien : aperçu PDF de repli vide** — sur un Safari trop ancien pour la visionneuse (avant 26.2), le repli
   est une iframe sur un blob:, que WebKit refuse sous `frame-ancestors 'none'` (🔬 hypothèse, vu au lot
   visionneuse-pdf, 24/11/2026). Le bouton « Ouvrir / Enregistrer » reste. Défaut antérieur au lot.
