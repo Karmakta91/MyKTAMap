@@ -25,9 +25,12 @@
     ` · ` : `qui: Claude · action: … · fini: … · depuis: 20/10/2026 · taille: S` ;
   - `qui` = qui fait la **prochaine** action (`KARMA` | `Claude`) · `action` = cette action, concrète ·
     `fini` = critère de fin vérifiable · `depuis` = date d'ouverture JJ/MM/AAAA, jamais réécrite au ménage ·
-    `taille` = `XS` | `S` | `M` | `L` ; facultatif : `lot` (branche du lot en vol). Aucun accent grave dans
-    une valeur ;
-  - dans `## Entrant`, les métadonnées sont facultatives : le tri les pose.
+    `taille` = `XS` | `S` | `M` | `L`. Aucun accent grave dans une valeur ;
+  - champs facultatifs, même syntaxe, en fin de bloc : `lot` = branche du lot en vol ;
+    `id` = identifiant stable, minuscules, chiffres et tirets, unique dans le dépôt, posé sur toute entrée ;
+    `après` = id des entrées à finir avant, séparés par des virgules ; autre dépôt : `pro:id` ou `community:id` ;
+    `échéance` = date butoir JJ/MM/AAAA, seulement pour une vraie échéance ; la priorité reste l'ordre du fichier ;
+  - dans `## Entrant`, les métadonnées sont facultatives, sauf `id` : le tri pose les autres.
 
 ## Maintenant
 
