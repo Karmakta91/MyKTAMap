@@ -17,6 +17,7 @@
 | **html2canvas** | `html2canvas.min.js` | **1.4.1** | captures pour les exports image | [niklasvh/html2canvas](https://github.com/niklasvh/html2canvas) · [avis](https://github.com/advisories?query=html2canvas) |
 | **three.js** | `three/three.core.js`, `three/three.module.js`, `three/LICENSE` | **0.186.1** | 🧊 Vue 3D (bouton cube de la barre de droite) : modules ES chargés **à la demande** par `js/vue3d.js` (`import()` dynamique), jamais au démarrage ; paquet livré sans fichier minifié (~2,1 Mo, ~420 Ko compressés) | [threejs.org](https://threejs.org) (MIT) · [avis](https://github.com/mrdoob/three.js/security/advisories) |
 | **Bodoni Moda** | `bodoni-moda/bodoni-moda-latin-{600,700}-normal.woff2`, `LICENSE`, `package.json` | **5.3.0** | 🧊 Vue 3D : capitales Didone des plaques gravées (`js/vue3d.js > _chargerPolicePlaques`), chargées à l'ouverture de la 3D seulement ; sous-ensemble latin, ~15 Ko par graisse. `package.json` est celui du paquet, copié tel quel : il porte la version (une police n'a pas d'en-tête lisible) | [@fontsource/bodoni-moda](https://fontsource.org/fonts/bodoni-moda) (SIL OFL 1.1, `LICENSE` joint) · [avis](https://github.com/advisories?query=fontsource) |
+| **PDF.js** | `pdfjs/pdf.min.js`, `pdfjs/pdf.worker.min.js`, `pdfjs/wasm/{openjpeg,jbig2}_nowasm_fallback.js`, `pdfjs/standard_fonts/`, licences | **6.5.438** | 📄 visionneuse PDF du Mode Histoire et du Carnet (`js/visionneusePdf.js`) : build **moderne**, importé **à la demande** (`import()` dynamique), worker du même site ; précaché (~3 Mo) pour le hors-ligne — ⚠️ lit des **fichiers non fiables** (PDF importés) | [mozilla/pdf.js](https://github.com/mozilla/pdf.js) (Apache 2.0, `pdfjs/LICENSE` ; polices Foxit et Liberation, décodeurs OpenJPEG et JBIG2 : licences jointes) · [avis](https://github.com/mozilla/pdf.js/security/advisories) |
 | **Leaflet.ImageOverlay.Rotated** | `leaflet-imageoverlay-rotated.js` | adaptation **maison** (intégrée en v1.38.0 de l'app), d'après l'original | images et tuiles posées par 3 coins (calques calibrés, Vue OSM) | [IvanSanchez/Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated) (BSD 2) — code réécrit, à relire nous-mêmes |
 
 ## ⚠️ À savoir
@@ -31,6 +32,17 @@
   par `import()` depuis un script classique (aucune *import map*, interdite par la CSP sans script en ligne). Les
   extensions `examples/jsm/*` importent `"three"` par son nom nu : inutilisables sans import map, d'où une fusion
   de géométries faite à la main dans `js/vue3d.js`.
+- **PDF.js** : `build/pdf.min.mjs` et `build/pdf.worker.min.mjs` du paquet npm `pdfjs-dist`, embarqués sous
+  l'extension **`.js`** (octets identiques) : un module ES n'accepte qu'un type JavaScript, et des serveurs (le
+  serveur des harnais, des `mime.types` anciens) servent `.mjs` en `application/octet-stream`. `wasm/*_nowasm_fallback.js`,
+  `standard_fonts/*` et les fichiers de licence sont copiés sous leur nom. Build **moderne** (décision produit) : il
+  appelle sans repli des API récentes (`Math.sumPrecise`, `Map.prototype.getOrInsertComputed`, `Promise.try`,
+  `Uint8Array.fromBase64`, Iterator helpers…), soit Safari / iOS **26.2** au minimum ; `js/visionneusePdf.js` les
+  détecte et, sans elles, l'app garde iframe ou « Ouvrir / Enregistrer ». À chaque mise à jour, refaire l'inventaire
+  de ces API (liste `_API` du module). Les `.wasm`, `qcms`, `quickjs`, `iccs/` et `cmaps/` ne sont pas embarqués :
+  la CSP (sans `'wasm-unsafe-eval'`) refuse WebAssembly, d'où `useWasm: false` et les décodeurs en JavaScript ;
+  sans cmaps, un PDF à police CJK non embarquée s'affiche sans ce texte. `pdf.renderer` et `pdf.sandbox` (rendu en
+  worker, JavaScript des formulaires) ne servent pas.
 - **Bodoni Moda** : fichiers `files/*-latin-{600,700}-normal.woff2` du paquet npm `@fontsource/bodoni-moda`,
   `LICENSE` et `package.json` du même paquet, comparés octet par octet. Une police ne s'exécute pas : la veille sert
   surtout à suivre les corrections de dessin. Chargée par `FontFace` (CSP `font-src 'self'`), jamais par une feuille.
