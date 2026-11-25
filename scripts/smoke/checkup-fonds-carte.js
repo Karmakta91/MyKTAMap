@@ -422,6 +422,13 @@ function lireFiltresAccueil() {
     select: !!sel, valeur: sel ? sel.value : null,
     options: sel ? Array.from(sel.options).map(function (o) { return o.value; }) : [],
     enTete: !!sel && !!corps && corps.firstElementChild === sel.closest(".kta-osm-filters-fond"),
+    // la liste suit la charte (jeton --kta-surface), jamais le blanc du navigateur
+    charte: !!sel && (function () {
+      const sonde = document.createElement("div");
+      sonde.style.background = "var(--kta-surface)"; document.body.appendChild(sonde);
+      const attendu = getComputedStyle(sonde).backgroundColor; sonde.remove();
+      return getComputedStyle(sel).backgroundColor === attendu;
+    })(),
     titre: t ? t.textContent.trim() : null
   };
 }
@@ -710,9 +717,10 @@ async function verifCreditMobile(page, sel, nomCarte, theme) {
     await ouvrirFiltresAccueil(page);
     const f0 = await page.evaluate(lireFiltresAccueil);
     const titreFiltres = await cle(page, "osm_mode.filters.title");
-    verif("fenêtre des filtres : sélecteur du fond en tête, sur le fond de l'appareil (OSM), titre sans « OSM »",
-      f0.select && f0.enTete && f0.valeur === "osm" && f0.options.join() === "osm,ign-aerien,ign-plan" &&
+    verif("fenêtre des filtres : sélecteur du fond en tête, aux couleurs de la charte, sur le fond de l'appareil (OSM), titre sans « OSM »",
+      f0.select && f0.enTete && f0.charte && f0.valeur === "osm" && f0.options.join() === "osm,ign-aerien,ign-plan" &&
       f0.titre === titreFiltres && !/OSM/.test(f0.titre), f0);
+    await captureMobile(page, "filtres-accueil-selecteur");
     await page.selectOption("#ktaOsmFiltersFond", "ign-plan");
     const a6 = await attendreAccueil(page);
     verif("choisi dans la fenêtre (IGN plan) : le widget passe aux tuiles IGN plan, 💾 et stats grisés",

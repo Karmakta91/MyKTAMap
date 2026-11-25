@@ -18071,7 +18071,11 @@ html.kta-theme-light .kta-osm-search-row { color: var(--kta-texte-2); }
 /* Sélecteur du fond de carte (fondsCarte.js > htmlSelecteur) : bandeau de la Vue carte et tête de « Plans & filtres
    de la carte ». La liste se rétrécit plutôt que de déborder au téléphone. */
 .kta-fond-choix { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; min-width: 0; max-width: 100%; }
-.kta-fond-choix select { font-size: 12px; min-width: 0; max-width: 100%; }
+.kta-fond-choix select {
+  font: inherit; font-size: 12px; min-width: 0; max-width: 100%; padding: 3px 6px; cursor: pointer;
+  background: var(--kta-surface); color: var(--kta-texte); border: 1px solid var(--kta-texte-3); border-radius: 4px;
+}
+.kta-fond-choix select option { background: var(--kta-surface); color: var(--kta-texte); }
 .kta-osm-filters-fond { margin: 0 0 10px; color: var(--kta-texte-2); }
 .kta-osm-filters-hint { font-size: 11.5px; color: var(--kta-texte-3); margin: 0 0 10px; line-height: 1.5; }
 .kta-osm-filters-add {
