@@ -52,7 +52,7 @@ centré sur le clic, côtés parallèles aux axes de l'image, au niveau actif (`
 structure en cours, l'outil reste armé, même après ⏪ (`historyManager.js` lit `ktaPoseUnClic`).
 
 **Règles** :
-- ❌ **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit BLOQUANT) refuse toute réintroduction. Exceptions assumées, listées dans le script : `emergencyMode.js` (palette vive dédiée), `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange sur OSM).
+- ❌ **Jamais de table de couleurs locale** — `scripts/check-style-canon.js` (pré-commit BLOQUANT) refuse toute réintroduction. Exceptions assumées, listées dans le script : `emergencyMode.js` (palette vive dédiée), `osmView.js`/`osmHomePreview.js` (table de repli sur fond de carte ; `inaccessible` y est hachurée comme sur le plan : CanvasPattern du canon dans la Vue carte, motif SVG équivalent sur la carte de l'accueil).
 - ⚠️ Le **KML garde SES largeurs/alphas** (`width` KML ≠ `weight` Leaflet, ajustés à l'échelle GPS) — seules les couleurs viennent du canon. Figé par `scripts/check-kml-styles.js`.
 - Toute **mutation qui change un rendu** (setColor, resetSession, remove/updateCustomEntry) doit repeindre : `renderRoads/Zones/Structures` + `_ktaRestyleDataLayers` (calques de données — couleurs seules, les opacités restent au filtre multi-niveau). Vérifié par `check-api-surface.js`.
 - Chargé tôt dans `index.html` (avant `utils.js`) ; aucune dépendance au chargement (LegendCustomization interrogé à l'appel).

@@ -106,7 +106,7 @@
     "eau":          { stroke: "#0066aa", fill: "#3aa9e8" },
     "remblais":     { stroke: "#3a3a44", fill: "#5a5a68" },
     "effondrement": { stroke: "#cc0000", fill: "#ff3333" },
-    "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" } // motif SVG impossible → aplat orange
+    "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" } // repli sans canvas ; hachures : _hachuresZone
   };
 
   // ⚠️ Repli aligné sur structures.js > STRUCTURE_STYLES (à synchroniser). Fronts allégés (10 → 6 px, la
@@ -1114,6 +1114,16 @@
     return { stroke: "#8892a4", fill: "#8892a4" };
   }
 
+  // Zone inaccessible hachurée comme sur le plan : le canvas de la carte peint le CanvasPattern du canon
+  // (styleResolver.js > _motifCanvas). null pour tout autre type, une couleur propre à l'objet, ou une couleur
+  // choisie dans la Légende (le canon rend alors un aplat de cette couleur : elle prime).
+  function _hachuresZone(z) {
+    if (!z || z.type !== "inaccessible" || z.color || z.fillColor) return null;
+    if (typeof window.ktaResolveStyle !== "function") return null;
+    const s = window.ktaResolveStyle("zones", z.type);
+    return (s && s.fillColor && typeof s.fillColor !== "string") ? s.fillColor : null;
+  }
+
   function _renderZones() {
     if (!_proj || !_osmMap) return;
     if (!_zoneLayer) _zoneLayer = L.layerGroup().addTo(_osmMap);
@@ -1124,11 +1134,13 @@
       const latlngs = _projectPoints(z.points);
       if (latlngs.length < 3) { skipped++; continue; }
       const cols = _resolveZoneColors(z);
+      const hachures = _hachuresZone(z);
       try {
         L.polygon(latlngs, {
           color:       cols.stroke,
-          fillColor:   cols.fill,
-          fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity : 0.30,
+          fillColor:   hachures || cols.fill,
+          // hachures plus couvrantes que l'aplat : à 30 %, les raies se perdent dans le fond de carte
+          fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity : (hachures ? 0.6 : 0.30),
           weight:      (typeof z.weight === "number") ? z.weight : 2,
           opacity:     0.9,
           interactive: false

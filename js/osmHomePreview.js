@@ -133,6 +133,24 @@
     "effondrement": { stroke: "#cc0000", fill: "#ff3333" },
     "inaccessible": { stroke: "#5a0a0a", fill: "#b8743c" }
   };
+  // 🩸 Les plans sont dessinés en SVG (un renderer par plan) : le CanvasPattern du canon n'y vaut rien. Motif SVG
+  // équivalent (styleResolver.js > zones.inaccessible._motif : fond, voile rouge à 45 %, raies sombres à 45° tous
+  // les 14 px), déclaré une fois dans la page ; Leaflet pose `fill="url(#…)"` tel quel.
+  const ID_HACHURES = "kta-osm-home-hachures";
+  function _urlHachures() {
+    if (!document.getElementById(ID_HACHURES)) {
+      const ns = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(ns, "svg");
+      svg.setAttribute("width", "0"); svg.setAttribute("height", "0"); svg.setAttribute("aria-hidden", "true");
+      svg.style.position = "absolute";
+      svg.innerHTML = '<defs><pattern id="' + ID_HACHURES + '" patternUnits="userSpaceOnUse" width="14" height="14" ' +
+        'patternTransform="rotate(45)"><rect width="14" height="14" fill="#5a0a0a"/>' +
+        '<rect width="14" height="14" fill="#cc0000" fill-opacity="0.45"/>' +
+        '<line x1="0" y1="0" x2="0" y2="14" stroke="#1a1f2e" stroke-width="4"/></pattern></defs>';
+      document.body.appendChild(svg);
+    }
+    return "url(#" + ID_HACHURES + ")";
+  }
   // ── Overrides de légende PAR PLAN ──────────
   // 🩸 Pas de ktaResolveStyle ici (contrairement à osmView) : le canon applique l'état LIVE de
   // LegendCustomization, VIDE au HOME après un boot froid (le cas normal) ou celui du DERNIER plan chargé
@@ -1440,9 +1458,11 @@
         const lls = _projectPoints(z.points, proj);
         if (lls.length < 3) continue;
         const cols = _resolveZoneColorsHome(z, planIdFx);
+        // hachures seulement sur le style du type (aucune couleur d'objet ni de légende : elles priment)
+        const hachures = cols === ZONE_STYLES_DATA_HOME.inaccessible;
         L.polygon(lls, Object.assign({
-          color: cols.stroke, fillColor: cols.fill,
-          fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity * 0.7 : 0.25,
+          color: cols.stroke, fillColor: hachures ? _urlHachures() : cols.fill,
+          fillOpacity: (typeof z.fillOpacity === "number") ? z.fillOpacity * 0.7 : (hachures ? 0.6 : 0.25),
           weight: 1.5, opacity: 0.85, interactive: false
         }, optsRendu)).addTo(zonesL);
         nZone++;

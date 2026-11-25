@@ -19,9 +19,9 @@ const EXCEPTIONS = {
   "js/emergencyMode.js":
     "palette dédiée à la mini-carte d'urgence (couleurs vives, cf. commentaire du fichier)",
   "js/osmView.js":
-    "`inaccessible` en aplat orange : le motif hachuré n'est pas rendu sur fond OSM",
+    "table de repli locale sur fond de carte (inaccessible hachurée par le motif du canon, osmView.js > _hachuresZone)",
   "js/osmHomePreview.js":
-    "idem osmView (même repli d'aplat)"
+    "idem osmView, plans en SVG : motif SVG équivalent (osmHomePreview.js > _urlHachures)"
 };
 
 const FICHIERS = [

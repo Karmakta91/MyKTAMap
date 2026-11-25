@@ -20,8 +20,9 @@
 // 🩸 Aucun consommateur ne recopie une couleur de type : une table locale finit par diverger (zone
 //   dangereuse exportée en gris, légende qui ment sur la carte).
 // ⚠️ Variantes délibérées, à NE PAS « corriger » (décision produit) : `emergencyMode.js` (palette vive
-//   de la mini-carte d'urgence) et `osmView.js`/`osmHomePreview.js` (`inaccessible` en aplat orange
-//   sur fond OSM). Elles passent par ktaAppliquerCouleurChoisie.
+//   de la mini-carte d'urgence) et `osmView.js`/`osmHomePreview.js` (table de repli locale ; `inaccessible`
+//   y est hachurée : CanvasPattern du canon dans la Vue carte, motif SVG équivalent sur la carte de l'accueil).
+//   Elles passent par ktaAppliquerCouleurChoisie.
 // Garde-fou : scripts/check-style-canon.js (bloquant), scripts/check-style-resolver.js
 // Doc : docs/architecture/rendering-leaflet.md
 
