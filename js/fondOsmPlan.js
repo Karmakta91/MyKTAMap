@@ -35,7 +35,7 @@
   // Images décodées gardées (256 Ko chacune) : 48 au téléphone (≈ 12 Mo, mémoire iPhone mesurée), 200 sur un PC
   // (≈ 50 Mo). 🩸 Un écran 1920 × 1080 montre ~80 images par zoom : à 48, un dézoom vidait déjà le cache et le
   // rezoom redemandait tout (checkup-fond-osm-dezoom.js).
-  const CACHE_RAM    = _grandEcranPc() ? 200 : 48;
+  const CACHE_RAM    = window.ktaAppareilPc() ? 200 : 48;
   const CACHE_ANCETRES = 16;           // tuiles enregistrées d'un zoom plus large, agrandies hors ligne
   const REPLI_ZOOMS  = 6;              // hors ligne : jusqu'à 6 zooms plus larges (morceau ×64)
   const CLE_TRANSPARENCE = "myktamap_fond_osm_v1_";   // + planId : transparence retenue par plan
@@ -60,18 +60,6 @@
   let _requetes     = 0;               // requêtes réseau lancées (diagnostic, lu par etat())
   let _magasin      = null;            // Promise<number> : tuiles enregistrées (OsmTilesCache), relue à l'allumage
   let _replis       = 0;               // tuiles IGN remplacées par OSM (attribution OSM ajoutée, lu par etat())
-
-  // PC : pointeur fin et écran d'au moins ~1280 × 800. ⚠️ Un appareil tactile n'y entre que si sa mémoire est connue
-  // et suffisante (navigator.deviceMemory, Chromium seul) : un iPad au trackpad garde le cache du téléphone.
-  function _grandEcranPc() {
-    try {
-      if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches) return false;
-      if (!window.screen || window.screen.width * window.screen.height < 1000000) return false;
-      const memoire = navigator.deviceMemory;
-      if (typeof memoire === "number" && memoire < 4) return false;
-      return !(navigator.maxTouchPoints > 0) || memoire >= 4;
-    } catch(e) { return false; }
-  }
 
   // Fond choisi sur l'appareil (table js/fondsCarte.js).
   function _fond() { return window.KtaFondsCarte.courant(); }

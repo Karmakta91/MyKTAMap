@@ -486,6 +486,20 @@ window.ktaAppareilTactile = function() {
   } catch (e) { return false; }
 };
 
+// Ordinateur = pointeur fin et écran d'au moins ~1280 × 800 px CSS (1 Mpx). ⚠️ Un appareil tactile n'y entre que si sa
+// mémoire est connue et suffisante (navigator.deviceMemory ≥ 4, Chromium seul) : un iPad au trackpad reste traité en
+// téléphone. Consommateurs : cache RAM du fond sous le plan (fondOsmPlan.js), plafond de Remplir au clic
+// (detectionStructures.js > _remplirEn). Relu à chaque appel (un écran externe branché change la réponse).
+window.ktaAppareilPc = function() {
+  try {
+    if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches) return false;
+    if (!window.screen || window.screen.width * window.screen.height < 1000000) return false;
+    const memoire = navigator.deviceMemory;
+    if (typeof memoire === "number" && memoire < 4) return false;
+    return !(navigator.maxTouchPoints > 0) || memoire >= 4;
+  } catch (e) { return false; }
+};
+
 // Capteur refusé : ligne grisée, case décochée, raison affichée. Partagé par la config HOME (homeConfig.js)
 // et celle du plan (interfaceConfig.js) : un seul rendu pour les deux modales, deux copies finiraient par diverger.
 window.ktaCapteurRefuse = function(row, cb, hintEl, cleRaison) {
