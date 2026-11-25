@@ -426,6 +426,24 @@ async function _fraicheur() {
       } catch (e) { err = e; }
       t("🩸 le handler fetch survit à : " + c[0] + (err ? " — " + err.name + " : " + err.message : ""), !err);
     });
+    // 🔒 Fonds IGN (js/fondsCarte.js) : le service worker ne répond pas, la requête va au réseau sans passer par un
+    // cache (ni CACHE_NAME, ni le cache IndexedDB des tuiles OSM). Contre-essai : la tuile OSM, elle, est prise.
+    const repond = function (url) {
+      let pris = false;
+      handlers.fetch({
+        request: { url: url, method: "GET", destination: "image", headers: { get: () => null } },
+        respondWith: function (p) { pris = true; if (p && typeof p.catch === "function") p.catch(function () {}); },
+        waitUntil: noop
+      });
+      return pris;
+    };
+    const IGN = "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal" +
+      "&TILEMATRIXSET=PM&TILEMATRIX=12&TILEROW=1362&TILECOL=2048";
+    t("🔒 tuile IGN aérien : le service worker n'intercepte pas data.geopf.fr",
+      !repond(IGN + "&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&FORMAT=image/jpeg"));
+    t("🔒 tuile IGN plan : idem", !repond(IGN + "&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&FORMAT=image/png"));
+    t("contre-essai : la tuile OSM est interceptée (cache hors ligne IndexedDB)",
+      repond("https://tile.openstreetmap.org/12/2048/1362.png"));
   }
 }
 

@@ -11,6 +11,7 @@
 // (sortie terrain, Mode Secours en réseau faible).
 // IndexedDB "myktamap_osm_tiles_v1", { key: "z/x/y", blob, addedAt } ; cache GLOBAL (tuiles identiques pour
 // tous les plans). sw.js sert la tuile en IDB en priorité pour tile.openstreetmap.org, sinon le réseau.
+// 🔒 OpenStreetMap SEUL (URL de la table js/fondsCarte.js) : les fonds IGN ne s'enregistrent jamais.
 // 🔒 Téléchargement par le navigateur comme une consultation normale ; le cache reste local.
 // ⚠️ Politique d'usage OSM (https://operations.osmfoundation.org/policies/tiles/) : 200 tuiles max par
 // opération (MAX_TILES_PER_CACHE).
@@ -223,7 +224,8 @@
         if (existing) {
           skipped++;
         } else {
-          const url = "https://tile.openstreetmap.org/" + t.z + "/" + t.x + "/" + t.y + ".png";
+          // 🔒 toujours OSM, quel que soit le fond choisi : le hors ligne n'enregistre que des tuiles OSM
+          const url = window.KtaFondsCarte.urlTuile(window.KtaFondsCarte.OSM, t.z, t.x, t.y);
           const resp = await fetch(url, { mode: "cors", credentials: "omit" });
           if (resp.ok) {
             const blob = await resp.blob();

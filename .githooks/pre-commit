@@ -55,6 +55,9 @@ node scripts/check-image-header-dims.js || exit $?
 # Convertisseur de resolution de l'editeur de donnees : aucun champ de coordonnee oublie.
 node scripts/check-resolution-convert.js || exit $?
 
+# Regenerer en haute resolution : facteurs et plafond, plan-config et calques a l'echelle (aucun champ oublie).
+node scripts/check-plan-hd.js || exit $?
+
 # Mode Developpeur : pas de bibliotheque de docs, hash SHA-256, outils rendus en mode actif seulement.
 node scripts/check-devmode-docs.js || exit $?
 

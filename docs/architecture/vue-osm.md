@@ -1,4 +1,9 @@
-# Architecture MyKTAMap — Vue OSM (modale, widget HOME, fond sous le plan)
+# Architecture MyKTAMap — Vue carte (modale, widget HOME, fond sous le plan)
+
+> 🏷️ **Nom côté utilisateur : « Vue carte »** (en « Map view », es « Vista mapa ») : boutons, titres, case de
+> Configuration, aides et guides. Le code garde ses noms (`osmView.js`, `window.OsmView`, clés `osm.*` /
+> `osm_home.*`, `myktamap_osm_view_opt_in`). La case de consentement nomme toujours les tiers contactés
+> (« Vue carte (OpenStreetMap et IGN) », puis les deux domaines) : le mot « carte » ne doit pas les cacher.
 
 > 🌍 **v1.90.2 — L'OPT-IN DEVIENT UN OPT-OUT.** Décision KARMA : *« active le mode OSM par défaut, dans 99 %
 > des cas ce mode est utilisé »*. `myktamap_osm_view_opt_in` est **tri-état** et c'est tout l'intérêt :
@@ -6,8 +11,9 @@
 >
 > 🩸 **Ce n'est pas un réglage d'affichage.** Le widget du HOME monte une carte Leaflet dont le fond vient de
 > `tile.openstreetmap.org` : actif par défaut, **l'accueil contacte un tiers au chargement, sans clic**, pour
-> qui possède au moins un plan géoréférencé. C'est la seule requête sortante de l'app. Elle ne transporte
-> **aucune donnée de plan** — seulement les coordonnées des tuiles regardées.
+> qui possède au moins un plan géoréférencé. Avec les fonds IGN (seulement si l'utilisateur les choisit, § Fonds de
+> carte), ce sont les seules requêtes sortantes de l'app. Elles ne transportent **aucune donnée de plan** —
+> seulement les coordonnées des tuiles regardées.
 >
 > 🚨 **`isOptedIn` est DUPLIQUÉ** : `osmView.js` (modale) et `osmHomePreview.js` (widget). Les faire diverger
 > donne un widget affiché sans bouton dans la modale, ou l'inverse. `check-osm-defaut.js` **exécute les deux**
@@ -38,23 +44,111 @@
 > 🔒 **Restent prioritaires sur le défaut** : incognito, hors-ligne réel, aucun plan
 > géoréférencé — testés dans `mount()` **après** l'opt-in, et le garde-fou tient cet ordre.
 
-> Référence détaillée de la Vue OSM. Lue à la demande.
-> Sections : fond OSM sous le plan (`fondOsmPlan.js`) · §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline
+> Référence détaillée de la Vue carte. Lue à la demande.
+> Sections : fonds de carte (`fondsCarte.js`) · fond sous le plan (`fondOsmPlan.js`) · §1 vision · §2 modale `osmView.js` · §3 widget `osmHomePreview.js` · §4 sécurité · §5 pièges connus · §6 extension · §7 synergie Mode Secours · §8 cache OSM offline
 
 ---
 
-## 🗺️ Fond OSM sous le plan (mode plan, `js/fondOsmPlan.js`)
+## 🗺️ Fonds de carte : OpenStreetMap, IGN aérien, IGN plan (`js/fondsCarte.js`)
+
+**Une seule table** (`window.KtaFondsCarte`) porte, pour chaque fond, son URL de tuile, son zoom max, son attribution
+et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmView.js`, `fondOsmPlan.js`,
+`osmTilesCache.js`, `osmHomePreview.js` ni `secoursMode.js`. Chargée par `index.html` avant `osmTilesCache.js`, précachée par `sw.js`.
+
+| id | Couche | URL | Zoom max | Attribution | Hors ligne |
+|---|---|---|---|---|---|
+| `osm` (défaut) | OpenStreetMap | `tile.openstreetmap.org/{z}/{x}/{y}.png` | 19 | « © OpenStreetMap » (lien copyright) | oui (`OsmTilesCache`) |
+| `ign-aerien` | `ORTHOIMAGERY.ORTHOPHOTOS`, JPEG | WMTS `data.geopf.fr`, `TILEMATRIXSET=PM` | 19 | « © IGN – Géoplateforme » (lien cartes.gouv.fr) | non |
+| `ign-plan` | `GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2`, PNG | idem | 19 | idem | non |
+
+- **Choix de l'appareil**, partagé par les vues : `localStorage` `myktamap_fond_carte_v1` (lecture et écriture en
+  try/catch ; écriture refusée → le choix vaut pour la page). `KtaFondsCarte.choisir(id)` émet `kta:fondCarteChange`
+  `{ id }` : la Vue carte et le widget de l'accueil remplacent leur couche, le fond sous le plan se redessine sans être
+  rallumé. Non exporté avec le profil (réglage d'appareil).
+- **Sélecteurs** (aucun bouton de plus, place au téléphone), tous sur le même choix : liste `#kta-osm-fond` dans le
+  premier bandeau de la Vue carte et `#ktaOsmFiltersFond` en tête de la fenêtre « Plans & filtres de la carte » (≡ du
+  widget de l'accueil), un seul gabarit `KtaFondsCarte.htmlSelecteur(id)` relié par `brancherSelecteur(select)` ;
+  liste `[data-fond-osm='fond']` dans le panneau du bouton carte du plan (`htmlOptions()`, sa propre mise en page).
+  ⚠️ Un sélecteur marqué `data-kta-fond-choix` suit seul un changement venu d'ailleurs (`fondsCarte.js`, écouteur
+  de `kta:fondCarteChange`). Le Mode Secours **suit** le dernier choix, sans réglage propre (décision produit).
+- **Zooms** : le GetCapabilities de `data.geopf.fr` annonce les deux couches IGN sur la grille `PM_0_19` (zooms 0 à 19) ;
+  `PM` est servi aussi. Au-delà, la tuile 19 est agrandie (`maxNativeZoom`, ou le plafond du fond sous le plan).
+- **Hors couverture** : l'IGN répond 404 hors de ses données (mesuré une fois, à la main, en pleine mer). Une seule
+  règle, sans polygone de couverture à tenir à jour : **chaque tuile IGN en erreur est remplacée par la tuile OSM**
+  (`KtaFondsCarte.creerCouche` pour Leaflet, `fondOsmPlan.js > _imageOsm` pour le canvas), et le crédit OSM
+  s'ajoute au premier remplacement (§ Crédit des données ci-dessous). Une image refusée par la CSP tombe dans la même règle : un serveur dont la
+  CSP n'autorise pas encore `data.geopf.fr` montre de l'OSM sous l'étiquette IGN, avec les deux attributions.
+- 🔒 **Hors ligne = OSM seul** : `osmTilesCache.js` n'enregistre que des tuiles OSM (URL de la table, fond `osm`) ;
+  `sw.js` sort tôt pour `data.geopf.fr` (pas de `respondWith` : ni `CACHE_NAME`, ni cache IDB) ; fond IGN choisi,
+  « 💾 Sauvegarder hors-ligne » (Vue carte, widget de l'accueil) et « Enregistrer hors ligne » (fond sous le plan) sont
+  grisés, raison
+  écrite (`fondscarte.horsLigne.osmSeul`, `fondosm.cache.indispo.fond`). Hors ligne avec un fond IGN, les tuiles
+  OSM enregistrées s'affichent (le repli tuile par tuile y mène tout seul).
+- 🔒 **Consentement** : la case « Vue carte » couvre tous les fonds ; décochée ou en incognito, aucune requête IGN
+  (les portes sont celles des vues, la table n'émet rien). Textes : `home.privacy.osmToggle`, `home.netdoc.verify3`,
+  `verify4`, `osm.open.optInConfirm`, `netaudit.whitelist.ign`, `NETWORK_AUDIT.md`.
+- **CSP** : `img-src … https://data.geopf.fr` (`docker/nginx-docker.conf`, `docs/nginx-myktamap.conf`,
+  `docs/nginx-csp-config.conf`) ; pas dans `connect-src` (le service worker ne la récupère pas). Le serveur public
+  porte sa propre CSP hors de ce dépôt : sans la même ligne, le repli ci-dessus s'applique.
+- **Widget de l'accueil** (`osmHomePreview.js > _poserFond`) : `creerCouche(courant().id)`, remplacée à chaque
+  `kta:fondCarteChange` sans remonter le widget ; hors ligne, couche OSM directe (elle lit le cache « Save Offline »).
+  Pas de contrôle d'attribution Leaflet : le pied (`_majPied`) écrit le domaine contacté (`osm_home.footer.tiles`,
+  paramètre `{domaine}`) et l'attribution du fond, plus celle d'OSM et son domaine dès le premier remplacement d'une
+  tuile IGN (lu à `tileload`, `ktaReplis`). Fond IGN : 💾 en `aria-disabled` + `.kta-osm-home-indispo` (bordure
+  pointillée), **touchable** : le toucher affiche la raison (`fondscarte.horsLigne.osmSeul`, toast d'avertissement) au
+  lieu d'enregistrer, la raison se lit donc aussi au téléphone ; stats du cache en `--kta-texte-3`, même raison au
+  survol.
+- **Mode Secours** : sa carte est la fenêtre Vue carte (bouton 🌍 du scénario, capture du briefing), qui suit le fond.
+  Le repli hors écran de la capture (`secoursMode.js > _captureOsmCanvasForBriefing`, Vue carte indisponible) prend
+  `_idFondBriefing()` : 🔒 **sans la case Vue carte ou en incognito, `null` : aucune couche de tuiles, aucune requête**
+  (ni OSM ni IGN), la capture garde le cadre du plan, son nom et les équipes sur fond blanc ; hors ligne, OSM (tuiles
+  enregistrées) ; sinon le fond de l'appareil, `creerCouche(id, { crossOrigin: "anonymous" })`. Carte de quelques
+  secondes : pas d'écoute de `kta:fondCarteChange`. html2canvas (`useCORS`, `allowTaint: false`) relit les tuiles en
+  CORS ; l'IGN répond `Access-Control-Allow-Origin: *`. Seul le fond change, la palette du Secours reste la sienne.
+  Sous l'image du PDF, une ligne `secours.surf.fondCredit` cite le fond capturé (lu dans le contrôle d'attribution de
+  la Vue carte capturée, ou dans la table pour le repli, plus OSM après un remplacement) ; aucune sans tuile.
+
+### Crédit des données
+
+- **Visible sur deux cartes seulement** : la fenêtre Vue carte et le fond sous le plan. `css/style.css` masque
+  `.leaflet-control-attribution` partout (plan seul, 3D, mini-cartes, briefing) ; `KtaFondsCarte.montrerCredits(map,
+  actif)` pose la classe `kta-credits-carte` sur le conteneur de la carte (le contrôle redevient visible) et retire le
+  préfixe « Leaflet » (`setPrefix(false)`). Petit, en coin bas à droite, fond `--kta-fond` voilé à 90 %, texte
+  `--kta-texte-3`, liens `--kta-texte-2` : ≥ 4,5:1 sur une tuile blanche comme noire (mesuré 5,87:1 en sombre,
+  4,64:1 en clair). Sur le plan, le contrôle est fixé au-dessus de la barre d'état (`#map` descend sous elle).
+- **Texte** : l'option `attribution` de la couche (« © OpenStreetMap » ou « © IGN – Géoplateforme »). Fond IGN :
+  le crédit OSM s'ajoute tant qu'au moins une tuile remplacée est gardée par la couche (compte à la pose, décompte au
+  `tileunload`), puis se retire. Fond sous le plan : il reste jusqu'au changement de fond ou à l'extinction (les tuiles
+  OSM sont peintes dans les canvas, rien ne dit quand la dernière quitte l'écran), et hors ligne.
+- **Case « Masquer les crédits des cartes »** (Configuration de l'accueil › Affichage, `#loaderCreditsCartesCb`,
+  `homeConfig.js > _initCreditsCartesHome`) : décochée par défaut ; `KtaFondsCarte.masquerCredits(bool)` écrit
+  `myktamap_credits_cartes_masques_v1` ("1"/"0", try/catch), pose `html.kta-credits-masques` (effet immédiat sur les
+  cartes ouvertes, appliqué au chargement du module) et émet `kta:creditsCartesChange`. Réglage d'appareil, non exporté.
+- La case retire aussi la ligne de pied du widget de l'accueil (domaine contacté, crédit, stats du cache) : choix
+  de l'utilisateur, même si cette ligne dit quel domaine la carte contacte (décision produit).
+
+🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue carte V1-V8, crédits V1-V3b et P1-P5, case des crédits K1-K4, widget de
+l'accueil A1-A4, briefing Secours S1-S2 et son crédit, case décochée et incognito A5/S3-S4 : zéro requête de tuile,
+téléphone 390 px sombre et clair M1-M5 : crédit lisible sans recouvrir de bouton, bouton de sauvegarde grisé lisible),
+`checkup-fond-osm.js` F8 et F13 (fond sous le plan) : tuiles
+OSM et IGN fabriquées par le harnais, aucune requête réelle. `scripts/check-plan-offline.js` §9 : `sw.js` n'intercepte
+pas `data.geopf.fr`.
+
+---
+
+## 🗺️ Fond de carte sous le plan (mode plan, `js/fondOsmPlan.js`)
 
 En mode plan, le bouton carte de la barre du haut (`#kta-refonte-counter-osm`, `refonteInterface.js`) n'ouvre **plus**
-la fenêtre Vue OSM (décision produit) : il ouvre un petit panneau ancré sous lui (classes `.kta-group-flyout`, mode
-ancré, sans fond assombri) avec quatre commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
+la fenêtre Vue carte (décision produit) : il ouvre un petit panneau ancré sous lui (classes `.kta-group-flyout`, mode
+ancré, sans fond assombri) avec cinq commandes. Le panneau se ferme (✕, Échap, toucher dehors) sans éteindre le fond.
 
 | Commande | Effet |
 |---|---|
-| Interrupteur « Fond OSM sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche OSM dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), attribution « © OpenStreetMap » fixée au-dessus de la barre d'état |
+| Interrupteur « Fond sous le plan » | `FondOsmPlan.allumer()` / `eteindre()` : couche du fond choisi dans la carte du plan, bouton du haut en état actif (`.kta-fond-osm-actif`), crédit du fond dans le contrôle d'attribution de la carte (§ Crédit des données ; plus « © OpenStreetMap » après un remplacement d'une tuile IGN ou hors ligne) |
+| Fond | liste des fonds de la table (§ Fonds de carte) ; changer redessine la couche allumée (images oubliées, génération suivante) sans l'éteindre |
 | Transparence du plan (0 → 100 %, 50 % au premier usage) | opacité de l'**image du plan** seulement : `tilePane` (tuiles V2) et overlays du fond (`_ktaBaseLayers` : rendu direct et repli V2 ; `_baseTiles` : tuiles V1), **multipliée** par le curseur d'opacité de l'image principale des filtres ≡ (`FondOsmPlan.facteurPlan` lu par `tiling.js > ktaAppliquerOpacitePlanDeBase`, seule à poser l'opacité ; `rendering-leaflet.md` § Opacité des images du plan). Le fond OSM reste opaque. Éteint : le curseur des filtres seul. **Retenue par plan** (décision produit) : localStorage `myktamap_fond_osm_v1_<planId>` ("0" à "100", lecture et écriture en try/catch), purgée et transférée avec les données du plan (`planRegistry.js > purgeAssociatedData`, `transferAssociatedData` → `FondOsmPlan.retirer` / `transferer`), exportée avec le profil (`profileExportImport.js > PER_PLAN_PREFIXES`) |
 | Ma position | un `getCurrentPosition` (jamais `watchPosition`, fix de moins de 10 s accepté), mêmes garde-fous que la fenêtre (§4) : refus hors de `OsmView.getPlanGpsBbox().pad(0.5)`, bloqué en incognito, rien de persisté ni d'envoyé. Point (`.kta-fond-osm-moi`) et cercle de précision posés sur le plan par `KmzExport.gpsToPlan`, en mémoire jusqu'au plan suivant |
-| Enregistrer hors ligne | l'emprise du plan (`OsmView.getPlanGpsBbox`) dans le cache « Save Offline » partagé, par le code du bouton 💾 : `OsmTilesCache.cacheTilesForBbox(bbox, z)` (seule implémentation, `cacheVisibleTiles` y passe aussi), `z = OsmTilesCache.zoomPourBbox(bbox, 18)` = le zoom le plus fin où l'emprise tient sur z − 1, z, z + 1 sous le plafond de 200 tuiles. Grisée, raison écrite dans la commande, si OSM est coupé, en incognito ou hors ligne (relu aux événements `online` / `offline`). Progression « fait / total » dans la commande, fin par un toast (compte des tuiles, déjà là, échecs, plafond) ; prévient la fenêtre Vue OSM (`recheckOfflineCache`) |
+| Enregistrer hors ligne | l'emprise du plan (`OsmView.getPlanGpsBbox`) dans le cache « Save Offline » partagé, par le code du bouton 💾 : `OsmTilesCache.cacheTilesForBbox(bbox, z)` (seule implémentation, `cacheVisibleTiles` y passe aussi), `z = OsmTilesCache.zoomPourBbox(bbox, 18)` = le zoom le plus fin où l'emprise tient sur z − 1, z, z + 1 sous le plafond de 200 tuiles. Grisée, raison écrite dans la commande, si OSM est coupé, en incognito, avec un fond IGN (« OSM seulement », raison complète au survol) ou hors ligne (relu aux événements `online` / `offline`). Progression « fait / total » dans la commande, fin par un toast (compte des tuiles, déjà là, échecs, plafond) ; prévient la fenêtre Vue carte (`recheckOfflineCache`) |
 
 **Rendu.** Une `L.GridLayer` en canvas (`CoucheFondOsm`), pane `ktaFondOsm` z-index 150, sous `tilePane` (200). Pour
 chaque tuile de la carte du plan : les 3 coins (pixel projeté → `map.unproject` → pixel image → `KmzExport.planToGps`
@@ -73,15 +167,30 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
   décalée (0,67 px mesurés au lieu de 0,23).
 - 🩸 **`minZoom: -20`** : une `GridLayer` vaut `minZoom: 0` par défaut, or la carte du plan descend sous zéro : sans
   lui, aucune tuile au dézoom.
-- **Canvas en pixels CSS**, sans facteur d'écran, comme une couche de tuiles Leaflet ordinaire et la fenêtre Vue OSM.
+- **Canvas en pixels CSS**, sans facteur d'écran, comme une couche de tuiles Leaflet ordinaire et la fenêtre Vue carte.
 - **Plan orienté** : le pane est créé dans `map._ktaRotatePane` s'il existe (sinon dans le map-pane, que
   `mapBearing.js` déplace dans le sien). La couche s'inscrit dans `map._ktaGrillesSousRotation` : à chaque angle, la
   rotation de la carte du plan relance `_update` de ces seules grilles (pas un parcours de tous les calques), et le
   patch `_installerPatchGrilles` (désormais posé pour toutes les cartes, `rot.grilles` vrai partout) élargit leur zone
   au rectangle tourné.
-- **Images OSM** : d'abord le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
-  décodage), puis le réseau seulement si en ligne, OSM autorisé et hors incognito ; 48 images décodées gardées (LRU),
-  un échec n'est pas gardé. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
+- **Tuile affichée dès sa première image** : `createTile` rend le canvas à Leaflet (`done`) dès qu'une des images
+  qui le couvrent est posée, les autres se dessinent au fil de l'eau (la génération `_generation` et `canvas.width`,
+  remis à 0 au `tileunload`, écartent les images arrivées trop tard ; sans aucune image, `done` à la dernière
+  réponse). 🩸 Attendre la plus lente laissait le canvas invisible (fondu Leaflet) : mesuré au dézoom d'un écran PC,
+  jusqu'à 300 ms de contenu dessiné mais caché, des blocs qui surgissaient d'un coup. Rendre tout de suite, vide,
+  ferait retirer par Leaflet les tuiles de l'ancien zoom avant qu'il y ait de quoi les remplacer.
+- **Images** : fond IGN, d'abord la tuile IGN si le réseau est permis (en erreur : la suite d'OSM, compteur
+  `replis`) ; puis le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
+  décodage), puis le réseau OSM seulement si en ligne, OSM autorisé et hors incognito ; un échec n'est pas gardé.
+  🩸 Réseau permis et cache « Save Offline » vide (compté par `getStats` à l'allumage et après « Enregistrer hors
+  ligne ») : aucune lecture IndexedDB, qui coûtait 25 à 40 ms par image au dézoom PC, avant la requête. Compte vieilli
+  (tuiles enregistrées depuis la Vue carte) : en ligne, le service worker sert l'URL depuis le même cache ; hors ligne,
+  la lecture se fait toujours.
+- **Cache RAM** (LRU d'images décodées, 256 Ko chacune) : **48 au téléphone** (≈ 12 Mo, mesure ci-dessous), **200 sur
+  un PC** (≈ 50 Mo) : pointeur fin (`(pointer: fine)`), écran ≥ 1 Mpx CSS (~1280 × 800), `navigator.deviceMemory`
+  ≥ 4 s'il est connu ; un appareil tactile n'y entre que si sa mémoire est connue (Chromium) : iPhone et iPad, même
+  au trackpad, restent à 48. 🩸 Un écran 1920 × 1080 montre ~80 images par zoom : à 48, le dézoom vidait déjà le
+  cache et chaque rezoom redemandait tout. `etat().cacheRam` dit le plafond retenu. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
   jusqu'à 6 zooms plus large (morceau agrandi, `drawImage` sur un rectangle source) : « Enregistrer hors ligne » ne
   garde que 3 zooms, le fond serait vide à tous les autres. Éteindre coupe les images en vol (`src = ""`), vide le cache, remet chaque canvas à 0 × 0
   (`tileunload` : iOS ne rend sa mémoire qu'ainsi).
@@ -90,18 +199,23 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
 géoréf effectif (`OsmView.getGeorefEffectif`, même cascade que la fenêtre, §2.2). Allumer est refusé avec un message
 si OSM est coupé (`OsmView.isOptedIn`, `ktaAlerte`) ou en incognito (toast) ; couper OSM pendant que le fond est
 affiché l'éteint (`kta:osmOptInChange`). Hors ligne : un toast à l'allumage, une phrase d'état en tête du panneau
-(`fondosm.horsLigne`, `.kta-tx-warn`, relue aux événements `online` / `offline` sans rouvrir), tuiles enregistrées
-seulement.
+(`fondosm.horsLigne`, ou `fondscarte.horsLigne.fondIgn` avec un fond IGN ; `.kta-tx-warn`, relue aux événements
+`online` / `offline` sans rouvrir), tuiles OSM enregistrées seulement.
 
 **À chaque plan ouvert** (décision produit) : interrupteur éteint (`mktm:plan-ferme`, `mktm:plan-pret`, et le polling
 2 s du bouton détecte une carte remplacée), point « Ma position » effacé ; la transparence, elle, reprend la valeur
 retenue pour ce plan.
 
 **Hors périmètre** : les exports PNG / PDF / KMZ redessinent depuis les données (`exporter.js`, `kmzExport.js`), le
-fond n'y entre pas ; la vue 3D ne le montre pas. Le Mode Secours ouvre toujours la fenêtre Vue OSM (bouton 🌍 du
+fond n'y entre pas ; la vue 3D ne le montre pas. Le Mode Secours ouvre toujours la fenêtre Vue carte (bouton 🌍 du
 scénario, capture du briefing PDF).
 
-🛡️ `scripts/smoke/checkup-fond-osm.js` (tuiles OSM synthétiques, calage fictif prêté en mémoire au relevé fictif).
+🛡️ `scripts/smoke/checkup-fond-osm.js` (tuiles OSM synthétiques, calage fictif prêté en mémoire au relevé fictif) ;
+`scripts/smoke/checkup-fond-osm-dezoom.js` (écran 1920 × 1080, réseau OSM simulé à délai variable et déterministe,
+80 à 400 ms ; dézoom 0 → −2, rezoom, dézoom). Mesuré (Chromium, 48 tuiles à l'écran au dézoom) : contenu caché
+jusqu'à 300 ms → 0 ; délai moyen avant contenu visible 370 ms → 190 à 260 ms (le chargement complet reste celui de
+la plus lente, ~430 ms) ; second dézoom : 53 images sur 82 redemandées et ~100 ms → 0 image et ~15 ms ; téléphone
+émulé : plafond 48 inchangé.
 Mesure (iPhone émulé, processeur ÷4, relevé fictif rendu en V2 par un tuilage prêté, glissés et zoom scriptés) :
 57 images/s fond éteint, 49 allumé ; tourné de 30° : 48 éteint, 32 allumé ; 8 canvas (2 Mo) à plat, 16 (4 Mo)
 tournée, 33 à 48 images OSM décodées (~8 à 12 Mo) ; tout rendu à l'extinction. ⚠️ Non mesuré sur un vrai téléphone.
@@ -125,7 +239,7 @@ tournée, 33 à 48 images OSM décodées (~8 à 12 Mo) ; tout rendu à l'extinct
 
 ## 1. Vision
 
-La **Vue OSM** projette les plans MyKTAMap géoréférencés sur OpenStreetMap (EPSG:3857), avec leur image plan en transparence, leurs POI, tracés, zones et structures par-dessus. Deux modules complémentaires :
+La **Vue carte** projette les plans MyKTAMap géoréférencés sur OpenStreetMap (EPSG:3857), avec leur image plan en transparence, leurs POI, tracés, zones et structures par-dessus. Deux modules complémentaires :
 
 | Module | Fichier | Contexte | API publique |
 |---|---|---|---|
@@ -162,7 +276,7 @@ Si pas opt-in : `confirm()` natif explicite avec mention du domaine `tile.openst
 WGS84), `pointB.estimated: true` pour un B déduit (`config.js > ktaEstimerPointB`).
 
 ```
-_getEffectiveGeoref()   (osmView.js, donc fond OSM et Vue OSM ; secoursMode.js suit le même ordre)
+_getEffectiveGeoref()   (osmView.js, donc fond OSM et Vue carte ; secoursMode.js suit le même ordre)
   1. PLAN_CONFIG.plan.georef          (embarqué ZIP, OU calage des Réglages remis en mémoire)
   2. KmzExport.getCalibration(planId) (LS myktamap_kmz_calib_<planId>)
 ```
@@ -206,7 +320,7 @@ consommateurs, tout de suite et au rechargement :
   Le Générateur affiche la même ligne sous ses champs (`createConf.js > _plannerMajPrecision`), au modèle que le
   calage aura en générant ; « approchée » y renvoie aux Réglages pour recaler.
 - 🩸 **Propagation** : mêmes points des deux côtés, modèles différents → le `"local"` gagne dans les deux sens
-  (`main.js > _accorderModeleCalage`). Sans ça, un plan recalé repasserait au modèle historique pour la Vue OSM
+  (`main.js > _accorderModeleCalage`). Sans ça, un plan recalé repasserait au modèle historique pour la Vue carte
   et le Secours (qui lisent `PLAN_CONFIG` d'abord), et un plan régénéré garderait l'ancien calage local.
 - (décision produit) **L'import KMZ** (`kmzImport.js`) garde le modèle historique : un `LatLonBox` KML est
   linéaire en degrés par définition. Le `plan.georef` qu'il pose n'a pas de `modele`.
@@ -353,7 +467,7 @@ return tiling.minNativeZoom;  // fallback safety pour plans extrêmes
 
 ~~**Pas de viewport culling dynamique** dans le widget~~ → **obsolète depuis v1.77.0**, voir §3.4bis.
 
-Render : `L.imageOverlay.rotated(url, tl, tr, bl, { interactive: false, opacity: 1, pane: <pane du plan>_tuiles })` — **l'opacité est portée par le sous-calque `_tuiles` du plan** (`_paneTuiles`, enfant du pane du plan, `zIndex -1` = sous ses tracés), jamais par la tuile : vue d'ensemble et tuiles nettes (hi-res) s'y superposent sans s'additionner (avant : ~75 % dans la zone visible à 50 %, retour KARMA 08/10/2026). Vue OSM modale : même règle, pane `ktaOsmTuiles` (z 350) ; `_renderLevel` porte un jeton (un rendu dépassé pendant l'extraction ne pose rien). Garde-fou : `check-tiling.js` §19. Pattern identique à `osmView.js > _renderTilesV2OnOsm` (convention CRS.Simple `pxTop = planH - k * tileSize * scale`).
+Render : `L.imageOverlay.rotated(url, tl, tr, bl, { interactive: false, opacity: 1, pane: <pane du plan>_tuiles })` — **l'opacité est portée par le sous-calque `_tuiles` du plan** (`_paneTuiles`, enfant du pane du plan, `zIndex -1` = sous ses tracés), jamais par la tuile : vue d'ensemble et tuiles nettes (hi-res) s'y superposent sans s'additionner (avant : ~75 % dans la zone visible à 50 %, retour KARMA 08/10/2026). Vue carte modale : même règle, pane `ktaOsmTuiles` (z 350) ; `_renderLevel` porte un jeton (un rendu dépassé pendant l'extraction ne pose rien). Garde-fou : `check-tiling.js` §19. Pattern identique à `osmView.js > _renderTilesV2OnOsm` (convention CRS.Simple `pxTop = planH - k * tileSize * scale`).
 
 ### 3.4bis Tuiles HI-RES au zoom (v1.77.0)
 
@@ -477,7 +591,7 @@ Cache cleared au unload page (RAM-only, pas de LS). Re-sélection plan déjà vu
 | **Garde-fou GPS hors champ plan (v1.40.21)** | Helpers `_getPlanGpsBbox()` (modale) / `_getPlanGpsBboxHome()` (widget) : projettent les 4 coins du plan via `_proj` + dims `imageWidth/Height` → `L.latLngBounds`. Au moment du fix GPS reçu, on étend la bbox via `bounds.pad(0.5)` (+50% chaque côté, marge généreuse) puis check `padded.contains([lat, lng])`. Si hors → toast warn avec distance Haversine au centre + console log + **pas de marker affiché** (privacy : aucune trace visuelle si user à des km du plan supposé). Si bbox impossible à calculer (dims manquantes, georef absente) → fallback safe : on autorise (= comportement v1.40.18-20 préservé). Marge `0.5` choisie pour être permissive : un fix à la frontière du plan reste accepté, seul un vrai "ailleurs" (autre ville, autre pays) déclenche le refus. |
 | **Popups POI cliquables widget HOME (v1.40.22)** | Fix CSS `overflow: hidden` → `overflow: visible` sur `.kta-osm-home-content` qui clippait silencieusement les popups Leaflet. Bouton `bindPopup` enrichi : `autoPan: true` + `autoPanPaddingTopLeft: L.point(20, 60)` + `maxWidth: 240` + `className: "kta-osm-popup"` pour activer auto-pan + clamp largeur + style charte. Idem modale OsmView (className + autoPan + maxWidth: 280). |
 | **Style popup POI charte dark (v1.40.22)** | Nouvelle classe CSS `.leaflet-popup.kta-osm-popup` (~60 lignes dans `style.css`) qui override le default Leaflet (fond blanc) pour appliquer la charte sombre : fond `#1a1f2e`, bordure `rgba(244, 197, 66, 0.35)` accent jaune, box-shadow soft, border-radius 8px, nom POI en `#f4c542`, close button discret. Variant `body.kta-theme-light` : fond `--kta-light-bg-elevated` + accent or sombre `#8b6a14`. Appliqué partout via le `className` passé au `bindPopup` (modale + widget HOME). |
-| **Modale Vue OSM élargie WQHD/4K (v1.40.22)** | `max-width: 1200px → 1800px` + `height: 90vh → 92vh` côté `_buildModal()` osmView.js ligne 1028. En WQHD (2560×1440) la modale passe de 47% → 70% de la largeur écran. En 4K (3840) elle reste plafonnée à 1800px (le `width: 96vw` ne s'applique plus) — acceptable car 1800px reste large. Pas de breakpoint mobile à toucher (`96vw` gère). |
+| **Modale Vue carte élargie WQHD/4K (v1.40.22)** | `max-width: 1200px → 1800px` + `height: 90vh → 92vh` côté `_buildModal()` osmView.js ligne 1028. En WQHD (2560×1440) la modale passe de 47% → 70% de la largeur écran. En 4K (3840) elle reste plafonnée à 1800px (le `width: 96vw` ne s'applique plus) — acceptable car 1800px reste large. Pas de breakpoint mobile à toucher (`96vw` gère). |
 | **Suppression markers calibrage A/B widget HOME (v1.40.24)** | `_renderGeorefMarkers()` ne rend plus les 2 circle markers (vert/rouge) + la polyline pointillée jaune (`dashArray: "6 4"`) entre A et B qui chargaient visuellement la mini-carte. Le `_markerLayer` est conservé (layerGroup vide) pour compat. Le `fitBounds` initial est désormais calculé directement via `L.latLngBounds([llA, llB])` au lieu de `_markerLayer.getBounds()` — résultat identique, juste sans rendu visuel. Côté modale OsmView : RAS, aucun marker georef n'y était jamais rendu (le plan apparaît via les tuiles V2 / image overlay directement). |
 | **Popup POI description prééminente (v1.40.25)** | KARMA : popup affichait le `tag` (genre "default") au lieu de la `description` du POI. Refonte HTML popup (modale + widget HOME, cohérence stricte) : ligne 2 = `description` si présente (sinon fallback `tag`), ligne 3 mini = `🏷️ tag` réduit en `opacity: 0.75` + `font-size: 10.5px` + `color: #8892a4` pour debug. Niveau M-LVL toujours en suffixe ligne 2. `max-width: 260px` ajouté pour les descriptions longues. Modale auparavant ignorait totalement `p.description` (oubli initial v1.39.12). |
 | **Filtre tag local (v1.40.17)** | Chips ligne 3 bandeau modale (`_osmLocalTagFilter: Set\|null`) + ligne 3 bandeau widget (`_homeTagFilter: Set\|null`). AND avec FilterPanel global côté modale. Reset au close modale. Indépendants entre les 2 modules par design. |
@@ -489,7 +603,7 @@ Cache cleared au unload page (RAM-only, pas de LS). Re-sélection plan déjà vu
 
 ⚠️ **`asset.url` partagé** : pour les tuiles V2 modale, `RUNTIME_ASSETS[path].url` est créé dans `osmView.js` MAIS partagé avec `tiling.js` (map principale). **NE PAS revoke** au `close()` de la modale OSM — casserait la map principale. Documenté en commentaire dans `_resolveTileUrl`.
 
-⚠️ **Plans V1 (non tuilés)** : v1.39.10 a ajouté un gate strict — modale Vue OSM réservée aux plans V2. Plan V1 → alert pédagogique. Widget HOME : skip tuiles V2 mais affiche POI/Roads/data via georef.
+⚠️ **Plans V1 (non tuilés)** : v1.39.10 a ajouté un gate strict — modale Vue carte réservée aux plans V2. Plan V1 → alert pédagogique. Widget HOME : skip tuiles V2 mais affiche POI/Roads/data via georef.
 
 ⚠️ **Plans très grands (32K+)** : fallback `minNativeZoom` accepté (= flou résiduel). Au-delà de MAX_TILES_HOME (80) ou MAX_TILES_BASELINE (20), pas de meilleur niveau possible.
 
@@ -536,7 +650,7 @@ Cache cleared au unload page (RAM-only, pas de LS). Re-sélection plan déjà vu
 
 ---
 
-## 7. Synergie Mode Secours × Vue OSM (v1.41.0+)
+## 7. Synergie Mode Secours × Vue carte (v1.41.0+)
 
 ### 7.1 API publique étendue
 
@@ -567,7 +681,7 @@ function _getPlanGpsBbox() {
 
 **Cas d'usage** : `genererBriefingPompiersPDF(scenarioId)` (Mode Secours) appelle `OsmView.getPlanGpsBbox()` pour récupérer la bbox + centre afin de générer les liens cliquables OSM/Google Maps dans le PDF — sans avoir besoin que l'utilisateur ait ouvert la modale OSM au préalable.
 
-### 7.3 Fix chips tags Vue OSM (v1.41.3 → 41.4)
+### 7.3 Fix chips tags Vue carte (v1.41.3 → 41.4)
 
 **Bug racine** : `_enumerateOsmTags()` itérait sur `window._dataLayersByPlan[planId]` qui **n'est défini nulle part** dans l'app (jamais peuplé). Conséquence : seuls ~3 tags de la session étaient comptés, les POI des calques data étaient ignorés.
 
@@ -610,13 +724,13 @@ Voir `add-icon-tag` skill pour les 7 sites à toucher. Particularité : icône S
 
 ### 8.1 Vue d'ensemble
 
-Permet à l'utilisateur de **précharger les tuiles `tile.openstreetmap.org`** correspondant à la vue actuelle, afin de garder la Vue OSM consultable **hors-ligne** (typique : descente en cata, terrain sans réseau). Disponible dans 3 contextes UI partageant le **même store IndexedDB** :
+Permet à l'utilisateur de **précharger les tuiles `tile.openstreetmap.org`** correspondant à la vue actuelle, afin de garder la Vue carte consultable **hors-ligne** (typique : descente en cata, terrain sans réseau). Disponible dans 3 contextes UI partageant le **même store IndexedDB** :
 
 | Contexte | Bouton UI | Module |
 |---|---|---|
-| Modale Vue OSM (plan georef, ouverte par le Mode Secours) | Bandeau « 💾 Cacher offline » | `osmView.js` |
-| Widget Vue OSM HOME | Bandeau compact « 💾 » | `osmHomePreview.js` |
-| Mode Secours (icône 🌍) | Hérite modale Vue OSM (même bouton) | `secoursMode.js` → `OsmView.open` |
+| Modale Vue carte (plan georef, ouverte par le Mode Secours) | Bandeau « 💾 Cacher offline » | `osmView.js` |
+| Widget Vue carte HOME | Bandeau compact « 💾 » | `osmHomePreview.js` |
+| Mode Secours (icône 🌍) | Hérite modale Vue carte (même bouton) | `secoursMode.js` → `OsmView.open` |
 | Fond OSM sous le plan (mode plan) | « Enregistrer hors ligne » du panneau (emprise du plan) ; il **lit** ce cache, et hors ligne ne lit que lui | `fondOsmPlan.js` |
 
 ### 8.2 Architecture modules
@@ -723,7 +837,7 @@ Pattern **sync gate + async refresh** : permet à `isAvailable()` de rester sync
 | Cache local | 100% client (IndexedDB local), jamais transmis ni synchronisé |
 | Politique OSM | `MAX_TILES_PER_CACHE = 200` par clic + 3 niveaux de zoom seulement (actuel ±1) = bulk-download raisonnable, conforme à l'esprit du [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) |
 | Cookies / tracking | Idem que sans cache : `crossOrigin: true` mais pas de credentials |
-| Opt-in refusé / Incognito | Le bouton « Cacher » vit dans la carte Vue OSM : sans opt-in ou en incognito, la carte ne s'ouvre pas, donc aucun préchargement possible |
+| Opt-in refusé / Incognito | Le bouton « Cacher » vit dans la carte Vue carte : sans opt-in ou en incognito, la carte ne s'ouvre pas, donc aucun préchargement possible |
 
 ### 8.7 Pièges & conventions
 
@@ -744,7 +858,7 @@ Suite à la sortie de v1.43.0, 8 patches successifs ont consolidé la feature (g
 | Version | Sujet | Cause racine | Fix |
 |---|---|---|---|
 | **v1.43.1** | Gate offline async | `_isOnlineOrCached()` lisait `_planHasCachedTiles` au boot AVANT que `_recheckCachedForCurrentPlan()` ne se soit résolu → flag stale → ouverture refusée même avec cache présent | `open()` rendu async + `await _recheckCachedForCurrentPlan()` JIT juste avant le gate (recheck systématique au moment du clic, plus de course IDB) |
-| **v1.43.2** | Refresh immédiat bouton 🌍 | Toggle opt-in OSM via Configuration mettait à jour le LS, mais le bouton Vue OSM dans la map mode ne s'actualisait qu'au polling 2s suivant → ressentait laggy | Dispatch event `kta:osmOptInChange` chaque fois que `setOptedIn()` mute le flag + listener côté `main.js` qui appelle `_refreshOsmButton()` → refresh < 16ms |
+| **v1.43.2** | Refresh immédiat bouton 🌍 | Toggle opt-in OSM via Configuration mettait à jour le LS, mais le bouton Vue carte dans la map mode ne s'actualisait qu'au polling 2s suivant → ressentait laggy | Dispatch event `kta:osmOptInChange` chaque fois que `setOptedIn()` mute le flag + listener côté `main.js` qui appelle `_refreshOsmButton()` → refresh < 16ms |
 | **v1.43.3** | Widget HOME — overlay « plan non caché » | Le widget HOME affichait OSM même si l'utilisateur n'avait jamais caché le plan sélectionné → en mode avion = tuiles cassées sans feedback | Ajout flag `_anyCachePresent` + overlay pédagogique « 📴 Plan non caché — clique 💾 pour télécharger » via `hasCacheForBbox(bboxA↔B)`. **Cache global partagé** : un plan A caché côté modale OSM est automatiquement détecté par le widget HOME (et inversement) |
 | **v1.43.4** | UX position bouton | Bouton « 💾 » au milieu du bandeau, peu visible | Repositionnement juste après « 📍 Moi » (groupe d'actions utilisateur) |
 | **v1.43.5** | SW robustesse | Pertes réseau intermittentes au moment de l'install du SW → certains assets critiques de l'app shell loupés silencieusement → boot cassé hors-ligne ensuite | Ajout `CRITICAL_APP_SHELL` (sous-ensemble obligatoire) + helper `_cacheWithRetry` (3 essais avec backoff) au moment de l'install + **self-heal au `activate`** : si un asset critique manque, on retente avant d'autoriser le SW à servir |
@@ -774,7 +888,7 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 
 **Bénéfices concrets** :
 - ✅ **Dédup automatique** si 2 plans overlap géographiquement (e.g. deux plans dans Paris) → 1 seule copie de la tuile partagée
-- ✅ **Cacher depuis modale OSM = visible depuis widget Home** (et vice-versa) — c'est ce que KARMA voulait, et c'est ce qui rend la feature « universelle » (peu importe d'où l'user déclenche le cache, ça profite à tous les contextes Vue OSM)
+- ✅ **Cacher depuis modale OSM = visible depuis widget Home** (et vice-versa) — c'est ce que KARMA voulait, et c'est ce qui rend la feature « universelle » (peu importe d'où l'user déclenche le cache, ça profite à tous les contextes Vue carte)
 - ✅ **Pas de gestion de "qui possède quoi"** côté code : chaque plan demande ses tuiles via `hasCacheForBbox(planBbox)`, et la réponse dépend uniquement de la couverture géographique réelle
 
 **Limite** : pas de mécanisme « purge tuiles d'un plan spécifique » (volontaire — on purge tout via `clear()` ou rien). Si un user veut nettoyer les tuiles parisiennes après avoir supprimé son plan Paris, il faut « Vider le cache » global. Acceptable car les tuiles OSM sont publiques (pas de risque privacy) et borné (200 max par clic).
@@ -810,7 +924,7 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 - ⚠️ Clé i18n du chip tuiles = `osm_home.toggle.plan.label` (PAS `.tiles.` — piège vécu).
 - **Gestion en MODALE dédiée** (2e retour KARMA, remplace le panneau flottant puis la pastille) : bouton **≡** du bandeau → modale « 🎚️ Plans & filtres OSM » (pattern ≡ Filtres du mode plan, `z-index 100001` au-dessus du fullscreen). `_renderMultiPanel()` cible les ids DANS la modale (gardes d'existence) — le contenu reste vivant pendant qu'elle est ouverte. ⚠️ Escape : handler en **capture + stopPropagation**, sinon l'Escape fermerait AUSSI le mode OSM (handler fullscreen en phase bulle sur `document`).
 - **Modale ≡ enrichie (4e retour KARMA)** : 3 sections — **Affichage** (5 chips globaux libellés, ex-checkboxes du bandeau), **🏷️ Tags** (chips agrégés sur TOUTE la pile via `_planDataCache`, clic → `_reRenderDataTous()` = re-render data du principal ET des extras + `_appliquerVisibilites`), **🗂️ Plans** (pile). Le **wrapper collapsible du widget est SUPPRIMÉ** (opacité bandeau, 5 checkboxes, chips tags, bouton 🔼 + ses binds — l'oubli d'un bind aurait fait un TypeError) ; `_renderTagChips` supprimée (conteneur disparu). La carte du widget gagne toute la hauteur libérée. ⚠️ Clés i18n `osm_home.opacity.*`, `osm_home.tagfilter.title`, `osm_home.controls.*` : vérifier l'orphelinage avant toute purge (osmView modale en partage certaines).
-- **Recherche dans la LIGNE DE TITRE « 🌍 Vue OSM »** (3e retour KARMA) : le nœud `#ktaOsmHomeSearch` est rendu dans le contenu puis **déplacé** dans `.loader-section-head` (listeners conservés, ancien exemplaire purgé à chaque re-render) → visible en mode réduit ET en mode OSM. Input compact 30 px en réduit, 36 px en fullscreen.
+- **Recherche dans la LIGNE DE TITRE « 🌍 Vue carte »** (3e retour KARMA) : le nœud `#ktaOsmHomeSearch` est rendu dans le contenu puis **déplacé** dans `.loader-section-head` (listeners conservés, ancien exemplaire purgé à chaque re-render) → visible en mode réduit ET en mode OSM. Input compact 30 px en réduit, 36 px en fullscreen.
 - Opacité **par plan** ; la ligne du principal et le slider bandeau sont synchronisés dans les deux sens.
 - Blob URLs des tuiles : JAMAIS révoquées au retrait (elles vivent dans `_planDataCache`, partagées avec un éventuel usage principal) — re-ajout gratuit.
 - Garde anti-race : `_extraLayers[planId] !== g` après l'extraction ZIP async → abandon silencieux.
@@ -818,7 +932,7 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 
 **🧅 Panes par plan (v1.72.2)** : l'ordre de pile vit sur des **panes Leaflet dédiés** (`ktaOsmPlan_<id>`, zIndex 200+rang×5 posé sur le pane) — c'est la SEULE façon d'ordonner images ET vecteurs ensemble (les zIndex d'imageOverlay n'ordonnent que les images ; les L.Path ignorent `pane`, il faut leur donner un **`renderer: L.svg({pane})`** dédié). ⚠️ À la recréation de `_mapInstance`, `_panesParPlan` DOIT être vidé (les panes appartiennent à la carte détruite). ⚠️ Le principal doit être semé dans `_stackOrder` dès le rendu initial (chemin `_renderWidget` qui ne passe pas par `selectPlan`) — sinon pas de ligne ◉ ni d'opacité ni de tags pour lui.
 
-**👁️ Datalayers `visible: false` (fix v1.73.1)** : `_renderDataLayersOnMiniMap` **ne skippe plus** les calques marqués non visibles (`if (!layer.visible) continue` supprimé — il sautait le calque ENTIER, tracés et zones compris). Raison : `layer.visible` est un défaut d'affichage du **MODE PLAN**, retoggable là-bas via ⊞ Calques ; la Vue OSM n'ayant aucun toggle par calque, le skip = **zéro voie d'affichage**. L'affichage est désormais gouverné par les filtres existants (chips catégories globales + par plan, tags). Effet assumé : un calque volontairement masqué par défaut apparaît en Vue OSM. `layer.visible` reste **parsé** (si des toggles par calque arrivent un jour dans la modale ≡). ⚠️ La modale OSM du **mode plan** n'est pas concernée : elle lit les calques vivants de la carte, pas le plan-config.
+**👁️ Datalayers `visible: false` (fix v1.73.1)** : `_renderDataLayersOnMiniMap` **ne skippe plus** les calques marqués non visibles (`if (!layer.visible) continue` supprimé — il sautait le calque ENTIER, tracés et zones compris). Raison : `layer.visible` est un défaut d'affichage du **MODE PLAN**, retoggable là-bas via ⊞ Calques ; la Vue carte n'ayant aucun toggle par calque, le skip = **zéro voie d'affichage**. L'affichage est désormais gouverné par les filtres existants (chips catégories globales + par plan, tags). Effet assumé : un calque volontairement masqué par défaut apparaît en Vue carte. `layer.visible` reste **parsé** (si des toggles par calque arrivent un jour dans la modale ≡). ⚠️ La modale OSM du **mode plan** n'est pas concernée : elle lit les calques vivants de la carte, pas le plan-config.
 
 ### 🏷️ Ajout de la pile PAR ÉTIQUETTE DE PLAN (v1.84.0)
 
@@ -849,12 +963,12 @@ Clé IDB = "z/x/y" (slippy tilenames OSM, EPSG:3857)
 
 ---
 
-## 🏷️ Icônes POI en Vue OSM : une seule source (v1.81.0)
+## 🏷️ Icônes POI en Vue carte : une seule source (v1.81.0)
 
-**Le bug.** En Vue OSM plein écran, un point portant le tag **`portail`** (l'icône
+**Le bug.** En Vue carte plein écran, un point portant le tag **`portail`** (l'icône
 vortex des liaisons inter-plans) s'affichait comme un **petit rond jaune de rayon 4**
 au lieu de son icône. Idem pour **`entree_plan`** — dont le commentaire d'origine dit
-pourtant « Vue OSM × Mode Secours ». Découvert par KARMA le 02/09/2026 en testant
+pourtant « Vue carte × Mode Secours ». Découvert par KARMA le 02/09/2026 en testant
 D5 : les icônes manquantes l'empêchaient de repérer ses portails sur la carte.
 
 **Pourquoi.** `js/osmHomePreview.js` dessine des plans qui **ne sont pas chargés** —
@@ -913,8 +1027,8 @@ même pas s'il fonctionne. Ce n'est donc pas un calque de contenu, c'est un
 |---|---|
 | `InterPlanLinks.ecartCalage(link)` | le calcul, **fonction unique** |
 | 🌀 **Mes liaisons** (HOME) | un badge `📐 Écart de calage : N m` par ligne |
-| **Vue OSM** → 🎚️ Filtres → chip 🌀 | liste classée **du pire au meilleur**, clic = `fitBounds` sur les deux bouts |
-| **Vue OSM** (calque) | la polyligne dorée + les deux bouts, en complément |
+| **Vue carte** → 🎚️ Filtres → chip 🌀 | liste classée **du pire au meilleur**, clic = `fitBounds` sur les deux bouts |
+| **Vue carte** (calque) | la polyligne dorée + les deux bouts, en complément |
 
 **Le calcul.** Les deux bouts d'un portail désignent le même endroit physique vu
 depuis deux plans. Projetés en GPS via le géoréf de **leur** plan respectif, ils
@@ -940,14 +1054,14 @@ sur la carte devant soi n'aide personne ; celui-là se lit dans 🌀 Mes liaison
 ⚠️ **État de validation au 03/09.** `ecartCalage` et le badge de 🌀 Mes liaisons
 sont **prouvés au harnais** : sur deux plans calés à 33 m l'un de l'autre, l'API
 renvoie 33 m et le badge l'affiche ; une liaison dont un plan n'a pas de géoréf
-renvoie `null` et n'affiche rien. La **liste de la Vue OSM n'a PAS pu être
+renvoie `null` et n'affiche rien. La **liste de la Vue carte n'a PAS pu être
 exécutée** : le mode plein écran exige des plans réellement chargeables (ZIP), que
 le harnais ne sait pas fabriquer — le bouton 🎚️ n'existe qu'une fois ce mode
 ouvert. À valider sur un vrai jeu de plans géoréférencés.
 
 ---
 
-## 📝 Le travail de session en Vue OSM (v1.81.0)
+## 📝 Le travail de session en Vue carte (v1.81.0)
 
 **Le symptôme, remonté par KARMA le 03/09** : « je ne vois pas mes points en OSM
 HOME ». Ils étaient créés **en session**. `_loadPlanDataForPreview` ne lit que le
@@ -963,7 +1077,7 @@ portent.
 
 **Le correctif.** Un **calque virtuel** bâti sur `SessionPersist.getSaved(planId)`
 — API qui existait déjà, aucune fonction nouvelle. Le payload porte exactement les
-4 familles que la Vue OSM sait rendre (`editorPoints`, `roads`, `zones`,
+4 familles que la Vue carte sait rendre (`editorPoints`, `roads`, `zones`,
 `structures`), aux mêmes noms de champs : aucune conversion.
 
 🩸 **Pourquoi la lecture se fait au RENDU et non à l'extraction du ZIP** :
@@ -985,7 +1099,7 @@ filtre est posé**, sans que rien ne l'explique.
 - posé **hors de `_CATS`**, comme le chip 🌀 : la session n'est pas une catégorie
   d'objets mais une **origine de données**, transversale aux 4 familles ;
 - le popup d'un POI de session porte « 📝 Session en cours — pas encore dans le
-  plan ». *La Vue OSM montre l'état **enregistré** des plans ; y mêler du travail
+  plan ». *La Vue carte montre l'état **enregistré** des plans ; y mêler du travail
   non exporté sans le nommer créerait une confusion pire que son absence.*
 
 **Limites connues** :
@@ -1007,7 +1121,7 @@ résolvent en fr/en/es, le smoke est vert et les 308 contrôles des garde-fous
 passent. **Le rendu n'a PAS pu être exécuté** : le widget OSM reste bloqué sur
 « ⏳ Préparation… » en headless — il lui faut une connectivité réelle pour les
 tuiles. C'est une limite du harnais, pas du correctif : **aucune** partie de la
-Vue OSM n'est testable automatiquement aujourd'hui. À valider sur l'appareil.
+Vue carte n'est testable automatiquement aujourd'hui. À valider sur l'appareil.
 
 ---
 
@@ -1029,7 +1143,7 @@ C'était défendable tant qu'une géoréf se saisissait à la main. **L'import S
 l'a rendu faux** : il produit des plans calés *par construction*, dont personne
 n'a de raison de ressaisir les points — et c'étaient précisément ceux qui
 manquaient à la liste (signalé par KARMA : « les plans issus de SIG
-n'apparaissent pas dans la liste vue OSM »).
+n'apparaissent pas dans la liste vue carte »).
 
 **Correction.** Le HOME ne peut pas lire `PLAN_CONFIG`. Le registre, lui, il le
 lit déjà : `main.js > _propagerGeorefVersKmzExport` y dépose donc le géoréf du
@@ -1045,7 +1159,7 @@ porter leur géoréf dans cette déclaration si le besoin se présente.
 
 ---
 
-## 9. Mesurer en Vue OSM — distance + surface (v1.83.0)
+## 9. Mesurer en Vue carte — distance + surface (v1.83.0)
 
 Bouton 📏 dans la barre du widget HOME. Clics successifs = sommets ; segment
 étiqueté à sa longueur, total et surface dans un bandeau flottant ; ↩ retire le
@@ -1054,7 +1168,7 @@ dernier point, 🗑️ vide, ✕ quitte.
 🩸 **`measure.js` n'est pas réutilisable — et c'est une bonne nouvelle.** Le
 module du mode plan (442 lignes) est bâti sur `convertCoord` et
 `APP_CONFIG.scale` : il travaille en **pixels d'un plan**, divisés par une
-échelle calibrée. En Vue OSM il n'y a pas *un* plan (il y en a plusieurs
+échelle calibrée. En Vue carte il n'y a pas *un* plan (il y en a plusieurs
 empilés, chacun avec la sienne) et il n'y a **pas besoin d'échelle** : les
 coordonnées sont déjà des latitudes et des longitudes.
 
@@ -1083,7 +1197,7 @@ cohérence du code avec ses propres suppositions.*
 
 ---
 
-## 10. Largeur des fronts : la Vue OSM applique la loi du mode plan
+## 10. Largeur des fronts : la Vue carte applique la loi du mode plan
 
 KARMA : « en mode OSM c'était pas mal, mais on peut faire aussi bien qu'en mode
 plan, ça reste encore limite ».
@@ -1103,9 +1217,9 @@ des **pixels rendus par mètre de terrain**.
 |---|---|
 | Écran, mode plan | `APP_CONFIG.scale × 2^zoom` |
 | Export PNG/PDF | `APP_CONFIG.scale × résolution` |
-| **Vue OSM** | `1 / résolution Web Mercator` |
+| **Vue carte** | `1 / résolution Web Mercator` |
 
-Les deux premiers passent par une échelle de plan ; **la Vue OSM n'en a pas** —
+Les deux premiers passent par une échelle de plan ; **la Vue carte n'en a pas** —
 elle travaille en lat/lng. D'où `window.ktaPxParMetreOsm(map)`, qui calcule la
 résolution Web Mercator du moment.
 
@@ -1159,7 +1273,7 @@ pile, principal **et empilés**. Garde-fou : `scripts/smoke/checkup-largeur-osm-
 
 Les deux cartes multiplient fronts, tracés, murs en ligne et arcs par le réglage
 d'appareil « Épaisseur des traits » (`KtaEpaisseurTraits.ecran`, `ui.md`), contours
-des piliers exclus, et se repeignent à `kta:epaisseurTraitsChange` ; la Vue OSM y soumet aussi
+des piliers exclus, et se repeignent à `kta:epaisseurTraitsChange` ; la Vue carte y soumet aussi
 son itinéraire (5 px × facteur, hors loi du zoom, `_majLargeurItiOsm`).
 
 🛡️ **Prouvé, et le test lui-même a été corrigé après falsification** : il ne
@@ -1170,7 +1284,7 @@ balaie désormais 8 densités, bornes comprises — et la dérive tombe.
 ## 11. Taille des icônes au zoom : le réglage 📐 vaut aussi pour les cartes OSM
 
 Le réglage global « 📐 Adapter la taille des icônes au zoom » (`APP_CONFIG.scaledMarkers`, défaut actif) s'applique
-à la **Vue OSM** et à la **carte OSM de l'accueil** (plan principal et plans empilés), avec **la même loi** qu'en
+à la **Vue carte** et à la **carte OSM de l'accueil** (plan principal et plans empilés), avec **la même loi** qu'en
 mode plan et un **plancher propre** :
 
     échelle = pixels écran par pixel de PLAN, bornée [plancher ; 2]      (map.js > ktaEchelleMarqueurs)
@@ -1187,14 +1301,14 @@ métrique du plan (absente ou fausse sur un plan non mesuré) ni d'un « zoom de
 Web Mercator sont pris en compte par `project`.
 
 **Plancher ×0,5 en OSM (décision produit).** La vue d'ensemble d'un plan détaillé est la vue courante d'une carte
-OSM ; au plancher du mode plan (×0,25) les icônes y tombaient à 6,5 px (Vue OSM) et 6 px (accueil), illisibles.
-Au plus petit : **13 px en Vue OSM, 12 px à l'accueil**. Le plancher est un paramètre de `ktaEchelleMarqueurs`,
+OSM ; au plancher du mode plan (×0,25) les icônes y tombaient à 6,5 px (Vue carte) et 6 px (accueil), illisibles.
+Au plus petit : **13 px en Vue carte, 12 px à l'accueil**. Le plancher est un paramètre de `ktaEchelleMarqueurs`,
 pas une seconde loi ; plafond ×2 commun.
 
 **Mise en œuvre.**
 - Icône choisie **au rendu** par `map.js > ktaIconeOsm(url, taille, tag)` : réglage actif → `L.divIcon` +
-  `<img class="kta-marker-img">` (même CSS que le mode plan) ; coupé → `L.icon` nu (26 px Vue OSM, 24 px accueil).
-- Variable `--kta-marker-scale` posée sur le **conteneur** de la Vue OSM (`osmView.js > _majTailleIconesOsm`) et
+  `<img class="kta-marker-img">` (même CSS que le mode plan) ; coupé → `L.icon` nu (26 px Vue carte, 24 px accueil).
+- Variable `--kta-marker-scale` posée sur le **conteneur** de la Vue carte (`osmView.js > _majTailleIconesOsm`) et
   sur le **pane de chaque plan** à l'accueil (`osmHomePreview.js > _majTailleIconesHome`, projection gardée dans
   `_panesParPlan[id].proj`) : deux plans empilés n'ont pas la même résolution. 🩸 Jamais sur le body : c'est celle
   du mode plan, resté dessous ; le conteneur de l'accueil est remis à 1 pour ne pas en hériter.
@@ -1202,7 +1316,7 @@ pas une seconde loi ; plafond ×2 commun.
 - Réglage basculé dans ⚙️ Configuration de l'accueil : `window.ktaMajTailleIconesOsm` → événement
   `kta:tailleIconesChange` → **re-rendu des POI** des cartes ouvertes (pas de rechargement).
 
-🩸 **Pourquoi pas une seule forme d'icône pour basculer sans re-rendu.** Mesuré sur la Vue OSM avec 1 521 marqueurs
+🩸 **Pourquoi pas une seule forme d'icône pour basculer sans re-rendu.** Mesuré sur la Vue carte avec 1 521 marqueurs
 (relevé fictif + 1 500 POI synthétiques, Chromium, médianes sur 24 crans) : un divIcon laissé à l'échelle 1, ou une
 taille en `calc()` sur l'`<img>`, alourdissent **tous** les zooms (+10 à +30 ms) même quand la taille ne change pas.
 Avec le `L.icon` nu, le réglage coupé coûte ce qu'il coûtait avant.
@@ -1216,7 +1330,7 @@ taille de base réglage coupé, bascule à chaud dans les deux sens, échelle du
 
 ## 12. Légende du plan en lecture seule (les deux cartes OSM)
 
-Bouton **`🗺️ Légende`** dans la barre de la Vue OSM, **`🗺️`** dans le bandeau de la carte de l'accueil (petite carte
+Bouton **`🗺️ Légende`** dans la barre de la Vue carte, **`🗺️`** dans le bandeau de la carte de l'accueil (petite carte
 et plein écran ; `≡` y est déjà « Plans & filtres »). Les deux ouvrent la **même** légende que la ≡ Légende du mode
 plan — libellés, masquages, couleurs choisies, types `cust-…`, icônes — sans rien de modifiable (décision produit) :
 ni ✏️ Modifier, ni bandeau des types orphelins (son « ➕ Lier » écrit dans la légende). Pas de ligne d'explication
@@ -1237,16 +1351,16 @@ ni ✏️ Modifier, ni bandeau des types orphelins (son « ➕ Lier » écrit da
   c'est le plan dont l'utilisateur a vu la légende en dernier, et celui dont le slot de session est le plus frais.
 - **Plusieurs plans sur la carte** : avertissement en tête, « Légende de <plan> ; les autres plans affichés ont la
   leur. » (nom posé par `textContent`).
-- **Empilement** : la modale prend `z-index 100001` (rang des sous-modales), au-dessus de la Vue OSM (99999) et du
+- **Empilement** : la modale prend `z-index 100001` (rang des sous-modales), au-dessus de la Vue carte (99999) et du
   plein écran de l'accueil (9999). **Échap** en capture + `stopPropagation` : il ferme la légende, pas la carte.
 - 🛡️ `scripts/smoke/checkup-osm-legende.js` : bouton présent sur les deux cartes, légende identique à celle du
-  mode plan (couleur choisie et zone `cust-…` comprises) depuis la Vue OSM, l'accueil avec le plan chargé et
+  mode plan (couleur choisie et zone `cust-…` comprises) depuis la Vue carte, l'accueil avec le plan chargé et
   l'accueil après redémarrage (plan non chargé), aucun contrôle de modification, avertissement à deux plans,
   légende au premier plan, Échap.
 
 ## 13. Tourner les cartes OSM (rotation manuelle)
 
-Les deux cartes OSM, la **fenêtre** Vue OSM et le **widget de l'accueil**, tournent comme le plan 2D, **à la main
+Les deux cartes OSM, la **fenêtre** Vue carte et le **widget de l'accueil**, tournent comme le plan 2D, **à la main
 seulement** (décision produit) : deux doigts au-delà de 15° d'angle entre eux, Maj + molette au PC, bouton nord
 (classe `.kta-nord-local`, coin bas gauche de SA carte) pour redresser. Aucun cap, aucun plan orienté.
 
@@ -1299,10 +1413,20 @@ Bug KARMA : *« je charge A, retour home → A ; je charge B, retour home → B,
 - `_initMiniMap`, quand elle détruit la carte, purge `_extraLayers` et sort ces ids de la pile : les plans ajoutés par « + » appartenaient à la carte morte et ne se ré-affichaient plus (fantômes silencieux). Effet assumé : après un aller-retour dans un plan, la pile se réduit au plan quitté ; `_extraOpacity` est gardé pour un re-ajout.
 - 🛡️ `scripts/check-osm-pile.js` **exécute** la règle et le démontage extraits du fichier (leçon v1.90.15 : un grep valide un fantôme).
 
+## Taille de la carte de la Vue carte suivie
+
+Leaflet ne relit la taille de son conteneur qu'au redimensionnement de la fenêtre. Or le bandeau de la modale change de
+hauteur après la création de la carte (mesuré : carte crue à 439 px, réelle à 223) : le canvas des vecteurs, taillé
+sur la taille périmée, ne couvrait qu'une partie de la carte (structures, zones et tracés absents sous une ligne,
+image du plan seule, jusqu'au prochain déplacement). `osmView.js > _suivreTailleCarte` observe le conteneur
+(`ResizeObserver`) et appelle `invalidateSize` une fois par image ; débranché à la fermeture.
+🛡️ `checkup-osm-empilement.js` (taille vue par Leaflet = taille réelle, canvas qui couvre la carte, à l'ouverture puis
+conteneur agrandi et rétréci ; contrôle négatif : l'ancien code échoue sur « conteneur agrandi »).
+
 ## Diagnostic : une icône paraît sous les tuiles du plan
 
 Non reproduit au harnais (plan réel, Chrome et WebKit, échelles 1 à 3, `scripts/smoke/checkup-osm-empilement.js`).
-Sur l'écran où le défaut se voit, Vue OSM ouverte, coller dans la console (F12) — chiffres seulement, aucune donnée
+Sur l'écran où le défaut se voit, Vue carte ouverte, coller dans la console (F12) — chiffres seulement, aucune donnée
 de plan :
 
 ```js

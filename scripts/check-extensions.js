@@ -2688,6 +2688,59 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       /Array\.isArray\(cur\.key\) \? cur\.key\[0\] : cur\.key/.test(lire("js/homeProfile.js")));
   }
 
+  // ── 11. LÉGENDE DE LA SESSION (legendeSession, appliquerLegende, usagesLegende ; vrai legendCustomization.js) ──────
+  {
+    const c = nouveauContexte(null);
+    t("légende sans LegendCustomization : null partout", c.K.legendeSession() === null && c.K.appliquerLegende({}) === null &&
+      c.K.usagesLegende(["x"]) === null);
+    vm.runInContext(lire("js/legendCustomization.js"), vm.createContext(c.w), { filename: "legendCustomization.js" });
+    const LC = c.w.LegendCustomization;
+    c.w.ktaCheminIconePlausible = (u) => typeof u === "string" && /^(data:|blob:)|\.\w+$/.test(u);
+    c.w.getEditorPoints = () => [{ uid: "pt_a", tags: ["cust-pris"] }];
+    c.w.getRoads = () => [{ uid: "rd_a", type: "cust-trace" }];
+    c.w.getZones = () => []; c.w.getStructures = () => [];
+    c.w._emis.length = 0;
+    LC.addCustomEntry({ id: "cust-local", category: "icones", label: "Local", iconUrl: "data:image/png;base64,AA" });
+    t("sans extension : un changement de légende ne fait qu'émettre mktm:legende-session (personne ne l'écoute)",
+      c.w._emis.includes("mktm:legende-session"));
+    t("🔒 plan pas prêt : légende null (celle d'un autre plan peut être en mémoire)", c.K.legendeSession() === null &&
+      c.K.appliquerLegende({ retraits: ["cust-local"] }) === null && LC.findCustomEntry("cust-local") !== null);
+    c.w._currentLoadedPlanId = "ext_1";
+    c.K.planCharge("ext_1");
+    t("🔒 plan attendu différent du plan prêt : null", c.K.legendeSession("ext_2") === null);
+    LC.setSessionLabel("traces", "principal", "Grande galerie");
+    const l = c.K.legendeSession("ext_1");
+    t("legendeSession : entrées de la session et types renommés (clé <cat>.<type>)",
+      l.entrees.length === 1 && l.entrees[0].id === "cust-local" &&
+      l.types.length === 1 && l.types[0].cle === "traces.principal" && l.types[0].label === "Grande galerie");
+    l.entrees[0].label = "modifié dehors";
+    t("legendeSession rend une copie (rien de partagé)", LC.findCustomEntry("cust-local").label === "Local");
+    t("usagesLegende : points par tags, tracés par type",
+      JSON.stringify(c.K.usagesLegende(["cust-pris", "cust-trace", "cust-local"], "ext_1")) ===
+      JSON.stringify({ "cust-pris": 1, "cust-trace": 1, "cust-local": 0 }));
+    const r = c.K.appliquerLegende({
+      entrees: [{ id: "cust-pris", category: "icones", label: "<img src=x>Puits", iconUrl: "https://tiers.exemple/x.png" },
+        { id: "cust-trace", category: "traces", label: "Boyau", lineColor: "#123456" }],
+      types: [{ cle: "zones.eau", label: "Flaque", color: "#00ff00" }], typesRetires: ["traces.principal"],
+      retraits: ["cust-pris", "cust-local"] }, "ext_1");
+    t("appliquerLegende : entrée encore portée par un objet gardée (jamais de tag orphelin), l'autre retirée",
+      r.gardes.length === 1 && r.gardes[0] === "cust-pris" && LC.findCustomEntry("cust-pris") !== null &&
+      LC.findCustomEntry("cust-local") === null);
+    const pris = LC.findCustomEntry("cust-pris");
+    t("🔒 appliquerLegende : texte normalisé, icône hors data:image refusée", !/[<>]/.test(pris.label) && !pris.iconUrl);
+    t("appliquerLegende : types renommés / rendus au défaut", LC.getLabel("zones", "eau") === "Flaque" &&
+      LC.getColor("zones", "eau") === "#00ff00" && LC.getLabel("traces", "principal") !== "Grande galerie");
+    c.w.PLAN_CONFIG = { plan: { customLegend: { customEntries: [{ id: "cust-plan", category: "icones", label: "Du plan",
+      iconUrl: "icons/plan.png" }] } } };
+    LC.loadPlanState();
+    c.K.appliquerLegende({ entrees: [{ id: "cust-plan", category: "icones", label: "Du plan renommé", iconUrl: "icons/plan.png" },
+      { id: "cust-autre", category: "icones", label: "Autre", iconUrl: "icons/plan.png" }] }, "ext_1");
+    t("🔒 appliquerLegende : l'icône de l'entrée du plan de même id est gardée, pas pour un autre id",
+      LC.findCustomEntry("cust-plan").iconUrl === "icons/plan.png" && !LC.findCustomEntry("cust-autre").iconUrl);
+    t("appliquerLegende : le masquage reste à l'appareil", LC.isVisible("zones", "eau") === true &&
+      !("hidden" in c.K.legendeSession("ext_1")));
+  }
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 points d'extension : neutres sans extension, fermés quand une permission échoue, jamais de repli sur la gate community");

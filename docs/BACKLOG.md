@@ -25,9 +25,12 @@
     ` · ` : `qui: Claude · action: … · fini: … · depuis: 20/10/2026 · taille: S` ;
   - `qui` = qui fait la **prochaine** action (`KARMA` | `Claude`) · `action` = cette action, concrète ·
     `fini` = critère de fin vérifiable · `depuis` = date d'ouverture JJ/MM/AAAA, jamais réécrite au ménage ·
-    `taille` = `XS` | `S` | `M` | `L` ; facultatif : `lot` (branche du lot en vol). Aucun accent grave dans
-    une valeur ;
-  - dans `## Entrant`, les métadonnées sont facultatives : le tri les pose.
+    `taille` = `XS` | `S` | `M` | `L`. Aucun accent grave dans une valeur ;
+  - champs facultatifs, même syntaxe, en fin de bloc : `lot` = branche du lot en vol ;
+    `id` = identifiant stable, minuscules, chiffres et tirets, unique dans le dépôt, posé sur toute entrée ;
+    `après` = id des entrées à finir avant, séparés par des virgules ; autre dépôt : `pro:id` ou `community:id` ;
+    `échéance` = date butoir JJ/MM/AAAA, seulement pour une vraie échéance ; la priorité reste l'ordre du fichier ;
+  - dans `## Entrant`, les métadonnées sont facultatives, sauf `id` : le tri pose les autres.
 
 ## Maintenant
 
@@ -35,32 +38,30 @@
   expirent le 03/01/2027 sans avoir jamais été renouvelés (certbot agit à 30 jours, vers le 04/12). Sur le VPS :
   `certbot certificates`, minuteur certbot, `certbot renew --dry-run`. Alerte posée : sonde horaire en échec à 20 jours.
   `qui: KARMA · action: dry-run certbot sur le VPS, puis Claude recontrôle les dates le 05/12 · fini: dev et pro à une nouvelle
-  échéance (avril 2027) · depuis: 23/11/2026 · taille: XS`
+  échéance (avril 2027) · depuis: 23/11/2026 · taille: XS · id: certificats-tls`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
-  · taille: S`
+  · taille: S · id: test-appareil-photos-export`
 
 ## Ensuite
 
 - **Sol abaissé qui débouche sur le niveau du dessous** — décidé 14/11 (après le lot 4 de la masse au sol) : en 3D, le
   plafond de la galerie du dessous s'ouvre et l'on descend à pied (comme la pente) ; itinéraire seulement par tracé
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
-  `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M`
-- **Niveaux visibles 2D : décocher un niveau, « Tout afficher »** — ✅ mesuré 17/11 (CPU ×4, 4 000 structures, 2 500
-  tracés, 1 510 zones, 5 niveaux) : décocher 1 niveau sur 5 = 2,2 s, « Tout afficher » = 2,1 s (couches de session
-  recréées). Pistes : ne traiter que l'écart, puis garder les couches des niveaux masqués (~1 Mo pour 10 000).
-  `qui: KARMA · action: dire s'il faut reprendre (piste 1, ou 1 + 2) · fini: les deux gestes mesurés sous 1 s à CPU ×4,
-  checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M`
+  `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M
+  · id: sol-abaisse-niveau-dessous`
 - **Référencement de doc.myktamap.fr** — un sitemap ne liste que son propre domaine : la doc doit publier son
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
-  · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S`
-- **Mode strict par plan (jonctions imparfaites)** — idée KARMA : tolérance 0 sur un plan choisi. ✅ vérifié 24/11/2026 :
-  un lien de tolérance qui croise un mur en ligne ou une zone inaccessible n'est plus posé (`pathfinder.js > _lienCoupe`).
-  Reste le mode strict lui-même : topo (options et reco) dans le rapport du lot `niveaux-jonctions`.
-  `qui: KARMA · action: choisir une option du topo du mode strict · fini: option choisie, ou idée close dans
-  DECISIONS_FERMEES · depuis: 05/11/2026 · taille: S`
+  · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S
+  · id: referencement-doc`
+- **Détecter : bandes retirées seulement entre deux masses** — ✅ vérifié 25/11/2026 : tout tronçon régulier plus de
+  4 × plus long qu'épais est effacé (piliers allongés en éclats, cous mordus) ; case de débrayage livrée. Règle décidée :
+  n'effacer qu'un tronçon qui relie deux masses ou sort du bloc (un cou entre deux masses reste coupé : à trancher).
+  `qui: Claude · action: lot moteur (ktaDetection.js > _bandesCadre) · fini: pilier 800 × 150 entier case cochée,
+  scène bleue toujours 54/54 sans bande posée, check-detection vert · depuis: 25/11/2026 · taille: M
+  · id: detect-bandes-fines`
 
 ## Plus tard
 
@@ -68,86 +69,97 @@
   (généré par `check-lexique-icones.js`) suffit en attendant ; une fois les noms écrits, le lexique ne garde que
   les emoji restés.
   `qui: Claude · action: réécrire les citations de bouton d'AI_CONTEXT.md par leur nom, lexique régénéré
-  · fini: classerDoc ne relève plus d'emoji de bouton hors lexique · depuis: 09/11/2026 · taille: M`
+  · fini: classerDoc ne relève plus d'emoji de bouton hors lexique · depuis: 09/11/2026 · taille: M
+  · id: ai-context-noms-boutons`
 - **Vue 3D, puits ouvert : galerie du dessus qui coupe le conduit** — une galerie du dessus qui ne couvre qu'une
   partie de l'emprise du puits coupe le conduit (les parois de tube des voisins ne lisent pas le gabarit) — rare, pas
   vu sur plan réel. ✅ vérifié 09/11/2026 : `js/vue3d.js > _sommetPlafond` (🩸).
   `qui: Claude · action: couper les parois de tube des voisins sur l'emprise d'un conduit (bit GABARIT.conduit)
-  · fini: checkup § 56 étendu à une galerie à cheval sur l'emprise, vert · depuis: 09/11/2026 · taille: S`
+  · fini: checkup § 56 étendu à une galerie à cheval sur l'emprise, vert · depuis: 09/11/2026 · taille: S
+  · id: vue3d-puits-galerie-conduit`
 - **Vue 3D, puits ouvert : disque de ciel coupé vu en biais** — regardé de biais depuis le fond ou depuis un niveau
   traversé, le disque de ciel du sommet est coupé net par un bord vertical (même sprite que le puits sur son niveau).
   🔬 vu en capture sur plan réel le 09/11/2026, cause non cherchée.
   `qui: Claude · action: trouver ce qui tranche le sprite (gabarit, plan de coupe, taille) et le corriger
-  · fini: capture en biais sans bord net, checkup § 56 vert · depuis: 09/11/2026 · taille: S`
+  · fini: capture en biais sans bord net, checkup § 56 vert · depuis: 09/11/2026 · taille: S
+  · id: vue3d-puits-disque-ciel`
 - **Téléchargement de fichier commun, repli partage iPhone** — une vingtaine de modules recopient le même lien Blob
   + `download` (secoursMode, sessionExporter, refonteInterface…), aucun ne passe par `navigator.share` sur iOS, où le
   lien d'un Blob est capricieux dans la PWA installée. ✅ vérifié 09/11/2026 (grep) ; modèle : `js/debug.js`.
   `qui: Claude · action: une fonction commune (Blob, download, partage iOS) et y passer les exports
-  · fini: plus de copie du motif, exports testés Chromium et WebKit · depuis: 09/11/2026 · taille: M`
+  · fini: plus de copie du motif, exports testés Chromium et WebKit · depuis: 09/11/2026 · taille: M
+  · id: telechargement-commun-ios`
 - **Calque : copie jamais retouchée contre trace de copie** — deux appareils hors ligne qui passent le même calque
   en modification gardent des copies concurrentes (le plus récent gagne). Règle à la réception, cf
   `docs/architecture/session-data.md` (limites de « Repasser en modification »).
   `qui: Claude · action: marquer la date de l'objet du fichier sur chaque copie, la trace l'emporte sur une copie
-  intacte · fini: scénario deux appareils hors ligne vert · depuis: 08/11/2026 · taille: M`
+  intacte · fini: scénario deux appareils hors ligne vert · depuis: 08/11/2026 · taille: M
+  · id: calque-copie-contre-trace`
 - **Calque d'origine sur un appareil neuf** — toutes les copies supprimées ailleurs : il ne reçoit que des traces,
   voit le calque d'origine tant qu'il n'a pas cliqué « Modifier » (qui donne alors un calque vide).
   `qui: Claude · action: masquer le calque si des traces de copie le vident (vérification asynchrone du fichier)
-  · fini: appareil neuf sans calque fantôme · depuis: 08/11/2026 · taille: S`
+  · fini: appareil neuf sans calque fantôme · depuis: 08/11/2026 · taille: S · id: calque-origine-appareil-neuf`
 - **⏪ du niveau en lot et liaisons des portails** — le niveau en lot fait suivre la liaison d'un portail
   (`InterPlanLinks.onPointLevelChanged`), mais ⏪ ne la remet pas à l'ancien niveau (point remis, liaison non).
   `qui: Claude · action: inclure les instantanés de liaison dans l'entrée d'historique du lot · fini: ⏪ remet point
-  et liaison, check-selection-multi le prouve · depuis: 08/11/2026 · taille: S`
+  et liaison, check-selection-multi le prouve · depuis: 08/11/2026 · taille: S · id: annuler-niveau-lot-liaisons`
 - **`security.txt` à renouveler** — ici et dans `MyKTAMap-doc/racine-publique/` (RFC 9116), expire le 22/10/2027 : périmé
   compte comme absent pour les outils de réputation.
   `qui: Claude · action: repousser Expires d'un an (moins d'un an d'avance) · fini: fichier servi, date à jour
-  · depuis: 23/10/2026 · taille: XS`
+  · depuis: 23/10/2026 · taille: XS · id: security-txt`
 - **Échelle typographique** — ✅ vérifié 20/10 : ~35 tailles de texte dans `css/` ; 11 / 11,5 / 12 / 12,5 / 13 px se
   suivent à moins de 5 %. Reste de l'audit d'interface (M1) : 6 rôles proposés (11 méta, 12,5 libellé, 14 corps,
   15 lecture, 18 titre de fenêtre, 24 titre d'écran), plancher de 11 px pour tout texte cliquable.
   `qui: Claude · action: proposer en QCM les jetons de taille et l'ordre des écrans, puis les poser écran par écran
-  · fini: tailles en jetons, plus aucune valeur hors échelle dans css/ · depuis: 20/10/2026 · taille: L`
+  · fini: tailles en jetons, plus aucune valeur hors échelle dans css/ · depuis: 20/10/2026 · taille: L
+  · id: echelle-typographique`
 - **Thème clair : nettoyer les surcharges historiques** — ✅ vérifié 10/11 : 1 792 → 1 001 sélecteurs
   `.kta-theme-light` (`scripts/smoke/releve-theme.js`, `docs/architecture/ui.md` §53.3). Restent surtout
   des règles qu'aucun écran relevé n'atteint (Vue OSM, instance à mot de passe, sous-fenêtres profondes).
   `qui: Claude · action: étendre le relevé aux écrans non couverts puis retirer ce qu'il prouve mort
-  · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L`
+  · fini: plus de surcharge claire de couleur là où un jeton existe · depuis: 20/10/2026 · taille: L
+  · id: theme-clair-surcharges`
 - **Plan au sol net sur un grand plan, et jusqu'à l'horizon** — ✅ 04/11 : 1024 px pour ~100 m, flou de près ; ✅ 14/11 :
   emprise = cadrage (`dcce47e3`), mais en « Tout le plan » vue rasante, sol nu au-delà de ~70 m. Piste : deux textures
   (proche nette, lointaine grossière) ; `camera.far` = diagonale à portée illimitée, précision de profondeur à suivre.
   `qui: Claude · action: texture proche + lointaine, mémoire en iPhone émulé · fini: lisible de près et au loin
-  · depuis: 04/11/2026 · taille: M`
+  · depuis: 04/11/2026 · taille: M · id: vue3d-sol-net-horizon`
 - **Objet supprimé qui reste affiché** — vu en pro (26/10) : objet de session venant d'un calque copié dans la
   session, supprimé depuis sa fiche, organisation chiffrée, souvent le PREMIER supprimé ; disparaît au rechargement
   du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
   `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
-  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S`
+  · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S · id: objet-supprime-affiche`
 
 ## Entrant
 
-- **Vérifier le plan : bout coupé du réseau par un mur** — depuis le correctif des jonctions (51ace966), l'itinéraire
-  refuse un lien de jonction imparfaite qui traverse un mur en ligne ou une zone inaccessible ; mais 🔗 Raccords et
-  Vérifier le plan (C5, `KtaRaccords.detecter`) voient toujours ce bout comme raccordé : l'auteur n'apprend pas que
-  l'itinéraire ne passe plus là. Cas rare (vu au lot niveaux-jonctions, 24/11/2026).
+- **Vérifier le plan : bout coupé du réseau par un mur** — depuis le correctif des jonctions (51ace966), l'itinéraire refuse un lien de jonction
+  imparfaite qui traverse un mur en ligne ou une zone inaccessible ; mais 🔗 Raccords et Vérifier le plan (C5, `KtaRaccords.detecter`) voient
+  toujours ce bout comme raccordé : l'auteur n'apprend pas que l'itinéraire ne passe plus là. Cas rare (vu au lot niveaux-jonctions, 24/11/2026).
   `qui: Claude · action: signaler dans Vérifier le plan un bout dont le seul lien est coupé (mêmes obstacles que
-  pathfinder.js > _lienCoupe) · fini: cas fictif signalé, check-verifier-plan rouge puis vert · depuis: 24/11/2026 · taille: S`
+  pathfinder.js > _lienCoupe) · fini: cas fictif signalé, check-verifier-plan rouge puis vert · depuis: 24/11/2026 · taille: S
+  · id: verifier-plan-bout-coupe`
 
 - **Safari ancien : aperçu PDF de repli vide** — sur un Safari trop ancien pour la visionneuse (avant 26.2), le repli
   est une iframe sur un blob:, que WebKit refuse sous `frame-ancestors 'none'` (🔬 hypothèse, vu au lot
   visionneuse-pdf, 24/11/2026). Le bouton « Ouvrir / Enregistrer » reste. Défaut antérieur au lot.
-  `qui: Claude · action: reproduire sous WebKit puis topo · fini: repli lisible ou retiré au profit du bouton, checkup · depuis: 24/11/2026 · taille: S`
+  `qui: Claude · action: reproduire sous WebKit puis topo · fini: repli lisible ou retiré au profit du bouton, checkup · depuis: 24/11/2026 · taille: S
+  · id: safari-ancien-apercu-pdf`
 
 - **Détection : cadre de page et pointillés** — « Tout le plan » prend le cadre de la page et l'habillage (un front
   fait le tour de l'image, mur en 3D) ; un pilier cerné de pointillés ne sort ni en pilier ni en front. Cas
   fictifs : liseré noir de 2 px autour de l'image ; carrés de 3 × 3 px tous les 7 px autour d'un pilier.
-  `qui: Claude · action: topo après le lot fronts en passe mixte · fini: cadre écarté, pointillés fermés, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+  `qui: Claude · action: topo après le lot fronts en passe mixte · fini: cadre écarté, pointillés fermés, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S
+  · id: detection-cadre-pointilles`
 
 - **Export : calage local des calques ignoré** — `exporter.js` cale les calques avec `layerCfg.calibration` (plan-config)
   au lieu de `ImageLayerCalibration.getCalibration` (prefs d'abord). Théorique aujourd'hui : aucun geste n'écrit de
   calage dans les prefs (au plus un profil importé). Vu le 21/11/2026.
-  `qui: Claude · action: corriger quand un geste de recalage local existera · fini: export identique à la carte avec un calage des prefs · depuis: 21/11/2026 · taille: XS`
+  `qui: Claude · action: corriger quand un geste de recalage local existera · fini: export identique à la carte avec un calage des prefs · depuis: 21/11/2026 · taille: XS
+  · id: export-calage-local`
 
 - **Détection auto : contour au bord intérieur du trait** — sur un plan au trait, la masse détectée s'arrête au bord
   intérieur (environ 1 px trop petite tout autour) alors que le trait fait partie du pilier (décision du 21/11/2026,
   appliquée au remplir au clic). Aligner la détection auto sur le milieu du trait.
-  `qui: Claude · action: topo après le lot remplir · fini: contour au milieu du trait, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S`
+  `qui: Claude · action: topo après le lot remplir · fini: contour au milieu du trait, check-detection rouge puis vert · depuis: 21/11/2026 · taille: S
+  · id: detection-contour-milieu-trait`
 

@@ -602,8 +602,13 @@ async function testerWidget(nav) {
     verifier(cv2 && cv2.manquants === 0, "élargissement rétabli : coins de nouveau couverts", cv2);
 
     // Pixels : seules les tuiles du plan restent visibles, opaques.
+    // 🩸 Le crédit des données (coin bas droit de la fenêtre) couvre le coin bas droit : masqué le temps de la capture.
     const coinsMagenta = async function () {
+      await page.evaluate(function () { document.documentElement.classList.add("kta-credits-masques"); });
       const shot = await page.screenshot();
+      await page.evaluate(function () {
+        if (!window.KtaFondsCarte.creditsMasques()) document.documentElement.classList.remove("kta-credits-masques");
+      });
       return page.evaluate(async function (d) {
         const img = await new Promise(function (res, rej) { const i = new Image(); i.onload = function () { res(i); }; i.onerror = rej; i.src = "data:image/png;base64," + d.b64; });
         const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;

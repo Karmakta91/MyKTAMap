@@ -356,6 +356,8 @@ opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...
         (`ktaTuilesSurAppareil`) → fond composé depuis elles, l'image de base n'est pas chargée ;
         plafond de pixels SEUIL_PX_EXPORT, iPhone 16,7 Mpx, tenu après l'arrondi des côtés : canvas
         réduit marqué `_ktaPlafonne` → toast warn « résolution réduite à L × H px » (pdfexport.plafond))
+       (option `sansIcones: true` : ni icônes ni points précis — fond peint d'un plan HD, planHD.js,
+        sous les marqueurs vivants ; plans-loader.md § Régénérer en haute résolution)
 canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
 opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
                   → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins

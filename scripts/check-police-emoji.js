@@ -150,7 +150,7 @@ const SORTIES = [
     raison: "noms des dossiers et repères du KML produit, lus dans Google Earth ou un SIG" }
 ];
 const PLAFOND_HTML = {
-  "index.html": { "🔎": 2, "⏳": 1, "⚠": 1, "📋": 1, "🗺": 1 },
+  "index.html": { "🔎": 2, "⏳": 1, "⚠": 1, "📋": 1 },
   "js/confadmin.js": { "📦": 1, "📂": 1 },
   "js/createConf.js": { "📄": 1, "⬜": 3, "▫": 3, "⬛": 3, "📜": 3, "🫥": 1, "⚠": 5, "✅": 1, "⭐": 1 },
   "js/homeLoader.js": { "💾": 1 },

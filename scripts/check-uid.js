@@ -563,11 +563,17 @@ t("ktaUid est précaché (sw.js)", /"\.\/js\/ktaUid\.js"/.test(SW));
     /_collecterPointsCalque\(_marque, _pointsGeneres\);/.test(GENC) && /pointId: _clePhotoIndex\(rec\.pointId, _pointsGeneres\)/.test(GENC));
   t("🩸 chargement d'un plan ZIP : PLUS d'effacement global des photos du plan",
     !/await window\.MyKTAMapPhotos\.deletePhotosForPlan\(planId\);/.test(MAIC));
-  t("🩸 chargement : seules les photos d'origine « plan » absentes du nouvel index sont retirées",
-    /rec\.meta && rec\.meta\.origine === "plan" && !_dansIndex\.has\(String\(rec\.id\)\)/.test(MAIC));
-  t("chargement : une photo déjà présente n'est pas écrasée (son rattachement survit)",
-    /if \(await window\.MyKTAMapPhotos\.getPhoto\(pid\)\) continue;/.test(MAIC));
-  t("chargement : les photos restaurées depuis le ZIP portent l'origine « plan »", /meta:\s+\{ origine: "plan" \}/.test(MAIC));
+  t("🩸 chargement : seules les photos d'origine « plan » absentes du nouvel index sont retirées (copie : par copieDe)",
+    /const cle = String\(\(rec\.meta && rec\.meta\.copieDe\) \|\| rec\.id\);/.test(MAIC)
+    && /rec\.meta && rec\.meta\.origine === "plan" && !_dansIndex\.has\(cle\)/.test(MAIC));
+  t("chargement : une photo déjà présente dans CE plan n'est pas écrasée (son rattachement survit)",
+    /if \(_dejaIci\.has\(String\(pid\)\)\) continue;/.test(MAIC)
+    && /if \(ailleurs && String\(ailleurs\.planId\) === String\(planId\)\) continue;/.test(MAIC));
+  t("🩸 chargement : photo du ZIP déjà rangée pour un autre plan → copie sous un id neuf, copieDe = id du ZIP",
+    /_idCible = window\.MyKTAMapPhotos\.generateId\(\); _meta = \{ origine: "plan", copieDe: String\(pid\) \}/.test(MAIC)
+    && /id:\s+_idCible,/.test(MAIC));
+  t("chargement : les photos restaurées depuis le ZIP portent l'origine « plan »",
+    /let _idCible = pid, _meta = \{ origine: "plan" \};/.test(MAIC) && /meta:\s+_meta\b/.test(MAIC));
 }
 
 console.log("");

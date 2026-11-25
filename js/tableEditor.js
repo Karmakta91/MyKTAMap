@@ -441,6 +441,13 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.resolHint")}</span>
               </span>
             </button>
+            ${planAffiche && window.ktaOuvrirPlanHD ? `<button class="kta-tbl-source-card" id="kta-tbl-src-hd">
+              <span class="kta-tbl-source-ico">${window.ktaIcone("scaling")}</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("tabledit.source.hd")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("tabledit.source.hdHint")}</span>
+              </span>
+            </button>` : ""}
             ${planAffiche && window.KtaVerifierPlan ? `<button class="kta-tbl-source-card" id="kta-tbl-src-verif">
               <span class="kta-tbl-source-ico">${window.ktaIcone("clipboard-list")}</span>
               <span class="kta-tbl-source-txt">
@@ -495,6 +502,9 @@
     document.getElementById("kta-tbl-src-json").addEventListener("click", _afficherImport);
     document.getElementById("kta-tbl-src-resol").addEventListener("click", function() { fermer(); window.ktaOuvrirRecalageScan(); });
     document.getElementById("kta-tbl-src-dedup").addEventListener("click", _ouvrirDedup);
+    // Régénérer en haute résolution : outil à part (js/planHD.js), sur le plan affiché seulement.
+    var btnHD = document.getElementById("kta-tbl-src-hd");
+    if (btnHD) btnHD.addEventListener("click", function() { fermer(); window.ktaOuvrirPlanHD(); });
     // 🔗 Raccords à vérifier : outil à part (js/raccordsTraces.js), sur le plan affiché seulement.
     var btnRacc = document.getElementById("kta-tbl-src-raccords");
     if (btnRacc) btnRacc.addEventListener("click", function() { fermer(); window.KtaRaccords.ouvrir(); });

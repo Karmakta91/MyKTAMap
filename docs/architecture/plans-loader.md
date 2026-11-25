@@ -776,6 +776,75 @@ disparaître de leur session avant d'avoir rouvert le plan.
 
 ---
 
+## 🔍 Régénérer en haute résolution — un NOUVEAU plan ×2, ×3 ou ×4
+
+`js/planHD.js` (`window.ktaOuvrirPlanHD`, calcul pur `window.KtaPlanHD`) · Générateur prérempli par le chemin de
+« Mettre à jour le plan » (`createConf.js > ktaGenerateurMaj`) · garde-fou `scripts/check-plan-hd.js` · parcours réel
+`scripts/smoke/checkup-plan-hd.js` (relevé fictif ×2 : fond uni puis rendu, ZIP relu, ajout, rechargement, refus).
+
+**Pour quoi** : un plan décalqué (piliers, structures, tracés…) sur un scan basse résolution devient un plan plus
+grand, tout en vectoriel, sur lequel continuer à dessiner. **Où** : tuile de l'accueil de l'📊 Éditeur de données,
+plan affiché seulement (`tableEditor.js > #kta-tbl-src-hd`, icône `scaling`). 🔒 Refusé sans le droit d'exporter tout
+le plan (`ktaExportPlanRefuse`, le nouveau plan en est une copie) ; la lecture seule ne bloque pas (le plan ouvert
+n'est jamais modifié).
+
+⚠️ **Contrat** : le plan ouvert ne change jamais (entrée du registre, archive gardée, session). Le nouveau plan est un
+plan **local** sous un identifiant libre : `KtaPlanHD.idLibre` = `genLocalId(nom, version)`, suffixé `_2`, `_3`… s'il
+est pris ou s'il est celui du plan d'origine. Nom proposé : nom d'origine + « (HD) », modifiable dans le Générateur.
+
+| Étape | Ce qui se passe |
+|---|---|
+| 1. Fenêtre `#kta-plan-hd` | **Facteur** ×2 / ×3 / ×4 avec la taille finale (`KtaPlanHD.facteurs`) ; **refusé** (radio grisé, raison en `kta-tx-err`) au-delà de la surface de canvas de l'appareil — iPhone 16 777 216 px, ailleurs 64 Mi px, les plafonds de l'export image (`exporter.js > IOS_MAX_PX_CANVAS`, `SEUIL_PX_EXPORT`) — ou d'un côté de 32 767 px ; aucun facteur possible : bouton grisé et phrase. Au-delà de 4096² px : « tuilage V2 coché d'office » (`TILING.md` § 1). **Fond** : uni (couleur : blanc, gris clair, noir, sépia, transparent) ou rendu des données. **Ancien scan** (coché ; grisé si le plan a déjà 10 calques image). **Objets de la session** (si la session en a). |
+| 2. Archive préparée | Archive du plan (`MajPlan._interne.zipDuPlan` : copie gardée, extension, ZIP de l'index ; aucune → refus « ouvre-le depuis son fichier ZIP »). Calques relus DANS l'archive ; session cochée : copies des calques en modification et objets dessinés à la main dans un calque nouveau « Session » (`MajPlan._interne.construire`, mêmes règles que « Mettre à jour le plan », légende des types versés par `ktaLegendePourCalque`). Chaque calque passe à ×k (`KtaPlanHD.mettreAEchelleCalque`), le plan-config aussi (`mettreAEchellePlanConfig`). Nouvelle image W·k × H·k : couleur unie, ou rendu de `MyKTAMapExporterGenererCanvas` (`scale: k`, `bg: "transparent"`, tous les calques de données, `sansIcones: true`, niveau 0 seulement sur un plan multi-niveau) posé sur la couleur (`destination-over`) ; PNG, repli JPEG 0,92 si l'appareil ne sait pas encoder (sauf fond transparent), sinon refus clair. Archive : tout ce que l'ancienne embarque (icônes, calques image, PDF) sauf plan-config, image de base, calques, `data/tiles/` et `data/photos/` (le Générateur reprend les photos de l'appareil). |
+| 3. Générateur | `ktaGenerateurMaj({ zip, calques: [], legende, statut, tilingV2, onZip })` en mode Modifier sur cette archive. ⚠️ **Sans `planId`** : l'échelle recalibrée et le calage des Réglages seraient réappliqués tels quels, dans l'ancien repère — `planHD.js` les a déjà repris à l'échelle. `statut` remplace le bilan des calques dans la ligne d'état ; `tilingV2` coche la case (l'utilisateur garde la main). « Inclure les photos » coché : les photos du plan d'origine (IndexedDB, lues par l'id relevé avant une éventuelle fermeture pour le tuilage) partent dans le ZIP, indexées par l'uid du point. |
+| 4. Fin `#kta-plan-hd-fin` | **Télécharger**, ou **Ajouter à mes plans et l'ouvrir** : `chargerZipFichier(fichier, "auto", { planId: <id libre>, storeBlob: true })`, puis photos et liaisons recopiées (ci-dessous). Ouverture ratée : le ZIP part en téléchargement. |
+
+**Ce qui passe à ×k** (🩸 le champ oublié est le bug classique ; `check-plan-hd.js` vérifie que tout couple `{ x, y }`
+d'un plan-config ou d'un calque, où qu'il soit, sort à ×k) :
+- calques (`KtaRecalageScan.transformerCoordsFichier`, homothétie `{ a: k, b: 0, c: 0, d: k, e: 0, f: 0 }`, option
+  `exact` : aucun arrondi) : points, sommets des tracés / zones / structures, mesures, point précis (trois formes),
+  raccords des passages entre niveaux (`accroches`), fin des rampes de masse au sol ; côté « ce plan » d'une liaison
+  embarquée dans un point (`interPlanLinks`, l'autre côté vise un autre plan et reste tel quel) ;
+- plan-config : `imageWidth` / `imageHeight`, calage `pointA` / `pointB` / `pointC` (lat/lng, `estimated` et `modele`
+  intacts : le modèle ne dépend que des points), `tracking.startX` / `startY` et `scale` (px/m ; absente = 4,9, le
+  défaut de l'app), cibles des calages de calques image (`targetA` / `targetB`, sources intactes) ;
+- réglages de l'appareil, prioritaires comme ailleurs puis mis à l'échelle : calage des Réglages (même règle que
+  `_georefReglagesPourMaj`), échelle recalibrée (`getPlanScale`), départ du tracker (`APP_CONFIG.startX/Y`), calages
+  de calques image (`ImageLayerCalibration.getCalibration`).
+
+Retirés : `plan.rognage`, `plan.tiledV2`, `tiling` (image neuve, entière, retuilée par le Générateur). Gardés tels
+quels : tout ce qui est en mètres (hauteurs et profondeurs des niveaux ; largeurs de fronts : la loi de largeur suit
+px/m, `structures.js > _largeurFrontPourRatio`, et `scale × k` au zoom de même rendu donne la même largeur réelle,
+à l'écran comme dans le fond rendu), Nord, légende, icônes, PDF. Calque image sans calage : étiré sur le plan, il
+suit seul.
+
+**Ancien scan** : l'image de base d'origine, copiée en `data/scan_origine.<ext>`, calque image `scan_origine`
+(« Ancien scan »), visible, niveau 0, ordre 5 ; sans calage il est étiré sur W·k × H·k (= emprise ×k). Image rognée
+(tuilage V2, `plan.rognage`) : calage `sourceA = (rx, ry) → (0, 0)`, `sourceB = (rx + W, ry + H) → (W·k, H·k)`, sinon
+les marges le décaleraient. Transparence : le curseur des Filtres, comme tout calque image (opaque par défaut).
+
+**uid** : **gardés**. Le nouveau plan a un autre id : sessions, traces de suppression et fusions sont par plan, aucune
+collision avec l'ancien ; les garder rattache les photos (index du ZIP par uid) et les liaisons (`pointUid`). Favoris,
+session et réglages par plan restent sur le plan d'origine.
+
+**🩸 Photos sur le même appareil** : les photos sont rangées par identifiant tous plans confondus. Le chargement
+(`main.js > startImportedPlan`) donne au nouveau plan, sous un identifiant neuf, chaque photo du ZIP déjà en base pour
+un AUTRE plan (`meta.copieDe` = id d'origine, origine « plan », même point). `planHD.js > _copierPhotos` passe
+ensuite : il retrouve ces copies par `copieDe` et ne recopie rien (filet pour une photo que le ZIP n'aurait pas
+pu restaurer). Le ZIP téléchargé et ouvert ailleurs les restaure normalement.
+
+**Liaisons inter-plan** : celles du plan d'origine sont recopiées pour le nouveau (`liaisonsPourNouveauPlan` puis
+`InterPlanLinks.importLinks`) : id neuf, côté d'origine renvoyé vers le nouveau plan, à ×k ; l'ancien garde les
+siennes.
+
+**Limites** : le plan d'origine doit avoir son archive sur l'appareil ; le rendu des données ne peint ni les icônes
+(les marqueurs vivants passent par-dessus, une icône peinte resterait en fantôme quand le point bouge) ni d'autre
+niveau que le 0 d'un plan multi-niveau ; une donnée modifiée ensuite sur le nouveau plan laisse son ancien tracé dans
+un fond rendu ; un calque en modification, session décochée, part avec le contenu de son fichier et n'apparaît pas
+dans le fond rendu.
+
+---
+
 ## 🪜 Zone jonction dans le Générateur
 
 Le type « Jonction » (zones `pente`) est dans les menus de types de zones du Générateur : liste « Polygones → type »
@@ -921,9 +990,12 @@ les galeries → tracés » plus bas.
   est écarté. Les fronts varient donc avec les curseurs de taille, mais seulement par ces contours : un pilier écarté
   rend son cerne aux fronts ; les traits loin des piliers ne bougent pas.
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
-  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
-  d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par
-  une bande peut sortir en deux morceaux.
+  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; case
+  « Retirer les bandes » cochée : un pilier d'épaisseur régulière plus de 4 × plus long qu'épais est pris pour une
+  bande et sort en éclats (pilier cerné de 800 × 150 px : 4 éclats d'environ 60 px, à pleine et à mi-résolution ;
+  entier jusqu'à 500 px de long), et le cou étroit d'une masse (épaisseur qui chute de plus de 30 %) fait un tronçon à
+  part, effacé par disques : morsures rondes dans les deux bouts ; un pilier traversé par une bande peut sortir en
+  deux morceaux.
 - ⚠️ **Bandes** (décision produit) : une bande de galerie (ou un mur levé en trait) de la couleur des piliers, plus
   épaisse que l'ouverture, se soudait aux piliers qu'elle touche. Après l'ouverture, `_retirerBandes` examine les
   composantes ALLONGÉES ou PEU REMPLIES (les piliers compacts sont sautés : sur tout le bloc, le coût montait jusqu'à
@@ -932,7 +1004,16 @@ les galeries → tracés » plus bas.
   Un tronçon d'écart-type < 20 % de sa moyenne et plus long que 4 × son épaisseur est un trait : effacé (disque de
   rayon = distance au bord). Un bout qui entre dans un pilier ou sort par le bord du bloc rend une épaisseur à la
   longueur (la transition est hors du tronçon) ; un bout libre ne rend rien. Option `bandes: false` : sans le
-  critère (contre-épreuve). Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
+  critère. ⚠️ **Case « Retirer les bandes de la couleur des piliers »** (décision produit) : dans le bandeau, à
+  l'étape des couleurs et dans l'aperçu (`detectionStructures.js > _bandesActif` → `reglages.bandes`), cochée par
+  défaut (comportement des plans existants) ; décochée, piliers allongés et cous étroits restent entiers (ci-dessus,
+  « Limites connues »). Ligne d'aide visible dans l'aperçu : « Décochez si vos galeries ne sont pas de la couleur des
+  piliers. » Changer la case recalcule l'aperçu sur les blocs gardés, sans relire l'image. Retenue sur l'appareil
+  pour tous les plans (`myktamap_detect_bandes_v1`, `"0"` = décochée), comme « Affiner les contours ». Le Générateur
+  passe par le même parcours. Ni Remplir au clic, ni les galeries, ni le suivi d'un front ne passent par ce filtre ;
+  les fronts d'une passe mixte en dépendent seulement par les masses retirées de leur couleur (`_masseDuTrait`).
+  🩸 Remonté sur un plan aux galeries blanches : le filtre n'y a rien à retirer et ne fait que découper. Règle plus
+  fine (n'effacer qu'un tronçon qui relie deux masses ou sort du bloc) : backlog `detect-bandes-fines`. Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
   Surcoût mesuré (iPhone émulé ×4) : +11 à +21 % sans bande, +50 à +76 % quand des bandes sont soudées.
 - **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
@@ -1093,27 +1174,49 @@ les galeries → tracés » plus bas.
     fond autour. Un pilier plein se remplit donc à son propre bord. La détection automatique (piliers et fronts)
     garde son contour, inchangé.
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
-    l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
-    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis, si la
-    zone touche son bord, une grande fenêtre de max(1 024, 2 × côté du plafond + 64) px : pleine résolution jusqu'à
-    4 096 px (`FENETRE_REMPLIR_MAX`), au-delà lue à résolution réduite (jamais plus de 4 096² px lus : mémoire du
-    téléphone).
-    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM, image)`, décisions de KARMA du 21/11 et du 23/11/2026) :
-    plan à échelle connue (`ctx.pxParM()`, échelle écrite dans le plan) → **80 m de côté** (boîte de la zone) **et
-    6 400 m²** ; sans échelle → aire d'un carré de côté **max(1 024 px, le quart du petit côté de l'image)**, sans
-    côté maximal (`REMPLIR.plafondPxMin`, `plafondFraction`). Le plafond doit laisser passer les gros massifs (40 m et
-    512² px refusaient trop souvent « trop grande ») ; le refus reste au-delà, et une zone ouverte ou qui sort de la
-    fenêtre est toujours refusée « contour ouvert », jamais une zone partielle. Une galerie fermée plus longue que
-    80 m sort par son côté. 🩸 Sans échelle, seule l'aire borne : une galerie fermée plus courte que le carré passe
-    (sur une petite image, elle passait déjà à 512 px). Mesures (`checkup-remplir-plafond.js`, poste de dev) : massif
-    de 79 m à 10 px/m (fenêtre de 1 664 px) ≈ 0,35 s, 1,7 s processeur ralenti × 4 ; 900 px sans échelle (fenêtre de
-    2 112 px) ≈ 0,45 s. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+    l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond,
+    toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis, si la zone touche son bord, une grande fenêtre
+    de max(1 024, 2 × côté du plafond + 64) px : pleine résolution jusqu'à 4 096 px (`FENETRE_REMPLIR_MAX`), au-delà
+    lue à résolution réduite (jamais plus de 4 096² px lus : mémoire du téléphone). 🩸 Lu sous 0,75, pas de
+    fermeture (`remplir`, `fermeture` 0) : en px de bloc, son rayon 1 bouchait un trou de 4 à 6 px du plan, et une
+    masse au trait troué, refusée en pleine résolution, passait par la fenêtre réduite ; le prix : un trou de 1 à 2 px
+    n'y est plus bouché (refus). Le calcul tourne dans le worker de la détection (`executeurWorker().remplir`, sinon
+    `executeurLocal`) : une zone au plafond d'ordinateur prend 1 à 4 s, la carte reste vivante ; la lecture
+    (`_lireBloc`, fil principal) reste sous 0,1 s.
+    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM, image, { pc, facteur })`, décisions de KARMA du 21/11,
+    du 23/11 et du 25/11/2026) : plan à échelle connue (`ctx.pxParM()`, échelle écrite dans le plan) → côté de la
+    boîte de la zone (et aire du carré) **80 m au téléphone, 200 m sur ordinateur** (`REMPLIR.coteMaxM`,
+    `coteMaxMPc`) ; sans échelle → aire d'un carré de côté max(1 024 px, le quart du petit côté de l'image), × 2,5
+    sur ordinateur (`multiplicateurPc`, le rapport 200 / 80), sans côté maximal. Ordinateur = `window.ktaAppareilPc()`
+    (`utils.js` : pointeur fin, écran ≥ 1 Mpx CSS, `deviceMemory` ≥ 4 si connue ; le même test que le cache RAM du
+    fond sous le plan, `fondOsmPlan.js`). Le plafond est un garde-fou : un trait troué fuit dans les galeries, on
+    préfère un refus à une zone monstre ; une galerie fermée plus longue que le plafond sort par son côté. 🩸 Sans
+    échelle, seule l'aire borne : une galerie fermée plus courte que le carré passe.
+    ⚠️ **Réessayer en plus grand** (décision produit) : sous le maximum de l'appareil, le refus « trop grande » ouvre
+    une fenêtre (`ktaConfirm`, `#kta-detect-plus-grand`) « Zone de plus de {n} : c'est une grande masse, ou le trait
+    a un trou. » + [Réessayer jusqu'à {2n}] : le MÊME toucher relancé au double (`facteur` 2, `REMPLIR.essaiMax`) —
+    téléphone 80 → 160 m, ordinateur 200 → 400 m. Au maximum, plus de fenêtre : le toast « Zone trop grande pour une
+    structure : tracez-la à la main. ». Annuler ne relance rien. La fenêtre est posée PAR le mode : elle ne le coupe
+    pas (`interface.js`, `IDS_EXCLUS`). Ni Remplir une galerie (`remplirGalerie`, sans plafond de taille) ni le suivi
+    d'un front (`suivreTrait`, fenêtres `FENETRES_FRONT`) ne passent par ce plafond.
+    Pendant un remplissage (forme, front, galerie), le bandeau affiche « Calcul en cours… » en tête (`_enCalcul`,
+    `.kta-detect-calcul`, `role="status"`) : un second toucher, ignoré par le verrou, ne semble plus perdu.
+    Mesures (poste de dev, Chromium, planche fictive dense à 10 px/m : piliers de 8 m, galeries de 2 m, masse à 95 %
+    du plafond ; calcul dans le worker) : 80 m, fenêtre de 1 664 px, tampon 10,6 Mo, ≈ 0,27 s ; 160 m, 3 264 px,
+    40,6 Mo, ≈ 1,0 s ; 200 m, 4 064 px, 63 Mo, ≈ 1,6 s ; 400 m, 4 096 px, 64 Mo, ≈ 3,9 s ; à 20 px/m, 400 m lu à
+    0,255, 64 Mo, ≈ 1,1 s. Pic du calcul ≈ 13 octets par px lu (≈ 210 Mo à 4 096², dans le worker). Fil principal :
+    lecture ≤ 0,05 s (0,15 s processeur ralenti × 4), aucune tâche longue au-delà de 0,1 s. Le pic est borné par
+    `FENETRE_REMPLIR_MAX` quel que soit le plafond : 400 m ne lit pas plus que 200 m, il lit moins fin.
   - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
     trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
     pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; plafond de 80 m et relatif à l'image ;
     massifs fictifs de 60 m et de 900 px remplis, de 90 m refusé ; galerie fermée de 100 m refusée à échelle connue,
-    galerie ouverte refusée ; structure de 30 × 25 m acceptée) · `scripts/smoke/checkup-remplir.js` ·
-    `scripts/smoke/checkup-remplir-plafond.js` (mêmes cas dans l'app, temps mesurés).
+    galerie ouverte refusée ; structure de 30 × 25 m acceptée ; plafond selon l'appareil et après Réessayer ; masse
+    de 120 m refusée au téléphone, remplie après Réessayer et sur ordinateur ; masse au trait troué de 4 px refusée
+    au maximum, en pleine résolution comme lue à 0,5, contre-épreuve avec fermeture à 0,5 ; `remplir` identique dans
+    le worker, par `executeurLocal` et en direct) · `scripts/smoke/checkup-remplir.js` ·
+    `scripts/smoke/checkup-remplir-plafond.js` (dans l'app, téléphone et ordinateur : fenêtre Réessayer, Annuler,
+    refus au maximum sans fenêtre, trait troué refusé, temps et tâches longues mesurés).
 - ⚠️ **Affiner les contours** (décisions de KARMA du 21/11/2026) : sur un plan de mauvaise qualité, le trait
   irrégulier donnait des piliers « en dent de scie », une forme qui n'existe pas (le Douglas-Peucker à 1 ou 1,5 px
   garde ce bruit). Case **Affiner les contours** du bandeau (exemples, Remplir au clic, aperçu), **cochée par

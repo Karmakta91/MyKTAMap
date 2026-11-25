@@ -232,6 +232,29 @@ function saisir(page, sel, valeur) {
     const etat0 = await page.evaluate(function () { return document.getElementById("cfg_niveaux_etat").textContent; });
     verifier(/·/.test(etat0) && etat0.length > 5,
       "lanceur des niveaux dans ⚙️ avec son état (« " + etat0 + " »)");
+    // Plan à un seul niveau : le lanceur dit « Hauteur des galeries » (seule la hauteur s'y règle)
+    const lireLanceur = function () {
+      const s = document.getElementById("cfg_niveaux_lanceur"), b = document.getElementById("cfg_niveaux_open");
+      return s && b ? { titre: s.querySelector(".kta-aide-section-titre").textContent.trim(), bouton: b.textContent.trim() } : null;
+    };
+    const reouvrirConfig = async function (multi) {
+      // afficherConfig bascule : un appel ferme la fenêtre ouverte, le suivant la reconstruit
+      await page.evaluate(function (m) { window.APP_CONFIG.multiLevel = m; window.afficherConfig(); }, multi);
+      await attendre(page, function () { return !document.getElementById("kta-cfg-modal"); }, 10000);
+      await page.evaluate(function () { window.afficherConfig(); });
+      await attendre(page, function () { return !!document.getElementById("cfg_niveaux_lanceur"); }, 10000);
+      return page.evaluate(lireLanceur);
+    };
+    const libelles = { multi: await page.evaluate(lireLanceur) };
+    libelles.mono = await reouvrirConfig(false);
+    await reouvrirConfig(true);
+    Object.assign(libelles, await page.evaluate(function () {
+      const t = window.I18n.t;
+      return { tMulti: t("prof.titre"), tMono: t("prof.titreMono"), bMono: t("prof.btn.saisirMono") };
+    }));
+    verifier(libelles.multi.titre === libelles.tMulti && libelles.mono.titre === libelles.tMono &&
+      libelles.mono.bouton === libelles.bMono,
+      "lanceur : « " + libelles.tMulti + " » sur plusieurs niveaux, « " + libelles.tMono + " » sur un seul", libelles);
     await page.evaluate(function () {
       const g = document.getElementById("cfg_niveaux_open").closest(".kta-cfg-group");
       if (g && !g.classList.contains("kta-cfg-group-ouvert")) { const t = g.querySelector(".kta-cfg-group-titre"); if (t) t.click(); }

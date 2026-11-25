@@ -1,8 +1,8 @@
 {
-  "version": "v2.32.0",
-  "released": "2026-11-24",
+  "version": "v2.33.1",
+  "released": "2026-11-25",
   "notes": [
-    "📄 Les PDF d'un plan s'ouvrent dans l'app, page après page, même hors ligne et sur iPhone ; tous les PDF du plan sont utilisables, avec « Ouvrir / Enregistrer ».",
-    "🏷️ Un nouveau tag prend un nom libre et rejoint ta Légende, où tu changes son icône depuis ton appareil ; les coordonnées GPS s'affichent dès l'ajout d'un point, et l'itinéraire ne passe plus à travers un mur."
+    "🗺️ Choisis ton fond de carte : OpenStreetMap, vue aérienne ou plan IGN (en France), sous ton plan, dans la Vue carte et sur l'accueil ; un petit crédit s'affiche, que tu peux masquer dans Configuration › Affichage.",
+    "🔍 Nouveau dans l'Éditeur de données : « Régénérer en haute résolution » crée un nouveau plan deux à quatre fois plus grand à partir de tes tracés et structures, sur fond vierge ou redessiné ; ton plan d'origine reste intact."
   ]
 }

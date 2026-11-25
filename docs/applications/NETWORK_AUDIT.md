@@ -1,10 +1,11 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v2.32.0** (24 novembre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
+> Page de transparence technique. À jour pour la version **v2.33.1** (25 novembre 2026). Les notes par version sont dans une page à part : [Historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
-> **comment vérifier toi-même** que rien ne fuit, et **comment couper le seul
-> site extérieur qu'elle contacte** (OpenStreetMap, pour la Vue OSM).
+> **comment vérifier toi-même** que rien ne fuit, et **comment couper les sites
+> extérieurs qu'elle contacte** (les fonds de carte : OpenStreetMap, et l'IGN si
+> tu choisis un de ses fonds).
 
 ---
 
@@ -95,8 +96,9 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/<chemin>.zip` (déclaré par `data/index.json`, chemin relatif seulement) | `GET` (conditionnel) · `HEAD` | Ouverture d'un plan déclaré par son ZIP ; `HEAD` à l'affichage de l'accueil si une copie est gardée (1 par plan / 30 s) et par « 📥 Tout garder hors ligne » | Télécharger l'archive du plan, ou savoir si la copie gardée est à jour (304) | **Aucune** (same-origin ; seuls `If-None-Match` / `If-Modified-Since` partent, valeurs reçues du serveur ; jamais mis en cache par le SW — la copie vit en IndexedDB) |
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/applications/NETWORK_AUDIT*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
 | `<origin>/lang/fr.json`, `<origin>/lang/en.json`, `<origin>/lang/es.json` | `GET` | Au boot (`I18n.init` : fr = fallback + langue active) puis au changement de langue | Charger les dicos de traduction multi-langue (français, anglais, espagnol) | **Aucune** (fichiers statiques same-origin, **network-first** + **cache-buster `?v=<build>`** — l'URL porte la version de build pour un dico frais après mise à jour ; fallback cache précaché si offline ; lecture seule) |
-| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
-| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue OSM** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic), fenêtre Vue OSM du Mode Secours, ou **fond OSM sous le plan** allumé à la main (bouton 🌍 du mode plan). **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
+| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue carte | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | Quand la **Vue carte** s'affiche pour un plan calibré GPS — widget de l'accueil (dès son chargement, sans clic), fenêtre Vue carte du Mode Secours, ou **fond OSM sous le plan** allumé à la main (bouton 🌍 du mode plan). **Active par défaut**, désactivable dans ⚙️ Configuration | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
+| `https://data.geopf.fr/wmts?…&LAYER=…&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}` | `GET` | **Seulement si tu choisis un fond IGN** (« IGN – photos aériennes » ou « IGN – plan », dans le panneau du bouton 🌍 ou le bandeau de la Vue carte), puis aux mêmes moments que la ligne OpenStreetMap ci-dessus. Coupé par la même case 🗺️ Vue carte et par le mode incognito ; **jamais hors ligne** | Afficher les photos aériennes ou le plan de l'IGN (Géoplateforme) en fond du plan calibré GPS | **Aucune** (cookies omis, juste la couche et les coordonnées `{z}/{x}/{y}` de la tuile, comme pour OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -133,7 +135,8 @@ Le body attendu est exactement `"OK"`.
 > 🔎 **Contrôle du 13/09/2026 — aucune URL de service n'est codée en dur.** Tous les
 > appels de l'app (`version.json`, `alert.json`, `denylist.json`, `deploiement.json`, `data/index.json`, `data/reglages.json`,
 > `lang/*.json`, `ping.html`, licence pro) sont **relatifs à l'origine qui sert l'app** ;
-> la seule cible externe écrite en dur est `tile.openstreetmap.org` (Vue OSM). C'est
+> les seules cibles externes écrites en dur sont les fonds de carte, `tile.openstreetmap.org` et
+> `data.geopf.fr` (IGN), dans une seule table (`js/fondsCarte.js`). C'est
 > voulu : une copie de l'app servie ailleurs (self-host, kiosque, ou copie tierce) appelle
 > **sa propre** origine et jamais `myktamap.fr` — elle ne reçoit donc ni nos alertes, ni
 > notre liste de révocation, ni nos mises à jour, et nous ne recevons rien d'elle. C'est
@@ -157,22 +160,23 @@ tenter la mise à jour douce.
 
 Ce ping vise **le serveur de l'app lui-même** (même origine) : il ne
 contacte aucun tiers et n'envoie rien. Il n'a lieu que sur ton action
-(reset, Force update, ouverture de la Vue OSM).
+(reset, Force update, ouverture de la Vue carte).
 
 ### À propos des tuiles OSM `tile.openstreetmap.org`
 
-En dehors de son propre serveur, l'app ne contacte qu'un seul domaine :
-`tile.openstreetmap.org`, pour afficher la carte OSM, **uniquement
-sous 3 conditions strictes simultanément réunies** :
+En dehors de son propre serveur, l'app ne contacte que les fonds de carte :
+`tile.openstreetmap.org` (le fond par défaut) et, **seulement si tu choisis
+un fond IGN**, `data.geopf.fr` (voir « À propos des fonds IGN » plus bas),
+**uniquement sous 3 conditions strictes simultanément réunies** :
 
 1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
    map mode → Géoréférencement). Sans georef, le bouton 🌍 du mode plan est
    grisé et le fond OSM ne peut pas s'allumer.
-2. **L'utilisateur n'a pas désactivé la Vue OSM** dans ⚙️ Configuration
+2. **L'utilisateur n'a pas désactivé la Vue carte** dans ⚙️ Configuration
    home. **Active par défaut** (un bandeau le signale au premier usage),
    persisté en `localStorage` sous la clé `myktamap_osm_view_opt_in` :
    un refus (« 0 ») est mémorisé et n'est jamais réécrasé.
-3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
+3. **L'utilisateur charge effectivement la Vue carte**. Deux contextes
    possibles :
    - **Fond OSM sous le plan** (mode carte, `js/fondOsmPlan.js`) : bouton
      🌍 de la barre du haut, puis l'interrupteur « Fond OSM sous le plan »
@@ -181,14 +185,17 @@ sous 3 conditions strictes simultanément réunies** :
      tuiles qui couvrent la vue sont demandées, jamais au-delà du zoom 19
      (au-delà, la tuile 19 est agrandie). Hors ligne : **aucune requête**,
      seules les tuiles déjà enregistrées (« Save Offline ») sont lues.
-     Refusé avec un message si la Vue OSM est coupée ou en incognito ;
-     couper la Vue OSM pendant qu'il est affiché l'éteint. Son panneau
+     Refusé avec un message si la Vue carte est coupée ou en incognito ;
+     couper la Vue carte pendant qu'il est affiché l'éteint. Son panneau
      porte aussi « Enregistrer hors ligne » (voir « Cache offline OSM »).
-   - **Modale Vue OSM full-screen** (Mode Secours : bouton 🌍 du scénario,
+   - **Modale Vue carte full-screen** (Mode Secours : bouton 🌍 du scénario,
      capture du briefing PDF). Couvre les tuiles plan V2 projetées + POI +
-     Tracker + Roads + Iti + Zones + Structures.
+     Tracker + Roads + Iti + Zones + Structures. Si la modale ne peut pas
+     s'ouvrir, le briefing dessine une carte hors écran : avec le fond choisi
+     si la Vue carte est autorisée, **sans aucune tuile** sinon (case décochée
+     ou incognito).
    - **Widget mini-preview HOME** (page d'accueil) : si l'opt-in est ON,
-     la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
+     la colonne 🌍 Vue carte apparaît entre Mes plans et Ajouter, avec un
      plan georef sélectionné par défaut (= lastOpened). Sinon la colonne
      est **masquée entièrement** — aucune tuile OSM n'est requêtée même
      visuellement.
@@ -198,7 +205,7 @@ sous 3 conditions strictes simultanément réunies** :
 - Modale et widget : masqués si `navigator.onLine === false` (hors-ligne
   détecté par le navigateur).
 - Un ping `/ping.html` est effectué juste avant l'ouverture de la modale
-  Vue OSM : si Internet ne répond pas, la modale est annulée AVANT le
+  Vue carte : si Internet ne répond pas, la modale est annulée AVANT le
   premier appel à OSM.
 - Les requêtes vers OSM sont faites en mode `cors` standard avec
   `crossOrigin: true` côté Leaflet (cookies omis par défaut). **Aucune
@@ -216,7 +223,7 @@ sous 3 conditions strictes simultanément réunies** :
   un tiers — uniquement les tuiles `{z}/{x}/{y}` sont demandées au CDN
   OSM, identiques à celles affichées par tout client OSM standard.
 - **Bouton « 📍 Ma position »** : disponible dans la
-  modale Vue OSM, dans le widget HOME Vue OSM et dans le panneau du fond
+  modale Vue carte, dans le widget HOME Vue carte et dans le panneau du fond
   OSM sous le plan (« Ma position », point posé sur le plan, effacé au
   plan suivant ; refusé hors de l'emprise du plan et en incognito). **Fix GPS ponctuel à la
   demande user** via `navigator.geolocation.getCurrentPosition()` — pas de
@@ -243,7 +250,7 @@ sous 3 conditions strictes simultanément réunies** :
   La config Nginx versionnée (`docs/nginx-csp-config.conf` et `docker/nginx-docker.conf`)
   autorise `geolocation=(self)`. Restriction `(self)` choisie volontairement : seule notre origine
   peut utiliser l'API, JAMAIS un iframe tiers (même si l'app n'en charge aucun).
-- **Mode incognito** : la Vue OSM (modale ET widget HOME) est coupée —
+- **Mode incognito** : la Vue carte (modale ET widget HOME) est coupée —
   modale `osmView.js` bloquée à l'ouverture (toast warn), widget HOME
   remplacé par le message "🕶️ Mode incognito actif" au lieu de la
   mini-carte.
@@ -280,29 +287,29 @@ dans l'[historique des versions](NETWORK_AUDIT_HISTORIQUE.md).
   présente en IDB, il retourne le blob directement (avec un header de
   debug local `X-OSM-Cache: hit`) **sans toucher au réseau**. Sinon, il
   laisse passer le `fetch` réseau normal (comportement habituel de la
-  Vue OSM). **Aucune nouvelle URL n'est contactée par cette feature** —
+  Vue carte). **Aucune nouvelle URL n'est contactée par cette feature** —
   c'est strictement un mécanisme de short-circuit local d'un fetch
   existant déjà documenté dans la whitelist (`tile.openstreetmap.org`).
 
 **Déclenchement utilisateur** : le bouton « 💾 Cacher pour offline »
 apparaît dans **3 contextes** (tous opt-in user, tous soumis à la case
-🗺️ Vue OSM) :
+🗺️ Vue carte) :
 
-1. **Modale Vue OSM** (`osmView.js`) — clic sur le bouton dans la modale
+1. **Modale Vue carte** (`osmView.js`) — clic sur le bouton dans la modale
    full-screen.
 2. **Widget OSM accueil** (`osmHomePreview.js`) — clic depuis la
    mini-preview HOME.
-3. **Mode Secours** — accessible indirectement via les boutons 🌍 Vue OSM
-   du Mode Secours qui rouvrent la modale Vue OSM standard (pas de chemin
+3. **Mode Secours** — accessible indirectement via les boutons 🌍 Vue carte
+   du Mode Secours qui rouvrent la modale Vue carte standard (pas de chemin
    indépendant).
 4. **Fond OSM sous le plan** (`fondOsmPlan.js`) — « Enregistrer hors
    ligne » dans le panneau du bouton 🌍 du mode plan : les tuiles de
    l'**emprise du plan** sur 3 zooms, 200 au plus, par le même code que
-   le bouton 💾. Grisé hors ligne, en incognito ou Vue OSM coupée.
+   le bouton 💾. Grisé hors ligne, en incognito ou Vue carte coupée.
 
 Le cache est **GLOBAL** (partagé entre ces contextes) : si l'user a déjà
 caché une tuile depuis le widget HOME, elle est instantanément réutilisée
-dans la modale Vue OSM et inversement (même clé `z/x/y`, pas de
+dans la modale Vue carte et inversement (même clé `z/x/y`, pas de
 duplication).
 
 **Cap conformité OSM** : `MAX_TILES_PER_CACHE = 200 tuiles par opération`.
@@ -312,7 +319,7 @@ téléchargement massif en masse, pas d'épuisement des quotas tiers, pas de
 scraping. L'user qui veut cacher une zone plus grande doit déplacer la
 carte et relancer l'opération (paliers de 200).
 
-**Mode dégradé hors-ligne** : si l'utilisateur lance la Vue OSM **alors
+**Mode dégradé hors-ligne** : si l'utilisateur lance la Vue carte **alors
 qu'il n'a pas Internet** mais qu'**un cache est déjà présent pour la bbox
 du plan**, la modale s'ouvre quand même (mode dégradé visuel avec tuiles
 cachées). La détection est faite par `_isOnlineOrCached()`. **Aucun appel
@@ -339,7 +346,7 @@ n'est cachée pour la bbox, la modale reste bloquée (toast warn).
   réinitialiser » de ⚙️ Configuration, ou via le `OsmTilesCache.clear()`
   exposé en console.
 - **Respect des réglages vie privée** : le bouton « 💾 Cacher pour offline »
-  vit dans la carte Vue OSM — case 🗺️ Vue OSM décochée ou Mode incognito
+  vit dans la carte Vue carte — case 🗺️ Vue carte décochée ou Mode incognito
   actif, la carte ne s'ouvre pas, donc aucun préchargement n'est possible
   (gates `osmView.js` / `osmHomePreview.js`).
 
@@ -358,8 +365,31 @@ sous licence ODbL. Leur politique de logs CDN est publiée publiquement
 publicitaire, pas de monétisation, juste un référant HTTP standard et
 l'IP de la requête (comme toute requête web).
 
-Si tu préfères ne contacter aucun service tiers, **décoche la case 🗺️ Vue OSM** (elle est activée par
-défaut) : l'app ne contacte alors plus que son propre serveur (cf. « Couper le seul site extérieur »).
+### À propos des fonds IGN `data.geopf.fr`
+
+Le panneau du bouton 🌍 (fond sous le plan) et le bandeau de la Vue carte
+proposent trois fonds : **OpenStreetMap** (par défaut), **IGN – photos
+aériennes** et **IGN – plan**. Les deux fonds IGN viennent de la
+Géoplateforme de l'IGN (`data.geopf.fr`, service WMTS public, sans clé).
+
+- **Aucune requête IGN tant que tu ne choisis pas un fond IGN.** Le choix
+  est retenu sur l'appareil (`localStorage`, clé `myktamap_fond_carte_v1`),
+  pour toutes les cartes ; il n'est ni envoyé ni exporté.
+- **Mêmes portes qu'OpenStreetMap** : case 🗺️ Vue carte décochée ou mode
+  incognito, aucune tuile IGN n'est demandée non plus.
+- **Couverture France** : hors couverture, le serveur IGN répond « pas de
+  tuile » ; l'app demande alors la tuile OpenStreetMap à la place, et
+  l'attribution OpenStreetMap s'affiche à côté de celle de l'IGN.
+- **Jamais hors ligne** : seules les tuiles OpenStreetMap s'enregistrent
+  (« Save Offline », « Enregistrer hors ligne »). Fond IGN choisi, ces
+  boutons sont grisés et disent pourquoi. Le service worker laisse passer
+  les tuiles IGN au réseau sans les garder. Hors ligne, un fond IGN choisi
+  montre les tuiles OpenStreetMap enregistrées.
+- Ce qui part : la couche et les coordonnées de la tuile (comme pour OSM),
+  l'IP et l'en-tête standard du navigateur. Rien du plan.
+
+Si tu préfères ne contacter aucun service tiers, **décoche la case 🗺️ Vue carte** (elle est activée par
+défaut) : l'app ne contacte alors plus que son propre serveur (cf. « Couper les sites extérieurs »).
 
 ---
 
@@ -384,7 +414,7 @@ Tu y verras chaque requête avec :
 
 ⚠️ Le journal voit les appels faits par le code de l'app (`fetch`,
 `XMLHttpRequest`, `sendBeacon`, `WebSocket`, `EventSource`). Les **tuiles
-de la Vue OSM** sont des images posées par la carte : elles n'y figurent
+de la Vue carte** sont des images posées par la carte : elles n'y figurent
 pas. Pour les voir — et vérifier qu'elles ne partent que vers
 `tile.openstreetmap.org` — utilise la Méthode 2 (F12).
 
@@ -427,23 +457,25 @@ Méthode 1. Tu peux le lire en intégralité pour comprendre la mécanique.
 
 ---
 
-## 🗺️ Couper le seul site extérieur : la case Vue OSM
+## 🗺️ Couper les sites extérieurs : la case Vue carte
 
 L'app n'envoie **aucune** de tes données. Toutes ses requêtes vont vers
-**son propre serveur** — sauf une : le **fond de carte OpenStreetMap** de la
-Vue OSM (`tile.openstreetmap.org`). C'est le seul tiers que l'app contacte. La case est **activée PAR DÉFAUT** :
+**son propre serveur** — sauf les **fonds de carte** : OpenStreetMap
+(`tile.openstreetmap.org`) et, seulement si tu choisis un fond IGN, la Géoplateforme de l'IGN (`data.geopf.fr`). Ce
+sont les seuls tiers que l'app contacte. La case est **activée PAR DÉFAUT** :
 sans geste de ta part, l'accueil affiche ce fond (et contacte donc `tile.openstreetmap.org`) dès qu'un plan calé sur la
 carte est présent. Une case suffit à le couper :
 
 1. **Page d'accueil → ⚙️ Configuration**
 2. Section **🔒 Confidentialité & Audit**
-3. Décoche **🗺️ Vue OSM (OpenStreetMap)**
+3. Décoche **🗺️ Vue carte (OpenStreetMap et IGN)**
 
-Décochée, la case coupe tout ce qui touche OpenStreetMap : ni le widget de
-l'accueil ni la modale Vue OSM ne chargent de tuile, et le préchargement
-« 💾 Save Offline » n'est plus accessible. Ton refus est mémorisé et
+Décochée, la case coupe tous les fonds de carte (OpenStreetMap comme IGN) : ni le widget de
+l'accueil, ni la modale Vue carte, ni le fond sous le plan, ni la carte du briefing pompiers du Mode
+Secours ne chargent de tuile (le PDF garde le cadre du plan et les équipes sur fond blanc), et le
+préchargement « 💾 Save Offline » n'est plus accessible. Ton refus est mémorisé et
 **aucune mise à jour ne revient dessus**. Le **mode incognito** coupe lui
-aussi la Vue OSM.
+aussi la Vue carte, et tous ces fonds de la même façon.
 
 Pour le vérifier : **📋 Voir le journal réseau** (requêtes de l'app) et
 **F12 → Réseau** (tout, y compris les images de carte) — tu ne dois plus
@@ -455,10 +487,10 @@ L'app proposait une case **🔒 Mode hors-ligne strict**, censée bloquer
 toute requête vers un autre site. Elle a été **retirée**, parce qu'elle ne
 tenait pas sa promesse : en pratique, elle ne bloquait que le
 **préchargement des tuiles OSM** (« 💾 Save Offline »). Ses autres blocages
-annoncés — Vue OSM, widget de l'accueil, Mode Secours, réparation
+annoncés — Vue carte, widget de l'accueil, Mode Secours, réparation
 automatique du cache — **ne fonctionnaient pas**, et l'affichage des tuiles
 OSM, fait par des images, lui échappait de toute façon. Comme tout le reste
-du trafic de l'app va vers son propre serveur, la case 🗺️ Vue OSM fait déjà
+du trafic de l'app va vers son propre serveur, la case 🗺️ Vue carte fait déjà
 ce travail — et elle, fonctionne. Mieux vaut une case qui coupe vraiment
 qu'un mode qui rassure à tort.
 
@@ -466,7 +498,7 @@ qu'un mode qui rassure à tort.
 
 Le mode Avion coupe tout le réseau de l'appareil. L'app continue de
 fonctionner (plans mémorisés, annotations, tracker, itinéraire, exports) ;
-seuls la Vue OSM (sans tuiles en cache), la détection de mise à jour et le
+seuls la Vue carte (sans tuiles en cache), la détection de mise à jour et le
 chargement de plans serveur non mémorisés attendent le retour du réseau.
 
 ---
@@ -489,7 +521,8 @@ Tu peux vérifier la CSP appliquée :
 
 La directive clé est `connect-src 'self' blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org` — le
 navigateur n'acceptera pas d'envoyer des données ailleurs (OpenStreetMap ne sert que les images du fond de la
-Vue OSM, rien ne lui est envoyé).
+Vue carte, rien ne lui est envoyé). Les images des fonds IGN sont permises par `img-src` seulement
+(`https://data.geopf.fr`) : une image ne peut rien emporter que l'adresse de la tuile.
 
 **Deuxième directive : quel code a le droit de tourner (`script-src`).** L'application ne
 contient aucun code écrit directement dans ses pages (`onclick="…"`, blocs `<script>`, liens `javascript:`) :
@@ -521,7 +554,7 @@ navigateur. Tableau exhaustif :
 
 | API | Quand | Permission requise ? | Donnée envoyée ? |
 |---|---|---|---|
-| **Geolocation API** | Calibrage KMZ + Mode urgence + bouton 📍 « Ma position » dans la modale Vue OSM et le widget HOME Vue OSM si l'user le déclenche | Oui (prompt navigateur explicite à la demande, jamais au boot — header `Permissions-Policy: geolocation=(self)` côté Nginx ; restriction `(self)` = seule notre origine autorisée, JAMAIS un iframe tiers) | **Aucune** (lecture pure, jamais transmise, jamais stockée — coordonnées affichées sur la carte uniquement en RAM le temps de la session) |
+| **Geolocation API** | Calibrage KMZ + Mode urgence + bouton 📍 « Ma position » dans la modale Vue carte et le widget HOME Vue carte si l'user le déclenche | Oui (prompt navigateur explicite à la demande, jamais au boot — header `Permissions-Policy: geolocation=(self)` côté Nginx ; restriction `(self)` = seule notre origine autorisée, JAMAIS un iframe tiers) | **Aucune** (lecture pure, jamais transmise, jamais stockée — coordonnées affichées sur la carte uniquement en RAM le temps de la session) |
 | **DeviceMotion / DeviceOrientation** | Tracker (PDR + boussole) | Oui sur iOS (prompt explicite via user gesture) | **Aucune** (lecture pure capteurs locaux) |
 | **Wake Lock API** | Toggle ⚙️ Réglages → "Garder l'écran allumé" | Non (politique navigateur — accordée silencieusement en HTTPS si l'onglet a le focus) | **Aucune** (lock binaire) |
 | **Clipboard API** | Bouton 📋 dans popup point (coords GPS) + 📋 Copier dans modale audit, inspecteur mémoire, etc. | Non en écriture user-initiated en HTTPS (silencieuse via `writeText`) | **Aucune** (l'app écrit dans le presse-papier, ne le lit jamais) |
@@ -595,7 +628,7 @@ navigateur. Tu peux les inspecter et les supprimer toi-même via `F12` :
 | **IndexedDB → `myktamap_photos`** | Photos POI compressées localement, max 5/point | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_crashes`** | Crash reports OOM (archive auto FIFO 5) | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_profile`** | Surnom + photo profil utilisateur (1 seule entry `id="me"`, schema v1). Photo en Blob IDB, compressée canvas (max 512px JPEG q88). Jamais transmise. | F12 → Application → IndexedDB |
-| **IndexedDB → `myktamap_osm_tiles`** | Cache offline OSM opt-in user. Object store `tiles`, schéma `{key: "z/x/y", blob, addedAt}`. Stocke des PNG de tuiles `tile.openstreetmap.org` pour consultation hors-ligne (modale Vue OSM, widget HOME, Mode Secours via Vue OSM). Cap `MAX_TILES_PER_CACHE = 200/opération` conforme à la politique d'usage OSM. Cache **GLOBAL** partagé entre les 3 contextes (clé `z/x/y` identique, pas de duplication). **Local pur, jamais transmis**. Effaçable via "💥 Tout réinitialiser" ou `OsmTilesCache.clear()` console. | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_osm_tiles`** | Cache offline OSM opt-in user. Object store `tiles`, schéma `{key: "z/x/y", blob, addedAt}`. Stocke des PNG de tuiles `tile.openstreetmap.org` pour consultation hors-ligne (modale Vue carte, widget HOME, Mode Secours via Vue carte). Cap `MAX_TILES_PER_CACHE = 200/opération` conforme à la politique d'usage OSM. Cache **GLOBAL** partagé entre les 3 contextes (clé `z/x/y` identique, pas de duplication). **Local pur, jamais transmis**. Effaçable via "💥 Tout réinitialiser" ou `OsmTilesCache.clear()` console. | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_journal`** | Le Carnet : archive de tes sorties (object store `sorties`, schema v1). Une entrée = `{id, type: "terrain"|"bureau", planId, planName, startedAt, endedAt, activeMs, distM, ajouts, levels, photoIds, track, note}` — **métadonnées + tracé décimé + REFS de photos**, jamais d'image copiée. ~2 à 8 Ko par sortie, purge FIFO au-delà de 500 sorties. **Local pur, jamais transmis** (aucun code réseau dans `js/journal.js`). Effaçable sortie par sortie (fiche → 🗑️) ou via « 💥 Tout réinitialiser ». | F12 → Application → IndexedDB |
 | **IndexedDB → `myktamap_histoire_pdfs`** (**multi-documents**) | Documents PDF du Mode Histoire que **tu** importes (récit, plan scanné, article…). **Jusqu'à 10 documents par plan** (store `pdfs` v2, keyPath `id` + index `by_plan` — migration auto des plans qui n'avaient qu'un PDF, aucun PDF perdu), avertissement au-delà de 25 Mo cumulés, refus au-delà de 100 Mo. **Local pur, jamais transmis.** Comptée dans « Stockage ». | F12 → Application → IndexedDB |
 | **Cache Storage** | Assets PWA pour le mode hors-ligne | F12 → Application → Cache Storage |

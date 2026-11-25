@@ -13,7 +13,7 @@
 // Expose window.LegendCustomization : getLabel, isVisible, getSource, getColor/getBorderColor, listEntries,
 //   listCustomEntries, findCustomEntry, setSession*, add/update/removeCustomEntry, countUsages,
 //   listOrphanTypes, resetSession, onCustomEntriesChange, ouvrirEditeur, ouvrirAddDialog, imageEnIcone,
-//   listAnciensTags, rendreModifiable ;
+//   listAnciensTags, rendreModifiable, entreesSession / appliquerSession / usages (extension, mktm:legende-session) ;
 //   hooks loadSessionState / getSessionState (SessionPersist), loadPlanState (main.js après PLAN_CONFIG),
 //   lireAvecEtats (lecture d'une légende d'un plan non chargé).
 // Catégories : icones · traces · zones · structures.
@@ -409,6 +409,8 @@ window.LegendCustomization = (function() {
     if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
       try { window.SessionPersist.save({ force: true }); } catch(e) {}
     }
+    // Signal neutre (personne ne l'écoute sans extension) : la légende de la session a changé.
+    try { window.dispatchEvent(new CustomEvent("mktm:legende-session")); } catch(e) {}
   }
 
   function setSessionLabel(category, key, label) {
@@ -657,6 +659,107 @@ window.LegendCustomization = (function() {
     _fireCustomChange();
     // Repeindre : sinon les objets déjà dessinés gardent les couleurs override jusqu'au redémarrage.
     _repeindreCarte();
+  }
+
+  // ── Légende de la session vue par une extension (KtaExtensions.legendeSession / appliquerLegende) ──────────
+  // Sans extension, personne ne les appelle. Une « entrée » = une entrée custom (par son id) ou un type built-in
+  // renommé ou recoloré (par sa clé "<cat>.<type>" : libellé, couleur et bordure ensemble). Le masquage reste à
+  // l'appareil (préférence d'affichage) : jamais lu ni écrit ici.
+  const CLE_TYPE_SURE = /^(icones|traces|zones|structures)\.[\w.:-]{1,80}$/;
+  const _copieJson = function(v) { return JSON.parse(JSON.stringify(v)); };
+  // → { entrees, types: [{ cle, label, color, border }], retirees: ids du plan supprimés ici, plan: entrées du plan }.
+  function entreesSession() {
+    const types = {};
+    [["labels", "label"], ["colors", "color"], ["borders", "border"]].forEach(function(p) {
+      Object.keys(_sessionState[p[0]]).forEach(function(cle) {
+        if (!CLE_TYPE_SURE.test(cle)) return;
+        types[cle] = types[cle] || { cle: cle, label: null, color: null, border: null };
+        types[cle][p[1]] = _sessionState[p[0]][cle];
+      });
+    });
+    return {
+      entrees:  _copieJson(_sessionState.customEntries),
+      // ordre des points de code, pas localeCompare : le même sur tous les appareils (clés ASCII)
+      types:    Object.keys(types).sort(function(a, b) { return a < b ? -1 : (a > b ? 1 : 0); })
+        .map(function(k) { return types[k]; }),
+      retirees: _sessionState.removedPlan.slice(),
+      plan:     _copieJson(_planState.customEntries)
+    };
+  }
+
+  // Objets qui portent ce type ou ce tag : points (tags), tracés, zones, structures — session ET calques du plan.
+  function usages(id) {
+    if (!id) return 0;
+    let n = countUsages(id).total;
+    ["getEditorPoints", "getAllEmbeddedPoints"].forEach(function(fn) {
+      if (typeof window[fn] !== "function") return;
+      try {
+        (window[fn]() || []).forEach(function(p) { if (p && Array.isArray(p.tags) && p.tags.indexOf(id) >= 0) n++; });
+      } catch(e) {}
+    });
+    return n;
+  }
+
+  // Applique des entrées venues d'ailleurs, en une fois (une sauvegarde, un repeint) :
+  //   entrees : remplacent l'entrée de même id (et la sortent des supprimées du plan) ;
+  //   types : remplacent libellé, couleur et bordure de la clé (champ absent = celui du plan ou du défaut) ;
+  //   typesRetires : clés rendues au plan ou au défaut ; retraits : ids d'entrées à supprimer.
+  // ⚠️ contrat : une entrée encore utilisée par un objet n'est PAS supprimée (jamais de tag orphelin sans icône) ;
+  // elle est rendue dans `gardes`. → { appliques, gardes }.
+  // 🔒 Tout passe par _normalize (texte, couleurs) et une icône n'est acceptée qu'en data-URI d'image (ou celle de
+  // l'entrée du plan de même id) : une URL venue d'un autre appareil ne doit pas faire charger une ressource tierce.
+  function appliquerSession(lot) {
+    const l = (lot && typeof lot === "object") ? lot : {};
+    const entrantes = _normalize({ customEntries: Array.isArray(l.entrees) ? l.entrees : [] }).customEntries
+      .filter(function(e) { return CATEGORIES.indexOf(e.category) >= 0; })
+      .map(function(e) {
+        // L'icône de l'entrée du PLAN de même id (fichier du ZIP) est déjà la nôtre : gardée telle quelle.
+        const duPlan = _planState.customEntries.find(function(x) { return x.id === e.id; });
+        const icone = (typeof e.iconUrl === "string" &&
+          (/^data:image\//.test(e.iconUrl) || (duPlan && duPlan.iconUrl === e.iconUrl))) ? e.iconUrl : null;
+        return {
+          id: e.id, category: e.category, geometry: _defaultGeometry(e.category, e.geometry),
+          label: e.label || "", lineColor: e.lineColor || null, fillColor: e.fillColor || null,
+          borderColor: e.borderColor || null, iconUrl: icone
+        };
+      });
+    let appliques = 0;
+    const gardes = [];
+    entrantes.forEach(function(e) {
+      _sessionState.customEntries = _sessionState.customEntries.filter(function(x) { return x.id !== e.id; });
+      _sessionState.customEntries.push(e);
+      _sessionState.removedPlan = _sessionState.removedPlan.filter(function(x) { return x !== e.id; });
+      appliques++;
+    });
+    (Array.isArray(l.types) ? l.types : []).forEach(function(t) {
+      if (!t || typeof t.cle !== "string" || !CLE_TYPE_SURE.test(t.cle)) return;
+      const n = _normalize({ labels: { x: t.label }, colors: { x: t.color }, borders: { x: t.border } });
+      [["labels", n.labels.x], ["colors", n.colors.x], ["borders", n.borders.x]].forEach(function(p) {
+        if (p[1]) _sessionState[p[0]][t.cle] = p[1]; else delete _sessionState[p[0]][t.cle];
+      });
+      appliques++;
+    });
+    (Array.isArray(l.typesRetires) ? l.typesRetires : []).forEach(function(cle) {
+      if (typeof cle !== "string" || !CLE_TYPE_SURE.test(cle)) return;
+      delete _sessionState.labels[cle]; delete _sessionState.colors[cle]; delete _sessionState.borders[cle];
+      appliques++;
+    });
+    (Array.isArray(l.retraits) ? l.retraits : []).forEach(function(id) {
+      if (typeof id !== "string" || !id) return;
+      if (usages(id) > 0) { gardes.push(id); return; }
+      const avant = _sessionState.customEntries.length;
+      _sessionState.customEntries = _sessionState.customEntries.filter(function(x) { return x.id !== id; });
+      let touche = _sessionState.customEntries.length !== avant;
+      const dansPlan = _planState.customEntries.some(function(x) { return x.id === id; });
+      if (dansPlan && _sessionState.removedPlan.indexOf(id) < 0) { _sessionState.removedPlan.push(id); touche = true; }
+      if (touche) appliques++;
+    });
+    if (appliques) {
+      _persistSession();
+      _fireCustomChange();
+      _repeindreCarte();
+    }
+    return { appliques: appliques, gardes: gardes };
   }
 
   // ── Helpers pour exporter.js ──────────
@@ -1362,6 +1465,10 @@ window.LegendCustomization = (function() {
     // Icônes : image → data-URI réduit, anciens tags courts du plan rendus modifiables.
     imageEnIcone:          imageEnIcone,
     listAnciensTags:       listAnciensTags,
-    rendreModifiable:      rendreModifiable
+    rendreModifiable:      rendreModifiable,
+    // Lecture / écriture par une extension (ktaExtensions.js > legendeSession, appliquerLegende, usagesLegende).
+    entreesSession:        entreesSession,
+    appliquerSession:      appliquerSession,
+    usages:                usages
   };
 })();

@@ -8,6 +8,18 @@
 
 ## Notes par version (du plus récent au plus ancien)
 
+### v2.33.1 (correctifs de détection et de la carte de l'accueil)
+
+**Aucune requête nouvelle, aucun domaine nouveau.** La case « Masquer les crédits des cartes » retire aussi la ligne du bas de la carte de l'accueil (domaine contacté, crédit, tuiles gardées) : un affichage en moins, rien ne change sur le réseau. Les réglages de la détection (Remplir au clic, case des bandes) restent sur l'appareil.
+
+### v2.33.0 (fonds de carte IGN, plan en haute résolution)
+
+**Un domaine nouveau, seulement si tu le choisis : `data.geopf.fr` (Géoplateforme de l'IGN).** Le panneau du bouton 🌍 et le bandeau de la Vue carte proposent, à côté d'OpenStreetMap (toujours le fond par défaut), deux fonds IGN : photos aériennes et plan. Tant que tu ne choisis pas un fond IGN, aucune requête ne part vers l'IGN. Choisi, il demande les tuiles de la vue (couche et coordonnées de la tuile, rien du plan), aux mêmes moments qu'OpenStreetMap, et se coupe par la même case 🗺️ Vue carte et par le mode incognito. Hors couverture (hors de France), la tuile OpenStreetMap est demandée à la place. Le hors ligne reste OpenStreetMap seul : aucune tuile IGN n'est enregistrée sur l'appareil ni gardée par le service worker, et les boutons d'enregistrement sont grisés avec la raison. Le choix du fond est retenu sur l'appareil, jamais envoyé. La politique de sécurité du serveur (CSP) permet les images de `https://data.geopf.fr` (`img-src`), rien d'autre.
+
+**La Vue OSM s'appelle désormais « Vue carte ».** Seul le nom change : même case dans ⚙️ Configuration › Confidentialité & Audit, mêmes tiers (OpenStreetMap, et l'IGN seulement si tu choisis un de ses fonds), aucune requête nouvelle.
+
+**La case 🗺️ Vue carte coupe aussi la carte du briefing pompiers.** Case décochée ou mode incognito, la carte hors écran du briefing du Mode Secours demandait encore des tuiles OpenStreetMap (72 mesurées par le test) : elle n'en demande plus aucune, ni OpenStreetMap ni IGN ; le PDF garde le cadre du plan et les équipes sur fond blanc. La promesse « décochée, aucun fond de carte » vaut maintenant partout. Le crédit des fonds (« © OpenStreetMap », « © IGN – Géoplateforme ») s'affiche en petit sur la Vue carte et sur le fond sous le plan, et sous l'image du briefing : un texte de l'app, aucune requête de plus ; la case « Masquer les crédits des cartes » est un réglage de l'appareil, jamais envoyé.
+
 ### v2.32.0 (visionneuse PDF, icônes de Légende, GPS à l'ajout)
 
 **Aucune requête nouvelle, aucun domaine nouveau.** La visionneuse PDF (PDF.js, embarquée dans l'app et mise en cache à l'installation, environ 3 Mo) lit les PDF déjà présents sur l'appareil, sans rien envoyer. Une icône changée dans « Personnaliser la légende » est une image de l'appareil, réduite et gardée dans la session. Les coordonnées GPS du formulaire d'ajout sont calculées sur l'appareil à partir du géoréférencement du plan. Côté outillage seulement, une sonde horaire lit la date d'expiration des certificats TLS de nos domaines depuis GitHub : l'app n'en fait rien.

@@ -69,6 +69,30 @@ t("le compte couvre les 7 tableaux",
   compte.data === 1 && compte.editorPoints === 2 && compte.roads === 2 &&
   compte.zones === 1 && compte.structures === 1 && compte.measure === 1 && compte.measureSurface === 1);
 
+// ── Coordonnées portées par un objet : point précis (3 formes), raccords, fin de rampe ──
+o = {
+  data: [{ x: 1, y: 1, precis: { x: 2, y: 3 } },
+         { x: 1, y: 1, tags: ["chatiere"], precis: { pts: [{ x: 4, y: 5 }, { x: 6, y: 7 }] } },
+         { x: 1, y: 1, precis: { x: 8, y: 9, x2: 10, y2: 11 } },
+         { x: 1, y: 1, tags: ["jes"], niveaux: [0, -1], accroches: [{ level: -1, x: 12, y: 13 }] }],
+  zones: [{ type: "masse-sol", points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }],
+            rampes: [{ bord: 0, fin: { x: 14, y: 15 } }, { bord: 2 }] }]
+};
+compte = tr(o, K.matriceHomothetie(2, 2));
+t("point précis { x, y } converti", o.data[0].precis.x === 4 && o.data[0].precis.y === 6);
+t("point précis de chatière { pts } converti", o.data[1].precis.pts[1].x === 12 && o.data[1].precis.pts[1].y === 14);
+t("point précis ancienne forme { x, y, x2, y2 } converti",
+  o.data[2].precis.x === 16 && o.data[2].precis.y === 18 && o.data[2].precis.x2 === 20 && o.data[2].precis.y2 === 22);
+t("raccords d'un passage (accroches) convertis, niveau intact",
+  o.data[3].accroches[0].x === 24 && o.data[3].accroches[0].y === 26 && o.data[3].accroches[0].level === -1);
+t("fin de rampe convertie, rampe sans fin intacte, bord intact",
+  o.zones[0].rampes[0].fin.x === 28 && o.zones[0].rampes[0].fin.y === 30 && o.zones[0].rampes[0].bord === 0 &&
+  !o.zones[0].rampes[1].fin);
+t("ces coordonnées comptent dans le tableau de leur objet", compte.data === 4 + 1 + 2 + 2 + 1 && compte.zones === 3 + 1, compte);
+o = { data: [{ x: 1.23456, y: 7.891011 }] };
+tr(o, K.matriceHomothetie(3, 3), { exact: true });
+t("opts.exact : aucun arrondi (homothétie entière)", o.data[0].x === 1.23456 * 3 && o.data[0].y === 7.891011 * 3);
+
 // ── 1 repère saisi : l'ancre tombe EXACTEMENT ──
 let M = K.matriceRecalage(2, 2, 0, { x: 100, y: 200 }, { x: 750, y: 950 });
 o = fichierTest(); tr(o, M);

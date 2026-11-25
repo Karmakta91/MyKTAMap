@@ -1551,9 +1551,15 @@ Fonction publique : `SecoursMode.genererBriefingPompiersPDF(scenarioId)` async �
 - Bandeau Mode Secours (vue Edit, plan actif + plan terminé)
 - Footers des 3 vues Live (Équipier, Opérateur, Secouriste) via `_bindLiveCommonHandlers` (v1.41.1)
 
-Carte OSM en tête de page : capture `html2canvas` (`_captureOsmCanvasForBriefing` — Vue OSM ouverte, sinon carte hors
-écran : tuiles, cadre du plan, équipes GPS) ; liens cliquables OSM / Google Maps en plus. L'étiquette « 📍 site » de
-la carte hors écran porte la classe `kta-secours-osm-etiquette` (`style-secours.css`) : sombre par défaut, claire en thème clair.
+Carte en tête de page : capture `html2canvas` (`_captureOsmCanvasForBriefing` — Vue OSM ouverte, sinon carte hors
+écran : fond de carte, cadre du plan, équipes GPS) ; liens cliquables OSM / Google Maps en plus. Le fond est celui
+choisi sur l'appareil (OpenStreetMap ou IGN, `vue-osm.md` § Fonds de carte), sans réglage propre au Secours.
+🔒 **Sans la case Vue OSM ou en incognito, la carte hors écran ne pose aucune couche de tuiles** (`_idFondBriefing` →
+`null`, zéro requête, ni OSM ni IGN) : cadre du plan, étiquette et équipes sur fond blanc. Hors ligne : OSM (tuiles
+enregistrées). Sous l'image, la légende `secours.surf.osmCaption` (neutre) et, si la capture a un fond,
+`secours.surf.fondCredit` (« Fond de carte : © IGN - Géoplateforme… », tiret simple : Helvetica latin1 de jsPDF).
+L'étiquette « 📍 site » de la carte hors écran porte la classe `kta-secours-osm-etiquette` (`style-secours.css`) :
+sombre par défaut, claire en thème clair. 🛡️ `scripts/smoke/checkup-fonds-carte.js` S1-S4.
 
 ### 79.6 Hotfixes v1.41.1 → v1.41.4
 

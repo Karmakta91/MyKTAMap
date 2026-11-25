@@ -17,7 +17,8 @@
  * Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
  * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
- * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
+ * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; case « Retirer les
+ * bandes » (pilier 800 × 150 et masse à cou étroit : entiers décochée, découpés cochée) ; front et mur en
  * trait de la couleur des piliers ; pipette sur un trait de 2 px, un coin de pilier, le fond ; scènes « fond blanc »
  * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; plan au trait (piliers
  * blancs cernés de 5 à 34 px, galeries blanches, chiffres et texte, filigrane, flou, bruit) : pipette au bord des
@@ -25,7 +26,9 @@
  * pixel le plus encré, ancien plafond de tolérance) ; recalcul sur les blocs gardés sans relecture.
  * Remplir au clic : pilier cerné droit ou oblique rempli au MILIEU du trait (≤ 1 px), mur partagé coupé au milieu,
  * chiffre dedans englobé, trous de 1 et 2 px fermés, 3 et 4 px refusés, bord de l'image ou de la région lue refusé,
- * plafond (quart de la région lue, ou donné) refusé, toucher sur le trait refusé, bruit, échelle 0,5, pilier plein.
+ * plafond (quart de la région lue, ou donné) refusé, toucher sur le trait refusé, bruit, échelle 0,5, pilier plein ;
+ * plafond selon l'appareil (téléphone 80 m, ordinateur 200 m, × 2 après Réessayer), masse de 120 m acceptée, trait
+ * troué toujours refusé au maximum, en pleine résolution comme à 0,5 (sans fermeture) ; remplir dans le worker.
  * Remplir au clic sur un front (suivreTrait) : front droit, coudé, carrefours en T et en X (arrêt au carrefour),
  * front qui touche un pilier plein (arrêt à son bord), trait de rappel de 1 px en travers (pas de carrefour), toucher
  * sur le fond ou le pilier refusé, raccord EXACT du toucher suivant sur le front posé (jamais modifié), doublon
@@ -783,6 +786,33 @@ function verifierFronts() {
   // pilier allongé (12 × 48, épaisseur constante sur son axe) : la pointe libre ne rend rien, il reste un pilier
   r = await lancer(image(200, 200).rect(60, 40, 12, 48, ORANGE), { reglages: { aireMin: 100, ouverture: 7 } });
   t("pilier allongé (12 × 48) : jamais pris pour une bande", r.masses.length === 1, r.masses.map(boiteDe));
+  // Case « Retirer les bandes » (reglages.bandes) : pilier jaune cerné de noir, loin de toute couture, et masse à cou
+  // étroit. Cochée (défaut), le filtre découpe le long pilier en éclats et ronge le cou ; décochée, ils restent entiers.
+  {
+    const JAUNE = [220, 180, 30];
+    const bandesSur = (img, bandes, e) => lancer(img, { classes: [{ id: "a", couleurs: [JAUNE], tolerance: 60 }],
+      reglages: { bandes: bandes }, echelle: e });
+    const long = image(1100, 400).rect(97, 97, 806, 156, NOIR).rect(100, 100, 800, 150, JAUNE);
+    for (const e of [1, 0.5]) {
+      const sans = await bandesSur(long, false, e), avec = await bandesSur(long, true, e);
+      const b = sans.masses.map(boiteDe);
+      t("case Bandes décochée, pilier 800 × 150 (échelle " + e + ") : 1 masse entière",
+        sans.masses.length === 1 && proche(b[0], [100, 100, 900, 250], 1), b);
+      t("case Bandes cochée, pilier 800 × 150 (échelle " + e + ") : découpé en éclats (comportement par défaut, " +
+        avec.masses.length + " masses)", avec.masses.length > 1, avec.masses.map(boiteDe));
+    }
+    // deux masses de 200 × 200 reliées par un cou de 200 × 60 (épaisseur divisée par plus de 3)
+    const cou = image(800, 500).rect(97, 147, 206, 206, NOIR).rect(497, 147, 206, 206, NOIR)
+      .rect(297, 217, 206, 66, NOIR).rect(100, 150, 200, 200, JAUNE).rect(500, 150, 200, 200, JAUNE)
+      .rect(300, 220, 200, 60, JAUNE);
+    const couSans = await bandesSur(cou, false, 1), couAvec = await bandesSur(cou, true, 1);
+    t("case Bandes décochée, masse à cou étroit : 1 masse entière, aire 92 000 px²",
+      couSans.masses.length === 1 && Math.abs(couSans.masses[0].aire - 92000) < 50,
+      couSans.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
+    t("case Bandes cochée, masse à cou étroit : cou retiré, bouts mordus (comportement par défaut)",
+      couAvec.masses.length === 2 && couAvec.masses.every((m) => m.aire < 39000),
+      couAvec.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
+  }
   // front (4 px) et mur levé en trait (10 px) de la couleur des piliers : la classe trait les voit toujours, et le
   // mur n'est pas posé en pilier
   r = await lancer(image(500, 300).rect(40, 40, 40, 40, ORANGE).rect(20, 150, 440, 4, ORANGE)
@@ -1157,6 +1187,62 @@ function verifierFronts() {
       const gros = cerne(image(500, 400), 60, 60, 300, 250, 4, 0);
       const Rgr = D.remplir(lecteurSync(gros), 200, 180, a10);
       t("remplir : grande structure plausible (30 × 25 m, plan à 10 px/m) → remplie", !!Rgr.points, Rgr.refus);
+
+      // ── Plafond selon l'appareil (téléphone 80 m, ordinateur 200 m) et « Réessayer en plus grand » (× 2 au plus) ──
+      const tel2 = D.plafondRemplir(10, null, { facteur: 2 }), pc1 = D.plafondRemplir(10, null, { pc: true });
+      const pc2 = D.plafondRemplir(10, null, { pc: true, facteur: 2 });
+      const pc4 = D.plafondRemplir(10, null, { pc: true, facteur: 4 });
+      t("remplir : téléphone 80 m, un essai au double permis (encore) ; après l'essai 160 m, plus d'essai",
+        a10.metres === 80 && a10.encore === true && tel2.metres === 160 && tel2.coteMax === 1600 && tel2.encore === false,
+        [a10, tel2]);
+      t("remplir : ordinateur 200 m (2 000 px à 10 px/m), puis 400 m au plus (facteur borné à " + D.REMPLIR.essaiMax +
+        ")", pc1.metres === 200 && pc1.coteMax === 2000 && pc1.encore === true && pc2.metres === 400 &&
+        pc2.coteMax === 4000 && pc2.encore === false && pc4.coteMax === 4000, [pc1, pc2, pc4]);
+      const pcSans = D.plafondRemplir(null, null, { pc: true });
+      const pcGrande = D.plafondRemplir(null, { largeur: 30000, hauteur: 12000 }, { pc: true });
+      const pcSans2 = D.plafondRemplir(null, null, { pc: true, facteur: 2 });
+      t("remplir : sans échelle sur ordinateur, × " + D.REMPLIR.multiplicateurPc + " (2 560 px au moins, 7 500 px sur " +
+        "une image de 30 000 × 12 000), puis le double", pcSans.cote === 2560 && !pcSans.coteMax &&
+        pcGrande.cote === 7500 && pcSans2.cote === 5120 && pcSans.metres === null, [pcSans, pcGrande, pcSans2]);
+      // masse fictive de 120 m à 10 px/m (1 200 px) : refusée au téléphone, acceptée après Réessayer et sur ordinateur
+      const m120 = cerne(image(1400, 1400), 100, 100, 1200, 1200, 4, 0);
+      const R120t = D.remplir(lecteurSync(m120), 700, 700, a10);
+      const R120e = D.remplir(lecteurSync(m120), 700, 700, tel2);
+      const R120p = D.remplir(lecteurSync(m120), 700, 700, pc1);
+      t("remplir : masse fictive de 120 m → refusée au téléphone (80 m, « tropGrand »)", R120t.refus === "tropGrand",
+        R120t.refus);
+      t("remplir : la même après « Réessayer » au téléphone (160 m) → remplie, ≈ 14 400 m² au milieu du trait",
+        !!R120e.points && Math.abs(R120e.aire / 100 - 120.4 * 120.4) < 60, R120e.refus || R120e.aire);
+      t("remplir : la même sur ordinateur (200 m) → remplie", !!R120p.points, R120p.refus);
+      // la même au trait troué de 4 px, entourée de piliers et de galeries jusqu'au bord : toujours refusée, au
+      //   maximum de l'ordinateur (400 m), en pleine résolution comme lue à résolution réduite (0,5)
+      const dense = cerne(image(1600, 1600), 200, 200, 1200, 1200, 4, 4);
+      for (let gy = 0; gy < 1600; gy += 100) for (let gx = 0; gx < 1600; gx += 100) {
+        if (gx + 90 > 176 && gx < 1424 && gy + 90 > 176 && gy < 1424) continue;   // galerie de 2 m autour de la masse
+        dense.anneau(gx + 10, gy + 10, 80, 80, 3, NOIR);
+      }
+      const reduire = img => {   // moyenne 2 × 2 (ordre d'idée du drawImage de la fenêtre réduite)
+        const r = image(img.W / 2, img.H / 2);
+        for (let y = 0; y < r.H; y++) for (let x = 0; x < r.W; x++) for (let c = 0; c < 3; c++) {
+          const k = (y * 2 * img.W + x * 2) * 4 + c;
+          r.data[(y * r.W + x) * 4 + c] = (img.data[k] + img.data[k + 4] + img.data[k + img.W * 4] +
+            img.data[k + img.W * 4 + 4]) / 4;
+        }
+        return r;
+      };
+      const Rtp = D.remplir(lecteurSync(dense), 800, 800, pc2);
+      const demi = reduire(dense);
+      const o05 = Object.assign({ echelle: 0.5 }, pc2);
+      const Rtr = D.remplir(lecteurSync(demi), 400, 400, o05);
+      const Rtc = D.remplir(lecteurSync(demi), 400, 400, Object.assign({ fermeture: 1 }, o05));
+      t("remplir : masse de 120 m au trait troué de 4 px, au maximum de l'ordinateur (400 m) → refusée",
+        Rtp.refus === "ouvert", Rtp.refus || "remplie");
+      t("remplir : la même lue à résolution réduite (0,5) → toujours refusée (pas de fermeture sous 0,75)",
+        Rtr.refus === "ouvert", Rtr.refus || "remplie");
+      t("remplir : contre-épreuve, fermeture de rayon 1 à 0,5 → le trou de 4 px (2 px lus) est bouché, la masse passe",
+        !!Rtc.points, Rtc.refus);
+      const Rpr = D.remplir(lecteurSync(reduire(m120)), 350, 350, Object.assign({ echelle: 0.5 }, pc1));
+      t("remplir : masse de 120 m sans trou, lue à 0,5 → remplie", !!Rpr.points, Rpr.refus);
     }
 
     // ── Affiner les contours (trait bruité de ± 2 px, plan fictif à 20 px/m : tolérance 0,25 m = 5 px) ──
@@ -1331,6 +1417,24 @@ function verifierFronts() {
     t("worker : un suivreTrait en erreur revient en { id, erreur }", envoyes[envoyes.length - 1].id === 30 &&
       typeof envoyes[envoyes.length - 1].erreur === "string");
   }
+  // Remplir au clic (forme fermée) : même calcul dans le worker et par executeurLocal qu'en direct
+  {
+    const pr = image(300, 240).anneau(56, 46, 128, 98, 4, NOIR), oR = { x0: 10, y0: 20, echelle: 1, aireMax: 40000 };
+    const bloc = () => ({ data: new Uint8ClampedArray(pr.data), w: pr.W, h: pr.H });
+    const coups = [[120, 95], [5, 5], [58, 95]];
+    const direct = JSON.stringify(coups.map(c => D.remplir(bloc(), c[0], c[1], oR)));
+    const parWorker = coups.map(function (c, i) {
+      self.onmessage({ data: { id: 40 + i, remplir: { b: bloc(), px: c[0], py: c[1], o: oR } } });
+      return envoyes[envoyes.length - 1];
+    });
+    t("worker : remplir répond { id, resultat } identique au calcul direct (zone, ouvert, toucher sur le trait)",
+      parWorker.every((m, i) => m.id === 40 + i) && JSON.stringify(parWorker.map(m => m.resultat)) === direct &&
+      !!parWorker[0].resultat.points, parWorker.map(m => m.id));
+    const exL = D.executeurLocal();
+    const parLocal = await Promise.all(coups.map(c => exL.remplir(bloc(), c[0], c[1], oR)));
+    exL.fermer();
+    t("executeurLocal : remplir (repli sans Worker) identique au calcul direct", JSON.stringify(parLocal) === direct);
+  }
   // Exécuteur par worker : fermer() rejette un suivreTrait en attente (AbortError), jamais un bloc en attente
   {
     const postes = [];
@@ -1343,16 +1447,19 @@ function verifierFronts() {
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8"), ctxW);
     const exW = ctxW.KtaDetection.executeurWorker("x.js");
     const im1 = image(10, 10);
-    let issueT = null, issueB = "en attente";
+    let issueT = null, issueB = "en attente", issueR = null;
     exW.suivreTrait({ data: im1.data, w: 10, h: 10 }, 1, 1, {}).catch(err => { issueT = err && err.name; });
+    const im2 = image(10, 10);
+    exW.remplir({ data: im2.data, w: 10, h: 10 }, 1, 1, {}).catch(err => { issueR = err && err.name; });
     exW.executer({ data: image(10, 10).data, w: 10, h: 10 }).then(() => { issueB = "résolu"; },
       () => { issueB = "rejeté"; });
     exW.fermer();
     await new Promise(r => setTimeout(r, 0));
     t("executeurWorker : suivreTrait envoyé (tampon transféré), fermer() le rejette en AbortError, le bloc reste en " +
-      "attente", postes.length === 2 && !!postes[0].m.suivreTrait &&
+      "attente (remplir de même)", postes.length === 3 && !!postes[0].m.suivreTrait &&
       postes[0].tr.length === 1 && postes[0].tr[0] === postes[0].m.suivreTrait.b.data.buffer && termine && issueT === "AbortError" &&
-      issueB === "en attente", { postes: postes.length, issueT, issueB });
+      issueB === "en attente" && !!postes[1].m.remplir && postes[1].tr[0] === postes[1].m.remplir.b.data.buffer &&
+      issueR === "AbortError", { postes: postes.length, issueT, issueB, issueR });
   }
 
   // ── Limites { x0, y0, x1, y1 } : emprise d'un calque qui déborde de l'image (bornes négatives) ──

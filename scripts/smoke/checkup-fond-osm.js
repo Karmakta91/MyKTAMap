@@ -17,6 +17,10 @@
 //   jamais watchPosition · F10 plan rouvert : fond éteint, transparence retenue · F11 transparence par plan (second
 //   plan d'essai servi par l'index, en mémoire), purge à la suppression ; réglages par plan purgés et transférés sans écraser · F12 « Enregistrer hors ligne » : emprise
 //   du plan seulement, progression et fin visibles ; grisée hors ligne, OSM refusé et incognito, sans requête.
+// F13 fonds IGN (tuiles IGN fabriquées ici, route sur data.geopf.fr, calage fictif générique en France) : choix dans le
+//   panneau, bascule aérien / plan / retour OSM, attribution par fond, « Enregistrer hors ligne » grisée en IGN avec sa
+//   raison, repli tuile par tuile sur OSM (IGN en 404), hors ligne sans requête IGN, choix retenu au rechargement.
+//   F8 rejoue avec un fond IGN choisi : OSM refusé et incognito, aucune requête IGN non plus.
 // ⚠️ Sous WebKit (KTA_MOTEURS=webkit), deux contrôles ne se jouent pas, et le harnais le dit : le contexte éphémère
 // refuse un Blob dans IndexedDB (F7 : tuiles enregistrées) et rend le fix précédent malgré setGeolocation (F9 dedans).
 // Usage : node scripts/smoke/checkup-fond-osm.js   (SMOKE_PORT pour une copie de travail)
@@ -40,6 +44,9 @@ const LS_PREGATES = {
 };
 const PLAN_B = "Plan d'essai B";
 const RE_OSM = /^https:\/\/tile\.openstreetmap\.org\/(\d+)\/(\d+)\/(\d+)\.png/;
+// Tuiles IGN (Géoplateforme, WMTS) : jamais demandées au vrai serveur, servies par le harnais.
+const RE_IGN = /^https:\/\/data\.geopf\.fr\//;
+const CLE_FOND = "myktamap_fond_carte_v1";
 
 function planFictif() {
   try {
@@ -82,6 +89,18 @@ function png(couleur) {
 }
 const PNG_DAMIER = [png(function () { return [150, 200, 150]; }), png(function () { return [160, 190, 230]; })];
 const PNG_NOIR = png(function () { return [0, 0, 0]; });
+// Une couleur par couche IGN, distincte du damier OSM : le pixel lu dit quel fond est dessiné.
+const PNG_IGN = {
+  "ORTHOIMAGERY.ORTHOPHOTOS": png(function () { return [200, 40, 40]; }),
+  "GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2": png(function () { return [40, 40, 200]; })
+};
+function couleurDe(px) {
+  if (!px || px.length < 3) return "aucune";
+  if (px[0] > 180 && px[1] < 70 && px[2] < 70) return "ign-aerien";
+  if (px[0] < 70 && px[1] < 70 && px[2] > 180) return "ign-plan";
+  if (px[1] > 170 && px[0] > 120 && px[0] < 175) return "osm";
+  return "autre:" + px.slice(0, 3).join(",");
+}
 
 // Une page sur le relevé fictif, calage prêté. opts : { ls, incognito, geoloc, horsLigneAvant }.
 async function ouvrir(nav, nom, opts) {
@@ -92,9 +111,12 @@ async function ouvrir(nav, nom, opts) {
     await ctx.setGeolocation(o.geoloc);
   }
   const page = await ctx.newPage();
-  const etat = { requetes: [], erreurs: [], cible: null };
+  const etat = { requetes: [], ign: [], erreurs: [], cible: null, ignHors: false };
   page.on("pageerror", function (e) { etat.erreurs.push(String(e)); });
-  page.on("request", function (r) { if (RE_OSM.test(r.url())) etat.requetes.push(r.url()); });
+  page.on("request", function (r) {
+    if (RE_OSM.test(r.url())) etat.requetes.push(r.url());
+    else if (RE_IGN.test(r.url())) etat.ign.push(r.url());
+  });
   await page.addInitScript(function (ls) {
     for (const k in ls) { try { if (ls[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, ls[k]); } catch (e) {} }
     // « Ma position » ne doit jamais suivre : tout appel à watchPosition est compté
@@ -127,6 +149,13 @@ async function ouvrir(nav, nom, opts) {
         ? png(function (u, v) { return (u === c.px && v === c.py) ? [255, 255, 255] : [0, 0, 0]; })
         : PNG_NOIR;
     } else corps = PNG_DAMIER[(x + y) & 1];
+    route.fulfill({ status: 200, contentType: "image/png", headers: { "access-control-allow-origin": "*" }, body: corps });
+  });
+  // Tuiles IGN synthétiques ; `etat.ignHors` : tout est hors couverture (404 comme le vrai serveur)
+  await page.route(RE_IGN, function (route) {
+    const u = new URL(route.request().url());
+    const corps = PNG_IGN[u.searchParams.get("LAYER")];
+    if (etat.ignHors || !corps) { route.fulfill({ status: 404, headers: { "access-control-allow-origin": "*" }, body: "" }); return; }
     route.fulfill({ status: 200, contentType: "image/png", headers: { "access-control-allow-origin": "*" }, body: corps });
   });
   await page.goto(BASE + "/index.html" + (o.incognito ? "?incognito=1" : ""), { waitUntil: "domcontentloaded" });
@@ -169,10 +198,38 @@ function lireFond() {
     opaciteImage: img ? +getComputedStyle(img).opacity : null,
     opaciteTilePane: +getComputedStyle(tp).opacity,
     opacitePane: p ? +getComputedStyle(p).opacity : null,
-    attribution: !!document.querySelector(".kta-fond-osm-attrib"),
+    attribution: (function () {   // crédit du contrôle Leaflet de la carte du plan, visible seulement fond allumé
+      const a = document.querySelector("#map .leaflet-control-attribution");
+      return !!a && getComputedStyle(a).display !== "none" && a.getBoundingClientRect().width > 0;
+    })(),
     panneau: !!document.querySelector(".kta-fond-osm-panneau"),
     fenetreOsm: !!document.getElementById("kta-osm-map"),
     etat: window.FondOsmPlan.etat()
+  };
+}
+// Calage fictif générique EN FRANCE (centre du pays, aucun lieu visé) : la couverture IGN existe, en vrai.
+function preterCalageFrance() {
+  const W = window.APP_CONFIG.imageWidth, H = window.APP_CONFIG.imageHeight;
+  window.PLAN_CONFIG.plan.georef = {
+    pointA: { x: 0, y: 0, lat: 46.5, lng: 2.5 },
+    pointB: { x: W, y: H, lat: 46.5 - H * 2e-6, lng: 2.5 + W * 2.9e-6 },
+    modele: "local"
+  };
+  if (window.FondOsmPlan) window.FondOsmPlan.majBouton();
+  return { W: W, H: H };
+}
+// Panneau du fond : choix, attribution affichée, état du fond.
+function lireChoixFond() {
+  const sel = document.querySelector("[data-fond-osm='fond']");
+  const a0 = document.querySelector("#map .leaflet-control-attribution");
+  const a = (a0 && getComputedStyle(a0).display !== "none" && a0.getBoundingClientRect().width > 0) ? a0 : null;
+  let ls = null;
+  try { ls = localStorage.getItem("myktamap_fond_carte_v1"); } catch (e) { ls = null; }
+  return {
+    select: !!sel, valeur: sel ? sel.value : null,
+    options: sel ? Array.from(sel.options).map(function (o) { return o.value + "=" + o.textContent; }) : [],
+    attribution: a ? a.textContent : null, attribFond: a ? window.KtaFondsCarte.courant().id : null,
+    etat: window.FondOsmPlan.etat(), courant: window.KtaFondsCarte.courant().id, ls: ls
   };
 }
 // Commande « Enregistrer hors ligne » du panneau : { desactivee, texte }.
@@ -644,7 +701,7 @@ async function mesurerCalage(page, etat, decalage, lib) {
     }
 
     console.log("— F8 : OSM refusé, incognito —");
-    s = await ouvrir(nav, nom, { ls: { "myktamap_osm_view_opt_in": "0" } });
+    s = await ouvrir(nav, nom, { ls: { "myktamap_osm_view_opt_in": "0", [CLE_FOND]: "ign-aerien" } });
     page = s.page;
     await page.evaluate(preterCalage);
     const b8 = await page.evaluate(lireBouton);
@@ -664,10 +721,11 @@ async function mesurerCalage(page, etat, decalage, lib) {
     await page.waitForTimeout(800);
     verifier(hl8 && hl8.desactivee && hl8.texte === await cle(page, "fondosm.cache.indispo.optin") && s.etat.requetes.length === 0,
       "OSM refusé : « Enregistrer hors ligne » grisée avec sa raison, aucune requête", { hl8: hl8, requetes: s.etat.requetes.length });
+    verifier(s.etat.ign.length === 0, "OSM refusé, fond IGN choisi : aucune requête IGN", s.etat.ign.length);
     toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
     await s.ctx.close();
 
-    s = await ouvrir(nav, nom, { incognito: true });
+    s = await ouvrir(nav, nom, { incognito: true, ls: { [CLE_FOND]: "ign-plan" } });
     page = s.page;
     const inco = await page.evaluate(function () { return !!(window.IncognitoMode && window.IncognitoMode.isActive()); });
     if (!inco) pb("incognito non actif avec ?incognito=1 : contrôle impossible");
@@ -689,6 +747,120 @@ async function mesurerCalage(page, etat, decalage, lib) {
       await page.waitForTimeout(800);
       verifier(hl9 && hl9.desactivee && hl9.texte === await cle(page, "fondosm.cache.indispo.incognito") && s.etat.requetes.length === 0,
         "incognito : « Enregistrer hors ligne » grisée avec sa raison, aucune requête", { hl9: hl9, requetes: s.etat.requetes.length });
+      verifier(s.etat.ign.length === 0, "incognito, fond IGN choisi : aucune requête IGN", s.etat.ign.length);
+    }
+    toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
+    await s.ctx.close();
+
+    console.log("— F13 : fonds IGN (tuiles fabriquées, calage générique en France) —");
+    s = await ouvrir(nav, nom);
+    page = s.page;
+    await page.evaluate(preterCalageFrance);
+    const b13 = await page.evaluate(lireBouton);
+    await page.mouse.click(b13.x, b13.y);
+    await page.waitForTimeout(300);
+    const c0 = await page.evaluate(lireChoixFond);
+    verifier(c0.select && c0.valeur === "osm" && c0.options.length === 3 &&
+      c0.options.join("|").indexOf("ign-aerien=") >= 0 && c0.options.join("|").indexOf("ign-plan=") >= 0,
+      "panneau : choix du fond (OSM par défaut, IGN aérien, IGN plan), sans bouton de plus", c0.options);
+    await page.click("[data-fond-osm='interrupteur']");
+    await tuilesChargees(page);
+    const p0 = await page.evaluate(pixelCentre);
+    const c1 = await page.evaluate(lireChoixFond);
+    verifier(couleurDe(p0.px) === "osm" && s.etat.ign.length === 0 && /OpenStreetMap/.test(c1.attribution || ""),
+      "OSM : tuiles OSM dessinées, aucune requête IGN, attribution OpenStreetMap",
+      { couleur: couleurDe(p0.px), ign: s.etat.ign.length, attribution: c1.attribution });
+    // ── aérien
+    const nOsm = s.etat.requetes.length;
+    await page.selectOption("[data-fond-osm='fond']", "ign-aerien");
+    await tuilesChargees(page);
+    const p1 = await page.evaluate(pixelCentre);
+    const c2 = await page.evaluate(lireChoixFond);
+    verifier(couleurDe(p1.px) === "ign-aerien", "IGN aérien : tuiles aériennes dessinées sous le plan", couleurDe(p1.px));
+    verifier(s.etat.ign.length > 0 && s.etat.ign.every(function (u) { return /LAYER=ORTHOIMAGERY\.ORTHOPHOTOS/.test(u); }) &&
+      s.etat.ign.every(function (u) { const m = /TILEMATRIX=(\d+)&/.exec(u); return m && +m[1] <= 19; }),
+      "IGN aérien : requêtes data.geopf.fr, couche ORTHOPHOTOS, zoom ≤ 19", s.etat.ign.slice(0, 2));
+    verifier(s.etat.requetes.length === nOsm, "IGN aérien couvert : aucune tuile OSM demandée",
+      s.etat.requetes.length - nOsm);
+    verifier(c2.attribFond === "ign-aerien" && /IGN/.test(c2.attribution) && !/OpenStreetMap/.test(c2.attribution),
+      "IGN aérien : attribution IGN seule", c2.attribution);
+    verifier(c2.courant === "ign-aerien" && c2.ls === "ign-aerien", "choix retenu sur l'appareil (localStorage)", c2);
+    const hl13 = await page.evaluate(lireHorsLigne);
+    const t13 = await page.evaluate(function () { return document.querySelector("[data-fond-osm='hors-ligne']").title; });
+    verifier(hl13 && hl13.desactivee && hl13.texte === await cle(page, "fondosm.cache.indispo.fond") &&
+      t13 === await cle(page, "fondscarte.horsLigne.osmSeul"),
+      "IGN : « Enregistrer hors ligne » grisée, raison affichée et au survol", { hl13: hl13, title: t13 });
+    const nCache = await page.evaluate(async function () { return (await window.OsmTilesCache.getStats()).count; });
+    await page.click("[data-fond-osm='hors-ligne']", { force: true }).catch(function () {});
+    await page.evaluate(function () { return window.FondOsmPlan.enregistrerHorsLigne(); });
+    await page.waitForTimeout(500);
+    const nCache2 = await page.evaluate(async function () { return (await window.OsmTilesCache.getStats()).count; });
+    verifier(nCache2 === nCache && s.etat.requetes.length === nOsm,
+      "IGN : rien d'enregistré en silence (ni clic, ni appel direct), aucune tuile OSM demandée", { avant: nCache, apres: nCache2 });
+    // ── plan
+    await page.selectOption("[data-fond-osm='fond']", "ign-plan");
+    await tuilesChargees(page);
+    const p2 = await page.evaluate(pixelCentre);
+    verifier(couleurDe(p2.px) === "ign-plan" && s.etat.ign.some(function (u) { return /LAYER=GEOGRAPHICALGRIDSYSTEMS\.PLANIGNV2/.test(u); }),
+      "IGN plan : couche PLANIGNV2 dessinée", couleurDe(p2.px));
+    // ── repli : hors couverture, le serveur répond 404 → tuile OSM à la place
+    s.etat.ignHors = true;
+    await page.selectOption("[data-fond-osm='fond']", "ign-aerien");
+    // 🩸 deux zooms plus large : des tuiles jamais vues (le cache d'images du navigateur ne redemande pas les autres)
+    await page.evaluate(function () { window.map.setZoom(window.map.getZoom() - 2, { animate: false }); });
+    await tuilesChargees(page);
+    const p3 = await page.evaluate(pixelCentre);
+    const c3 = await page.evaluate(lireChoixFond);
+    verifier(couleurDe(p3.px) === "osm" && c3.etat.replis > 0 && s.etat.requetes.length > nOsm,
+      "hors couverture (IGN en 404) : la tuile OSM remplace la tuile IGN", { couleur: couleurDe(p3.px), replis: c3.etat.replis });
+    verifier(/IGN/.test(c3.attribution) && /OpenStreetMap/.test(c3.attribution),
+      "hors couverture : attribution IGN et OpenStreetMap", c3.attribution);
+    s.etat.ignHors = false;
+    // ── hors ligne en IGN : aucune requête IGN, phrase propre au fond
+    const nIgn = s.etat.ign.length;
+    await s.ctx.setOffline(true);
+    await page.evaluate(function () { window.FondOsmPlan.eteindre(); window.FondOsmPlan.allumer(); });
+    await page.waitForTimeout(1500);
+    const m13 = await page.evaluate(lirePhraseHorsLigne);
+    verifier(s.etat.ign.length === nIgn && m13 && m13.visible && m13.texte === await cle(page, "fondscarte.horsLigne.fondIgn"),
+      "hors ligne en IGN : aucune requête IGN, phrase « pas de fond IGN »", { ign: s.etat.ign.length - nIgn, m13: m13 });
+    await s.ctx.setOffline(false);
+    // ── retour OSM
+    await page.selectOption("[data-fond-osm='fond']", "osm");
+    await tuilesChargees(page);
+    const nIgn2 = s.etat.ign.length;
+    await page.evaluate(function () { window.map.panBy([300, 0], { animate: false }); });
+    await tuilesChargees(page);
+    const p4 = await page.evaluate(pixelCentre);
+    const c4 = await page.evaluate(lireChoixFond);
+    const hl13b = await page.evaluate(lireHorsLigne);
+    verifier(couleurDe(p4.px) === "osm" && s.etat.ign.length === nIgn2 && c4.attribFond === "osm" &&
+      /OpenStreetMap/.test(c4.attribution) && !/IGN/.test(c4.attribution),
+      "retour OSM : tuiles OSM, plus aucune requête IGN, attribution OpenStreetMap seule",
+      { couleur: couleurDe(p4.px), ign: s.etat.ign.length - nIgn2, attribution: c4.attribution });
+    verifier(hl13b && !hl13b.desactivee, "retour OSM : « Enregistrer hors ligne » de nouveau permise", hl13b);
+    // ── rechargement : le choix revient (IGN plan), fond éteint comme à chaque plan ouvert
+    await page.selectOption("[data-fond-osm='fond']", "ign-plan");
+    await page.waitForTimeout(300);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2500);
+    await page.evaluate(function () { const b = document.getElementById("kta-alert-ok"); if (b) b.click(); });
+    await page.getByText(nom, { exact: false }).first().click();
+    await attendre(page, function () { return !!window.map && !!window.PLAN_CONFIG && !!window.PLAN_CONFIG.plan; }, 90000);
+    await page.waitForTimeout(2000);
+    await page.evaluate(preterCalageFrance);
+    const nIgn3 = s.etat.ign.length;
+    await page.evaluate(function () { window.FondOsmPlan.basculerPanneau(document.getElementById("kta-refonte-counter-osm")); });
+    await page.waitForTimeout(300);
+    const c5 = await page.evaluate(lireChoixFond);
+    verifier(c5.valeur === "ign-plan" && c5.courant === "ign-plan" && !c5.etat.allume && s.etat.ign.length === nIgn3,
+      "rechargement : IGN plan retrouvé dans le panneau, fond éteint, aucune requête avant l'allumage", c5);
+    await page.click("[data-fond-osm='interrupteur']");
+    await tuilesChargees(page);
+    const p5 = await page.evaluate(pixelCentre);
+    verifier(couleurDe(p5.px) === "ign-plan", "rechargement : allumé, c'est le fond IGN plan qui est dessiné", couleurDe(p5.px));
+    if (process.env.KTA_CAPTURE_DIR) {
+      await (await page.$(".kta-fond-osm-panneau")).screenshot({ path: path.join(process.env.KTA_CAPTURE_DIR, "panneau-ign.png") });
     }
     toutesErreurs.push.apply(toutesErreurs, s.etat.erreurs);
     await s.ctx.close();

@@ -10,6 +10,7 @@
 // Seconde carte Leaflet EPSG:3857 ; la carte principale (L.CRS.Simple) n'est pas touchée. Chaque tuile V2
 // du niveau choisi : 3 coins plan (flip Y) → KmzExport.planToGps → L.imageOverlay.rotated(url, tl, tr, bl).
 // Superpose POI, tracker, tracés, itinéraire, zones, structures, couche Mode Secours, filtres tag / niveau.
+// Fond au choix (OSM, IGN aérien, IGN plan : js/fondsCarte.js) ; « Sauvegarder hors-ligne » grisé hors OSM.
 // Expose : window.OsmView = { open, close, isAvailable, isOptedIn, setOptedIn, getPlanGpsBbox,
 // getGeorefEffectif, recheckOfflineCache }. Ouverte par le Mode Secours (l'accueil a son widget) ; le bouton
 // carte du plan pose le fond OSM sous le plan (fondOsmPlan.js) au lieu de l'ouvrir.
@@ -29,9 +30,9 @@
   "use strict";
 
   const LS_OPT_IN_KEY = "myktamap_osm_view_opt_in";
-  const OSM_TILE_URL  = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const OSM_ATTR      = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-  const OSM_MAX_ZOOM  = 19;
+  // Fond de carte : table js/fondsCarte.js (URL, zoom max, attribution) ; choix de l'appareil, partagé avec le fond
+  // sous le plan. Changé dans le bandeau, il remplace la couche sans rouvrir la fenêtre.
+  let _fondLayer = null;
   // budgets du niveau adaptatif et du culling
   const MAX_TILES_BASELINE = 20;   // budget RAM mobile ~20 Mo décodé au boot
   const VIEWPORT_PADDING   = 0.1;  // 10 % de marge : pré-charge les bords (pas de flash au pan)
@@ -53,6 +54,7 @@
   // chaque nouvelle carte, remise droite à chaque fermeture (décision : la fenêtre rouvre nord en haut).
   let _rotation        = null;
   let _rotationTuilesT = null; // minuterie : tuiles du plan relues pendant la rotation
+  let _observateurTaille = null; // ResizeObserver du conteneur de la carte (_suivreTailleCarte)
   const ROTATION_TUILES_MS = 120;
   let _poiLayer   = null;
   let _planTilesVisible = true; // tuiles V2 du plan
@@ -1456,6 +1458,8 @@
           '<span>' + window.ktaIcone("blend") + " " + window.I18n.t("osm.opacity.label") + '</span>' +
           '<input type="range" id="kta-osm-opacity" min="0" max="100" value="' + Math.round(_opacity * 100) + '" style="flex:1 1 auto; max-width:240px;">' +
           '<span id="kta-osm-opacity-val" style="width:38px; text-align:right;">' + Math.round(_opacity * 100) + '%</span>' +
+          // fond de carte : un sélecteur dans le bandeau, pas de bouton de plus (place au téléphone)
+          (window.KtaFondsCarte ? window.KtaFondsCarte.htmlSelecteur("kta-osm-fond") : "") +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center" style="font-size:12px; padding:5px 10px;">' + window.ktaIcone("crosshair") + " " + window.I18n.t("osm.btn.centerPlan") + '</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost" id="kta-osm-center-tracker" style="font-size:12px; padding:5px 10px;" title="' + _escapeHtml(window.I18n.t("osm.btn.centerTracker.title")) + '">' + window.ktaIcone("navigation") + " " + window.I18n.t("osm.btn.centerTracker") + '</button>' +
           // « 📍 Moi » : un fix ponctuel ; désactivé si incognito à la construction
@@ -1558,6 +1562,8 @@
     if (cacheBtn) {
       cacheBtn.addEventListener("click", function() { _runCacheOsmTiles(cacheBtn); });
     }
+    if (window.KtaFondsCarte) window.KtaFondsCarte.brancherSelecteur(overlay.querySelector("#kta-osm-fond"));
+    _majBoutonCache();
     _refreshOsmCacheStats();
     const planCb = overlay.querySelector("#kta-osm-plan-toggle");
     if (planCb) {
@@ -1706,8 +1712,44 @@
     }
   }
 
+  // 🔒 Hors ligne = OSM seul : fond IGN affiché, le bouton est grisé et dit pourquoi, au lieu d'enregistrer de
+  // l'OSM en silence.
+  function _fondEnregistrable() { return !window.KtaFondsCarte || window.KtaFondsCarte.estOsm(); }
+  function _majBoutonCache() {
+    const btn = document.getElementById("kta-osm-cache-btn");
+    if (!btn || btn.getAttribute("aria-busy") === "true") return;
+    const ok = _fondEnregistrable();
+    btn.disabled = !ok;
+    btn.title = window.I18n.t(ok ? "osm.cache.btn.title" : "fondscarte.horsLigne.osmSeul");
+    // Grisé visible (couleur de la charte, bord pointillé) et raison courte dans le bouton, comme « Enregistrer hors
+    // ligne » du panneau du bouton carte : le survol n'existe pas au doigt.
+    btn.classList.toggle("kta-osm-cache-indispo", !ok);
+    let raison = btn.querySelector(".kta-osm-cache-raison");
+    if (!ok && !raison) {
+      raison = document.createElement("span");
+      raison.className = "kta-osm-cache-raison";
+      btn.appendChild(raison);
+    }
+    if (raison) {
+      if (ok) raison.remove();
+      else raison.textContent = window.I18n.t("fondosm.cache.indispo.fond");
+    }
+  }
+  // Couche du fond choisi : remplace la précédente (sous les tuiles du plan, pane dédié à 350).
+  function _poserFond() {
+    if (!_osmMap || !window.KtaFondsCarte) return;
+    if (_fondLayer) { try { _osmMap.removeLayer(_fondLayer); } catch(e) {} }
+    _fondLayer = window.KtaFondsCarte.creerCouche(window.KtaFondsCarte.courant().id).addTo(_osmMap);
+  }
+  function _surChangementFond() {
+    _poserFond();
+    _majBoutonCache();   // le sélecteur suit seul (fondsCarte.js > htmlSelecteur)
+  }
+  window.addEventListener("kta:fondCarteChange", _surChangementFond);
+
   async function _runCacheOsmTiles(btn) {
     if (!window.OsmTilesCache || !_osmMap) return;
+    if (!_fondEnregistrable()) { _toast(window.I18n.t("fondscarte.horsLigne.osmSeul"), 4000); return; }
     if (!btn) btn = document.getElementById("kta-osm-cache-btn");
     const oldLabel = btn ? btn.innerHTML : "";   // icône SVG comprise
     // télécharger exige le réseau
@@ -1717,6 +1759,7 @@
     }
     if (btn) {
       btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
       btn.innerHTML = window.ktaIcone("loader-circle") + " 0/?";
     }
     try {
@@ -1735,6 +1778,8 @@
     } finally {
       if (btn) {
         btn.disabled = false;
+        btn.setAttribute("aria-busy", "false");
+        _majBoutonCache();
         btn.innerHTML = oldLabel || (window.ktaIcone("save") + " " + window.ktaEsc(window.I18n.t("osm.cache.btn")));
       }
       await _refreshOsmCacheStats();
@@ -1995,6 +2040,23 @@
     try { _rotation.reset(); _rotation.attachTo(_osmMap); } catch(e) { console.warn("[OsmView] rotation :", e); }
   }
 
+  // 🩸 Leaflet ne relit la taille de son conteneur qu'au redimensionnement de la FENÊTRE : le bandeau de la modale
+  // change de hauteur après la création de la carte (mesuré : carte crue à 439 px, réelle à 223). Le canvas des
+  // vecteurs, taillé sur la taille périmée, ne couvre alors qu'une partie de la carte : structures, zones et tracés
+  // manquent sous une ligne, jusqu'au prochain déplacement. Une image par rafale de changements.
+  function _suivreTailleCarte(el) {
+    if (typeof ResizeObserver !== "function" || !el) return;
+    let attente = null;
+    _observateurTaille = new ResizeObserver(function () {
+      if (attente) return;
+      attente = requestAnimationFrame(function () {
+        attente = null;
+        if (_osmMap && _osmMap._loaded) { try { _osmMap.invalidateSize(); } catch (e) {} }
+      });
+    });
+    _observateurTaille.observe(el);
+  }
+
   // zoomend / moveend : niveau cible réévalué, rendu ou cull (Leaflet émet une fois par cran).
   function _onMoveEnd() {
     if (!_osmMap) return;
@@ -2019,12 +2081,11 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 6);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_osmMap);
+    _suivreTailleCarte(mapDiv);
+    // Crédit des données visible (masqué ailleurs) : celui du fond posé, plus OSM tant qu'une tuile IGN est remplacée.
+    if (window.KtaFondsCarte) window.KtaFondsCarte.montrerCredits(_osmMap, true);
     _brancherRotation();
-    L.tileLayer(OSM_TILE_URL, {
-      maxZoom: OSM_MAX_ZOOM,
-      attribution: OSM_ATTR,
-      crossOrigin: true
-    }).addTo(_osmMap);
+    _poserFond();
 
     const proj = _buildProjection();
     if (!proj) {
@@ -2293,7 +2354,9 @@
     if (_myGpsAccuracyCircle) { try { _myGpsAccuracyCircle.remove(); } catch(e) {} _myGpsAccuracyCircle = null; }
 
     if (_rotationTuilesT) { clearTimeout(_rotationTuilesT); _rotationTuilesT = null; }
+    if (_observateurTaille) { _observateurTaille.disconnect(); _observateurTaille = null; }
     if (_osmMap) { try { _osmMap.remove(); } catch(e) {} _osmMap = null; }
+    _fondLayer = null;
     // 🩸 Vue redressée APRÈS le démontage (l'instance survit à la fenêtre) : avant, la restitution du padding du canvas
     // lui redemande un dessin que la destruction de la carte laisse orphelin (TypeError « save » au rAF suivant).
     if (_rotation) { try { _rotation.reset(); } catch(e) {} }

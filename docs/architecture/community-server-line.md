@@ -71,6 +71,7 @@ photos restent locales et exportables).
 > (`lot.tracesCopie` : suppressions de copies de calque, jamais dans un fichier) ·
 > `effacerDonneesExtension(planIds)` · `secoursAppliquer(id, partiel)` · `compte()` · `notifierCompte()` ·
 > `appliquerChangements({ editorPoints, roads, zones, structures, tombstones, restitutions })` ·
+> `legendeSession(planId?)` / `appliquerLegende(lot, planId?)` / `usagesLegende(ids, planId?)` (légende de la session) ·
 > `actionsCompte(lieu) → [{ libelle, action }]` (prise) · `blocActionsCompte(lieu, titre)` ·
 > `suppressionLot(idExt, [{ famille, uid }]) → null | true | { permis, message? }` (prise, suppression en lot) · `importAutorise()` /
 > `exportAutorise(id)` / `gateDeleguee()` côté community. Reste : chantier 4 (modules et backend, repo pro).
@@ -312,6 +313,21 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   masqué, Exporter / Restituer proposés, « rapatrier » plus reproposé — pour tout compte qui ouvre le plan
   (décision produit). Un rapatriement date ses copies du moment (`updatedAt`), sinon une synchro incrémentale n'en
   enverrait que les copies retouchées.
+- **Légende de la session** (types et tags personnalisés d'un plan d'extension) : `legendeSession(planId?)` rend
+  une copie de la légende **de la session** — `entrees` (entrées custom, dont les tags au nom libre et les anciens
+  tags rendus modifiables, icône en data-URI), `types` (`[{ cle: "<cat>.<type>", label, color, border }]` : types
+  built-in renommés ou recolorés), `retirees` (entrées du plan supprimées ici), `plan` (entrées du plan, pour
+  lecture). `appliquerLegende({ entrees, types, typesRetires, retraits }, planId?)` applique en une fois (une
+  sauvegarde, un repeint) → `{ appliques, gardes }` : ⚠️ une entrée de `retraits` encore portée par un objet
+  (point par ses tags, tracé, zone ou structure, session ou calque du plan) n'est **pas** supprimée et revient dans
+  `gardes` — jamais de tag orphelin sans icône ; l'extension rejoue le retrait plus tard.
+  `usagesLegende(ids, planId?)` → `{ id: nombre d'objets }`. 🔒 Textes et couleurs passent par la normalisation de
+  `LegendCustomization` ; une icône reçue n'est gardée qu'en `data:image/…`, ou si c'est celle de l'entrée du plan de même id (pas de
+  ressource tierce chargée).
+  Le masquage (`hidden`) reste une préférence de l'appareil : ni lu ni écrit. Les trois rendent `null` sans plan
+  prêt ou si le plan prêt n'est pas `planId` (même garde que `changementsDepuis`). Signal **`mktm:legende-session`**
+  à chaque changement sauvegardé de la légende de session (personne ne l'écoute sans extension). Garde-fou :
+  `check-extensions.js` §11.
 - **Relire la synchro maintenant** : prise `relireChangements(planId) → Promise<boolean>` — l'extension reçoit et
   applique (`appliquerChangements`) ce qui a changé sur son serveur pour ce plan, puis rend `true` ; `false` si elle
   n'a pas pu. Côté app : `KtaExtensions.relireChangements(planId)` → `true`, `false` (échec, erreur, forme

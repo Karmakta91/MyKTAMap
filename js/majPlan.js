@@ -21,7 +21,8 @@
 // 🔒 Entrée refusée en lecture seule et sans le droit d'exporter tout le plan (le fichier d'un calque EST le plan).
 // 🩸 Un objet versé est écrit daté de l'assistant (`updatedAt` = T) : la trace de suppression posée à T - 1 au
 //    retrait ne peut pas le détruire dans le fichier (cf. CalqueSession.retirerIntegres).
-// API : window.MajPlan = { ouvrir, _interne: { grouper, slug, construire, libelleGroupe } }. Garde-fou : check-maj-plan.js.
+// API : window.MajPlan = { ouvrir, _interne: { grouper, slug, construire, libelleGroupe, zipDuPlan } }.
+// Garde-fou : check-maj-plan.js.
 // Doc : docs/architecture/plans-loader.md (§ Mettre à jour le plan).
 
 window.MajPlan = (function () {
@@ -557,7 +558,9 @@ window.MajPlan = (function () {
     if (!avant && window._currentLoadedPlanId === etat.planId) await _proposerNettoyage(etat, true);
   }
 
-  return { ouvrir: ouvrir, _interne: { grouper: grouper, slug: slug, construire: construire, libelleGroupe: _libelleGroupe } };
+  // `zipDuPlan` sert aussi « Régénérer en haute résolution » (planHD.js) : même archive, même repli.
+  return { ouvrir: ouvrir, _interne: { grouper: grouper, slug: slug, construire: construire,
+    libelleGroupe: _libelleGroupe, zipDuPlan: _zipDuPlan } };
 })();
 
 console.log("[MajPlan] Module charge — API window.MajPlan prete");

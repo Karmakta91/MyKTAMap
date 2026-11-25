@@ -588,8 +588,9 @@ window._fermerModeStructure = _fermerModeStructure;
   // ⚠️ #kta-poi-modal (formulaire ouvert par le clic carte du mode édition) ne coupe pas :
   // le mode doit survivre pour poser plusieurs points d'affilée. Les boîtes `kta-modal-overlay`
   // (confirmations) sont hors du filet par leur classe. #kta-recal-niveau (« Dans quel niveau es-tu ? »,
-  // tracking.js > ktaDemanderNiveauRecalage) est posée PAR le mode recalage : Annuler doit le laisser armé.
-  const IDS_EXCLUS = { "kta-poi-modal": true, "kta-recal-niveau": true };
+  // tracking.js > ktaDemanderNiveauRecalage) est posée PAR le mode recalage : Annuler doit le laisser armé. De même
+  // #kta-detect-plus-grand (« Réessayer en plus grand », detectionStructures.js > _remplirEn), posée par Remplir au clic.
+  const IDS_EXCLUS = { "kta-poi-modal": true, "kta-recal-niveau": true, "kta-detect-plus-grand": true };
   function _couper() {
     if (Object.keys(_modesActifs).length === 0) return;
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return;

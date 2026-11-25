@@ -221,7 +221,7 @@
     modal.innerHTML =
       '<div class="kta-readme-modal-boite kta-prof-boite">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">' + window.ktaIcone("m-niveaux") + ' ' + _esc(_t("prof.titre")) + '</span>' +
+          '<span class="kta-readme-modal-titre">' + window.ktaIcone(mono ? "pickaxe" : "m-niveaux") + ' ' + _esc(_t(mono ? "prof.titreMono" : "prof.titre")) + '</span>' +
           '<button class="kta-panneau-close" id="kta-prof-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +

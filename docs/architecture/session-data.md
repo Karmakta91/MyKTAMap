@@ -302,7 +302,11 @@ remplacement (sauf celles des plans ☁️ d'une organisation, cf ci-dessous). L
 une photo déjà en base (même id) est gardée telle quelle (son rattachement ou sa fiche peuvent être plus récents),
 rien n'est supprimé ; un toast fait le bilan (ajoutées, déjà présentes, illisibles). Une photo dont le point n'est plus
 dans la session importée passe « sans point », comme après la suppression d'un point. L'ouverture d'un plan ZIP qui embarque `data/photos/` ne retire que les photos d'origine « plan »
-disparues de la nouvelle version (v2.5.0) — jamais une photo prise par l'utilisateur.
+disparues de la nouvelle version — jamais une photo prise par l'utilisateur. 🩸 Une photo du ZIP déjà en base pour un
+**autre** plan (même ZIP importé avec « Garder les deux », plan régénéré) est restaurée pour celui-ci sous un
+identifiant neuf, `meta.copieDe` = l'identifiant du ZIP (`main.js > startImportedPlan`) ; présente dans CE plan (par
+id ou par `copieDe`), elle n'est pas réécrite : réimporter ou mettre à jour ne duplique rien. Checkup :
+`checkup-import-garder-deux.js`.
 
 **🧰 Outils > 📸 Mes photos** — `js/photosGalerie.js` → `window.KtaPhotosGalerie = { ouvrir(planId?), analyser(planId),
 apresOuverturePlan(planId) }`. Liste des plans qui ont des photos (nombre, taille ; en installation reliée, aussi

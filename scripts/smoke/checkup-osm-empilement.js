@@ -13,6 +13,7 @@
 //   3. pixels, à chaque échelle d'affichage (1, 1,25, 1,5, 2) : les pixels opaques de chaque icône visible
 //      sont identiques avec et sans les tuiles (une tuile peinte par-dessus un POI change ces pixels —
 //      contrôle négatif : pane remonté à 650, tout échoue).
+// Une fois : taille vue par Leaflet = taille du conteneur, canvas des vecteurs qui le couvre (taillesCanvas).
 // Usage : node scripts/smoke/checkup-osm-empilement.js   (SMOKE_PORT pour une copie de travail)
 "use strict";
 
@@ -159,6 +160,37 @@ async function pixelsIcones(page) {
   }, { a: a.toString("base64"), b: b.toString("base64") });
 }
 
+// Taille vue par Leaflet = taille réelle du conteneur, et canvas des vecteurs qui le couvre : à l'ouverture, puis
+// conteneur agrandi et rétréci sans redimensionner la fenêtre (le bandeau de la modale change de hauteur après la
+// création de la carte ; sans osmView.js > _suivreTailleCarte, les vecteurs manquaient sous une ligne).
+function lireTailles() {
+  const m = window.__ktaOsmCarte, el = m.getContainer(), sz = m.getSize();
+  const c = el.getBoundingClientRect(), cv = m._renderer && m._renderer._container;
+  const r = cv ? cv.getBoundingClientRect() : null;
+  return { leaflet: sz.x + "×" + sz.y, reel: el.clientWidth + "×" + el.clientHeight,
+           couvre: !!r && r.left <= c.left + 1 && r.top <= c.top + 1 && r.right >= c.right - 1 && r.bottom >= c.bottom - 1 };
+}
+async function taillesCanvas(page) {
+  const etapes = [["ouverture", null], ["conteneur agrandi", "+160px"], ["conteneur rétréci", "-160px"], ["rendu", ""]];
+  for (const [lib, delta] of etapes) {
+    if (delta !== null) {
+      await page.evaluate(function (d) {
+        const el = window.__ktaOsmCarte.getContainer();
+        if (window.__ktaStyleCarte === undefined) window.__ktaStyleCarte = el.style.cssText;
+        if (!d) { el.style.cssText = window.__ktaStyleCarte; return; }
+        const h = el.clientHeight;   // lu AVANT flex:none, qui ramène la hauteur à 0
+        el.style.flex = "none";
+        el.style.height = (h + parseInt(d, 10)) + "px";
+      }, delta);
+      await page.waitForTimeout(700);
+    }
+    const t = await page.evaluate(lireTailles);
+    const msg = "taille de la carte, " + lib + " : Leaflet " + t.leaflet + ", conteneur " + t.reel;
+    if (t.leaflet === t.reel && t.couvre) ok(msg + ", vecteurs sur toute la carte");
+    else pb(msg + (t.couvre ? "" : ", canvas des vecteurs trop petit"));
+  }
+}
+
 (async function main() {
   const nav = await lancerNavigateur(chromium);
   const erreurs = [];
@@ -249,6 +281,7 @@ async function pixelsIcones(page) {
 
       console.log("— 1 : crans de molette —");
       await controler("ouverture", true);
+      if (echelle === ECHELLES[0]) await taillesCanvas(page);
       for (let i = 1; i <= 4; i++) { await roue(1); await controler("molette +" + i, true); }
       for (let i = 1; i <= 3; i++) { await roue(-1); await controler("molette −" + i, true); }
 

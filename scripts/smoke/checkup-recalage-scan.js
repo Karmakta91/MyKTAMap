@@ -93,8 +93,23 @@ function ecartMax(obj, verite) {
   });
   return m;
 }
-function nbLayers(page) {
-  return page.evaluate(function () { let n = 0; window.map.eachLayer(function () { n++; }); return n; });
+// Calques posés par l'aperçu = ceux qui n'étaient pas sur la carte juste avant le clic. 🩸 Pas le total de la carte :
+// l'aperçu cadre le résultat (fitBounds), et des calques suivent le zoom (guides du point précis, masqués sous un
+// seuil, poiPrecis.js > zoomSuffit) — le total bouge sans que l'aperçu y soit pour rien.
+function photographierCalques(page) {
+  return page.evaluate(function () {
+    window.__ktaCalquesAvant = new Set();
+    window.map.eachLayer(function (l) { window.__ktaCalquesAvant.add(l); });
+  });
+}
+function calquesAjoutes(page) {
+  return page.evaluate(function () {
+    const neufs = [];
+    window.map.eachLayer(function (l) { if (!window.__ktaCalquesAvant.has(l)) neufs.push(l); });
+    if (!window.__ktaCalquesApercu) window.__ktaCalquesApercu = neufs;
+    return { neufs: neufs.length,
+             restants: window.__ktaCalquesApercu.filter(function (l) { return window.map.hasLayer(l); }).length };
+  });
 }
 
 (async function main() {
@@ -195,16 +210,17 @@ function nbLayers(page) {
 
     // ── 3. Aperçu ──
     console.log("— 3. Aperçu sur la carte —");
-    const base = await nbLayers(page);
+    await photographierCalques(page);
     await page.locator("#kta-recal-apercu").click();
     await page.waitForTimeout(500);
-    const pendant = await nbLayers(page);
+    const pendant = await calquesAjoutes(page);
     const vue = await page.evaluate(function () {
       const m = document.getElementById("kta-recal-modal");
       return { barre: !!document.getElementById("kta-recal-barre"), modaleCachee: m && getComputedStyle(m).display === "none" };
     });
     verifier(vue.barre && vue.modaleCachee, "aperçu : outil masqué, barre d'aperçu affichée", vue);
-    verifier(pendant - base === 20 + 2 + 1, "aperçu : 22 objets (20 points, 1 tracé, 1 zone) dans un calque ajouté", { base: base, pendant: pendant });
+    // 20 points, 1 tracé, 1 zone, plus le groupe qui les porte.
+    verifier(pendant.neufs === 20 + 2 + 1, "aperçu : 22 objets (20 points, 1 tracé, 1 zone) dans un calque ajouté", pendant);
     await capture(page, "2-apercu");
     await page.locator("#kta-recal-barre-retour").click();
     await page.waitForTimeout(300);
@@ -216,9 +232,9 @@ function nbLayers(page) {
     verifier(e1 <= 0.02, "les points recalés retombent sur le plan (écart max ≤ 0,02 px)", e1);
     const r0 = dl.obj.roads[0].points[0], v0 = verite[noms[0]];
     verifier(Math.hypot(r0.x - v0.x, r0.y - v0.y) <= 0.02, "le tracé est recalé lui aussi");
-    const apres = await nbLayers(page);
-    verifier(!(await page.evaluate(function () { return !!document.getElementById("kta-recal-modal"); })) && apres === base,
-      "fermeture : outil fermé et calque d'aperçu retiré", { base: base, apres: apres });
+    const apres = await calquesAjoutes(page);
+    verifier(!(await page.evaluate(function () { return !!document.getElementById("kta-recal-modal"); })) && apres.restants === 0,
+      "fermeture : outil fermé et calque d'aperçu retiré", apres);
 
     // ── 4. Repères cliqués ──
     console.log("— 4. Repères cliqués —");
