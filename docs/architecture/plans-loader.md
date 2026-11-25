@@ -1174,27 +1174,47 @@ les galeries → tracés » plus bas.
     fond autour. Un pilier plein se remplit donc à son propre bord. La détection automatique (piliers et fronts)
     garde son contour, inchangé.
   - ⚠️ **Refus** (décision produit), jamais une zone partielle : zone qui touche le bord de la fenêtre lue ou de
-    l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond
-    (« trop grande pour une structure »), toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis, si la
-    zone touche son bord, une grande fenêtre de max(1 024, 2 × côté du plafond + 64) px : pleine résolution jusqu'à
-    4 096 px (`FENETRE_REMPLIR_MAX`), au-delà lue à résolution réduite (jamais plus de 4 096² px lus : mémoire du
-    téléphone).
-    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM, image)`, décisions de KARMA du 21/11 et du 23/11/2026) :
-    plan à échelle connue (`ctx.pxParM()`, échelle écrite dans le plan) → **80 m de côté** (boîte de la zone) **et
-    6 400 m²** ; sans échelle → aire d'un carré de côté **max(1 024 px, le quart du petit côté de l'image)**, sans
-    côté maximal (`REMPLIR.plafondPxMin`, `plafondFraction`). Le plafond doit laisser passer les gros massifs (40 m et
-    512² px refusaient trop souvent « trop grande ») ; le refus reste au-delà, et une zone ouverte ou qui sort de la
-    fenêtre est toujours refusée « contour ouvert », jamais une zone partielle. Une galerie fermée plus longue que
-    80 m sort par son côté. 🩸 Sans échelle, seule l'aire borne : une galerie fermée plus courte que le carré passe
-    (sur une petite image, elle passait déjà à 512 px). Mesures (`checkup-remplir-plafond.js`, poste de dev) : massif
-    de 79 m à 10 px/m (fenêtre de 1 664 px) ≈ 0,35 s, 1,7 s processeur ralenti × 4 ; 900 px sans échelle (fenêtre de
-    2 112 px) ≈ 0,45 s. Lecture et refus de niveau : ceux de la pipette (`_lireBloc`).
+    l'emprise (« Contour ouvert (ou plus grand que la zone lue) : tracez-le à la main. »), zone au-delà du plafond,
+    toucher sur le trait. Fenêtre lue : 384 px autour du doigt, puis, si la zone touche son bord, une grande fenêtre
+    de max(1 024, 2 × côté du plafond + 64) px : pleine résolution jusqu'à 4 096 px (`FENETRE_REMPLIR_MAX`), au-delà
+    lue à résolution réduite (jamais plus de 4 096² px lus : mémoire du téléphone). 🩸 Lu sous 0,75, pas de
+    fermeture (`remplir`, `fermeture` 0) : en px de bloc, son rayon 1 bouchait un trou de 4 à 6 px du plan, et une
+    masse au trait troué, refusée en pleine résolution, passait par la fenêtre réduite ; le prix : un trou de 1 à 2 px
+    n'y est plus bouché (refus). Le calcul tourne dans le worker de la détection (`executeurWorker().remplir`, sinon
+    `executeurLocal`) : une zone au plafond d'ordinateur prend 1 à 4 s, la carte reste vivante ; la lecture
+    (`_lireBloc`, fil principal) reste sous 0,1 s.
+    ⚠️ **Plafond** (`ktaDetection.js > plafondRemplir(pxParM, image, { pc, facteur })`, décisions de KARMA du 21/11,
+    du 23/11 et du 25/11/2026) : plan à échelle connue (`ctx.pxParM()`, échelle écrite dans le plan) → côté de la
+    boîte de la zone (et aire du carré) **80 m au téléphone, 200 m sur ordinateur** (`REMPLIR.coteMaxM`,
+    `coteMaxMPc`) ; sans échelle → aire d'un carré de côté max(1 024 px, le quart du petit côté de l'image), × 2,5
+    sur ordinateur (`multiplicateurPc`, le rapport 200 / 80), sans côté maximal. Ordinateur = `window.ktaAppareilPc()`
+    (`utils.js` : pointeur fin, écran ≥ 1 Mpx CSS, `deviceMemory` ≥ 4 si connue ; le même test que le cache RAM du
+    fond sous le plan, `fondOsmPlan.js`). Le plafond est un garde-fou : un trait troué fuit dans les galeries, on
+    préfère un refus à une zone monstre ; une galerie fermée plus longue que le plafond sort par son côté. 🩸 Sans
+    échelle, seule l'aire borne : une galerie fermée plus courte que le carré passe.
+    ⚠️ **Réessayer en plus grand** (décision produit) : sous le maximum de l'appareil, le refus « trop grande » ouvre
+    une fenêtre (`ktaConfirm`, `#kta-detect-plus-grand`) « Zone de plus de {n} : c'est une grande masse, ou le trait
+    a un trou. » + [Réessayer jusqu'à {2n}] : le MÊME toucher relancé au double (`facteur` 2, `REMPLIR.essaiMax`) —
+    téléphone 80 → 160 m, ordinateur 200 → 400 m. Au maximum, plus de fenêtre : le toast « Zone trop grande pour une
+    structure : tracez-la à la main. ». Annuler ne relance rien. La fenêtre est posée PAR le mode : elle ne le coupe
+    pas (`interface.js`, `IDS_EXCLUS`). Ni Remplir une galerie (`remplirGalerie`, sans plafond de taille) ni le suivi
+    d'un front (`suivreTrait`, fenêtres `FENETRES_FRONT`) ne passent par ce plafond.
+    Mesures (poste de dev, Chromium, planche fictive dense à 10 px/m : piliers de 8 m, galeries de 2 m, masse à 95 %
+    du plafond ; calcul dans le worker) : 80 m, fenêtre de 1 664 px, tampon 10,6 Mo, ≈ 0,27 s ; 160 m, 3 264 px,
+    40,6 Mo, ≈ 1,0 s ; 200 m, 4 064 px, 63 Mo, ≈ 1,6 s ; 400 m, 4 096 px, 64 Mo, ≈ 3,9 s ; à 20 px/m, 400 m lu à
+    0,255, 64 Mo, ≈ 1,1 s. Pic du calcul ≈ 13 octets par px lu (≈ 210 Mo à 4 096², dans le worker). Fil principal :
+    lecture ≤ 0,05 s (0,15 s processeur ralenti × 4), aucune tâche longue au-delà de 0,1 s. Le pic est borné par
+    `FENETRE_REMPLIR_MAX` quel que soit le plafond : 400 m ne lit pas plus que 200 m, il lit moins fin.
   - Garde-fous : `check-detection.js` (milieu du trait à 1 px près, côtés obliques compris, coins aigus à 1,5 px ;
     trait partagé ; trous de 1 et 2 px bouchés, 3 et 4 px refusés ; bords, plafond ; contre-épreuve sans fermeture ;
     pilier flou de 2 à 3 px rempli par le repli, contre-épreuve sans repli ; plafond de 80 m et relatif à l'image ;
     massifs fictifs de 60 m et de 900 px remplis, de 90 m refusé ; galerie fermée de 100 m refusée à échelle connue,
-    galerie ouverte refusée ; structure de 30 × 25 m acceptée) · `scripts/smoke/checkup-remplir.js` ·
-    `scripts/smoke/checkup-remplir-plafond.js` (mêmes cas dans l'app, temps mesurés).
+    galerie ouverte refusée ; structure de 30 × 25 m acceptée ; plafond selon l'appareil et après Réessayer ; masse
+    de 120 m refusée au téléphone, remplie après Réessayer et sur ordinateur ; masse au trait troué de 4 px refusée
+    au maximum, en pleine résolution comme lue à 0,5, contre-épreuve avec fermeture à 0,5 ; `remplir` identique dans
+    le worker, par `executeurLocal` et en direct) · `scripts/smoke/checkup-remplir.js` ·
+    `scripts/smoke/checkup-remplir-plafond.js` (dans l'app, téléphone et ordinateur : fenêtre Réessayer, Annuler,
+    refus au maximum sans fenêtre, trait troué refusé, temps et tâches longues mesurés).
 - ⚠️ **Affiner les contours** (décisions de KARMA du 21/11/2026) : sur un plan de mauvaise qualité, le trait
   irrégulier donnait des piliers « en dent de scie », une forme qui n'existe pas (le Douglas-Peucker à 1 ou 1,5 px
   garde ce bruit). Case **Affiner les contours** du bandeau (exemples, Remplir au clic, aperçu), **cochée par

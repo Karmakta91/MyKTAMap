@@ -16,7 +16,7 @@
 // Réglages déduits des exemples touchés (mesurerExemple, reglagesDepuisExemples, reglagesPourTaille) ; recalcul sur
 // les blocs gardés par l'exécuteur, sans relire l'image (recalculer).
 // Remplir au clic (remplir) : zone fermée par le trait autour d'un point, contour au milieu du trait, trous de
-// 1 à 2 px bouchés.
+// 1 à 2 px bouchés, plafond selon l'appareil (plafondRemplir) ; lancé dans le worker par executeurWorker().remplir.
 // Affiner les contours (option `affiner` de remplir et des réglages, _affiner) : lissage en mètres, redressement en
 // rectangle des formes presque rectangles.
 // Galeries → tracés (section « Galeries ») : axes du masque d'une galerie (pipette : réglage `galerie` de detecter ;
@@ -894,9 +894,9 @@
   // Exécuteur par worker (js/ktaDetectionWorker.js) : un bloc à la fois, tampon d'image TRANSFÉRÉ (pas copié) et,
   // avec `garder`, conservé par le worker pour recalculer.
   // → { executer(bloc, garder) → Promise<résultat (+ garde)>, recalculer(classes, reglages) → Promise<[résultats]>,
-  //     suivreTrait(b, px, py, o) → Promise<résultat de suivreTrait>, fermer() } ; null sans Worker (executeurLocal
-  //     le remplace).
-  // 🩸 fermer() rejette (AbortError) un suivreTrait en attente : l'appelant garde un verrou « une lecture à la fois »
+  //     suivreTrait(b, px, py, o) → Promise<résultat de suivreTrait>, remplir(b, px, py, o) → Promise<résultat de
+  //     remplir>, fermer() } ; null sans Worker (executeurLocal le remplace).
+  // 🩸 fermer() rejette (AbortError) un suivreTrait ou un remplir en attente : l'appelant garde un verrou « une lecture à la fois »
   //   jusqu'à la réponse. Un bloc en attente, lui, reste sans réponse : un rejet tardif ferait échouer, dans la page,
   //   la détection relancée entre-temps sur le même parcours.
   function executeurWorker(url) {
@@ -935,6 +935,10 @@
         const tampon = b.data && b.data.buffer ? b.data.buffer : null;
         return envoyer({ suivreTrait: { b: b, px: px, py: py, o: o || {} } }, tampon ? [tampon] : [], true);
       },
+      remplir: function (b, px, py, o) {
+        const tampon = b.data && b.data.buffer ? b.data.buffer : null;
+        return envoyer({ remplir: { b: b, px: px, py: py, o: o || {} } }, tampon ? [tampon] : [], true);
+      },
       fermer: function () {
         try { w.terminate(); } catch (err) { /* déjà arrêté */ }
         attente.forEach(function (a) {
@@ -960,6 +964,9 @@
       recalculer: function (classes, reglages) { return Promise.resolve(mag.recalculer(classes, reglages)); },
       suivreTrait: function (b, px, py, o) {
         return new Promise(function (ok) { setTimeout(function () { ok(suivreTrait(b, px, py, o)); }, 0); });
+      },
+      remplir: function (b, px, py, o) {
+        return new Promise(function (ok) { setTimeout(function () { ok(remplir(b, px, py, o)); }, 0); });
       },
       fermer: function () { mag.vider(); }
     };
@@ -1286,20 +1293,31 @@
   // 🩸 L'érosion de _passe efface la rangée du bord du bloc (voisins hors bloc comptés vides) : le trait d'origine est
   //   rajouté après la fermeture, qui ne doit jamais RETIRER de trait.
   const REMPLIR = Object.freeze({ tolerance: 20, fermeture: 1, simplification: 1, demiTrait: 6, coteMaxM: 80,
-                                  plafondPxMin: 1024, plafondFraction: 0.25 });
-  // Plafond d'une zone remplie, en px du plan. ⚠️ contrat (décision produit) : plan à échelle connue (px/m) → côté de
-  //   boîte et aire bornés par REMPLIR.coteMaxM (80 m, 6 400 m²) : les gros massifs passent ; une galerie fermée plus
-  //   longue sort par son côté. Sans échelle : aire d'un carré de côté max(plafondPxMin, plafondFraction × petit côté
-  //   de l'image `image` = { largeur, hauteur }) — 1 024 px au moins, le quart du petit côté sur une grande image —,
-  //   sans côté maximal. → { aireMax, coteMax, cote } ; `cote` (px) dimensionne la fenêtre lue autour du toucher
-  //   (detectionStructures.js > _remplirEn).
-  // 🩸 Sans échelle, une galerie fermée plus courte que ce carré passe : seul l'aire la borne.
-  function plafondRemplir(pxParM, image) {
+                                  coteMaxMPc: 200, plafondPxMin: 1024, plafondFraction: 0.25, multiplicateurPc: 2.5,
+                                  essaiMax: 2 });
+  // Plafond d'une zone remplie, en px du plan. o = { pc (ordinateur : window.ktaAppareilPc), facteur (1, ou 2 après
+  //   « Réessayer en plus grand ») }.
+  // ⚠️ contrat (décision produit) : plan à échelle connue (px/m) → côté de boîte et aire bornés par REMPLIR.coteMaxM
+  //   (80 m) au téléphone, coteMaxMPc (200 m) sur ordinateur, × facteur ; une galerie fermée plus longue sort par son
+  //   côté. Sans échelle : aire d'un carré de côté max(plafondPxMin, plafondFraction × petit côté de l'image
+  //   `image` = { largeur, hauteur }), × multiplicateurPc (2,5 = 200 / 80) sur ordinateur, × facteur, sans côté
+  //   maximal. facteur borné à essaiMax (2) : au téléphone 160 m au plus, sur ordinateur 400 m.
+  // → { aireMax, coteMax, cote, metres (côté en m, null sans échelle), facteur, encore (un essai au double reste
+  //   permis) } ; `cote` (px) dimensionne la fenêtre lue autour du toucher (detectionStructures.js > _remplirEn).
+  // 🩸 Le plafond est un garde-fou, pas une gêne : un trait troué fuit dans les galeries et on préfère un refus à une
+  //   zone monstre. Sans échelle, une galerie fermée plus courte que le carré passe : seule l'aire la borne.
+  function plafondRemplir(pxParM, image, o) {
+    o = o || {};
+    const f = Math.min(REMPLIR.essaiMax, Math.max(1, Number(o.facteur) || 1)), encore = 2 * f <= REMPLIR.essaiMax;
     const k = Number(pxParM);
-    if (k > 0) { const c = Math.round(REMPLIR.coteMaxM * k); return { aireMax: c * c, coteMax: c, cote: c }; }
+    if (k > 0) {
+      const m = (o.pc ? REMPLIR.coteMaxMPc : REMPLIR.coteMaxM) * f, c = Math.round(m * k);
+      return { aireMax: c * c, coteMax: c, cote: c, metres: m, facteur: f, encore: encore };
+    }
     const petit = image ? Math.min(Number(image.largeur) || 0, Number(image.hauteur) || 0) : 0;
-    const c = Math.max(REMPLIR.plafondPxMin, Math.round(REMPLIR.plafondFraction * petit));
-    return { aireMax: c * c, coteMax: 0, cote: c };
+    const x = (o.pc ? REMPLIR.multiplicateurPc : 1) * f;
+    const c = Math.max(Math.round(REMPLIR.plafondPxMin * x), Math.round(REMPLIR.plafondFraction * x * petit));
+    return { aireMax: c * c, coteMax: 0, cote: c, metres: null, facteur: f, encore: encore };
   }
   // Le point touché est-il du côté CLAIR de son voisinage (L* au moins à mi-chemin entre le plus sombre et le plus
   // clair des pixels à ± 3 px) ? 🩸 Pas « plus clair que le trait » : autour d'un petit pilier grisé, le masque du
@@ -1427,7 +1445,11 @@
     const W = b.w, H = b.h, N = W * H, e = o.echelle || 1;
     const aireMax = Number(o.aireMax) > 0 ? Number(o.aireMax) * e * e : Math.floor(N / 4);
     const coteMax = Number(o.coteMax) > 0 ? Number(o.coteMax) * e : Infinity;
-    const mu = _murs(b, px, py, o);
+    // 🩸 Fermeture en px de BLOC : lu sous 0,75, son rayon 1 bouchait un trou de 4 à 6 px du plan, et une masse au
+    //   trait troué, qui fuit en pleine résolution, était acceptée par la fenêtre réduite (essai à 0,5). Sans
+    //   fermeture en dessous : un trou y reste un trou (refus) ; le prix, un trou de 1 à 2 px n'y est plus bouché.
+    const fermeture = o.fermeture !== undefined ? o.fermeture : (e < 0.75 ? 0 : REMPLIR.fermeture);
+    const mu = _murs(b, px, py, Object.assign({}, o, { fermeture: fermeture }));
     if (mu.refus) return mu;
     const F = mu.F, hors = mu.hors, z = _inonder(F, hors, W, H, mu.g);
     if (!z) return { refus: "ouvert" };

@@ -55,8 +55,8 @@ window.KtaDetectionUI = (function () {
   const ECART_TRAIT = 3;                // px : un front détecté à moins de cet écart d'un front existant est déjà là
   const REFUS = "KtaDetectionRefus";    // nom de l'erreur levée par _lireBloc quand le contexte refuse de dessiner
   // Remplir au clic : fenêtre lue autour du toucher (px plan), puis la grande si la zone en touche le bord.
-  // Plafond : ktaDetection.js > plafondRemplir (80 m de côté sur un plan à échelle connue, sinon un carré relatif à
-  //   l'image, 1 024 px au moins). La grande fenêtre (4 × la marge des blocs, ou deux fois le côté du plafond + 64)
+  // Plafond : ktaDetection.js > plafondRemplir (sur un plan à échelle connue 80 m de côté au téléphone, 200 m sur
+  //   ordinateur, le double après « Réessayer en plus grand » ; sinon un carré relatif à l'image). La grande fenêtre (4 × la marge des blocs, ou deux fois le côté du plafond + 64)
   //   laisse une zone au plafond loin de son bord ; au-delà de FENETRE_REMPLIR_MAX px, elle est lue à résolution
   //   réduite (mémoire du téléphone : jamais plus de FENETRE_REMPLIR_MAX² px lus).
   const MARGE = window.KtaDetection ? window.KtaDetection.REGLAGES.marge : 256;
@@ -949,41 +949,66 @@ window.KtaDetectionUI = (function () {
     return '<button type="button" class="kta-btn kta-btn-ghost" data-detect="retirer-dernier">' +
       window.ktaIcone("undo-2") + " " + _esc(_t("detect.remplir.retirerDernier")) + "</button>";
   }
-  async function _remplirEn(x, y) {
+  // Zone remplie gardée dans l'aperçu, sauf si une structure de son niveau ou l'aperçu la recouvre déjà.
+  function _garderRempli(e, r) {
+    const niv = e.ctx.niveau(e.typeRemplir);
+    if (_dejaPresente(r, _existantes(niv))) { _toast(_t("detect.remplir.deja"), "warn"); return; }
+    const dejaListe = _remplisGardes().filter(function (z) { return !z.lignes; }).map(function (z) {
+      return { points: z.points, c: _centre(z.points) };
+    });
+    if (_dejaPresente(r, dejaListe)) { _toast(_t("detect.remplir.dejaListe"), "warn"); return; }
+    e.remplis.push({ points: r.points });
+    _dessinerRemplis();
+    _majBandeau();
+  }
+  // Côté du plafond, pour le message : en mètres sur un plan à l'échelle connue, sinon en px du plan.
+  function _cotePlafond(pl) {
+    if (pl.metres) return window.formatDistance(pl.metres, 0);
+    return pl.cote.toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR") + " px";
+  }
+  // Remplir une forme fermée : fenêtre lue autour du toucher, calcul dans le worker de la détection (_e.ex, sinon
+  //   dans la page) ; `facteur` = multiple du plafond de l'appareil (1, ou 2 après « Réessayer en plus grand »).
+  // ⚠️ contrat (décision produit) : refus « trop grande » sous le maximum de l'appareil → fenêtre ktaConfirm qui
+  //   propose de relancer le MÊME toucher au double (téléphone 80 → 160 m, ordinateur 200 → 400 m) ; au maximum, le
+  //   toast d'avant. Rien n'est relancé si le parcours a changé pendant la question.
+  // 🩸 Une zone au plafond d'ordinateur se calcule en 1 à 3,5 s (fenêtre de 4 096 px) : dans la page, l'app figeait
+  //   d'autant ; le worker garde la carte vivante, le verrou « une lecture à la fois » couvre l'attente.
+  async function _remplirEn(x, y, facteur) {
     if (_e.remplissage) return;   // une lecture à la fois : un double toucher ne remplit pas deux fois
-    const e = _e, E = _emprise();
+    const e = _e, E = _emprise(), remplis = e.remplis;
+    const vivant = function () { return _e === e && e.etape === "remplir" && e.remplis === remplis; };
     if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
     e.remplissage = true;
+    let plusGrand = null;
     try {
       let r = null;
-      const pl = window.KtaDetection.plafondRemplir(e.ctx.pxParM ? e.ctx.pxParM() : null,
-        { largeur: e.ctx.largeur, hauteur: e.ctx.hauteur });
+      const pxParM = e.ctx.pxParM ? e.ctx.pxParM() : null, image = { largeur: e.ctx.largeur, hauteur: e.ctx.hauteur };
+      const pc = typeof window.ktaAppareilPc === "function" && window.ktaAppareilPc();
+      const pl = window.KtaDetection.plafondRemplir(pxParM, image, { pc: pc, facteur: facteur || 1 });
       const grande = Math.max(4 * MARGE, 2 * pl.cote + 64);
       const passes = [[384, 1], [Math.min(FENETRE_REMPLIR_MAX, grande), 1]];
       if (grande > FENETRE_REMPLIR_MAX) passes.push([grande, FENETRE_REMPLIR_MAX / grande]);
+      if (!e.ex) e.ex = window.KtaDetection.executeurWorker() || window.KtaDetection.executeurLocal();
       for (let k = 0; k < passes.length; k++) {
         const n = passes[k][0], ech = passes[k][1];
         const x0 = Math.max(E.x0, Math.floor(x - n / 2)), y0 = Math.max(E.y0, Math.floor(y - n / 2));
         const x1 = Math.min(E.x1, Math.ceil(x + n / 2)), y1 = Math.min(E.y1, Math.ceil(y + n / 2));
         const b = await _lireBloc(x0, y0, x1 - x0, y1 - y0, ech);
-        if (_e !== e) return;
+        if (!vivant() || !e.ex) return;
         // 🩸 Rien de dessiné (plan V1 : zone jamais affichée) : la fenêtre blanche passerait pour un fond ouvert
         if (!b.dessine) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-        r = window.KtaDetection.remplir(b, (x - x0) * ech, (y - y0) * ech, { x0: x0, y0: y0, echelle: ech,
-          aireMax: pl.aireMax, coteMax: pl.coteMax, affiner: _toleranceAffiner() });
+        r = await e.ex.remplir({ data: b.data, w: b.w, h: b.h }, (x - x0) * ech, (y - y0) * ech, { x0: x0, y0: y0,
+          echelle: ech, aireMax: pl.aireMax, coteMax: pl.coteMax, affiner: _toleranceAffiner() });
+        if (!vivant()) return;
         // zone fermée, ou fenêtre déjà grande comme l'emprise : une fenêtre plus grande n'y changerait rien
         if (r.refus !== "ouvert" || (x0 === E.x0 && y0 === E.y0 && x1 === E.x1 && y1 === E.y1)) break;
       }
-      if (r.refus) { _toast(_t("detect.remplir.refus." + r.refus), "warn"); return; }
-      const niv = e.ctx.niveau(e.typeRemplir);
-      if (_dejaPresente(r, _existantes(niv))) { _toast(_t("detect.remplir.deja"), "warn"); return; }
-      const dejaListe = _remplisGardes().filter(function (z) { return !z.lignes; }).map(function (z) {
-        return { points: z.points, c: _centre(z.points) };
-      });
-      if (_dejaPresente(r, dejaListe)) { _toast(_t("detect.remplir.dejaListe"), "warn"); return; }
-      e.remplis.push({ points: r.points });
-      _dessinerRemplis();
-      _majBandeau();
+      // 🩸 Pas de `return` ici : sous try/finally, il sauterait aussi la question posée après le finally
+      if (r.refus === "tropGrand" && pl.encore) {
+        plusGrand = { facteur: 2 * pl.facteur, n: _cotePlafond(pl),
+          n2: _cotePlafond(window.KtaDetection.plafondRemplir(pxParM, image, { pc: pc, facteur: 2 * pl.facteur })) };
+      } else if (r.refus) _toast(_t("detect.remplir.refus." + r.refus), "warn");
+      else _garderRempli(e, r);
     } catch (err) {
       if (_e !== e) return;
       if (err && err.name === REFUS) _toast(_t("detect.refus." + err.raison), "warn");
@@ -994,6 +1019,11 @@ window.KtaDetectionUI = (function () {
     } finally {
       e.remplissage = false;
     }
+    if (!plusGrand) return;
+    const oui = await window.ktaConfirm(_esc(_t("detect.remplir.refus.tropGrandEssai", { n: plusGrand.n })), {
+      titre: _esc(_t("detect.titre")), id: "kta-detect-plus-grand",
+      okLabel: _esc(_t("detect.remplir.plusGrand", { n: plusGrand.n2 })) });
+    if (oui && vivant()) await _remplirEn(x, y, plusGrand.facteur);
   }
   // Front : le trait touché, suivi jusqu'à ses bouts ou au premier carrefour (ktaDetection.js > suivreTrait), dans
   //   une fenêtre de plus en plus grande tant qu'un bout s'arrête à son bord (FENETRES_FRONT, pleine résolution).
