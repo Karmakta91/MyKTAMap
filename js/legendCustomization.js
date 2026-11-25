@@ -679,7 +679,9 @@ window.LegendCustomization = (function() {
     });
     return {
       entrees:  _copieJson(_sessionState.customEntries),
-      types:    Object.keys(types).sort().map(function(k) { return types[k]; }),
+      // ordre des points de code, pas localeCompare : le même sur tous les appareils (clés ASCII)
+      types:    Object.keys(types).sort(function(a, b) { return a < b ? -1 : (a > b ? 1 : 0); })
+        .map(function(k) { return types[k]; }),
       retirees: _sessionState.removedPlan.slice(),
       plan:     _copieJson(_planState.customEntries)
     };

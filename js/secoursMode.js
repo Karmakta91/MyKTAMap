@@ -5591,7 +5591,7 @@
   function _texteCredit(html) {
     const d = document.createElement("div");
     d.innerHTML = html;
-    return (d.textContent || "").replace(/–/g, "-").replace(/\s+/g, " ").trim();
+    return (d.textContent || "").replaceAll("–", "-").replace(/\s+/g, " ").trim();
   }
   // Crédit lu dans le contrôle d'attribution (masqué à l'écran) de la carte Vue OSM capturée : il suit le fond
   // affiché et le repli IGN → OSM ; le préfixe « Leaflet » n'est pas un crédit de fond.

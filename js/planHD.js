@@ -589,9 +589,11 @@
     const IPL = window.InterPlanLinks;
     let n = 0;
     if (IPL && typeof IPL.getLinksForPlan === "function" && typeof IPL.importLinks === "function") {
-      const base = "ipl_" + Date.now().toString(36) + "_";
+      const alea = new Uint32Array(1);
+      crypto.getRandomValues(alea);
+      const base = "ipl_" + Date.now().toString(36) + "_" + alea[0].toString(36) + "_";
       n = IPL.importLinks(liaisonsPourNouveauPlan(IPL.getLinksForPlan(etat.planSource), etat.planSource, id, nom, etat.k,
-        function (i) { return base + Math.random().toString(36).slice(2, 8) + i; }));
+        function (i) { return base + i; }));
     }
     console.log("[PlanHD] nouveau plan « " + id + " » ajouté, " + photos + " photo(s) et " + n + " liaison(s) recopiée(s)");
     _toast(t("planhd.fin.ajoute"), "success");
