@@ -1308,6 +1308,8 @@ marcar varios niveles: sigue siendo una salida.
 
 ### 📉 Profundidad y altura de los niveles
 
+En un plano de **un solo nivel**, este bloque se llama **⛏️ Altura de las galerías** (botón «Ajustar la altura de las galerías»): solo se ajusta la altura.
+
 Cada nivel tiene tres cifras, que se ajustan en **⚙️ Ajustes › 📐 Mapa › 📉 Niveles: profundidad y altura** (o abajo en la ventana de la pastilla **Niv X**):
 
 - **Suelo**: su profundidad bajo la superficie, en metros (negativo hacia abajo). Vacío = sin indicar; **Sin** = un nivel que no es una planta (un levantamiento antiguo colocado encima, por ejemplo).

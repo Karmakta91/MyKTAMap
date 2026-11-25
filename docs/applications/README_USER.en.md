@@ -1308,6 +1308,8 @@ can also tick several levels: it stays an exit.
 
 ### 📉 Level depth and height
 
+On a map with **a single level**, this block is called **⛏️ Gallery height** (button “Set the gallery height”): only the height is set there.
+
 Each level has three figures, set in **⚙️ Settings › 📐 Map › 📉 Levels: depth and height** (or at the bottom of the window of the **Lvl X** badge):
 
 - **Floor**: its depth below the surface, in metres (negative goes down). Empty = not filled in; **None** = a level that is not a floor (an old survey stacked above, for instance).

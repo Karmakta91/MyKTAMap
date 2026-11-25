@@ -3949,6 +3949,8 @@
   "presentation.toast.activated": "Presentation mode on — F / Esc (PC) or ✕ top-right (mobile) to exit",
   "prof.btn.saisir": "Level depth and height",
   "prof.titre": "Levels: depth and height",
+  "prof.titreMono": "Gallery height",
+  "prof.btn.saisirMono": "Set the gallery height",
   "prof.hint": "Floor: depth below the surface, in metres (a negative number goes down). Height: height of the level's galleries. Gap: thickness between the level's ceiling and the floor of the level above; negative when the two levels interlock.",
   "prof.propose": "Suggested values: level 0 at -25 m, 5 m from one floor to the next, 2 m galleries. Nothing is saved until you confirm.",
   "prof.sans": "no depth",

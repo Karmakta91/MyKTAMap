@@ -875,13 +875,16 @@ function _bindCfgGeorefLanceur() {
 
 // Niveaux en hauteur (sol, hauteur de galerie, écart) : un lanceur ici, la table dans sa fenêtre
 // (profondeurNiveaux.js > ouvrirSaisie, la même qu'au bas de la pastille « Niv X »).
+// Plan à un seul niveau : il n'y a que la hauteur des galeries à régler, le libellé le dit.
 function _renderCfgNiveauxLanceur() {
   const t = window.I18n.t;
+  const mono = !(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   return '<div class="kta-aide-section" id="cfg_niveaux_lanceur">' +
-    '<div class="kta-aide-section-titre">' + window.ktaIcone("m-niveaux") + ' ' + t("prof.titre") + '</div>' +
+    '<div class="kta-aide-section-titre">' + window.ktaIcone(mono ? "pickaxe" : "m-niveaux") + ' ' +
+      t(mono ? "prof.titreMono" : "prof.titre") + '</div>' +
     '<div class="kta-cfg-georef-etat" id="cfg_niveaux_etat"></div>' +
     '<button type="button" class="kta-btn" id="cfg_niveaux_open" style="width:100%; margin-top:8px;">' +
-      t("prof.btn.saisir") + '</button>' +
+      t(mono ? "prof.btn.saisirMono" : "prof.btn.saisir") + '</button>' +
   '</div>';
 }
 function _cfgRafraichirEtatNiveaux() {

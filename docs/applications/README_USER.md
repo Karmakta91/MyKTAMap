@@ -1309,6 +1309,8 @@ Escalier service ouvert) et peut aussi cocher plusieurs niveaux : il reste une s
 
 ### 📉 Profondeur et hauteur des niveaux
 
+Sur un plan à **un seul niveau**, ce bloc s'appelle **⛏️ Hauteur des galeries** (bouton « Régler la hauteur des galeries ») : seule la hauteur s'y règle.
+
 Chaque niveau a trois chiffres, réglés dans **⚙️ Réglages › 📐 Plan › 📉 Niveaux : profondeur et hauteur** (ou en bas de la fenêtre de la pastille **Niv X**) :
 
 - **Sol** : sa profondeur sous la surface, en mètres (négatif vers le bas). Vide = non renseigné ; **Sans** = un niveau qui n'est pas un étage (un relevé ancien rangé au-dessus, par exemple).

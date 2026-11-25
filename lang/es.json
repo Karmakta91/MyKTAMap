@@ -3949,6 +3949,8 @@
   "presentation.toast.activated": "Modo presentación activado — F / Esc (PC) o ✕ arriba a la derecha (móvil) para salir",
   "prof.btn.saisir": "Profundidad y altura de los niveles",
   "prof.titre": "Niveles: profundidad y altura",
+  "prof.titreMono": "Altura de las galerías",
+  "prof.btn.saisirMono": "Ajustar la altura de las galerías",
   "prof.hint": "Suelo: profundidad bajo la superficie, en metros (un número negativo desciende). Altura: altura de las galerías del nivel. Separación: espesor entre el techo del nivel y el suelo del nivel de arriba; negativa cuando los dos niveles se entrelazan.",
   "prof.propose": "Valores propuestos: nivel 0 a -25 m, 5 m de un suelo al siguiente, galerías de 2 m. No se guarda nada hasta que valides.",
   "prof.sans": "sin profundidad",

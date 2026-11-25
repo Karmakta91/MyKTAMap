@@ -3949,6 +3949,8 @@
   "presentation.toast.activated": "Mode présentation activé — F / Échap (PC) ou ✕ en haut-droite (mobile) pour sortir",
   "prof.btn.saisir": "Profondeur et hauteur des niveaux",
   "prof.titre": "Niveaux : profondeur et hauteur",
+  "prof.titreMono": "Hauteur des galeries",
+  "prof.btn.saisirMono": "Régler la hauteur des galeries",
   "prof.hint": "Sol : profondeur sous la surface, en mètres (un nombre négatif descend). Hauteur : hauteur des galeries du niveau. Écart : épaisseur entre le plafond du niveau et le sol du niveau du dessus ; négatif quand les deux niveaux s'entremêlent.",
   "prof.propose": "Valeurs proposées : niveau 0 à -25 m, 5 m d'un sol au suivant, galeries de 2 m. Rien n'est enregistré tant que tu n'as pas validé.",
   "prof.sans": "sans profondeur",
