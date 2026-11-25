@@ -31,6 +31,8 @@
 
 | Sujet | Raison |
 |---|---|
+| **Niveaux visibles 2D : décocher un niveau, « Tout afficher » plus rapides** | Abandonné (KARMA, 25/11/2026) : 2,1-2,2 s mesurés à CPU ×4 sur un plan très chargé (4 000 structures, 5 niveaux) ; pistes notées (ne traiter que l'écart, garder les couches masquées). Rouvrir sur une plainte d'utilisateur |
+| **Mode strict par plan (tolérance 0 aux jonctions)** | Abandonné (KARMA, 25/11/2026) : un lien de tolérance qui croise un mur en ligne ou une zone inaccessible n'est déjà plus posé (`pathfinder.js > _lienCoupe`) |
 | **« Mettre à jour le plan » : chatière qui ne garde que son départ** | Fermé (KARMA, 18/11/2026) : non reproduit (vu une fois le 12/11 sur un plan d'organisation). Rouvrir s'il revient, avec la ligne tags / clés / nombre de points envoyée (`poiPrecis.js > lire`) |
 | **Désactiver un type par défaut (tracé, zone, structure)** | Fermé (KARMA, 18/11/2026) : la légende masque déjà un type (`hidden`). Rouvrir sur une demande d'utilisateur |
 | **Doublon 📐 Mesure / 📐 Distance** (barre de droite) | Accepté le 14/10/2026 : c'est l'accordéon groupe + sous-action |

@@ -51,21 +51,11 @@
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M
   · id: sol-abaisse-niveau-dessous`
-- **Niveaux visibles 2D : décocher un niveau, « Tout afficher »** — ✅ mesuré 17/11 (CPU ×4, 4 000 structures, 2 500
-  tracés, 1 510 zones, 5 niveaux) : décocher 1 niveau sur 5 = 2,2 s, « Tout afficher » = 2,1 s (couches de session
-  recréées). Pistes : ne traiter que l'écart, puis garder les couches des niveaux masqués (~1 Mo pour 10 000).
-  `qui: KARMA · action: dire s'il faut reprendre (piste 1, ou 1 + 2) · fini: les deux gestes mesurés sous 1 s à CPU ×4,
-  checkups filtres et niveaux verts · depuis: 15/11/2026 · taille: M · id: niveaux-visibles-2d`
 - **Référencement de doc.myktamap.fr** — un sitemap ne liste que son propre domaine : la doc doit publier son
   `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S
   · id: referencement-doc`
-- **Mode strict par plan (jonctions imparfaites)** — idée KARMA : tolérance 0 sur un plan choisi. ✅ vérifié 24/11/2026 :
-  un lien de tolérance qui croise un mur en ligne ou une zone inaccessible n'est plus posé (`pathfinder.js > _lienCoupe`).
-  Reste le mode strict lui-même : topo (options et reco) dans le rapport du lot `niveaux-jonctions`.
-  `qui: KARMA · action: choisir une option du topo du mode strict · fini: option choisie, ou idée close dans
-  DECISIONS_FERMEES · depuis: 05/11/2026 · taille: S · id: mode-strict-plan`
 - **Détecter : bandes retirées seulement entre deux masses** — ✅ vérifié 25/11/2026 : tout tronçon régulier plus de
   4 × plus long qu'épais est effacé (piliers allongés en éclats, cous mordus) ; case de débrayage livrée. Règle décidée :
   n'effacer qu'un tronçon qui relie deux masses ou sort du bloc (un cou entre deux masses reste coupé : à trancher).
