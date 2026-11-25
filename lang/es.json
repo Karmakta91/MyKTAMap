@@ -963,6 +963,7 @@
   "planhd.suivant": "Abrir el Generador",
   "planhd.err.sansPlan": "Abre primero el mapa que quieres regenerar.",
   "planhd.err.aucunFacteur": "No es posible ampliar en este dispositivo: la imagen sería demasiado grande. Prueba en un ordenador.",
+  "planhd.err.aucunFacteurOrdi": "Este plano ya es demasiado grande para ampliarlo: {mpx} Mpx, y ×2 daría {mpx2} Mpx, por encima del límite de una imagen ({max} Mpx).",
   "planhd.err.canvas": "Este dispositivo no pudo dibujar una imagen de {w} × {h} px. Elige una ampliación menor o usa un ordenador.",
   "planhd.err.sansArchive": "El archivo de este mapa no está en el dispositivo: ábrelo desde su archivo ZIP y vuelve a intentarlo.",
   "planhd.err.preparation": "Preparación imposible: {err}",

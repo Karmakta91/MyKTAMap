@@ -355,6 +355,8 @@ async function relire(page, b64, a) {
           r[i.value] = { dis: i.disabled, note: note ? note.textContent : "" };
         });
         r.suivant = !document.getElementById("kta-planhd-suivant").disabled;
+        const err = ov.querySelector(".kta-fp-ajouts-intro.kta-tx-err");
+        r.erreur = err ? err.textContent : "";
         document.querySelector("#kta-plan-hd [data-planhd-fermer]").click();
         return r;
       };
@@ -366,7 +368,12 @@ async function relire(page, b64, a) {
         window.ktaOuvrirPlanHD(); const ordi = lire();
         pc.imageWidth = 5000; pc.imageHeight = 4000;
         window.ktaOuvrirPlanHD(); const aucun = lire();
-        return { ios: ios, ordi: ordi, aucun: aucun, attendu: window.I18n.t("planhd.facteur.refuse", { max: "" }).slice(0, 10) };
+        window.ktaEstIos = function () { return true; };
+        window.ktaOuvrirPlanHD(); const aucunIos = lire();
+        window.ktaEstIos = function () { return false; };
+        return { ios: ios, ordi: ordi, aucun: aucun, aucunIos: aucunIos,
+                 ordiTxt: window.I18n.t("planhd.err.aucunFacteurOrdi", { mpx: "", mpx2: "", max: "" }).slice(0, 12),
+                 iosTxt: window.I18n.t("planhd.err.aucunFacteur"), attendu: window.I18n.t("planhd.facteur.refuse", { max: "" }).slice(0, 10) };
       } finally { pc.imageWidth = w0; pc.imageHeight = h0; window.ktaEstIos = ios0; }
     });
     verifier(refus.ios["2"].dis && refus.ios["2"].note.indexOf(refus.attendu) === 0 && !refus.ios.suivant,
@@ -376,6 +383,12 @@ async function relire(page, b64, a) {
       "ordinateur, 3000 × 2000 : ×2 et ×3 permis (tuilage V2 annoncé), ×4 (96 Mpx) refusé", refus.ordi);
     verifier(refus.aucun["2"].dis && refus.aucun["3"].dis && refus.aucun["4"].dis && !refus.aucun.suivant,
       "5000 × 4000 : tout refusé, bouton Générateur grisé", refus.aucun);
+    verifier(refus.aucun.erreur.indexOf(refus.ordiTxt) === 0 && refus.aucun.erreur.indexOf("20") > 0 &&
+      refus.aucun.erreur.indexOf("80") > 0,
+      "ordinateur, tout refusé : le plan est déjà trop grand, chiffres à l'appui (20 Mpx, ×2 = 80 Mpx), pas « essaie sur un ordinateur »",
+      refus.aucun.erreur);
+    verifier(refus.aucunIos.erreur === refus.iosTxt,
+      "iPhone, tout refusé : renvoi vers un ordinateur", refus.aucunIos.erreur);
 
     verifier(erreurs.length === 0, "aucune erreur JavaScript", erreurs.slice(0, 3));
   } catch (e) {

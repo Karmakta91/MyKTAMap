@@ -173,6 +173,14 @@
   }
   function _ios() { return typeof window.ktaEstIos === "function" && window.ktaEstIos(); }
   function _mpx(px) { return (Math.round(px / 100000) / 10).toLocaleString(window.ktaLocale ? window.ktaLocale() : "fr-FR"); }
+  // Aucun facteur possible : sur iPhone, un ordinateur sait faire plus grand ; ailleurs, c'est le plan qui est déjà
+  // trop grand, et le dire avec les chiffres (renvoyer vers un ordinateur celui qui y est déjà ne lui dit rien).
+  function _msgAucunFacteur(W, H) {
+    if (_ios()) return t("planhd.err.aucunFacteur");
+    const f2 = facteurs(W, H, PX_ORDI)[0];
+    if (!(f2.px > PX_ORDI)) return t("planhd.err.aucunFacteur");   // refus par le côté (> 32767 px), pas la surface
+    return t("planhd.err.aucunFacteurOrdi", { mpx: _mpx(W * H), mpx2: _mpx(f2.px), max: _mpx(PX_ORDI) });
+  }
 
   let _ov = null;
   function _fermer() {
@@ -237,7 +245,7 @@
           '<p class="kta-fp-ajouts-intro">' + esc(t("planhd.intro", { w: W, h: H })) + '</p>' +
           '<div class="kta-maj-etape">' + esc(t("planhd.facteur.titre")) + '</div>' +
           '<div class="kta-planhd-groupe">' + lignesFacteur + '</div>' +
-          (premier ? "" : '<p class="kta-fp-ajouts-intro kta-tx-err">' + esc(t("planhd.err.aucunFacteur")) + '</p>') +
+          (premier ? "" : '<p class="kta-fp-ajouts-intro kta-tx-err">' + esc(_msgAucunFacteur(W, H)) + '</p>') +
           '<div class="kta-maj-etape">' + esc(t("planhd.fond.titre")) + '</div>' +
           '<div class="kta-planhd-groupe">' +
             '<label class="kta-export-radio-row"><input type="radio" name="kta-planhd-fond" value="uni" checked>' +
@@ -414,7 +422,11 @@
 
   async function _valider(ses) {
     const ch = _choix();
-    if (!(ch.k > 0)) { _erreur(t("planhd.err.aucunFacteur")); return; }
+    if (!(ch.k > 0)) {
+      const pc = window.PLAN_CONFIG && window.PLAN_CONFIG.plan;
+      _erreur(pc ? _msgAucunFacteur(Number(pc.imageWidth), Number(pc.imageHeight)) : t("planhd.err.aucunFacteur"));
+      return;
+    }
     const btn = _ov.querySelector("#kta-planhd-suivant");
     btn.disabled = true;
     _erreur("");

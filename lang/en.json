@@ -963,6 +963,7 @@
   "planhd.suivant": "Open the Generator",
   "planhd.err.sansPlan": "Open the map to regenerate first.",
   "planhd.err.aucunFacteur": "No enlargement possible on this device: the image would become too large. Try on a computer.",
+  "planhd.err.aucunFacteurOrdi": "This plan is already too large to enlarge: {mpx} Mpx, and ×2 would give {mpx2} Mpx, beyond the limit for one image ({max} Mpx).",
   "planhd.err.canvas": "This device could not draw a {w} × {h} px image. Choose a smaller enlargement, or use a computer.",
   "planhd.err.sansArchive": "This map's archive is not on the device: open it from its ZIP file, then try again.",
   "planhd.err.preparation": "Preparation failed: {err}",

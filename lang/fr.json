@@ -963,6 +963,7 @@
   "planhd.suivant": "Ouvrir le Générateur",
   "planhd.err.sansPlan": "Ouvre d'abord le plan à régénérer.",
   "planhd.err.aucunFacteur": "Aucun agrandissement possible sur cet appareil : l'image deviendrait trop grande. Essaie sur un ordinateur.",
+  "planhd.err.aucunFacteurOrdi": "Ce plan est déjà trop grand pour être agrandi : {mpx} Mpx, et ×2 donnerait {mpx2} Mpx, au-delà de la limite d'une image ({max} Mpx).",
   "planhd.err.canvas": "Cet appareil n'a pas pu dessiner une image de {w} × {h} px. Choisis un agrandissement plus petit, ou passe sur un ordinateur.",
   "planhd.err.sansArchive": "L'archive de ce plan n'est pas sur l'appareil : ouvre-le depuis son fichier ZIP, puis recommence.",
   "planhd.err.preparation": "Préparation impossible : {err}",
