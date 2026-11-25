@@ -901,6 +901,7 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Écart avec la prod v2.32.0 : tout le contenu de la v2.33.0 ci-dessous. Micro-bump pour faciliter la mise à jour du pro ; notes de `version.json` inchangées.
 
 - 🗺️ **« Masquer les crédits des cartes » retire aussi le pied du widget de l'accueil** (`css/style.css`, guides, `vue-osm.md`, `checkup-fonds-carte.js` A4b) : domaine contacté, crédit et tuiles gardées disparaissent avec la case, et reviennent quand on la décoche.
+- 🗺️ **Vue carte : structures, zones et tracés dessinés sur toute la carte** (`js/osmView.js > _suivreTailleCarte`, `vue-osm.md` § Taille de la carte, `checkup-osm-empilement.js`) : le bandeau de la fenêtre change de hauteur après la création de la carte, et Leaflet gardait l'ancienne taille ; le canvas des vecteurs ne couvrait alors qu'une partie de la carte (vu sur iPhone : seule l'image du plan sous une ligne, jusqu'au prochain déplacement). La taille du conteneur est maintenant suivie.
 - 🔎 **Remplir au clic : plafond selon l'appareil, « Réessayer en plus grand », « Calcul en cours… »** (`js/detectionStructures.js`, `js/ktaDetection.js > plafondRemplir`, `js/utils.js > ktaAppareilPc`, `checkup-remplir-plafond.js`) : déjà détaillés dans l'entrée v2.33.0.
 
 #### v2.33.0 (25/11/2026) — Fonds de carte IGN, plan en haute résolution, crédits des cartes (branche `Karma_dev`)

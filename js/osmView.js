@@ -54,6 +54,7 @@
   // chaque nouvelle carte, remise droite à chaque fermeture (décision : la fenêtre rouvre nord en haut).
   let _rotation        = null;
   let _rotationTuilesT = null; // minuterie : tuiles du plan relues pendant la rotation
+  let _observateurTaille = null; // ResizeObserver du conteneur de la carte (_suivreTailleCarte)
   const ROTATION_TUILES_MS = 120;
   let _poiLayer   = null;
   let _planTilesVisible = true; // tuiles V2 du plan
@@ -2039,6 +2040,23 @@
     try { _rotation.reset(); _rotation.attachTo(_osmMap); } catch(e) { console.warn("[OsmView] rotation :", e); }
   }
 
+  // 🩸 Leaflet ne relit la taille de son conteneur qu'au redimensionnement de la FENÊTRE : le bandeau de la modale
+  // change de hauteur après la création de la carte (mesuré : carte crue à 439 px, réelle à 223). Le canvas des
+  // vecteurs, taillé sur la taille périmée, ne couvre alors qu'une partie de la carte : structures, zones et tracés
+  // manquent sous une ligne, jusqu'au prochain déplacement. Une image par rafale de changements.
+  function _suivreTailleCarte(el) {
+    if (typeof ResizeObserver !== "function" || !el) return;
+    let attente = null;
+    _observateurTaille = new ResizeObserver(function () {
+      if (attente) return;
+      attente = requestAnimationFrame(function () {
+        attente = null;
+        if (_osmMap && _osmMap._loaded) { try { _osmMap.invalidateSize(); } catch (e) {} }
+      });
+    });
+    _observateurTaille.observe(el);
+  }
+
   // zoomend / moveend : niveau cible réévalué, rendu ou cull (Leaflet émet une fois par cran).
   function _onMoveEnd() {
     if (!_osmMap) return;
@@ -2063,6 +2081,7 @@
       preferCanvas: true
     }).setView([46.5, 2.5], 6);
     if (typeof window.ktaBoutonsZoom === "function") window.ktaBoutonsZoom(_osmMap);
+    _suivreTailleCarte(mapDiv);
     // Crédit des données visible (masqué ailleurs) : celui du fond posé, plus OSM tant qu'une tuile IGN est remplacée.
     if (window.KtaFondsCarte) window.KtaFondsCarte.montrerCredits(_osmMap, true);
     _brancherRotation();
@@ -2335,6 +2354,7 @@
     if (_myGpsAccuracyCircle) { try { _myGpsAccuracyCircle.remove(); } catch(e) {} _myGpsAccuracyCircle = null; }
 
     if (_rotationTuilesT) { clearTimeout(_rotationTuilesT); _rotationTuilesT = null; }
+    if (_observateurTaille) { _observateurTaille.disconnect(); _observateurTaille = null; }
     if (_osmMap) { try { _osmMap.remove(); } catch(e) {} _osmMap = null; }
     _fondLayer = null;
     // 🩸 Vue redressée APRÈS le démontage (l'instance survit à la fenêtre) : avant, la restitution du padding du canvas

@@ -1413,6 +1413,16 @@ Bug KARMA : *« je charge A, retour home → A ; je charge B, retour home → B,
 - `_initMiniMap`, quand elle détruit la carte, purge `_extraLayers` et sort ces ids de la pile : les plans ajoutés par « + » appartenaient à la carte morte et ne se ré-affichaient plus (fantômes silencieux). Effet assumé : après un aller-retour dans un plan, la pile se réduit au plan quitté ; `_extraOpacity` est gardé pour un re-ajout.
 - 🛡️ `scripts/check-osm-pile.js` **exécute** la règle et le démontage extraits du fichier (leçon v1.90.15 : un grep valide un fantôme).
 
+## Taille de la carte de la Vue carte suivie
+
+Leaflet ne relit la taille de son conteneur qu'au redimensionnement de la fenêtre. Or le bandeau de la modale change de
+hauteur après la création de la carte (mesuré : carte crue à 439 px, réelle à 223) : le canvas des vecteurs, taillé
+sur la taille périmée, ne couvrait qu'une partie de la carte (structures, zones et tracés absents sous une ligne,
+image du plan seule, jusqu'au prochain déplacement). `osmView.js > _suivreTailleCarte` observe le conteneur
+(`ResizeObserver`) et appelle `invalidateSize` une fois par image ; débranché à la fermeture.
+🛡️ `checkup-osm-empilement.js` (taille vue par Leaflet = taille réelle, canvas qui couvre la carte, à l'ouverture puis
+conteneur agrandi et rétréci ; contrôle négatif : l'ancien code échoue sur « conteneur agrandi »).
+
 ## Diagnostic : une icône paraît sous les tuiles du plan
 
 Non reproduit au harnais (plan réel, Chrome et WebKit, échelles 1 à 3, `scripts/smoke/checkup-osm-empilement.js`).
