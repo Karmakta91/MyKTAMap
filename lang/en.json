@@ -354,6 +354,7 @@
   "detect.remplir.aide": "Tap inside each closed outline: the area is added to the preview ({n}).",
   "detect.remplir.aideTrait": "Tap the line of each quarry face: it is followed to its ends or to the first junction; tap beyond to extend it ({n}).",
   "detect.remplir.bouton": "Fill on tap",
+  "detect.remplir.calcul": "Working…",
   "detect.remplir.deja": "A structure on this level already covers this area: nothing added.",
   "detect.remplir.dejaListe": "This area is already in the preview.",
   "detect.remplir.frontBord": "Quarry face followed to the edge of the area read: tap further on to extend it.",

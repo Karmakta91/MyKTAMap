@@ -482,6 +482,12 @@ window.KtaDetectionUI = (function () {
         _btn("valider", "detect.valider", "kta-btn-primary", { n: gardes }) + _btn("zone", "detect.recommencer") +
         _btn("fermer", "detect.fermer") + "</div>";
     }
+    // Remplir / suivre / galerie en cours (1 à 4 s sur une grande zone) : sans ce signe, un second toucher, ignoré
+    // par le verrou « une lecture à la fois », semblait perdu.
+    if (_e.remplissage && _e.etape === "remplir") {
+      html = '<span class="kta-racc-info kta-detect-calcul" role="status">' + window.ktaIcone("loader-circle") + " " +
+        _esc(_t("detect.remplir.calcul")) + "</span>" + html;
+    }
     b.innerHTML = html;
     b.querySelectorAll(".kta-detect-pastille").forEach(function (s) {
       s.style.backgroundColor = "rgb(" + s.getAttribute("data-rgb") + ")";   // couleur lue sur le plan, hors charte
@@ -973,12 +979,17 @@ window.KtaDetectionUI = (function () {
   //   toast d'avant. Rien n'est relancé si le parcours a changé pendant la question.
   // 🩸 Une zone au plafond d'ordinateur se calcule en 1 à 3,5 s (fenêtre de 4 096 px) : dans la page, l'app figeait
   //   d'autant ; le worker garde la carte vivante, le verrou « une lecture à la fois » couvre l'attente.
+  // Verrou d'un remplissage (forme, front, galerie) et son indicateur dans le bandeau.
+  function _enCalcul(e, oui) {
+    e.remplissage = oui;
+    if (_e === e) _majBandeau();
+  }
   async function _remplirEn(x, y, facteur) {
     if (_e.remplissage) return;   // une lecture à la fois : un double toucher ne remplit pas deux fois
     const e = _e, E = _emprise(), remplis = e.remplis;
     const vivant = function () { return _e === e && e.etape === "remplir" && e.remplis === remplis; };
     if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-    e.remplissage = true;
+    _enCalcul(e, true);
     let plusGrand = null;
     try {
       let r = null;
@@ -1017,7 +1028,7 @@ window.KtaDetectionUI = (function () {
         _toast(_t("detect.toast.echec"), "warn");
       }
     } finally {
-      e.remplissage = false;
+      _enCalcul(e, false);
     }
     if (!plusGrand) return;
     const oui = await window.ktaConfirm(_esc(_t("detect.remplir.refus.tropGrandEssai", { n: plusGrand.n })), {
@@ -1039,7 +1050,7 @@ window.KtaDetectionUI = (function () {
     const e = _e, E = _emprise(), remplis = e.remplis;
     const vivant = function () { return _e === e && e.etape === "remplir" && e.remplis === remplis; };
     if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
-    e.remplissage = true;
+    _enCalcul(e, true);
     try {
       let r = null;
       const existants = _frontsRaccord(e.ctx.niveau(e.typeRemplir));
@@ -1073,7 +1084,7 @@ window.KtaDetectionUI = (function () {
         _toast(_t("detect.toast.echec"), "warn");
       }
     } finally {
-      e.remplissage = false;
+      _enCalcul(e, false);
     }
   }
   // Valider : les zones au dernier type fermé choisi, les fronts au dernier type en ligne choisi, chacun au niveau
@@ -1334,7 +1345,7 @@ window.KtaDetectionUI = (function () {
     const e = _e, E = _emprise();
     if (x < E.x0 || y < E.y0 || x >= E.x1 || y >= E.y1) { _toast(_t("detect.toast.horsImage"), "warn"); return; }
     if (_dejaDansAxes(x, y)) { _toast(_t("detect.remplir.dejaListe"), "warn"); return; }
-    e.remplissage = true;
+    _enCalcul(e, true);
     try {
       const grand = Math.max(E.x1 - E.x0, E.y1 - E.y0);
       const passes = [[768, 1], [2048, 1],
@@ -1370,7 +1381,7 @@ window.KtaDetectionUI = (function () {
         _toast(_t("detect.toast.echec"), "warn");
       }
     } finally {
-      e.remplissage = false;
+      _enCalcul(e, false);
     }
   }
   // Valider : les tracés gardés, du type choisi, au niveau actif (multi-niveau), écrits par UN appel au contexte.

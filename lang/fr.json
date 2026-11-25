@@ -354,6 +354,7 @@
   "detect.remplir.aide": "Touchez l'intérieur de chaque contour fermé : la zone s'ajoute à l'aperçu ({n}).",
   "detect.remplir.aideTrait": "Touchez le trait de chaque front : il est suivi jusqu'à ses bouts ou au premier carrefour ; touchez au-delà pour le prolonger ({n}).",
   "detect.remplir.bouton": "Remplir au clic",
+  "detect.remplir.calcul": "Calcul en cours…",
   "detect.remplir.deja": "Une structure de ce niveau recouvre déjà cette zone : rien n'est ajouté.",
   "detect.remplir.dejaListe": "Cette zone est déjà dans l'aperçu.",
   "detect.remplir.frontBord": "Front suivi jusqu'au bord de la zone lue : touchez plus loin pour le prolonger.",

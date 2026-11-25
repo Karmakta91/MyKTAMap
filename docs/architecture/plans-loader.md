@@ -1199,6 +1199,8 @@ les galeries → tracés » plus bas.
     structure : tracez-la à la main. ». Annuler ne relance rien. La fenêtre est posée PAR le mode : elle ne le coupe
     pas (`interface.js`, `IDS_EXCLUS`). Ni Remplir une galerie (`remplirGalerie`, sans plafond de taille) ni le suivi
     d'un front (`suivreTrait`, fenêtres `FENETRES_FRONT`) ne passent par ce plafond.
+    Pendant un remplissage (forme, front, galerie), le bandeau affiche « Calcul en cours… » en tête (`_enCalcul`,
+    `.kta-detect-calcul`, `role="status"`) : un second toucher, ignoré par le verrou, ne semble plus perdu.
     Mesures (poste de dev, Chromium, planche fictive dense à 10 px/m : piliers de 8 m, galeries de 2 m, masse à 95 %
     du plafond ; calcul dans le worker) : 80 m, fenêtre de 1 664 px, tampon 10,6 Mo, ≈ 0,27 s ; 160 m, 3 264 px,
     40,6 Mo, ≈ 1,0 s ; 200 m, 4 064 px, 63 Mo, ≈ 1,6 s ; 400 m, 4 096 px, 64 Mo, ≈ 3,9 s ; à 20 px/m, 400 m lu à

@@ -150,6 +150,13 @@ async function remplirEn(page, x, y) {
     const c = window.map.latLngToContainerPoint(window.convertCoord(a.x, a.y));
     return { x: r.left + c.x, y: r.top + c.y };
   }, { x: x, y: y });
+  // indicateur « Calcul en cours… » : vu au moins une fois pendant le calcul (observateur posé avant le toucher)
+  await page.evaluate(function () {
+    window.__ktaVuCalcul = false;
+    const o = new MutationObserver(function () { if (document.querySelector(".kta-detect-calcul")) window.__ktaVuCalcul = true; });
+    o.observe(document.body, { childList: true, subtree: true });
+    window.__ktaObsCalcul = o;
+  });
   const t0 = Date.now();
   await page.mouse.click(pt.x, pt.y);
   await page.waitForTimeout(50);
@@ -159,7 +166,11 @@ async function remplirEn(page, x, y) {
   }, 120000);
   const ms = Date.now() - t0;
   await page.waitForTimeout(150);
-  return lire(page, ms);
+  const calcul = await page.evaluate(function () {
+    if (window.__ktaObsCalcul) window.__ktaObsCalcul.disconnect();
+    return { vu: !!window.__ktaVuCalcul, reste: !!document.querySelector(".kta-detect-calcul") };
+  });
+  return Object.assign(await lire(page, ms), { calcul: calcul });
 }
 // État après un remplissage : { n, ms, toasts, essai (texte du bouton « Réessayer » de la fenêtre, sinon null) }.
 async function lire(page, ms) {
@@ -291,6 +302,8 @@ async function parcours(page, O, appareil) {
     await ouvrirRemplir(page);
     c = centre("m900"); r = await remplirEn(page, c.x, c.y);
     verifier(r.n === 1 && !r.essai, "ordinateur : masse fictive de 120 m remplie d'emblée (" + r.ms + " ms)", r);
+    verifier(r.calcul.vu && !r.calcul.reste,
+      "« Calcul en cours… » affiché dans le bandeau pendant le remplissage, retiré à la fin", r.calcul);
     await retirerDernier(page);
     // ── 5. 4 px/m (massif de 900 px = 225 m), 2 px/m (450 m) ; tâches longues pendant l'essai à 400 m ──
     await echelle(page, 4);

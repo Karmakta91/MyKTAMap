@@ -20370,6 +20370,11 @@ button.kta-cfg-ligne-action {
 }
 .kta-racc-pos { color: var(--kta-texte-2); font-variant-numeric: tabular-nums; min-width: 48px; text-align: center; }
 .kta-racc-info { flex: 1 1 140px; min-width: 0; text-align: center; color: var(--kta-texte); overflow-wrap: anywhere; }
+/* Remplir au clic en cours (detectionStructures.js > _enCalcul) : ligne entière, roue qui tourne sauf mouvement réduit. */
+.kta-detect-calcul { flex-basis: 100%; color: var(--kta-accent-texte); font-weight: 600; }
+.kta-detect-calcul svg { vertical-align: -2px; animation: kta-detect-tourne 1s linear infinite; }
+@keyframes kta-detect-tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .kta-detect-calcul svg { animation: none; } }
 .kta-racc-ecart { stroke: var(--kta-accent); fill: none; }
 .kta-racc-cercle { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.2; }
 /* Vérifier le plan (js/verifierPlan.js) : liste groupée par gravité, bandeau de revue (allure des raccords), objet

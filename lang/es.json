@@ -354,6 +354,7 @@
   "detect.remplir.aide": "Toca el interior de cada contorno cerrado: la zona se añade a la vista previa ({n}).",
   "detect.remplir.aideTrait": "Toca el trazo de cada frente: se sigue hasta sus extremos o hasta el primer cruce; toca más allá para prolongarlo ({n}).",
   "detect.remplir.bouton": "Rellenar con un toque",
+  "detect.remplir.calcul": "Calculando…",
   "detect.remplir.deja": "Una estructura de este nivel ya cubre esta zona: no se añade nada.",
   "detect.remplir.dejaListe": "Esta zona ya está en la vista previa.",
   "detect.remplir.frontBord": "Frente seguido hasta el borde de la zona leída: toca más lejos para prolongarlo.",
