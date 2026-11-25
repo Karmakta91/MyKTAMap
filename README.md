@@ -16,9 +16,9 @@
 
 <img src="docs/architecture/overview.svg" alt="MyKTAMap — architecture générale" width="680">
 
-## 📦 Version courante — `v2.33.0` (25/11/2026)
+## 📦 Version courante — `v2.33.1` (25/11/2026)
 
-> 🗺️ **v2.33.0 — Fonds de carte IGN, plan en haute résolution, crédits des cartes** : à côté d'OpenStreetMap, deux fonds **IGN** (vue aérienne, plan IGN, en France) se choisissent dans les réglages de la Vue carte, le panneau du bouton carte et « Plans & filtres de la carte » de l'accueil, et valent pour la Vue carte, le fond sous le plan, la carte de l'accueil et le briefing Secours ; hors couverture, la tuile OpenStreetMap prend la place ; hors ligne, OpenStreetMap seul. Un **crédit discret** des données s'affiche sur la Vue carte et le fond sous le plan, masquable dans Configuration › Affichage. **« Régénérer en haute résolution »** (📊 Éditeur de données) crée un **nouveau plan** ×2, ×3 ou ×4 à partir des données vectorielles, sur fond uni ou redessiné, ancien scan en calque au choix, photos copiées ; le plan d'origine reste intact. La **« Vue OSM » s'appelle « Vue carte »**. Case décochée, le **briefing pompiers** ne demande plus aucune tuile. **« Garder les deux »** à l'import donne ses photos à la copie du plan. « Recaler sur un autre scan » convertit aussi le point précis, les accroches des raccords et la fin des rampes.
+> 🗺️ **v2.33.1** (micro-version pour la mise à jour du pro, contenu de la v2.33.0 et ses correctifs) **— Fonds de carte IGN, plan en haute résolution, crédits des cartes** : à côté d'OpenStreetMap, deux fonds **IGN** (vue aérienne, plan IGN, en France) se choisissent dans les réglages de la Vue carte, le panneau du bouton carte et « Plans & filtres de la carte » de l'accueil, et valent pour la Vue carte, le fond sous le plan, la carte de l'accueil et le briefing Secours ; hors couverture, la tuile OpenStreetMap prend la place ; hors ligne, OpenStreetMap seul. Un **crédit discret** des données s'affiche sur la Vue carte et le fond sous le plan, masquable dans Configuration › Affichage. **« Régénérer en haute résolution »** (📊 Éditeur de données) crée un **nouveau plan** ×2, ×3 ou ×4 à partir des données vectorielles, sur fond uni ou redessiné, ancien scan en calque au choix, photos copiées ; le plan d'origine reste intact. La **« Vue OSM » s'appelle « Vue carte »**. Case décochée, le **briefing pompiers** ne demande plus aucune tuile. **« Garder les deux »** à l'import donne ses photos à la copie du plan. « Recaler sur un autre scan » convertit aussi le point précis, les accroches des raccords et la fin des rampes.
 
 ---
 
@@ -895,6 +895,13 @@ lisible par un humain ou par son IA) : `docs/IA_POUR_LES_NULS.md`.
 > Journal complet, du plus récent au plus ancien — l'historique de référence avec les commits Git. À chaque release, la nouvelle entrée s'ajoute **en tête de cette section** (le reste du README reste stable).
 
 ### 🕐 Versions récentes — entrées détaillées (v1.85.3 → v1.26)
+
+#### v2.33.1 (25/11/2026) — Micro-version : correctifs de la v2.33.0 (branche `Karma_dev`)
+
+> Écart avec la prod v2.32.0 : tout le contenu de la v2.33.0 ci-dessous. Micro-bump pour faciliter la mise à jour du pro ; notes de `version.json` inchangées.
+
+- 🗺️ **« Masquer les crédits des cartes » retire aussi le pied du widget de l'accueil** (`css/style.css`, guides, `vue-osm.md`, `checkup-fonds-carte.js` A4b) : domaine contacté, crédit et tuiles gardées disparaissent avec la case, et reviennent quand on la décoche.
+- 🔎 **Remplir au clic : plafond selon l'appareil, « Réessayer en plus grand », « Calcul en cours… »** (`js/detectionStructures.js`, `js/ktaDetection.js > plafondRemplir`, `js/utils.js > ktaAppareilPc`, `checkup-remplir-plafond.js`) : déjà détaillés dans l'entrée v2.33.0.
 
 #### v2.33.0 (25/11/2026) — Fonds de carte IGN, plan en haute résolution, crédits des cartes (branche `Karma_dev`)
 
