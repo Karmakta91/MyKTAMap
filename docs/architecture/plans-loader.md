@@ -1007,7 +1007,7 @@ les galeries → tracés » plus bas.
   critère. ⚠️ **Case « Retirer les bandes de la couleur des piliers »** (décision produit) : dans le bandeau, à
   l'étape des couleurs et dans l'aperçu (`detectionStructures.js > _bandesActif` → `reglages.bandes`), cochée par
   défaut (comportement des plans existants) ; décochée, piliers allongés et cous étroits restent entiers (ci-dessus,
-  « Limites connues »). Ligne d'aide visible dans l'aperçu : « Décoche si tes galeries ne sont pas de la couleur des
+  « Limites connues »). Ligne d'aide visible dans l'aperçu : « Décochez si vos galeries ne sont pas de la couleur des
   piliers. » Changer la case recalcule l'aperçu sur les blocs gardés, sans relire l'image. Retenue sur l'appareil
   pour tous les plans (`myktamap_detect_bandes_v1`, `"0"` = décochée), comme « Affiner les contours ». Le Générateur
   passe par le même parcours. Ni Remplir au clic, ni les galeries, ni le suivi d'un front ne passent par ce filtre ;
