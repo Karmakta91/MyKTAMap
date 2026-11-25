@@ -17,7 +17,8 @@
  * Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
  * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
- * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; front et mur en
+ * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; case « Retirer les
+ * bandes » (pilier 800 × 150 et masse à cou étroit : entiers décochée, découpés cochée) ; front et mur en
  * trait de la couleur des piliers ; pipette sur un trait de 2 px, un coin de pilier, le fond ; scènes « fond blanc »
  * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; plan au trait (piliers
  * blancs cernés de 5 à 34 px, galeries blanches, chiffres et texte, filigrane, flou, bruit) : pipette au bord des
@@ -783,6 +784,33 @@ function verifierFronts() {
   // pilier allongé (12 × 48, épaisseur constante sur son axe) : la pointe libre ne rend rien, il reste un pilier
   r = await lancer(image(200, 200).rect(60, 40, 12, 48, ORANGE), { reglages: { aireMin: 100, ouverture: 7 } });
   t("pilier allongé (12 × 48) : jamais pris pour une bande", r.masses.length === 1, r.masses.map(boiteDe));
+  // Case « Retirer les bandes » (reglages.bandes) : pilier jaune cerné de noir, loin de toute couture, et masse à cou
+  // étroit. Cochée (défaut), le filtre découpe le long pilier en éclats et ronge le cou ; décochée, ils restent entiers.
+  {
+    const JAUNE = [220, 180, 30];
+    const bandesSur = (img, bandes, e) => lancer(img, { classes: [{ id: "a", couleurs: [JAUNE], tolerance: 60 }],
+      reglages: { bandes: bandes }, echelle: e });
+    const long = image(1100, 400).rect(97, 97, 806, 156, NOIR).rect(100, 100, 800, 150, JAUNE);
+    for (const e of [1, 0.5]) {
+      const sans = await bandesSur(long, false, e), avec = await bandesSur(long, true, e);
+      const b = sans.masses.map(boiteDe);
+      t("case Bandes décochée, pilier 800 × 150 (échelle " + e + ") : 1 masse entière",
+        sans.masses.length === 1 && proche(b[0], [100, 100, 900, 250], 1), b);
+      t("case Bandes cochée, pilier 800 × 150 (échelle " + e + ") : découpé en éclats (comportement par défaut, " +
+        avec.masses.length + " masses)", avec.masses.length > 1, avec.masses.map(boiteDe));
+    }
+    // deux masses de 200 × 200 reliées par un cou de 200 × 60 (épaisseur divisée par plus de 3)
+    const cou = image(800, 500).rect(97, 147, 206, 206, NOIR).rect(497, 147, 206, 206, NOIR)
+      .rect(297, 217, 206, 66, NOIR).rect(100, 150, 200, 200, JAUNE).rect(500, 150, 200, 200, JAUNE)
+      .rect(300, 220, 200, 60, JAUNE);
+    const couSans = await bandesSur(cou, false, 1), couAvec = await bandesSur(cou, true, 1);
+    t("case Bandes décochée, masse à cou étroit : 1 masse entière, aire 92 000 px²",
+      couSans.masses.length === 1 && Math.abs(couSans.masses[0].aire - 92000) < 50,
+      couSans.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
+    t("case Bandes cochée, masse à cou étroit : cou retiré, bouts mordus (comportement par défaut)",
+      couAvec.masses.length === 2 && couAvec.masses.every((m) => m.aire < 39000),
+      couAvec.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
+  }
   // front (4 px) et mur levé en trait (10 px) de la couleur des piliers : la classe trait les voit toujours, et le
   // mur n'est pas posé en pilier
   r = await lancer(image(500, 300).rect(40, 40, 40, 40, ORANGE).rect(20, 150, 440, 4, ORANGE)

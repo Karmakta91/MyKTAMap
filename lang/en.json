@@ -307,6 +307,8 @@
   "detect.annuler": "Cancel",
   "detect.apercu.aide": "Tap an object to remove it or put it back.",
   "detect.apercu.bilan": "{n} found · {d} already there · {m} dropped by the maximum size · {g} too large for a block.",
+  "detect.bandes": "Remove strips of the pillar colour",
+  "detect.bandes.aide": "Untick if your galleries are not the colour of the pillars.",
   "detect.bouton": "Detect pillars and fronts",
   "detect.boutonAide": "On the map image: colours with the picker, preview before adding",
   "detect.calcul": "Detecting… block {i} of {n}",

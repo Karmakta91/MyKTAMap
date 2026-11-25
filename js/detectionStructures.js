@@ -24,6 +24,7 @@
 // Écarte ce qui recouvre déjà une structure du même niveau : relancer ne double rien. Réglages déduits des exemples ;
 // trois curseurs (tolérance, tailles minimale et maximale) recalculent sur les blocs déjà lus. Case « Affiner les
 // contours » (_affinerActif) : lissage et redressement des formes presque rectangles, Remplir comme détection.
+// Case « Retirer les bandes de la couleur des piliers » (_bandesActif → reglages.bandes) : détection des masses seule.
 // Expose : window.KtaDetectionUI = { ouvrir(ctx?, { cible }?), fermer, etat, contextePlan, PREFIXE }.
 // Fenêtre « Détecter les galeries » (ouvrir(ctx, { cible: "traces" }) : outil Tracés, Éditeur de données,
 //   Générateur) : même parcours, rien que la galerie, et des TRACÉS en sortie (section « Galeries » plus bas).
@@ -36,6 +37,8 @@ window.KtaDetectionUI = (function () {
   const PREFIXE = "myktamap_detect_couleurs_v1_";
   // Case « Affiner les contours » : retenue sur l'appareil, pour tous les plans ("0" = décochée ; absente = cochée).
   const CLE_AFFINER = "myktamap_detect_affiner_v1";
+  // Case « Retirer les bandes de la couleur des piliers » : même règle que la case Affiner.
+  const CLE_BANDES = "myktamap_detect_bandes_v1";
   const MAX_EXEMPLES = 6;
   const FENETRE_EXEMPLE = [192, 640];  // px plan lus autour d'un toucher de pipette (puis plus grand si coupé)
   const RECALCUL_MS = 200;
@@ -223,6 +226,25 @@ window.KtaDetectionUI = (function () {
       _esc(_t("detect.affiner")) + "</label>";
   }
 
+  // ── Retirer les bandes (ktaDetection.js > _retirerBandes) ──
+  // ⚠️ contrat (décision produit) : cochée par défaut (comportement des plans existants) ; décochée, un pilier
+  //   allongé (plus de 4 × son épaisseur) ou le cou étroit d'une masse restent entiers. Détection des masses
+  //   seulement : ni Remplir au clic, ni les galeries ne passent par ce filtre (case absente de leurs bandeaux).
+  // 🩸 Sur un plan aux galeries blanches, le filtre n'a rien à retirer et ne fait que découper les longs piliers.
+  function _bandesActif() {
+    try { return localStorage.getItem(CLE_BANDES) !== "0"; } catch (err) { return true; }
+  }
+  function _ecrireBandes(actif) {
+    try { localStorage.setItem(CLE_BANDES, actif ? "1" : "0"); } catch (err) {
+      console.warn("[Detection] case Bandes non retenue :", err && err.name);
+    }
+  }
+  function _caseBandes() {
+    return '<label class="kta-detect-type" title="' + _esc(_t("detect.bandes.aide")) + '">' +
+      '<input type="checkbox" data-detect-bandes' + (_bandesActif() ? " checked" : "") + "> " +
+      _esc(_t("detect.bandes")) + "</label>";
+  }
+
   // ── Lecture de l'image ──
   async function _lireBloc(x, y, w, h, e) {
     if (_e) _e.lectures++;
@@ -408,7 +430,7 @@ window.KtaDetectionUI = (function () {
             '" data-detect="pipette-' + c + '">' + _esc(_t("detect.classe." + c, { n: _e.couleurs[c].length })) +
             " " + _pastilles(c) + "</button>";
         }).join("") +
-        _caseAffiner() + _btn("effacer", "detect.exemples.effacer") +
+        _caseAffiner() + _caseBandes() + _btn("effacer", "detect.exemples.effacer") +
         _btn("zone", "detect.exemples.suivant", "kta-btn-primary") +
         '<button type="button" class="kta-btn kta-btn-ghost" data-detect="remplir">' +
         window.ktaIcone("paint-bucket") + " " + _esc(_t("detect.remplir.bouton")) + "</button>" +
@@ -453,7 +475,8 @@ window.KtaDetectionUI = (function () {
       };
       html = '<span class="kta-racc-info">' + _esc(_bilan()) + "</span>" +
         '<div class="kta-racc-actions">' + cur("tolerance", TOL_CURSEUR[0], TOL_CURSEUR[1]) + cur("taille", 2, 80) +
-        cur("tailleMax", 4, TAILLE_MAX_PLAFOND) + _caseAffiner() + "</div>" +
+        cur("tailleMax", 4, TAILLE_MAX_PLAFOND) + _caseAffiner() + _caseBandes() + "</div>" +
+        '<span class="kta-detect-aide-retirer">' + _esc(_t("detect.bandes.aide")) + "</span>" +
         '<div class="kta-racc-actions">' +
         CLASSES.filter(function (c) { return _e.couleurs[c].length; }).map(sel).join("") +
         _btn("valider", "detect.valider", "kta-btn-primary", { n: gardes }) + _btn("zone", "detect.recommencer") +
@@ -561,6 +584,12 @@ window.KtaDetectionUI = (function () {
     const af = ev.target.closest && ev.target.closest("[data-detect-affiner]");
     if (af && _e) {
       _ecrireAffiner(af.checked);
+      if (_e.apercu) { clearTimeout(_e.minuteur); _recalculer(); }
+      return;
+    }
+    const bd = ev.target.closest && ev.target.closest("[data-detect-bandes]");
+    if (bd && _e) {
+      _ecrireBandes(bd.checked);
       if (_e.apercu) { clearTimeout(_e.minuteur); _recalculer(); }
       return;
     }
@@ -720,6 +749,7 @@ window.KtaDetectionUI = (function () {
     const rg = window.KtaDetection.reglagesPourTaille(_e.curseurs.taille, _pxParM());
     rg.aireMax = _e.curseurs.tailleMax >= TAILLE_MAX_PLAFOND ? 0 : _e.curseurs.tailleMax * _e.curseurs.tailleMax;
     rg.affiner = _toleranceAffiner();
+    rg.bandes = _bandesActif();
     return Object.assign({ bloc: _e.bloc }, rg);
   }
   function _lacherExecuteur() {
@@ -1481,6 +1511,7 @@ window.KtaDetectionUI = (function () {
                          g: _e.couleurs.g.length },
              pipette: _e.pipette, coins: _e.coins.length, curseurs: _e.curseurs, lectures: _e.lectures,
              recalculs: _e.recalculs, recalculable: !!_e.recalculable, affiner: _affinerActif(),
+             bandes: _bandesActif(),
              tolerances: _e.deduits && _e.curseurs ? _classes().reduce(function (o, c) {
                o[c.id] = c.tolerance; return o;
              }, {}) : null,

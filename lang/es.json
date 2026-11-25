@@ -307,6 +307,8 @@
   "detect.annuler": "Cancelar",
   "detect.apercu.aide": "Toca un objeto para quitarlo o volver a ponerlo.",
   "detect.apercu.bilan": "{n} encontrados · {d} ya presentes · {m} descartados por el tamaño máximo · {g} demasiado grandes para un bloque.",
+  "detect.bandes": "Quitar las franjas del color de los pilares",
+  "detect.bandes.aide": "Desmarca si tus galerías no son del color de los pilares.",
   "detect.bouton": "Detectar pilares y frentes",
   "detect.boutonAide": "En la imagen del mapa: colores con el cuentagotas, vista previa antes de añadir",
   "detect.calcul": "Detectando… bloque {i} de {n}",

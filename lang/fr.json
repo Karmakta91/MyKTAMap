@@ -307,6 +307,8 @@
   "detect.annuler": "Annuler",
   "detect.apercu.aide": "Touchez un objet pour le retirer ou le remettre.",
   "detect.apercu.bilan": "{n} trouvés · {d} déjà présents · {m} écartés par la taille maximale · {g} trop grands pour un bloc.",
+  "detect.bandes": "Retirer les bandes de la couleur des piliers",
+  "detect.bandes.aide": "Décoche si tes galeries ne sont pas de la couleur des piliers.",
   "detect.bouton": "Détecter piliers et fronts",
   "detect.boutonAide": "Sur l'image du plan : couleurs à la pipette, aperçu avant d'ajouter",
   "detect.calcul": "Détection… bloc {i} sur {n}",

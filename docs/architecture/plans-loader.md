@@ -990,9 +990,12 @@ les galeries → tracés » plus bas.
   est écarté. Les fronts varient donc avec les curseurs de taille, mais seulement par ces contours : un pilier écarté
   rend son cerne aux fronts ; les traits loin des piliers ne bougent pas.
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
-  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; un pilier
-  d'allongement supérieur à 5 (plus de 4 × son épaisseur sur son axe) est pris pour une bande ; un pilier traversé par
-  une bande peut sortir en deux morceaux.
+  `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; case
+  « Retirer les bandes » cochée : un pilier d'épaisseur régulière plus de 4 × plus long qu'épais est pris pour une
+  bande et sort en éclats (pilier cerné de 800 × 150 px : 4 éclats d'environ 60 px, à pleine et à mi-résolution ;
+  entier jusqu'à 500 px de long), et le cou étroit d'une masse (épaisseur qui chute de plus de 30 %) fait un tronçon à
+  part, effacé par disques : morsures rondes dans les deux bouts ; un pilier traversé par une bande peut sortir en
+  deux morceaux.
 - ⚠️ **Bandes** (décision produit) : une bande de galerie (ou un mur levé en trait) de la couleur des piliers, plus
   épaisse que l'ouverture, se soudait aux piliers qu'elle touche. Après l'ouverture, `_retirerBandes` examine les
   composantes ALLONGÉES ou PEU REMPLIES (les piliers compacts sont sautés : sur tout le bloc, le coût montait jusqu'à
@@ -1001,7 +1004,16 @@ les galeries → tracés » plus bas.
   Un tronçon d'écart-type < 20 % de sa moyenne et plus long que 4 × son épaisseur est un trait : effacé (disque de
   rayon = distance au bord). Un bout qui entre dans un pilier ou sort par le bord du bloc rend une épaisseur à la
   longueur (la transition est hors du tronçon) ; un bout libre ne rend rien. Option `bandes: false` : sans le
-  critère (contre-épreuve). Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
+  critère. ⚠️ **Case « Retirer les bandes de la couleur des piliers »** (décision produit) : dans le bandeau, à
+  l'étape des couleurs et dans l'aperçu (`detectionStructures.js > _bandesActif` → `reglages.bandes`), cochée par
+  défaut (comportement des plans existants) ; décochée, piliers allongés et cous étroits restent entiers (ci-dessus,
+  « Limites connues »). Ligne d'aide visible dans l'aperçu : « Décoche si tes galeries ne sont pas de la couleur des
+  piliers. » Changer la case recalcule l'aperçu sur les blocs gardés, sans relire l'image. Retenue sur l'appareil
+  pour tous les plans (`myktamap_detect_bandes_v1`, `"0"` = décochée), comme « Affiner les contours ». Le Générateur
+  passe par le même parcours. Ni Remplir au clic, ni les galeries, ni le suivi d'un front ne passent par ce filtre ;
+  les fronts d'une passe mixte en dépendent seulement par les masses retirées de leur couleur (`_masseDuTrait`).
+  🩸 Remonté sur un plan aux galeries blanches : le filtre n'y a rien à retirer et ne fait que découper. Règle plus
+  fine (n'effacer qu'un tronçon qui relie deux masses ou sort du bloc) : backlog `detect-bandes-fines`. Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
   Surcoût mesuré (iPhone émulé ×4) : +11 à +21 % sans bande, +50 à +76 % quand des bandes sont soudées.
 - **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;

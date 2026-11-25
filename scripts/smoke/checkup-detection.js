@@ -9,7 +9,7 @@
 // prête au plan en tuiles V2 (Blob dans RUNTIME_ASSETS, comme un ZIP), puis, sous chaque moteur de KTA_MOTEURS :
 //   1. entrée outil Structures : pipette (Masse A, Masse B, Front) en touchant la carte, cadre par deux coins ;
 //   2. aperçu : 16 piliers et 2 fronts, RIEN d'écrit avant « Valider » ; un toucher en retire un ; curseur de
-//      tolérance = valeur appliquée aux masses, le front hors curseur ;
+//      tolérance = valeur appliquée aux masses, le front hors curseur ; case « Retirer les bandes » (recalcul) ;
 //   3. « Valider » : 17 structures (11 pilier-1, 4 pilier-2, 2 front-1), uid + updatedAt, contour au pixel près,
 //      fronts aux bons bouts ; UNE étape ⏪ les retire toutes ;
 //   4. entrée 📊 Éditeur de données : couleurs retenues pour le plan, même parcours ; multi-niveau : pilier-2 au
@@ -299,6 +299,47 @@ async function suite(nav) {
     "inchangé (" + e2.tolerances.f + ")", { affiche: affBouge, tolerances: e2.tolerances });
   e2 = await curseur("tolerance", tolA, 6);
   verifier(e2.apercu.n === 18 && e2.tolerances.a === tolA, "curseur de tolérance remis : 18 de nouveau", e2.apercu);
+  // Case « Retirer les bandes » : cochée par défaut, ligne d'aide visible ; la décocher recalcule sur les blocs gardés
+  // (reglages.bandes), retenue sur l'appareil ; recochée, retour à l'état de départ.
+  const caseBandes = async function (coche, recalculs) {
+    await page.evaluate(function (a) {
+      const i = document.querySelector("#kta-detect-bandeau [data-detect-bandes]");
+      window.__recalculsVises = a.recalculs;
+      i.checked = a.coche;
+      i.dispatchEvent(new Event("change", { bubbles: true }));
+    }, { coche: coche, recalculs: recalculs });
+    await attendre(page, function () {
+      const s = window.KtaDetectionUI.etat();
+      return s && s.recalculs >= window.__recalculsVises;
+    }, 15000);
+    return etat(page);
+  };
+  const vueBandes = await page.evaluate(function () {
+    const i = document.querySelector("#kta-detect-bandeau [data-detect-bandes]");
+    const aide = Array.prototype.some.call(document.querySelectorAll("#kta-detect-bandeau .kta-detect-aide-retirer"),
+      function (s) { return s.textContent === window.I18n.t("detect.bandes.aide"); });
+    return { presente: !!i, cochee: !!(i && i.checked), aide: aide };
+  });
+  verifier(vueBandes.presente && vueBandes.cochee && vueBandes.aide && e2.bandes === true,
+    "case « Retirer les bandes » cochée par défaut dans l'aperçu, ligne d'aide visible", vueBandes);
+  const grisAffiches = function () {
+    return page.evaluate(function () {
+      return document.querySelectorAll(".leaflet-ktaDetection-pane path.kta-detect-classe-b").length;
+    });
+  };
+  const grisAvant = await grisAffiches();
+  e2 = await caseBandes(false, 7);
+  const lsBandes = await page.evaluate(function () { return localStorage.getItem("myktamap_detect_bandes_v1"); });
+  const grisSans = await grisAffiches();
+  // contre-épreuve dans l'app : sans le filtre, la bande grise soudée relie les deux piliers gris du haut
+  verifier(e2.bandes === false && lsBandes === "0" && e2.lectures === lus && e2.apercu.n === 17 &&
+    grisAvant === 4 && grisSans === 3,
+    "case Bandes décochée : recalcul sans relire l'image, retenue sur l'appareil ; la bande grise n'est plus retirée, " +
+    "deux piliers gris soudés en une masse (gris " + grisAvant + " → " + grisSans + ")",
+    { bandes: e2.bandes, ls: lsBandes, lectures: e2.lectures, n: e2.apercu.n, gris: [grisAvant, grisSans] });
+  e2 = await caseBandes(true, 8);
+  verifier(e2.bandes === true && e2.apercu.n === 18 && e2.lectures === lus, "case Bandes recochée : 18 de nouveau",
+    { bandes: e2.bandes, n: e2.apercu.n });
   const garde = await page.evaluate(function () {
     const cle = "myktamap_detect_couleurs_v1_" + window._currentLoadedPlanId;
     try { return JSON.parse(localStorage.getItem(cle)).curseurs; }
