@@ -5,28 +5,24 @@
  */
 
 // =====================================================================
-// fondOsmPlan.js — fond de carte SOUS le plan (OSM ou IGN), dans la carte du plan, et son petit panneau (bouton du haut)
+// fondOsmPlan.js — fond de carte SOUS le plan (OSM ou IGN) dans la carte du plan, et son panneau (bouton du haut)
 // =====================================================================
-// Une L.GridLayer en canvas dans le pane `ktaFondOsm` (sous `tilePane`) : chaque tuile de la carte du plan dessine
-// les tuiles OSM qui la couvrent, posées par setTransform (affine des 3 coins de la tuile, calage
-// KmzExport.buildTransformCalib → Web Mercator). Pas de seconde carte. La transparence est celle de l'image du plan,
-// multipliée par le curseur des filtres (tiling.js > ktaAppliquerOpacitePlanDeBase) ; le fond OSM reste opaque.
-// Panneau : interrupteur, choix du fond (table js/fondsCarte.js, partagé avec la Vue OSM), transparence, « Ma position ».
-// Quatrième commande : « Enregistrer hors ligne » (emprise du plan dans OsmTilesCache, même code que l'accueil).
+// Une L.GridLayer en canvas dans le pane `ktaFondOsm` (sous `tilePane`) : chaque tuile de la carte du plan dessine les
+// tuiles du fond qui la couvrent, par setTransform (3 coins, calage KmzExport.buildTransformCalib → Web Mercator).
+// Une tuile est rendue à Leaflet dès sa première image posée, les autres suivent. Cache LRU d'images décodées : 48 au
+// téléphone, 200 sur un PC (pointeur fin, grand écran). Transparence : celle de l'image du plan (× curseur des filtres,
+// tiling.js > ktaAppliquerOpacitePlanDeBase) ; le fond reste opaque. Panneau : interrupteur, choix du fond
+// (js/fondsCarte.js), transparence, « Ma position », « Enregistrer hors ligne » (emprise du plan dans OsmTilesCache).
 // Expose : window.FondOsmPlan = { basculerPanneau, fermerPanneau, allumer, eteindre, maPosition, majBouton, regler,
 //   facteurPlan, enregistrerHorsLigne, retirer, transferer, PREFIXE, etat }.
-// ⚠️ Interrupteur éteint à chaque plan ouvert ; transparence retenue PAR PLAN (décision produit) ; la fenêtre Vue
-//   OSM ne s'ouvre plus du bouton.
-// 🔒 Réseau : les domaines de la table des fonds, Vue OSM autorisée (OsmView.isOptedIn), hors incognito ; hors ligne,
-//   les tuiles OSM enregistrées (OsmTilesCache) et aucune requête, quel que soit le fond. Au-delà du zoom max du fond :
-//   la tuile la plus fine agrandie. Fond IGN : une tuile IGN absente (404 hors couverture) devient la tuile OSM.
-// 🔒 « Ma position » : un getCurrentPosition, refusé hors de l'emprise du plan (pad 0,5) et en incognito ; rien
-//   de persisté ni d'envoyé. Le point vit en mémoire jusqu'au plan suivant.
-// 🩸 Le pane doit tourner avec le plan orienté : créé DANS le pane de rotation s'il existe (sinon il y sera déplacé),
-//   la couche s'inscrit dans `map._ktaGrillesSousRotation` pour que mapBearing la relance à chaque angle.
-// 🩸 Coordonnées Mercator au zoom 19 ≈ 1e8 px : le canvas calcule en float32 ; tout se pose relatif au coin de la tuile.
-// Exports PNG / PDF / KMZ : ils redessinent depuis les données, le fond n'y entre pas.
-// Garde-fou : scripts/smoke/checkup-fond-osm.js · Doc : docs/architecture/vue-osm.md (Fond OSM sous le plan).
+// ⚠️ Interrupteur éteint à chaque plan ouvert ; transparence retenue PAR PLAN (décision produit).
+// 🔒 Réseau : domaines de la table des fonds, Vue OSM autorisée, hors incognito ; hors ligne, tuiles OSM enregistrées
+//   seulement. Fond IGN : tuile absente (404) remplacée par l'OSM. « Ma position » : un getCurrentPosition, refusé
+//   hors de l'emprise (pad 0,5) et en incognito, rien de persisté ni d'envoyé.
+// 🩸 Pane DANS le pane de rotation (plan orienté), couche inscrite dans `map._ktaGrillesSousRotation`.
+// 🩸 Mercator au zoom 19 ≈ 1e8 px : le canvas calcule en float32, tout se pose relatif au coin de la tuile.
+// Exports PNG / PDF / KMZ : redessinés depuis les données, sans le fond.
+// Garde-fous : scripts/smoke/checkup-fond-osm.js, checkup-fond-osm-dezoom.js · Doc : vue-osm.md (Fond sous le plan).
 
 (function() {
   "use strict";
@@ -36,7 +32,10 @@
   // 🩸 Chaque canvas déborde d'un pixel CSS à droite et en bas, avec son vrai contenu : sous rotation, le bord
   // anticrénelé de deux canvas voisins laissait voir le fond de la carte (liseré sombre en diagonale).
   const COTE         = TUILE + 1;
-  const CACHE_RAM    = 48;             // images OSM décodées gardées (≈ 12 Mo)
+  // Images décodées gardées (256 Ko chacune) : 48 au téléphone (≈ 12 Mo, mémoire iPhone mesurée), 200 sur un PC
+  // (≈ 50 Mo). 🩸 Un écran 1920 × 1080 montre ~80 images par zoom : à 48, un dézoom vidait déjà le cache et le
+  // rezoom redemandait tout (checkup-fond-osm-dezoom.js).
+  const CACHE_RAM    = _grandEcranPc() ? 200 : 48;
   const CACHE_ANCETRES = 16;           // tuiles enregistrées d'un zoom plus large, agrandies hors ligne
   const REPLI_ZOOMS  = 6;              // hors ligne : jusqu'à 6 zooms plus larges (morceau ×64)
   const CLE_TRANSPARENCE = "myktamap_fond_osm_v1_";   // + planId : transparence retenue par plan
@@ -59,7 +58,20 @@
   let _dernierEnregistrement = null;   // résultat du dernier enregistrement (diagnostic, lu par etat())
   const _enVol      = new Set();       // images réseau en cours (coupées à l'extinction)
   let _requetes     = 0;               // requêtes réseau lancées (diagnostic, lu par etat())
+  let _magasin      = null;            // Promise<number> : tuiles enregistrées (OsmTilesCache), relue à l'allumage
   let _replis       = 0;               // tuiles IGN remplacées par OSM (attribution OSM ajoutée, lu par etat())
+
+  // PC : pointeur fin et écran d'au moins ~1280 × 800. ⚠️ Un appareil tactile n'y entre que si sa mémoire est connue
+  // et suffisante (navigator.deviceMemory, Chromium seul) : un iPad au trackpad garde le cache du téléphone.
+  function _grandEcranPc() {
+    try {
+      if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches) return false;
+      if (!window.screen || window.screen.width * window.screen.height < 1000000) return false;
+      const memoire = navigator.deviceMemory;
+      if (typeof memoire === "number" && memoire < 4) return false;
+      return !(navigator.maxTouchPoints > 0) || memoire >= 4;
+    } catch(e) { return false; }
+  }
 
   // Fond choisi sur l'appareil (table js/fondsCarte.js).
   function _fond() { return window.KtaFondsCarte.courant(); }
@@ -156,6 +168,13 @@
     });
   }
   function _reseauPermis() { return _enLigne() && _osmAutorise() && !_incognito(); }
+  // Nombre de tuiles enregistrées, compté une fois (allumage, fin d'un enregistrement) ; 0 aussi si illisible.
+  function _compterMagasin() {
+    const C = window.OsmTilesCache;
+    _magasin = (C && typeof C.getStats === "function")
+      ? C.getStats().then(function(s) { return (s && s.count) || 0; }, function() { return 0; })
+      : Promise.resolve(0);
+  }
   // Tuile enregistrée (« Enregistrer hors ligne »), décodée ; null si absente.
   async function _imageEnregistree(z, x, y) {
     let blob = null;
@@ -182,6 +201,9 @@
   // l'emprise : sans ce repli, le fond hors ligne serait vide à tous les autres zooms.
   // Fond IGN : la tuile IGN d'abord, réseau permis seulement ; absente (404 hors couverture, erreur), la suite est
   // celle d'OSM. 🔒 Aucune tuile IGN n'est lue ni écrite dans le cache hors ligne.
+  // 🩸 Réseau permis et rien d'enregistré : pas de lecture IndexedDB (une par image, 25 à 30 ms chacune au dézoom
+  // d'un écran PC, avant même la requête). Le compte peut vieillir (tuiles enregistrées depuis la Vue carte) : en
+  // ligne, le service worker sert alors l'URL depuis le même cache ; hors ligne, la lecture se fait toujours.
   async function _imageOsm(z, x, y, gen) {
     const fond = _fond();
     if (fond.id !== window.KtaFondsCarte.OSM && _reseauPermis()) {
@@ -192,7 +214,8 @@
       _replis++;
       if (_replis === 1 && _allume) _attribution(_carte, true);
     }
-    const img = await _imageEnregistree(z, x, y);
+    const enregistrees = (_magasin && _reseauPermis()) ? await _magasin : null;
+    const img = enregistrees === 0 ? null : await _imageEnregistree(z, x, y);
     if (gen !== _generation) return null;
     if (img) return { img: img, sx: 0, sy: 0, cote: TUILE };
     if (_reseauPermis()) {
@@ -257,13 +280,18 @@
       if (!plan || !plan.tuiles.length) { setTimeout(function() { done(null, canvas); }, 0); return canvas; }
       const ctx = canvas.getContext("2d");
       const gen = _generation;
-      let restant = plan.tuiles.length;
+      let restant = plan.tuiles.length, pret = false;
+      // 🩸 Tuile rendue à Leaflet dès sa PREMIÈRE image posée, les autres se dessinent au fil de l'eau. Attendre la
+      // dernière laissait le canvas invisible (fondu) jusqu'à la plus lente : 200 à 300 ms de contenu caché au
+      // dézoom PC, des blocs entiers qui surgissaient d'un coup. Rendre tout de suite, vide, ferait retirer par
+      // Leaflet les tuiles de l'ancien zoom avant qu'il y ait de quoi les remplacer.
+      const finir = function() { if (!pret) { pret = true; done(null, canvas); } };
       plan.tuiles.forEach(function(t) {
         _image(t.z, t.x, t.y).then(function(img) {
-          if (img && gen === _generation && canvas.width) _poserTuile(ctx, img, t, plan);
+          if (img && gen === _generation && canvas.width) { _poserTuile(ctx, img, t, plan); finir(); }
         }).then(function() {
           restant--;
-          if (restant === 0) done(null, canvas);
+          if (restant === 0) finir();
         });
       });
       return canvas;
@@ -344,6 +372,7 @@
     const map = window.map;
     _generation++;
     _replis = 0;
+    _compterMagasin();
     _pane(map);
     _couche = new CoucheFondOsm();
     _couche.addTo(map);
@@ -370,6 +399,7 @@
     _enVol.clear();
     _images.clear();
     _ancetres.clear();
+    _magasin = null;
     if (_carte && _carte === window.map) _opacitePlan();
     _attribution(null, false);
     _carte = null;
@@ -702,6 +732,7 @@
     } finally {
       _enregistrement = null;
       _dernierEnregistrement = res;
+      if (_allume) _compterMagasin();
       _majPanneau();
       _recheckVueOsm();
     }
@@ -711,7 +742,7 @@
   function etat() {
     return {
       disponible: !_raisonIndispo(), raison: _raisonIndispo(), allume: _allume, transparence: _transparence,
-      imagesEnMemoire: _images.size, requetesReseau: _requetes, panneauOuvert: !!_panneau,
+      imagesEnMemoire: _images.size, cacheRam: CACHE_RAM, requetesReseau: _requetes, panneauOuvert: !!_panneau,
       fond: _fond().id, replis: _replis,
       position: _moi ? _moi.marqueur.getLatLng() : null,
       enregistrement: _enregistrement, dernierEnregistrement: _dernierEnregistrement,

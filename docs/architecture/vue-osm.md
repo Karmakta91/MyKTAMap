@@ -173,10 +173,24 @@ aucune requête). Le calage est relu à chaque allumage (un géoréf saisi dans 
   rotation de la carte du plan relance `_update` de ces seules grilles (pas un parcours de tous les calques), et le
   patch `_installerPatchGrilles` (désormais posé pour toutes les cartes, `rot.grilles` vrai partout) élargit leur zone
   au rectangle tourné.
+- **Tuile affichée dès sa première image** : `createTile` rend le canvas à Leaflet (`done`) dès qu'une des images
+  qui le couvrent est posée, les autres se dessinent au fil de l'eau (la génération `_generation` et `canvas.width`,
+  remis à 0 au `tileunload`, écartent les images arrivées trop tard ; sans aucune image, `done` à la dernière
+  réponse). 🩸 Attendre la plus lente laissait le canvas invisible (fondu Leaflet) : mesuré au dézoom d'un écran PC,
+  jusqu'à 300 ms de contenu dessiné mais caché, des blocs qui surgissaient d'un coup. Rendre tout de suite, vide,
+  ferait retirer par Leaflet les tuiles de l'ancien zoom avant qu'il y ait de quoi les remplacer.
 - **Images** : fond IGN, d'abord la tuile IGN si le réseau est permis (en erreur : la suite d'OSM, compteur
   `replis`) ; puis le cache « Save Offline » (`OsmTilesCache.getCachedTile`, URL `blob:` révoquée après
-  décodage), puis le réseau OSM seulement si en ligne, OSM autorisé et hors incognito ; 48 images décodées gardées (LRU),
-  un échec n'est pas gardé. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
+  décodage), puis le réseau OSM seulement si en ligne, OSM autorisé et hors incognito ; un échec n'est pas gardé.
+  🩸 Réseau permis et cache « Save Offline » vide (compté par `getStats` à l'allumage et après « Enregistrer hors
+  ligne ») : aucune lecture IndexedDB, qui coûtait 25 à 40 ms par image au dézoom PC, avant la requête. Compte vieilli
+  (tuiles enregistrées depuis la Vue carte) : en ligne, le service worker sert l'URL depuis le même cache ; hors ligne,
+  la lecture se fait toujours.
+- **Cache RAM** (LRU d'images décodées, 256 Ko chacune) : **48 au téléphone** (≈ 12 Mo, mesure ci-dessous), **200 sur
+  un PC** (≈ 50 Mo) : pointeur fin (`(pointer: fine)`), écran ≥ 1 Mpx CSS (~1280 × 800), `navigator.deviceMemory`
+  ≥ 4 s'il est connu ; un appareil tactile n'y entre que si sa mémoire est connue (Chromium) : iPhone et iPad, même
+  au trackpad, restent à 48. 🩸 Un écran 1920 × 1080 montre ~80 images par zoom : à 48, le dézoom vidait déjà le
+  cache et chaque rezoom redemandait tout. `etat().cacheRam` dit le plafond retenu. 🩸 Sans réseau permis, une tuile absente à son zoom est prise dans une tuile enregistrée
   jusqu'à 6 zooms plus large (morceau agrandi, `drawImage` sur un rectangle source) : « Enregistrer hors ligne » ne
   garde que 3 zooms, le fond serait vide à tous les autres. Éteindre coupe les images en vol (`src = ""`), vide le cache, remet chaque canvas à 0 × 0
   (`tileunload` : iOS ne rend sa mémoire qu'ainsi).
@@ -196,7 +210,12 @@ retenue pour ce plan.
 fond n'y entre pas ; la vue 3D ne le montre pas. Le Mode Secours ouvre toujours la fenêtre Vue carte (bouton 🌍 du
 scénario, capture du briefing PDF).
 
-🛡️ `scripts/smoke/checkup-fond-osm.js` (tuiles OSM synthétiques, calage fictif prêté en mémoire au relevé fictif).
+🛡️ `scripts/smoke/checkup-fond-osm.js` (tuiles OSM synthétiques, calage fictif prêté en mémoire au relevé fictif) ;
+`scripts/smoke/checkup-fond-osm-dezoom.js` (écran 1920 × 1080, réseau OSM simulé à délai variable et déterministe,
+80 à 400 ms ; dézoom 0 → −2, rezoom, dézoom). Mesuré (Chromium, 48 tuiles à l'écran au dézoom) : contenu caché
+jusqu'à 300 ms → 0 ; délai moyen avant contenu visible 370 ms → 190 à 260 ms (le chargement complet reste celui de
+la plus lente, ~430 ms) ; second dézoom : 53 images sur 82 redemandées et ~100 ms → 0 image et ~15 ms ; téléphone
+émulé : plafond 48 inchangé.
 Mesure (iPhone émulé, processeur ÷4, relevé fictif rendu en V2 par un tuilage prêté, glissés et zoom scriptés) :
 57 images/s fond éteint, 49 allumé ; tourné de 30° : 48 éteint, 32 allumé ; 8 canvas (2 Mo) à plat, 16 (4 Mo)
 tournée, 33 à 48 images OSM décodées (~8 à 12 Mo) ; tout rendu à l'extinction. ⚠️ Non mesuré sur un vrai téléphone.
