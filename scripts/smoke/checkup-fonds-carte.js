@@ -713,6 +713,19 @@ async function verifCreditMobile(page, sel, nomCarte, theme) {
       !/IGN/.test(a4.attribution || "") && a4.cacheIndispo === false && a4.cacheTitre !== raison,
       { a4: a4, ign: s.etat.ign.length - nIgnA });
 
+    console.log("— A4b : case « Masquer les crédits des cartes » sur le pied du widget —");
+    const a5 = await page.evaluate(function () {
+      const pied = document.querySelector(".kta-osm-home-footer");
+      const vu = function () { return !!pied && getComputedStyle(pied).display !== "none"; };
+      const avant = vu();
+      window.KtaFondsCarte.masquerCredits(true);
+      const masque = !vu();
+      window.KtaFondsCarte.masquerCredits(false);
+      return { avant: avant, masque: masque, apres: vu() };
+    });
+    verif("accueil : case cochée = pied du widget masqué (domaine, crédit, stats), décochée = il revient",
+      a5.avant && a5.masque && a5.apres, a5);
+
     console.log("— A6 : fond choisi dans « Plans & filtres de la carte » de l'accueil —");
     await ouvrirFiltresAccueil(page);
     const f0 = await page.evaluate(lireFiltresAccueil);

@@ -635,7 +635,7 @@ html, body {
 }
 /* Crédit des données (© OpenStreetMap, © IGN – Géoplateforme) : visible sur la Vue OSM et sur le fond sous le plan
    seulement (classe kta-credits-carte posée par KtaFondsCarte.montrerCredits), masqué par la case « Masquer les
-   crédits des cartes » (html.kta-credits-masques). Petit, en coin ; fond voilé à 90 % : texte ≥ 4,5:1 sur une tuile
+   crédits des cartes » (html.kta-credits-masques), qui retire aussi le pied du widget de l'accueil. Petit, en coin ; fond voilé à 90 % : texte ≥ 4,5:1 sur une tuile
    blanche comme noire, dans les deux thèmes (mesuré par checkup-fonds-carte.js), jamais d'opacité sur le texte. */
 .kta-credits-carte .leaflet-control-attribution {
   display: block !important;
@@ -661,7 +661,8 @@ html, body {
   text-decoration: underline;
   text-underline-offset: 1px;
 }
-html.kta-credits-masques .kta-credits-carte .leaflet-control-attribution { display: none !important; }
+html.kta-credits-masques .kta-credits-carte .leaflet-control-attribution,
+html.kta-credits-masques .kta-osm-home-footer { display: none !important; }
 
 .leaflet-bar a.kta-actif,
 .leaflet-bar a.kta-actif:hover {

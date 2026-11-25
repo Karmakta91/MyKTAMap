@@ -124,8 +124,8 @@ et s'il se garde hors ligne. Aucune autre URL de tuile n'est écrite dans `osmVi
   `homeConfig.js > _initCreditsCartesHome`) : décochée par défaut ; `KtaFondsCarte.masquerCredits(bool)` écrit
   `myktamap_credits_cartes_masques_v1` ("1"/"0", try/catch), pose `html.kta-credits-masques` (effet immédiat sur les
   cartes ouvertes, appliqué au chargement du module) et émet `kta:creditsCartesChange`. Réglage d'appareil, non exporté.
-- Le widget de l'accueil garde sa ligne de pied (domaine contacté + crédit), que la case ne masque pas : elle dit
-  aussi quel domaine la carte contacte.
+- La case retire aussi la ligne de pied du widget de l'accueil (domaine contacté, crédit, stats du cache) : choix
+  de l'utilisateur, même si cette ligne dit quel domaine la carte contacte (décision produit).
 
 🛡️ `scripts/smoke/checkup-fonds-carte.js` (Vue carte V1-V8, crédits V1-V3b et P1-P5, case des crédits K1-K4, widget de
 l'accueil A1-A4, briefing Secours S1-S2 et son crédit, case décochée et incognito A5/S3-S4 : zéro requête de tuile,
