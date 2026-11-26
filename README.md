@@ -532,6 +532,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-audit-domaine.js` | Périmètre de garantie de l'audit réseau dérivé de `location.origin` au lieu des deux domaines écrits en dur | pre-commit |
 | `check-audit-html.js` | Page d'audit réseau `.html` qui n'est plus le rendu exact de son `.md` | pre-commit |
 | `check-backlog.js` | Rien : avertit d'un `docs/BACKLOG.md` mal formé (sections, plafond de Maintenant, métadonnées) | pre-commit (consultatif) |
+| `check-classement-doc.js` | Fichier `.md` / `.html` / `.svg` ajouté, supprimé ou renommé que le site de doc ne classe plus (inventaire du dépôt doc voisin, présent sur le poste ; muet sans lui, donc en CI) | pre-commit |
 | `check-calage-projection.js` | Calage A / B (C) faux : plan tangent inexact ou modèle historique modifié, confrontés à une géodésie indépendante | pre-commit |
 | `check-calque-session.js` | Calque rapatrié en session verrouillé sans sa copie, ou copie non défensive | pre-commit |
 | `check-calques-groupe.js` | Calque ajouté à un groupe (`layerEditor`…) retiré par `calque.remove()` : il reste dans le groupe (calques morts, mémoire, fantômes au ≡) | pre-commit |

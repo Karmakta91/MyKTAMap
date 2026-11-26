@@ -94,6 +94,9 @@ node scripts/check-couleurs-inline.js || exit $?
 # Forme du backlog : horizons, plafond de Maintenant, metadonnees des entrees (avertissement, jamais bloquant).
 node scripts/check-backlog.js
 
+# Fichier .md/.html/.svg ajoute, supprime ou renomme : le site de doc (depot voisin, poste seulement) le classe-t-il ?
+node scripts/check-classement-doc.js || exit $?
+
 # Commentaires = etat actuel : ni tag de version en tete, ni « ligne N », ni garde-fou absent ; cliquet.
 node scripts/check-commentaires.js || exit $?
 
