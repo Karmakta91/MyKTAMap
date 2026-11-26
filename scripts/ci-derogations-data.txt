@@ -12,3 +12,5 @@
 # La dérogation ne couvre que `data/` : l'anti-fuite pro et les noms réels restent rejoués sur ce commit.
 a1340f7473de52ca1be72122d760e70309ae8f25 nouveau_plan_test
 f85e7d1642901beec018423243d49e13eb9e25e7 nouveau_plan_test2
+33b8e3a2ddb55bd091a89e3c226641e8789bb429 nouveau_plan_test3
+71ae405482abd0654f93834ba23460d969318e05 suppression_ancien_dossier_test
