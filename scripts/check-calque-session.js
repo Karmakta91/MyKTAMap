@@ -343,6 +343,9 @@ const CALQUE = {
     const ro = m.CS.integrerAjouts("sig", ["pt_main0001"]);
     t("🔒 intégrer : refusé en lecture seule, aucune marque posée",
       ro.ok === false && ro.code === "lectureSeule" && m.etat.editorPoints[0]._srcCalque === undefined);
+    const rlec = await m.CS.rapatrier("puits");
+    t("🔒 rapatrier (« Modifier » un calque) : refusé en lecture seule, calque intact",
+      rlec.ok === false && rlec.code === "lectureSeule" && !m.CS.estRapatrie("puits") && m.CS.compterCopie("puits") === 0);
     m.lecture = false;
 
     const avantMaj = Date.now();

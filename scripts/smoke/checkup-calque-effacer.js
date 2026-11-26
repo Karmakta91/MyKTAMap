@@ -127,6 +127,22 @@ function etat(page, ids) {
     const apres = await etat(page, ids);
     if (JSON.stringify(apres) === rendu) ok("effacé : copies retirées, verrous levés, originaux affichés, panneau à jour");
     else pb("effacé : calques pas rendus " + JSON.stringify(apres));
+
+    // 🔒 Plan en lecture seule (garde simulée, comme les autres checkups) : ni bouton « Modifier », ni rapatriement
+    // par le chemin des autres outils (FilterPanel.rapatrierCalque), et aucune question posée.
+    await page.evaluate(function () {
+      window.__ccRO = window.ktaEditionRefusee; window.ktaEditionRefusee = function () { return true; };
+    });
+    const ro = await etat(page, ids);
+    const roAppel = await page.evaluate(async function (id) {
+      const r = await window.FilterPanel.rapatrierCalque(id);
+      return { r: r, question: !!document.getElementById("kta-confirm-oui"), rapatrie: window.CalqueSession.estRapatrie(id) };
+    }, ids[0]);
+    await page.evaluate(function () { window.ktaEditionRefusee = window.__ccRO; });
+    if (ro.boutons && ro.boutons.rapatrier === 0 && ro.boutons.exporter === 0) ok("lecture seule : aucun bouton « Modifier »");
+    else pb("lecture seule : boutons proposés " + JSON.stringify(ro.boutons));
+    if (roAppel.r === false && !roAppel.question && !roAppel.rapatrie) ok("lecture seule : « Modifier » par un autre outil refusé, sans question");
+    else pb("lecture seule : rapatriement possible " + JSON.stringify(roAppel));
     await page.waitForTimeout(2000);
     const plusTard = await etat(page, ids);
     if (JSON.stringify(plusTard) === rendu) ok("2 s plus tard : toujours rendus");

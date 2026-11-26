@@ -177,6 +177,10 @@ window.CalqueSession = (function () {
   function rapatrier(id, opts) {
     if (!id) return Promise.resolve({ ok: false, code: "idManquant" });
     if (estRapatrie(id)) return Promise.resolve({ ok: false, code: "dejaRapatrie" });
+    // 🔒 Lecture seule : copier le calque en session serait une modification (copies datées, envoyées à la synchro).
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee(true)) {
+      return Promise.resolve({ ok: false, code: "lectureSeule" });
+    }
     const lc = _cfgCalque(id);
     if (!lc || !lc.file) return Promise.resolve({ ok: false, code: "calqueInconnu" });
     if (compterCopie(id) > 0) return Promise.resolve(_reprendre(id));

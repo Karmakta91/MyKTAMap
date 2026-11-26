@@ -624,9 +624,11 @@
         // Le calque « editor » EST la session : rien à rapatrier.
       const rapatriable = !!(CS && lc && lc.file && id !== "editor");
       const rapatrie    = !!(CS && CS.estRapatrie(id));
-      // 🔒 Plan ouvert en lecture seule : ni intégration ni export proposés (même règle que les outils de dessin
-      // grisés). La restitution reste : locale, elle ne part pas aux autres (CalqueSession > _restitutionPartagee).
+      // 🔒 Plan ouvert en lecture seule : ni « Modifier », ni intégration, ni export proposés (même règle que les
+      // outils de dessin grisés). La restitution reste : locale, elle ne part pas aux autres
+      // (CalqueSession > _restitutionPartagee).
       const modifiable  = rapatrie && !lectureSeule;
+      const boutonModif = rapatriable && (rapatrie || !lectureSeule);
       html += '<div class="kta-fp-calque-ligne">' +
                 '<label class="kta-fp-row-cb">' +
                   // ⚠️ Calque en modification : l'original reste masqué (sa copie vit dans la session), la case
@@ -656,7 +658,7 @@
                       window.ktaIcone("arrow-up-from-line") + ' ' + _escHtml(window.I18n.t("filter.calque.exporter")) +
                     '</button>'
                   : '') +
-                (rapatriable
+                (boutonModif
                   ? '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small kta-fp-calque-btn" ' +
                       (rapatrie ? 'data-calque-restituer="' : 'data-calque-rapatrier="') + _escAttr(id) + '" ' +
                       'title="' + _escAttr(window.I18n.t(rapatrie ? "filter.calque.restituerTitle"
@@ -991,6 +993,8 @@
   function _rapatrierCalque(id) {
     const CS = window.CalqueSession;
     if (!CS || !id) return Promise.resolve(false);
+    // 🔒 Lecture seule : refus dit par la garde, avant la pesée (Raccords et Vérifier le plan passent aussi ici).
+    if (typeof window.ktaEditionRefusee === "function" && window.ktaEditionRefusee()) return Promise.resolve(false);
     return CS.peser(id).then(async function(p) {
       if (!p) { window.ktaAlerte(window.I18n.t("filter.calque.errPesee"), { type: "erreur" }); return false; }
       // Sessions en IndexedDB (js/sessionStore.js) : leur total face à la place accordée au site. Repli
