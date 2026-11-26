@@ -1,5 +1,5 @@
 {
   "plans": [
-    { "id": "test", "path": "data/test", "name": "Relevé fictif de test", "version": "V1", "multiLevel": true }
+    { "id": "test", "zip": "data/myktamap.zip", "name": "Relevé fictif", "version": "V1", "multiLevel": true }
   ]
 }
