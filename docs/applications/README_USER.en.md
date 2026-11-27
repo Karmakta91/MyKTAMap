@@ -1083,6 +1083,18 @@ A single **Undo** in the history removes everything just added. What is already 
 
 **In the Generator**, at the **Data layers** step (Advanced mode), the **Detect pillars and fronts** button does the same on the plan image **before** generating it, while editing it, or in **Update the map**. A window shows the image: eyedropper, frame or whole plan, preview and sliders as on the map; the analysis reads the image at full resolution. What you add goes into a **Detected structures** layer of the generated plan, already aligned with the image even when the white margins are trimmed. What is already in a layer of the plan is not added twice. On a very large image, a phone may run out of memory, as for tiling.
 
+### Add structures together
+
+A pillar drawn in one piece but crossed by a line of the drawing sometimes comes out as two or three pieces, split by the thickness of the line (detection or hand drawing). The **Add structures together** button of the **🏛️ Structures** group (also in the **📊 Data editor**) merges them into one:
+
+1. Tap the **first** structure (gold outline): it keeps its name, description and identity.
+2. Tap each **neighbour** to add to it (blue dashes). Tapping a selected structure again removes it.
+3. **Confirm**: a single structure covers the pieces and the line that split them. **Cancel** (or Esc) leaves without changing anything.
+
+A gap of up to **6 image pixels** is filled (adjustable from 1 to 20 in the banner, **Gap filled** field); overlapping structures are accepted too. Beyond that, the banner says "Not touching" with the gap, and nothing is changed: a gallery, much wider, is never filled. Only **area** structures (pillars, walls, your own area types) **of the same type** and **on the same level** can be added together; a front, an arch or another type is refused with the reason. A hole in the middle of the result is lost: only the outer outline remains (a circle in the middle is usually text written on the plan).
+
+If a neighbour has a name or description different from the first one, a window tells you what will be lost before writing. A single **Undo** in the history brings back the original structures. A structure from a **layer** must first be copied into the session: **🔄 Edit** (≡ Filters, layer's row). On a read-only plan, the tool is refused.
+
 ---
 
 ## 🧹 Erase and correct

@@ -56,12 +56,6 @@
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S
   · id: referencement-doc`
-- **Additionner deux structures du même type** — outil Structures et 📊 Éditeur de données : on clique la première,
-  puis ses voisines, Valider ; écart jusqu'à l'épaisseur d'un trait (px de l'image) comblé, au-delà refus ; la
-  première garde uid, nom, photos et liaisons ; trou intérieur perdu (contour extérieur seul). Surfaciques seulement.
-  `qui: Claude · action: lot après l'essai de detect-bandes-fines sur dev, union reprise de galerieEmprise.js
-  · fini: trois piliers coupés par un trait fusionnés en un seul, annulable, refusé en lecture seule, check vert
-  · depuis: 27/11/2026 · taille: M · id: structures-additionner`
 
 ## Plus tard
 
@@ -143,7 +137,7 @@
 - **Couper une structure en deux par un trait** — l'inverse de l'addition, pour une fusion de trop au-delà de
   l'annulation ou un pilier mal détecté d'un seul tenant.
   `qui: Claude · action: QCM puis lot · fini: une structure coupée par un trait donne deux structures, annulable
-  · depuis: 27/11/2026 · taille: S · id: structures-couper · après: structures-additionner`
+  · depuis: 27/11/2026 · taille: S · id: structures-couper`
 
 ## Entrant
 
