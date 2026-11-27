@@ -220,7 +220,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 
 ---
 
-## 🟢 L'application : modules JS (162 modules)
+## 🟢 L'application : modules JS (163 modules)
 
 > 137 modules chargés par `index.html` + 3 hors `index.html`. Pas de bundler ni de transpileur : la plupart sont des
 > **IIFE** qui exposent leur API sur `window` (`utils.js`, `config.js`, `map.js`… posent des globales). **L'ordre de
@@ -299,6 +299,7 @@ docs/applications/      ← Docs lues PAR l'app, seul dossier de docs/ livré (c
 | `selectionMulti.js` | Sélection de N objets (clic, type, zone) pour une conversion, une suppression ou un changement de niveau en lot |
 | `selectionZone.js` | Sélection par zone dessinée (outil ♦️ Surface), suppression et niveau en lot de la sélection |
 | `ajusterSommets.js` | Ajuster une forme dessinée : déplacer, ajouter ou supprimer un sommet par appui long, couper un tracé à un sommet |
+| `additionnerStructures.js` | Additionner des structures : fondre en une des structures en surface voisines du même type, séparées par un trait (écart comblé jusqu'à la tolérance) |
 | `calqueSession.js` | Rapatrier un calque de données entier dans la session pour le corriger |
 | `profondeurNiveaux.js` | Niveaux en hauteur : table sol / hauteur / écart (⚙️ et Générateur) et profil en long d'un itinéraire |
 | `osmMesure.js` | Mesure de distance et de surface dans la Vue OSM (lat/lng, sans calibrage du plan) |
@@ -607,6 +608,7 @@ rejoue tout le pre-commit. Consultatif = appelé sans `|| exit`, il avertit sans
 | `check-verifier-plan.js` | « Vérifier le plan » qui ne dit plus la même chose que l'itinéraire (segments coupés), contrôles C1 à C10 ou « vu, normal » cassés (C4 à C10 éprouvés par falsification), test de zone dure écrit hors de la table unique, C12 cassé | pre-commit |
 | `check-verifier-plan-auto.js` | Passe légère de Vérifier le plan qui compte autre chose que les bloquants de la liste, lit d'autres contrôles que C1 à C3, tourne pendant le splash, ou ne s'abandonne pas quand le moteur lève ; fin du Générateur (`--cout` : 20 034 objets fictifs, plus longue tranche < 50 ms) | pre-commit |
 | `check-detection.js` | Moteur de détection des structures qui ne retrouve plus les formes (aire exacte, couleurs, bruit), laisse passer moucheté ou contours creux, coupe ou double une masse entre deux blocs, perd un front (couleur d'un pilier, ergots, raccord entre blocs) ; galeries en tracés coupées « en étoile », en doublon du réseau existant, à travers un pilier posé ou mal accrochées ; worker | pre-commit |
+| `check-additionner.js` | « Additionner » qui laisse un trait entre deux morceaux de pilier, soude à travers un passage, mêle deux types, une ligne ou deux niveaux, garde un trou, ou perd l'identité (uid de la première, traces de suppression, une étape ⏪, événement) | pre-commit |
 | `check-zones-cout.js` | Zone Comblé ou effondrée devenue bloquante, plus évitée quand un autre chemin existe, traversée sans le dire, distance gonflée par son coût, ou `inaccessible` plus dure | pre-commit |
 | `check-popups-natives.js` | `alert` / `confirm` / `prompt` natifs (cliquet à 0) | pre-commit |
 | `check-portee-reglages.js` | Réglage global rangé dans la config du plan, ou réglage rapatrié inatteignable depuis l'accueil | pre-commit |
@@ -714,6 +716,7 @@ d'emploi : `scripts/smoke/README.md`.
 | `smoke/checkup-enchainer-traces.js` | Tracés et lignes de Structures enchaînés en retouchant le dernier point (vrais clics) : outil armé, boucle sur le 1er point, double clic sans zoom, ✅ garde l'outil, ⏪ rouvre ; zone, pilier, pilier à bras et jonction inchangés |
 | `smoke/checkup-affiner-contours.js` | Case « Affiner les contours » de la fenêtre Détecter : cochée par défaut, retenue après rechargement, carré au trait bruité rempli en rectangle aux angles droits (case cochée) ou en dent de scie comme avant (décochée) ; Chromium et WebKit |
 | `smoke/checkup-ajuster-sommets.js` | Ajuster une forme par appui long (déplacer, ajouter, supprimer un sommet) sur les 4 familles, souris et doigt, Chromium et WebKit, carte tournée comprise |
+| `smoke/checkup-additionner.js` | Additionner trois piliers coupés par des traits dans l'outil Structures (toucher, toucher, Valider), refus d'un type différent et d'un écart, une étape ⏪ qui rend les trois, lecture seule refusée, Éditeur de données ; Chromium et WebKit |
 | `smoke/checkup-ajuster-zone-vaste.js` | Ajuster les sommets d'une grande forme (masse au sol, eau, côtés longs) et d'un pilier, à deux zooms, souris et doigt : sommet déplacé, sommet né sur le contour loin du milieu d'un côté |
 | `smoke/checkup-raccourcis.js` | Fiche des raccourcis : chaque ligne affichée (carte 2D, actions globales, vue 3D) jouée et son effet vérifié, téléphone compris, Chromium et WebKit |
 | `smoke/checkup-mesure-annulable.js` | Mesure 📐 annulable (⏪ / ⏩) tant que l'outil est armé, entrées purgées à sa fermeture, pile partagée avec une zone, vue 3D comprise, Chromium et WebKit |

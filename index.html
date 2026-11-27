@@ -1025,6 +1025,9 @@
   <!-- ajusterSommets.js : appui long sur un sommet d'une forme dessinée (déplacer, ajouter, supprimer) ; lit à l'appel les
        prises ktaFormesAjustables de road / zones / structures / measure et HistoryManager. -->
   <script src="js/ajusterSommets.js" defer></script>
+  <!-- additionnerStructures.js : fondre en une des structures voisines du même type (outil Structures, Éditeur de
+       données) ; lit à l'appel getStructures, ktaNiveauVisible (selectionMulti.js) et HistoryManager. -->
+  <script src="js/additionnerStructures.js" defer></script>
   <!-- ⚠️ calqueSession.js rapatrie un calque dans la session pour l'éditer (un calque est rendu une fois,
        sans re-rendu). AVANT sessionPersist.js (hooks getSessionState / loadSessionState / appliquerVerrous)
        et filterPanel.js (son interface). -->

@@ -392,6 +392,7 @@ const ASSETS_TO_CACHE = [
   "./js/selectionMulti.js",
   "./js/selectionZone.js",
   "./js/ajusterSommets.js",
+  "./js/additionnerStructures.js",
   "./js/calqueSession.js",
   "./js/majPlan.js",
   "./js/planHD.js",

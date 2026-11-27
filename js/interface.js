@@ -589,8 +589,10 @@ window._fermerModeStructure = _fermerModeStructure;
   // le mode doit survivre pour poser plusieurs points d'affilée. Les boîtes `kta-modal-overlay`
   // (confirmations) sont hors du filet par leur classe. #kta-recal-niveau (« Dans quel niveau es-tu ? »,
   // tracking.js > ktaDemanderNiveauRecalage) est posée PAR le mode recalage : Annuler doit le laisser armé. De même
-  // #kta-detect-plus-grand (« Réessayer en plus grand », detectionStructures.js > _remplirEn), posée par Remplir au clic.
-  const IDS_EXCLUS = { "kta-poi-modal": true, "kta-recal-niveau": true, "kta-detect-plus-grand": true };
+  // #kta-detect-plus-grand (« Réessayer en plus grand », detectionStructures.js > _remplirEn), posée par Remplir au clic,
+  // et #kta-addit-confirm (textes perdus, additionnerStructures.js > valider), posée par Additionner.
+  const IDS_EXCLUS = { "kta-poi-modal": true, "kta-recal-niveau": true, "kta-detect-plus-grand": true,
+    "kta-addit-confirm": true };
   function _couper() {
     if (Object.keys(_modesActifs).length === 0) return;
     if (typeof window.ktaPlanAffiche === "function" && !window.ktaPlanAffiche()) return;
@@ -3172,6 +3174,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // Détecter les piliers sur l'image du plan (js/detectionStructures.js) ; même parcours que l'📊 Éditeur de données.
       { icone: window.ktaIcone("search"), titre: window.I18n.t("detect.bouton"),
         onClick: function() { if (window.KtaDetectionUI) window.KtaDetectionUI.ouvrir(); } },
+      // Additionner des structures déjà posées (js/additionnerStructures.js) ; même mode depuis l'📊 Éditeur de données.
+      { icone: window.ktaIcone("blend"), titre: window.I18n.t("addit.bouton"), horsVue3D: true,
+        onClick: function() { if (window.KtaAdditionner) window.KtaAdditionner.ouvrir(); } },
       { icone: window.ktaIcone("check"), titre: window.I18n.t("ui.struct.fermer"),
         onClick: function() {
           if (!window.modeStructure) {

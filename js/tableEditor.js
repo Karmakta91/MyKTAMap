@@ -471,6 +471,13 @@
                 <span class="kta-tbl-source-hint">${window.I18n.t("detect.galeries.boutonAide")}</span>
               </span>
             </button>` : ""}
+            ${planAffiche && window.KtaAdditionner ? `<button class="kta-tbl-source-card" id="kta-tbl-src-additionner">
+              <span class="kta-tbl-source-ico">${window.ktaIcone("blend")}</span>
+              <span class="kta-tbl-source-txt">
+                <span class="kta-tbl-source-titre">${window.I18n.t("addit.bouton")}</span>
+                <span class="kta-tbl-source-hint">${window.I18n.t("addit.boutonAide")}</span>
+              </span>
+            </button>` : ""}
             ${planAffiche && window.KtaRaccords ? `<button class="kta-tbl-source-card" id="kta-tbl-src-raccords">
               <span class="kta-tbl-source-ico">${window.ktaIcone("link")}</span>
               <span class="kta-tbl-source-txt">
@@ -519,6 +526,9 @@
     if (btnGaleries) btnGaleries.addEventListener("click", function() {
       fermer(); window.KtaDetectionUI.ouvrir(null, { cible: "traces" });
     });
+    // Additionner des structures : même mode que l'outil Structures (js/additionnerStructures.js).
+    var btnAddit = document.getElementById("kta-tbl-src-additionner");
+    if (btnAddit) btnAddit.addEventListener("click", function() { fermer(); window.KtaAdditionner.ouvrir(); });
     // Fusion et conversion : onglets de la modale d'export de session, ouverts en solo.
     document.getElementById("kta-tbl-src-fusion").addEventListener("click", function() {
       fermer();
