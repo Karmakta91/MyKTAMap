@@ -1381,6 +1381,8 @@ function _toggleFlyout(groupId) {
 
 function _fermerFlyout() {
   if (_currentFlyout) {
+    if (typeof _currentFlyout._ktaArretIndices === "function") _currentFlyout._ktaArretIndices();
+    _arreterBarresFlyout();
     try { _currentFlyout.remove(); } catch(e) {}
     _currentFlyout = null;
   }
@@ -1441,11 +1443,86 @@ function _onDocClickFlyout(e) {
 
 function _onResizeFlyout() {
   if (!_currentFlyout) return;
-  const grpId = _currentFlyout.dataset.groupId;
-  const grp = _groupes[grpId];
+  const grp = _groupes[_currentFlyout.dataset.groupId];
   if (!grp) return;
   _positionnerFlyout(_currentFlyout, _currentFlyout._ktaAncre || grp.btnPrincipal, grp.position);
+  _majIndicesDefilement(_currentFlyout);
 }
+
+// 🩸 La barre d'état change de hauteur en transition (0,2 s) à la rotation et quand on la replie : mesurée au seul
+// `resize`, elle laissait le bas du panneau quelques px dessous. Les deux barres sont observées panneau ouvert.
+let _roBarresFlyout = null;
+let _imageBarresFlyout = 0;
+function _suivreBarresFlyout() {
+  if (typeof ResizeObserver !== "function") return;
+  _roBarresFlyout = new ResizeObserver(function() {
+    if (_imageBarresFlyout) return;
+    _imageBarresFlyout = requestAnimationFrame(function() { _imageBarresFlyout = 0; _onResizeFlyout(); });
+  });
+  ["kta-refonte-header", "kta-refonte-statusbar"].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) _roBarresFlyout.observe(el);
+  });
+}
+function _arreterBarresFlyout() {
+  if (_roBarresFlyout) { _roBarresFlyout.disconnect(); _roBarresFlyout = null; }
+  if (_imageBarresFlyout) { cancelAnimationFrame(_imageBarresFlyout); _imageBarresFlyout = 0; }
+}
+
+// ── Indices de défilement d'un panneau .kta-group-flyout ──
+// Au doigt, la barre de défilement n'apparaît qu'au geste : rien ne dit qu'il reste des boutons plus bas. Deux classes
+// posées sur le panneau allument les fondus CSS : `kta-flyout-suite-bas` (contenu caché dessous) et
+// `kta-flyout-suite-haut` (contenu défilé sous l'en-tête). Aucune quand tout tient.
+// ⚠️ contrat : window.ktaIndicesDefilement(panneau) → fonction d'arrêt, à appeler quand le panneau est retiré (le
+// panneau Fond de carte, fondOsmPlan.js, la partage). Suivi : défilement, redimensionnement du panneau ou de ses
+// enfants (rotation, max-height recalculé), liste modifiée (enfants ajoutés / retirés, `hidden` basculé).
+function _majIndicesDefilement(fly) {
+  if (!fly) return;
+  // 2 px de tolérance : un scrollTop fractionnaire (zoom, densité d'écran) laisse sinon le fondu bas allumé en bas.
+  const reste = fly.scrollHeight - fly.clientHeight - fly.scrollTop;
+  fly.classList.toggle("kta-flyout-suite-bas", reste > 2);
+  fly.classList.toggle("kta-flyout-suite-haut", fly.scrollTop > 2);
+}
+function _suivreIndicesDefilement(fly) {
+  let image = 0;
+  const maj = function() {
+    if (image) return;
+    image = requestAnimationFrame(function() { image = 0; _majIndicesDefilement(fly); });
+  };
+  fly.addEventListener("scroll", maj, { passive: true });
+  window.addEventListener("resize", maj);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", maj);
+  let ro = null;
+  const observerEnfants = function() {
+    if (!ro) return;
+    Array.prototype.forEach.call(fly.children, function(el) { ro.observe(el); });
+    const grille = fly.querySelector(".kta-group-flyout-grid");
+    if (grille) Array.prototype.forEach.call(grille.children, function(el) { ro.observe(el); });
+  };
+  if (typeof ResizeObserver === "function") {
+    ro = new ResizeObserver(maj);
+    ro.observe(fly);
+    observerEnfants();
+  }
+  // 🩸 Pas d'attribut `class` ni `style` observés : les classes posées ici et le max-height de _positionnerFlyout
+  // relanceraient l'observateur en boucle ; le ResizeObserver couvre déjà les changements de taille.
+  let mo = null;
+  if (typeof MutationObserver === "function") {
+    mo = new MutationObserver(function() { observerEnfants(); maj(); });
+    mo.observe(fly, { childList: true, subtree: true, characterData: true, attributes: true,
+                      attributeFilter: ["hidden"] });
+  }
+  _majIndicesDefilement(fly);
+  return function arreter() {
+    fly.removeEventListener("scroll", maj);
+    window.removeEventListener("resize", maj);
+    if (window.visualViewport) window.visualViewport.removeEventListener("resize", maj);
+    if (ro) ro.disconnect();
+    if (mo) mo.disconnect();
+    if (image) cancelAnimationFrame(image);
+  };
+}
+window.ktaIndicesDefilement = _suivreIndicesDefilement;
 
 // `opts` (window.ktaOuvrirOutils, vue 3D) : { ancre (élément qui positionne le panneau et le referme au toucher, à la
 // place du bouton du groupe), vue3d (bool : sous-actions `horsVue3D` retirées, groupe en accordéon permis : 📐) }.
@@ -1550,14 +1627,20 @@ function _ouvrirFlyout(groupId, opts) {
     return null;
   })();
 
-  // Séparateur entre le dernier type et le premier outil.
+  // Séparateur + rubrique « Outils » entre le dernier type et le premier outil (groupes qui mêlent les deux :
+  // Tracés, Zones, Structures). Un groupe sans type (Favoris…) n'en reçoit pas ; l'ordre des actions ne change pas.
   let sepInserted = false;
 
   allActions.forEach(function(sub, idx) {
     if (!sepInserted && !sub.isTypeAction && idx > 0 && allActions[idx-1].isTypeAction) {
       const sep = document.createElement("div");
       sep.className = "kta-group-flyout-sep";
+      sep.setAttribute("role", "separator");
       grid.appendChild(sep);
+      const rubrique = document.createElement("div");
+      rubrique.className = "kta-group-flyout-rubrique";
+      rubrique.textContent = window.I18n.t("ui.flyout.outils");
+      grid.appendChild(rubrique);
       sepInserted = true;
     }
 
@@ -1619,6 +1702,8 @@ function _ouvrirFlyout(groupId, opts) {
   fly._ktaAncre = o.ancre || null;
   _positionnerFlyout(fly, fly._ktaAncre || grp.btnPrincipal, grp.position);
   _currentFlyout = fly;
+  fly._ktaArretIndices = _suivreIndicesDefilement(fly);
+  _suivreBarresFlyout();
 
   _installFocusNav(fly, { firstSelector: ".kta-group-flyout-btn", handleEscape: true, onClose: _fermerFlyout });
 

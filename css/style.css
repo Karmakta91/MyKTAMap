@@ -15036,9 +15036,11 @@ body.kta-theme-light .kta-compass-info {
   padding: 4px 4px 6px 4px;
   border-bottom: 1px solid var(--kta-bordure);
   margin-bottom: 4px;
-  /* En-tête sticky (relatif au .kta-group-flyout qui défile) : le groupe reste visible dans une longue liste. */
+  /* En-tête sticky (relatif au .kta-group-flyout qui défile) : le groupe reste visible dans une longue liste.
+     🩸 top = −padding du panneau : collé à 0, il s'arrêtait sous le padding et les boutons défilés restaient visibles
+     dans la bande de 10 px au-dessus de lui. */
   position: sticky;
-  top: 0;
+  top: -10px;
   background: var(--kta-surface);
   z-index: 2;
   /* Compense le padding du parent : sinon les items défilent visibles à droite du header. */
@@ -15246,12 +15248,54 @@ body.kta-theme-light .kta-refonte-counter-osm.kta-fond-osm-indispo {
   box-shadow: 0 0 0 3px rgba(140, 180, 255, 0.35);
 }
 
-/* Séparateur entre la dernière action type et le premier outil (.kta-flyout-sep). */
+/* Séparateur + rubrique « Outils » entre la dernière action type et le premier outil (interface.js > _ouvrirFlyout). */
 .kta-group-flyout-sep {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
   margin: 4px 2px;
 }
+.kta-group-flyout-rubrique {
+  padding: 2px 4px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kta-texte-3);
+}
+
+/* Indices de défilement : fondu en bas tant qu'il reste du contenu caché dessous, en haut (sous l'en-tête collant)
+   une fois défilé. Classes posées par interface.js > _majIndicesDefilement ; aucune quand tout tient.
+   🔒 pointer-events: none : un fondu ne prend jamais un toucher, et il s'éteint en bas de liste (dernier bouton net).
+   🩸 Fondu bas = ::after COLLANT en dernier enfant du panneau (qui défile lui-même) : marge négative de sa hauteur
+   + l'écart du flex (6 px), sinon il allonge la liste ; flex-shrink 0, sinon le flex l'écrase à 0 px. */
+.kta-group-flyout::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  flex: 0 0 28px;
+  height: 28px;
+  margin: -34px -10px 0;
+  background: linear-gradient(to bottom, transparent, var(--kta-surface) 85%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1;
+}
+.kta-group-flyout.kta-flyout-suite-bas::after { opacity: 1; }
+/* Fondu haut accroché SOUS l'en-tête (position absolue dans l'en-tête collant) : le titre et la croix restent nets. */
+.kta-group-flyout-header::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--kta-surface), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.kta-group-flyout.kta-flyout-suite-haut > .kta-group-flyout-header::after { opacity: 1; }
 
 /* Thème clair — overrides */
 body.kta-theme-light .kta-group-flyout {

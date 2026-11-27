@@ -6011,6 +6011,7 @@
   "ui.subaction.heatmap": "Mapa de calor — densidad tracker + puntos",
   "ui.subaction.nouveauType": "Nuevo tipo…",
   "ui.subaction.nouveauTypeTitre": "Nuevo tipo",
+  "ui.flyout.outils": "Herramientas",
   "ui.subaction.itineraire": "Calcular una ruta",
   "ui.subaction.legende": "Leyenda",
   "ui.subaction.lost": "Estoy perdido — Modo urgencia",

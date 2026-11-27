@@ -48,6 +48,7 @@
   let _transfo      = null;            // KmzExport.buildTransformCalib du géoréf effectif
   let _generation   = 0;               // jeton : un chargement d'une génération éteinte ne dessine plus
   let _panneau      = null;
+  let _arretIndices = null;            // arrêt du suivi des fondus de défilement (window.ktaIndicesDefilement)
   let _bouton       = null;
   let _attrib       = null;            // { carte, textes } : crédits posés dans le contrôle d'attribution de la carte
   let _moi          = null;            // { marqueur, cercle } du dernier fix
@@ -576,10 +577,20 @@
     const r = _bouton.getBoundingClientRect();
     const vw = window.innerWidth;
     const largeur = Math.min(280, vw - 16);
+    // 🩸 Bande utile entre la barre du haut et la barre d'état (z-index 1200, au-dessus du panneau) : bornée à
+    // l'écran seul, le bas du panneau passait sous la barre d'état en paysage, et son haut mordait la barre du haut.
+    const barre = function(id) {
+      const el = document.getElementById(id);
+      const rb = el ? el.getBoundingClientRect() : null;
+      return rb && rb.height > 0 ? rb : null;
+    };
+    const rHaut = barre("kta-refonte-header"), rBas = barre("kta-refonte-statusbar");
+    const haut = Math.max(r.bottom + 6, rHaut ? rHaut.bottom + 2 : 0);
+    const bas = (rBas ? Math.min(rBas.top, window.innerHeight) : window.innerHeight) - 6;
     _panneau.style.width = largeur + "px";
-    _panneau.style.top = Math.round(r.bottom + 6) + "px";
+    _panneau.style.top = Math.round(haut) + "px";
     _panneau.style.left = Math.round(Math.max(8, Math.min(vw - largeur - 8, r.right - largeur))) + "px";
-    _panneau.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 20) + "px";
+    _panneau.style.maxHeight = Math.max(120, Math.floor(bas - haut)) + "px";
   }
 
   function _surClicDehors(e) {
@@ -599,6 +610,8 @@
     document.body.appendChild(_panneau);
     _majPanneau();
     _placerPanneau();
+    // Fondus haut / bas quand le panneau défile (même indice que les panneaux de la barre, interface.js).
+    _arretIndices = (typeof window.ktaIndicesDefilement === "function") ? window.ktaIndicesDefilement(_panneau) : null;
     document.addEventListener("pointerdown", _surClicDehors, true);
     document.addEventListener("keydown", _surTouche);
     window.addEventListener("resize", _placerPanneau);
@@ -608,6 +621,7 @@
   // Ferme le panneau sans éteindre le fond.
   function fermerPanneau() {
     if (!_panneau) return;
+    if (_arretIndices) { _arretIndices(); _arretIndices = null; }
     if (_panneau.parentNode) _panneau.parentNode.removeChild(_panneau);
     _panneau = null;
     document.removeEventListener("pointerdown", _surClicDehors, true);
