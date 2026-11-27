@@ -48,9 +48,8 @@
       const d = out[out.length - 1];
       if (!d || Math.hypot(d[0] - x, d[1] - y) > 1e-9) out.push([x, y]);
     });
-    while (out.length > 1 && Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) <= 1e-9) {
-      out.pop();
-    }
+    const fin = function () { const a = out[0], b = out[out.length - 1]; return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+    while (out.length > 1 && fin() <= 1e-9) out.pop();
     if (out.length < 3 || Math.abs(_aire(out)) < 1e-9) return null;
     if (_aire(out) < 0) out.reverse();
     return out;
@@ -232,7 +231,8 @@
       const vois = [];
       pieces.forEach(function (Q, iq) {
         const C = boites[iq];
-        if (iq !== ip && C[0] <= B[2] + EPS && B[0] <= C[2] + EPS && C[1] <= B[3] + EPS && B[1] <= C[3] + EPS) vois.push(iq);
+        const pres = C[0] <= B[2] + EPS && B[0] <= C[2] + EPS && C[1] <= B[3] + EPS && B[1] <= C[3] + EPS;
+        if (iq !== ip && pres) vois.push(iq);
       });
       for (let k = 0; k < P.length; k++) {
         const p = P[k], q = P[(k + 1) % P.length], dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy);
@@ -418,7 +418,8 @@
     objs.slice(1).forEach(function (s) {
       ["nom", "description"].forEach(function (champ) {
         const v = _texte(s[champ]);
-        if (v && v !== _texte(garde[champ]) && !pertes.some(function (p) { return p.champ === champ && p.valeur === v; })) {
+        const deja = pertes.some(function (p) { return p.champ === champ && p.valeur === v; });
+        if (v && v !== _texte(garde[champ]) && !deja) {
           pertes.push({ champ: champ, valeur: v });
         }
       });
@@ -433,7 +434,8 @@
     if (!prep || !prep.ok) return false;
     if (typeof W.ktaEditionRefusee === "function" && W.ktaEditionRefusee()) return false;   // 🔒 lecture seule
     const liste = typeof W.getStructures === "function" ? (W.getStructures() || []) : [];
-    if (liste.indexOf(prep.garde) < 0 || prep.absorbes.some(function (s) { return liste.indexOf(s) < 0; })) return false;
+    const absente = function (s) { return liste.indexOf(s) < 0; };
+    if (absente(prep.garde) || prep.absorbes.some(absente)) return false;   // préparation périmée
     const H = W.HistoryManager;
     const avant = H && typeof H.captureState === "function" ? H.captureState("structures") : null;
     const retires = new Set(prep.absorbes);
@@ -602,7 +604,8 @@
   function _echap(e) {
     if (!_m || e.key !== "Escape" || e.repeat) return;
     const fen = racine.document.querySelectorAll(".kta-readme-modal-overlay, .kta-modal-overlay, [aria-modal='true']");
-    for (let i = 0; i < fen.length; i++) if (fen[i].getClientRects().length > 0) return;   // fenêtres cachées gardées au DOM
+    // des fenêtres cachées restent au DOM : seule une fenêtre affichée garde Échap
+    for (let i = 0; i < fen.length; i++) if (fen[i].getClientRects().length > 0) return;
     fermer();
   }
 
