@@ -34,11 +34,6 @@
 
 ## Maintenant
 
-- **Certificats TLS : renouvellement automatique non prouvé** — renouvelés à la main le 27/11/2026 : les 4 sites servent
-  un certificat neuf jusqu'au 25/02/2027 (✅ vérifié de l'extérieur). Reste à savoir si certbot renouvelle seul : minuteur
-  certbot présent et `installer = nginx` ou hook de rechargement. Alerte posée : sonde horaire en échec à 20 jours.
-  `qui: KARMA · action: systemctl list-timers | grep certbot, puis grep installer dans /etc/letsencrypt/renewal
-  · fini: minuteur et rechargement de nginx vus · depuis: 23/11/2026 · taille: XS · id: certificats-tls`
 - **Test appareil : photos et export** — réimport d'une session ZIP ; refus au-delà de 5 photos ; analyse d'un gros
   plan depuis l'accueil (Safari ≥ 16.4) ; export image d'un plan tuilé hors-ligne.
   `qui: KARMA · action: jouer les 4 cas sur iPhone · fini: 4 cas vus conformes, ou bugs ouverts · depuis: 12/10/2026
