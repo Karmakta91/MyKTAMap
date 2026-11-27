@@ -123,6 +123,17 @@
   du plan (donnée supprimée, affichage pas rafraîchi). 🔬 non reproduit.
   `qui: Claude · action: scénario pro sur la pile (calque copié en session, 1re suppression depuis la fiche, chiffré)
   · fini: reproduit puis corrigé · depuis: 20/10/2026 · taille: S · id: objet-supprime-affiche`
+- **Détection : chaîne de masses reliées par deux cous épais** — trois masses reliées par deux cous gardés (épais)
+  sont lues comme un pilier traversé par une bande : 4 morceaux, la masse du milieu rongée. Forme rare sur carrière.
+  🔬 reproduit en scène de test le 27/11/2026 (`js/ktaDetection.js > _bandesCadre`), demande un critère de direction.
+  `qui: Claude · action: juger un cou par la direction de la bande, pas par le seul rapport d'épaisseur
+  · fini: scène trois masses dans check-detection.js, 3 morceaux intacts · depuis: 27/11/2026 · taille: S
+  · id: detection-chaine-masses`
+- **Détection : deux piliers parallèles reliés par une bande restent soudés** — le pré-filtre « pilier compact »
+  saute toute la composante, la bande n'est jamais examinée. 🔬 cause probable, vue en scène de test le 27/11/2026.
+  `qui: Claude · action: limiter le pré-filtre pilier compact aux composantes sans étranglement
+  · fini: scène deux piliers parallèles dans check-detection.js, 2 morceaux · depuis: 27/11/2026 · taille: S
+  · id: detection-pilier-compact-soude`
 
 ## Entrant
 
