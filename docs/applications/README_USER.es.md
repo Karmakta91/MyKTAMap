@@ -1083,6 +1083,18 @@ Un solo **Deshacer** del historial quita todo lo que se acaba de añadir. Lo que
 
 **En el Generador**, en el paso **Capas de datos** (modo Avanzado), el botón **Detectar pilares y frentes** hace lo mismo sobre la imagen del plano **antes** de generarlo, al modificarlo o en **Actualizar el mapa**. Una ventana muestra la imagen: cuentagotas, marco o todo el plano, vista previa y controles como en el mapa; el análisis lee la imagen a resolución completa. Lo que añades va a una capa **Estructuras detectadas** del plano generado, ya alineada con la imagen aunque se recorten los márgenes blancos. Lo que ya está en una capa del plano no se añade dos veces. Con una imagen muy grande, un teléfono puede quedarse sin memoria, como al dividir en teselas.
 
+### Sumar estructuras
+
+Un pilar de una sola pieza atravesado por un trazo del dibujo a veces sale en dos o tres trozos, separados por el grosor del trazo (detección o dibujo a mano). El botón **Sumar estructuras** del grupo **🏛️ Estructuras** (también en el **📊 Editor de datos**) los funde en uno solo:
+
+1. Toca la **primera** estructura (contorno dorado): es la que conserva su nombre, su descripción y su identidad.
+2. Toca cada **vecina** que quieras añadirle (punteado azul). Volver a tocar una estructura elegida la quita.
+3. **Validar**: una sola estructura cubre los trozos y el trazo que los separaba. **Cancelar** (o Esc) sale sin cambiar nada.
+
+Se rellena una separación de hasta **6 píxeles de la imagen** (ajustable de 1 a 20 en la banda, campo **Separación rellenada**); dos estructuras que se solapan también se aceptan. Más allá, la banda dice «No se tocan» con la separación, y no se modifica nada: una galería, mucho más ancha, nunca se rellena. Solo se suman las estructuras **de superficie** (pilares, muros, tus tipos de superficie) **del mismo tipo** y **del mismo nivel**; un frente, un arco u otro tipo se rechaza con el motivo. Un hueco en medio del resultado se pierde: solo queda el contorno exterior (un círculo en medio suele ser un texto escrito en el plano).
+
+Si una vecina tiene un nombre o una descripción distintos de los de la primera, una ventana te dice lo que se perderá antes de escribir. Un solo **Deshacer** del historial devuelve las estructuras de origen. Una estructura de una **capa** se copia primero en la sesión: **🔄 Modificar** (≡ Filtros, fila de la capa). En un plano de solo lectura, la herramienta se rechaza.
+
 ---
 
 ## 🧹 Borrar y corregir

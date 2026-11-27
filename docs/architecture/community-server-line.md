@@ -683,6 +683,13 @@ pro, utilisables par n'importe quelle extension, **no-op sans extension**) :
   erreur : non) — non modifiable : ni 🗑️, suppression confirmée refusée (`ipl.remove.refuse`), liaison gardée quand son
   point est supprimé. Côté community : `KtaExtensions.liaisonInfo` / `liaisonActions` / `liaisonModifiable`. Sans
   extension : rien n'écoute, aucune info, tout reste modifiable (garde-fou `check-extensions.js`).
+- **Structures additionnées** (`js/additionnerStructures.js`, `plans-loader.md` § Additionner des structures) :
+  **sortant** seulement, événement `mktm:objets-additionnes` sur `window`, `detail = { famille: "structures", uid,
+  absorbes: [uid] }`, émis APRÈS l'écriture (la structure `uid` a pris le contour, les `absorbes` sont retirées avec
+  leur trace de suppression, une étape ⏪). Il sert à une extension qui rattache des données à un objet par son uid
+  (ex. des commentaires) : sans lui, celles des structures absorbées suivraient leur suppression. Une annulation ⏪
+  n'émet rien (les absorbées reviennent avec leur uid). Rien n'est appelé chez l'extension ; sans extension, rien
+  n'écoute. Lecture seule : rien d'écrit, rien d'annoncé (garde-fou `check-extensions.js`).
 - **Profil de l'utilisateur** (11/10/2026) : les modales d'export / import du profil ne transportent **rien** d'un
   plan ☁️ (registre `type: "ext"`, ou id reconnu par `ktaEstIdRegistreExtension`) — ni entrée, ni session, photos,
   favoris, liaisons, sauvegardes, carnet, archive : le fichier est en clair et un profil importé ne doit pas créer

@@ -2741,6 +2741,34 @@ const ON = { serverConnection: { state: "on", api: "https://api.exemple.org", mo
       !("hidden" in c.K.legendeSession("ext_1")));
   }
 
+  // ── Structures additionnées : événement sortant (vrai additionnerStructures.js, faux navigateur) ──────
+  {
+    const store = { structures: [] }, emis = [];
+    const w = {
+      console: { log() {}, warn() {}, error() {} },
+      getStructures: () => store.structures, setStructures: (a) => { store.structures = a || []; },
+      CustomEvent: function (type, init) { this.type = type; this.detail = init && init.detail; },
+      dispatchEvent(e) { emis.push({ e, n: store.structures.length }); return true; }
+    };
+    w.window = w;
+    const ctx = vm.createContext(w);
+    vm.runInContext(lire("js/additionnerStructures.js"), ctx, { filename: "additionnerStructures.js" });
+    const AV = w.KtaAdditionner;
+    const carre = (x0) => [{ x: x0, y: 0 }, { x: x0 + 50, y: 0 }, { x: x0 + 50, y: 50 }, { x: x0, y: 50 }];
+    store.structures = [{ uid: "st_g", type: "pilier-1", points: carre(0) }, { uid: "st_a", type: "pilier-1", points: carre(53) }];
+    AV.appliquer(AV.preparer(store.structures, ["st_g", "st_a"], { tol: 6 }), "x");
+    const ev = emis.filter((x) => x.e.type === "mktm:objets-additionnes");
+    t("additionner : « mktm:objets-additionnes » annoncé APRÈS l'écriture, { famille, uid gardé, absorbes } (une extension " +
+      "y rattache ce qu'elle tient par uid)", ev.length === 1 && ev[0].n === 1 && ev[0].e.detail.famille === "structures" &&
+      ev[0].e.detail.uid === "st_g" && ev[0].e.detail.absorbes.length === 1 && ev[0].e.detail.absorbes[0] === "st_a");
+    w.ktaEditionRefusee = () => true;
+    store.structures = [{ uid: "st_g", type: "pilier-1", points: carre(0) }, { uid: "st_a", type: "pilier-1", points: carre(53) }];
+    AV.appliquer(AV.preparer(store.structures, ["st_g", "st_a"], { tol: 6 }), "x");
+    t("🔒 additionner en lecture seule : rien d'écrit, rien d'annoncé", emis.length === 1 && store.structures.length === 2);
+    t("additionner : l'événement est le seul lien avec une extension (aucun appel à KtaExtensions)",
+      !/KtaExtensions/.test(lire("js/additionnerStructures.js")));
+  }
+
   console.log("");
   if (ko) { console.log("⚠️ " + ko + " echec(s)"); process.exit(1); }
   console.log("🎉 points d'extension : neutres sans extension, fermés quand une permission échoue, jamais de repli sur la gate community");

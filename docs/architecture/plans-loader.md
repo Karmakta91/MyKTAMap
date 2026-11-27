@@ -1350,3 +1350,61 @@ squelette) : compléter un plan à moitié tracé, en tracés routables, sans do
   contourné, accroche exacte ; contre-épreuves sans bouchage, sans obstacle, sans existant) ·
   `scripts/smoke/checkup-galeries.js` (fenêtres distinctes, aperçu, réglages, Valider en une étape ⏪, Éditeur de
   données et Remplir ; Chromium et WebKit) · `checkup-detection-generateur.js` (calque « Tracés détectés »).
+
+## ➕ Additionner des structures — fondre en une des structures voisines
+
+Décisions de KARMA du 27/11/2026. Cas d'origine : sur un plan scanné, un pilier d'un seul tenant traversé par des
+traits du dessin sort de la détection (ou d'un dessin à la main) en deux ou trois piliers voisins, séparés par
+l'épaisseur du trait. `js/additionnerStructures.js` (`window.KtaAdditionner`), moteur pur testé en Node et interface.
+
+- **Où** : bouton « Additionner des structures » de l'outil Structures (hors vue 3D) et carte du même nom dans l'📊
+  Éditeur de données (plan affiché). Sur des structures déjà posées, de la session ; jamais dans la fenêtre Détecter.
+  Une structure d'un calque est refusée avec la marche à suivre (Filtres › Calques › Modifier).
+- **Le mode** (modèle du pot de peinture de Remplir au clic) : bandeau `.kta-iti-floater` (aucune fiche ne s'ouvre au
+  toucher, `utils.js > _modeClicCarteActif`), inscrit au registre des modes (`interface.js > ktaInscrireModeClic` :
+  armer un autre outil le ferme). On touche la première structure (contour doré), puis chaque voisine (pointillé
+  bleu) ; re-toucher en retire une (la première retirée : la suivante devient la première). Refus dit tout de suite au
+  toucher : autre type, autre niveau, structure en ligne, trop loin de la sélection. Valider (actif à partir de deux)
+  ou Annuler ; Échap ferme (le bandeau fait passer Échap avant la carte : le mode le prend lui-même). Une structure
+  annulée ou supprimée pendant le mode quitte la sélection (`kta:donneesPlanChange`).
+- **Tolérance** : en **px de l'image** (coordonnées du plan), **6 par défaut**, réglable de 1 à 20 dans le bandeau
+  (oubliée à la fermeture). Une galerie est bien plus large : jamais de soudure à travers un passage.
+- **Règles** (⚠️ contrat) : structures **en surface** seulement (`isStructurePolylineType`), **même type**, **même
+  niveau** (`level`, absent = 0). Écart jusqu'à la tolérance comblé, chevauchement accepté ; au-delà : refus « ne
+  touche pas » avec l'écart, rien de modifié. **Trou intérieur perdu** : seul le contour extérieur reste (un rond au
+  milieu est en général un texte du plan) (décision produit).
+- **Géométrie** (`unir`) : formes prises de proche en proche (la suivante = la plus proche de l'union déjà faite,
+  refus `ecart` au-delà de la tolérance). Union de deux formes = union par bords de `galerieEmprise.js > _parois`
+  étendue aux formes non convexes (point dans la forme par parité) : chaque bord coupé aux croisements et aux bords
+  confondus, un morceau gardé si le point juste dehors n'est dans aucune autre pièce, morceau confondu avec un bord de
+  même sens d'une pièce précédente écarté ; morceaux chaînés en anneaux (nœuds à 1e-4 px ; à un nœud double, virage
+  le plus à droite : deux formes qui ne se touchent qu'en un coin donnent un seul anneau) ; l'anneau d'aire positive
+  la plus grande est le résultat. Les **pièces** : les deux formes et des **ponts** — pour chaque paire de bords (un de
+  chaque forme) qui ne se touchent pas, l'enveloppe convexe des parties qui se font **face** (pied de la
+  perpendiculaire sur l'autre bord) à moins de la tolérance : de part et d'autre d'un trait, le pont est la bande du
+  trait, sans débord aux bouts ni effet sur un chevauchement. Si le contour laisse dehors un sommet (formes qui ne se
+  rejoignent qu'en biais, coin contre coin), on recommence avec des ponts généraux (parties à moins de la tolérance,
+  en face ou non). Sommets alignés retirés, arrondi au centième de px. Contrôle final : chaque sommet d'origine est
+  dans le résultat ou à moins de la tolérance de son bord, sinon refus `forme`.
+  🩸 Aimanter les sommets d'une forme sur le bord de l'autre (approche d'abord prévue) ne suffit pas : un coin aimanté
+  sans son voisin penche tout le bord, la bande reste à moitié (cas mesuré : cadre en quatre barres).
+- **Écriture** (`preparer` puis `appliquer`) : la **première** touchée garde `uid`, `nom`, `description` et ses autres
+  champs, prend le contour et est horodatée (`KtaUid.touch`) ; les autres sont retirées par `setStructures`, leur
+  **trace de suppression** posée par `HistoryManager.record` (synchro). UN instantané, UNE étape ⏪ (« Additionner N
+  structures »), `SessionPersist.save`. Textes perdus : tout nom ou description non vide d'une absorbée différent de
+  celui de la première est listé dans `ktaConfirm` (`#kta-addit-confirm`, exclue de la coupure des modes : Annuler
+  laisse la sélection). 🔒 Lecture seule : ni ouverture, ni Valider, ni `appliquer` (`ktaEditionRefusee`).
+- **Validation des relevés** (extension) : rien de propre ici ; la première est une modification, les absorbées des
+  suppressions, jugées par le serveur comme toute écriture (proposition, suppression demandée).
+- **Rattachements** : photos, favoris et liaisons ne visent que des points (rien à rattacher). Pour une extension qui
+  tient des données par uid (commentaires) : événement `mktm:objets-additionnes` `{ famille, uid, absorbes }` après
+  l'écriture (`community-server-line.md` §3).
+- **Hors de l'outil** : couper une structure (backlog `structures-couper`), fusion des traits bout à bout (fronts), option
+  côté détection.
+- Garde-fous : `scripts/check-additionner.js` (trois rectangles à 3 px → un rectangle exact, trait en biais, contours
+  dentelés, écart de 20 px et galerie de 40 px refusés, chevauchement exact, cadre → contour extérieur seul, coins,
+  types / lignes / niveaux refusés, textes perdus ; dans un `vm` avec ktaUid.js et historyManager.js : uid gardé,
+  traces de suppression, une étape ⏪ qui rend les trois, événement après l'écriture, lecture seule) ·
+  `check-extensions.js` (événement) · `scripts/smoke/checkup-additionner.js` (vrais boutons et clics : outil
+  Structures, refus du mur et du pilier lointain, retirer et remettre, Valider, ⏪, Éditeur de données, confirmation
+  des textes perdus, lecture seule, Échap ; Chromium et WebKit).

@@ -305,6 +305,10 @@ node scripts/check-verifier-plan-auto.js || exit $?
 # images fabriquees, contre-epreuves (sans marge, sans ouverture, sans coeur de bloc).
 node scripts/check-detection.js || exit $?
 
+# Additionner des structures : trait de 3 px comble, galerie jamais soudee, types / lignes / niveaux refuses,
+# contour exterieur seul, uid de la premiere garde, traces de suppression, une etape d annulation.
+node scripts/check-additionner.js || exit $?
+
 # Zones a cout (Comble, effondrement) : evitees si un autre chemin existe, jamais bloquantes, traversees et dites
 # sinon ; distance non gonflee ; inaccessible reste dure ; C12 de Verifier le plan en "a revoir".
 node scripts/check-zones-cout.js || exit $?

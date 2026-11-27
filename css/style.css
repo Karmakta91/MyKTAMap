@@ -20328,6 +20328,17 @@ button.kta-cfg-ligne-action {
 .kta-ajuster-apercu { stroke: var(--kta-accent); fill: none; }
 .kta-ajuster-poignee { stroke: var(--kta-accent); fill: var(--kta-accent); fill-opacity: 0.35; }
 .kta-ajuster-poignee-attente { fill-opacity: 0; stroke-dasharray: 4 3; }
+/* Additionner des structures (js/additionnerStructures.js) : surbrillance SVG jamais interactive (le toucher passe à la
+   carte), la première en accent, les voisines en couleur d'interaction ; bandeau du mode. */
+.kta-addit-sel { stroke: var(--kta-interaction); stroke-width: 4; stroke-dasharray: 7 5; fill: var(--kta-interaction);
+  fill-opacity: 0.18; }
+.kta-addit-sel.kta-addit-premiere { stroke: var(--kta-accent); fill: var(--kta-accent); }
+.kta-addit-floater { gap: 8px; flex-wrap: wrap; max-width: min(94vw, 720px); }
+.kta-addit-floater .kta-btn { white-space: nowrap; }
+.kta-addit-floater .kta-btn[disabled] { cursor: not-allowed; }
+.kta-addit-tol { display: flex; gap: 6px; align-items: center; color: var(--kta-texte-2); font-size: 13px; }
+.kta-addit-tol input { width: 56px; }
+.kta-addit-pertes { margin: 8px 0 0; padding-left: 20px; text-align: left; overflow-wrap: anywhere; }
 /* 🎯 Point précis d'un POI (js/poiPrecis.js) : pointillé de l'icône au point, segment d'une chatière, carré au point.
    Jamais interactifs (le clic passe à la carte). */
 .kta-precis-trait { stroke: var(--kta-accent); fill: none; }

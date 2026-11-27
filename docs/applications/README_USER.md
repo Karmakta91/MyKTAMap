@@ -1083,6 +1083,18 @@ Un seul **Annuler** de l'historique retire tout ce qui vient d'être ajouté. Ce
 
 **Dans le Générateur**, à l'étape **Calques de données** (mode Avancé), le bouton **Détecter piliers et fronts** fait la même chose sur l'image du plan **avant** de le générer, en le modifiant, ou dans **Mettre à jour le plan**. Une fenêtre montre l'image : pipette, cadre ou tout le plan, aperçu et curseurs comme sur la carte ; l'analyse lit l'image en pleine définition. Ce que tu ajoutes va dans un calque **Structures détectées** du plan généré, déjà aligné sur l'image même quand les marges blanches sont rognées. Ce qui est déjà dans un calque du plan n'est pas ajouté une seconde fois. Sur une très grande image, un téléphone peut manquer de mémoire, comme pour le découpage en tuiles.
 
+### Additionner des structures
+
+Un pilier d'un seul tenant traversé par un trait du dessin sort parfois en deux ou trois morceaux, séparés par l'épaisseur du trait (détection ou dessin à la main). Le bouton **Additionner des structures** du groupe **🏛️ Structures** (aussi dans l'**📊 Éditeur de données**) les fond en une seule :
+
+1. Touche la **première** structure (contour doré) : c'est elle qui garde son nom, sa description et son identité.
+2. Touche chaque **voisine** à lui ajouter (pointillé bleu). Toucher de nouveau une structure choisie la retire.
+3. **Valider** : une seule structure couvre les morceaux et le trait qui les séparait. **Annuler** (ou Échap) quitte sans rien changer.
+
+Un écart jusqu'à **6 pixels de l'image** est comblé (réglable de 1 à 20 dans le bandeau, champ **Écart comblé**) ; deux structures qui se chevauchent passent aussi. Au-delà, le bandeau dit « Ne touche pas » avec l'écart, et rien n'est modifié : une galerie, bien plus large, n'est jamais comblée. Seules les structures **en surface** (piliers, murs, tes types en surface) **du même type** et **du même niveau** s'additionnent ; un front, un arc ou un autre type est refusé avec la raison. Un trou au milieu du résultat est perdu : seul le contour extérieur reste (un rond au milieu est en général un texte écrit sur le plan).
+
+Si une voisine a un nom ou une description différents de ceux de la première, une fenêtre te dit ce qui sera perdu avant d'écrire. Un seul **Annuler** de l'historique rend les structures d'origine. Une structure d'un **calque** se copie d'abord dans la session : **🔄 Modifier** (≡ Filtres, ligne du calque). Sur un plan en lecture seule, l'outil est refusé.
+
 ---
 
 ## 🧹 Effacer et corriger
