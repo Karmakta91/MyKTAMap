@@ -133,6 +133,12 @@
   l'annulation ou un pilier mal détecté d'un seul tenant.
   `qui: Claude · action: QCM puis lot · fini: une structure coupée par un trait donne deux structures, annulable
   · depuis: 27/11/2026 · taille: S · id: structures-couper`
+- **Panneau Fond de carte : quelques px sous la barre d'état après une rotation** — il se replace au resize seulement,
+  sans suivre la transition de hauteur de la barre d'état (les panneaux de groupe la suivent, `_suivreBarresFlyout`).
+  🔬 relevé par le lot flyout-defilement le 27/11/2026, non mesuré sur appareil.
+  `qui: Claude · action: brancher fondOsmPlan.js > _placerPanneau sur le même suivi des barres
+  · fini: checkup-flyout-defilement étendu à une rotation panneau Fond de carte ouvert, vert · depuis: 28/11/2026
+  · taille: XS · id: fond-carte-rotation-barre`
 
 ## Entrant
 
