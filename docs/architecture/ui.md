@@ -2285,7 +2285,7 @@ Résultat mesuré après : 0 px caché et primaire visible sur toutes les config
 
 ---
 
-### 96. Flyout de sidebar : borné à la bande UTILE (viewport visible, barre du haut, footer)
+### 96. Flyout de sidebar : bande UTILE, indices de défilement, rubrique « Outils »
 
 Sur mobile, le panneau 🏛️ **Structures** descendait sous le bord de l'écran :
 « Fermer la structure en cours » et tout ce qui le suit restaient inatteignables.
@@ -2335,6 +2335,14 @@ cale `max-height`, le clamp et le centrage. Le flyout reste à 1050 : il ne cach
 jamais les barres. `box-sizing: border-box` sur `.kta-group-flyout`, sinon padding
 et bordure ajoutent 22 px au `max-height` calculé.
 
+🩸 **La barre d'état change de hauteur en transition** (`min-height` 0,2 s : rotation,
+repli ▾▴). Mesurée au seul `resize`, elle laissait le bas du panneau quelques px
+dessous après une rotation. Panneau ouvert, un `ResizeObserver` suit les deux barres
+(`_suivreBarresFlyout`, coupé dans `_fermerFlyout`) et replace le panneau à l'image
+suivante. Le panneau **Fond de carte** (`fondOsmPlan.js > _placerPanneau`, ancré sous
+le bouton carte du haut) se borne à la même bande : haut sous la barre du haut, bas
+au-dessus de la barre d'état (il passait dessous en paysage).
+
 **Habillage selon le réglage « Ancrer les panneaux »** (`APP_CONFIG.panneauxAncres`) :
 - **centré** (défaut) : classe `kta-flyout-centre` + fond `.kta-group-flyout-fond`
   (z-index 1049, sous les barres) et croix 36 px — même famille que la modale Tracker ;
@@ -2346,8 +2354,50 @@ ferme donc au **début** du geste (`pointerdown`, repli `mousedown`/`touchstart`
 `_avalerGesteCarte` (écouteur de capture posé une fois) avale sur `#map` la suite du
 même geste pendant 700 ms. Toucher le fond compte comme toucher la carte.
 
-🛡️ `scripts/smoke/checkup-panneaux-geometrie.js` (porte de release) vérifie tout
-cela au pixel : 4 formats × centré/ancré × 4 panneaux, liste allongée à 22 boutons.
+**Indices de défilement.** Au doigt, la barre de défilement n'apparaît qu'au geste :
+rien ne disait que Structures (types, types personnalisés, ➕, Détecter, Additionner,
+Terminer, Effacer) continuait sous le bord. `_suivreIndicesDefilement(panneau)`
+(exposé `window.ktaIndicesDefilement`, rend une fonction d'arrêt ; partagé avec le
+panneau Fond de carte) pose deux classes sur le panneau :
+
+| Classe | Quand | Rendu |
+|---|---|---|
+| `kta-flyout-suite-bas` | contenu caché sous le bas (tolérance 2 px) | `::after` collant (`bottom: 0`) du panneau, dégradé vers `--kta-surface` |
+| `kta-flyout-suite-haut` | panneau défilé (`scrollTop > 2`) | `::after` de l'en-tête, en absolu juste sous lui : le titre et la croix restent nets |
+
+Aucune classe quand tout tient. Recalcul au défilement, au `resize` (fenêtre et
+`visualViewport`), à chaque replacement (`_onResizeFlyout`), quand le panneau ou un de
+ses enfants change de taille (`ResizeObserver`) et quand la liste change
+(`MutationObserver` : enfants, texte, attribut `hidden` ; ni `class` ni `style`, que
+l'outil pose lui-même). Une liste de types modifiée reconstruit de toute façon le
+panneau (`_injecterBoutonsCustomSidebar` → `_ouvrirFlyout`).
+- 🔒 Les deux fondus sont en `pointer-events: none` et le bas s'éteint en bas de liste :
+  ils ne prennent jamais un toucher, le dernier bouton reste net.
+- 🩸 Le fondu bas est le **dernier enfant flex** d'un panneau qui défile lui-même : marge
+  négative de sa hauteur + l'écart du flex (6 px), sinon il allonge la liste ;
+  `flex-shrink: 0`, sinon le flex l'écrase à 0 px.
+- Couleur : `var(--kta-surface)`, qui vaut le fond du panneau dans les deux thèmes ;
+  aucune couleur en dur.
+
+🩸 **En-tête collant à `top: -10px`** (= −padding du panneau) : collé à 0, il s'arrêtait
+sous le padding, et les boutons défilés restaient visibles dans la bande de 10 px
+au-dessus de lui.
+
+**Types puis outils.** Dans les groupes qui mêlent les deux (Tracés, Zones,
+Structures), `_ouvrirFlyout` pose un séparateur (`.kta-group-flyout-sep`) et une
+rubrique « Outils » (`.kta-group-flyout-rubrique`, clé `ui.flyout.outils`, texte
+`--kta-texte-3`) entre le dernier type et le premier outil. Critère : `isTypeAction`
+(types personnalisés et ➕ Nouveau type insérés avant le premier non-type) ; l'ordre ne
+change pas. Un groupe sans type (Favoris) n'a ni séparateur ni rubrique. Les groupes en
+modale de tuiles (`useModal` : Tracker, Exporter) ne sont pas concernés.
+
+🛡️ `scripts/smoke/checkup-panneaux-geometrie.js` (porte de release) vérifie la bande
+au pixel : 4 formats × centré/ancré × 4 panneaux, liste allongée à 22 boutons.
+`scripts/smoke/checkup-flyout-defilement.js` : Chromium et WebKit, iPhone SE portrait /
+paysage et grand téléphone (+ thème clair), chaque groupe à panneau et le Fond de carte,
+6 types de structure personnalisés en mémoire : bande, fondus avant / après défilement,
+dernier bouton sous le doigt, rien au-dessus de l'en-tête, rubrique, liste qui change,
+rotation panneau ouvert.
 
 **Rails au doigt** (`@media (pointer: coarse)`, hors paysage bas) : la marque des boutons reste à 36 px (décision
 produit : surface utile de la carte) ; un `::before` transparent de 44 px de large déborde de 8 px vers la carte
