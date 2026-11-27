@@ -56,12 +56,6 @@
   `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
   · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S
   · id: referencement-doc`
-- **Détecter : bandes retirées seulement entre deux masses** — ✅ vérifié 25/11/2026 : tout tronçon régulier plus de
-  4 × plus long qu'épais est effacé (piliers allongés en éclats, cous mordus) ; case de débrayage livrée. Règle décidée :
-  n'effacer qu'un tronçon qui relie deux masses ou sort du bloc (un cou entre deux masses reste coupé : à trancher).
-  `qui: Claude · action: lot moteur (ktaDetection.js > _bandesCadre) · fini: pilier 800 × 150 entier case cochée,
-  scène bleue toujours 54/54 sans bande posée, check-detection vert · depuis: 25/11/2026 · taille: M
-  · id: detect-bandes-fines`
 
 ## Plus tard
 

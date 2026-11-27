@@ -464,14 +464,25 @@
 
   // ── Bandes : un trait de la couleur des piliers (galerie, mur levé en trait) n'est pas une masse ──
   // ⚠️ contrat (décision produit) : un tronçon du squelette d'épaisseur presque constante (écart-type < BANDE_ECART
-  //   de la moyenne) sur une longueur > BANDE_LONGUEUR × son épaisseur est un trait ; ses pixels sont retirés de la
-  //   masse (disque de rayon = distance au bord autour du tronçon). Les piliers soudés à une bande s'en détachent,
-  //   les petits restent (squelette court).
+  //   de la moyenne) sur une longueur > BANDE_LONGUEUR × son épaisseur est un trait CANDIDAT. Il n'est effacé que
+  //   s'il relie deux masses ou sort du bloc par ses deux bouts (_bandesCadre > auDela) ; ses pixels sont alors
+  //   retirés de la masse (disque de rayon = distance au bord autour du tronçon). Les piliers soudés à une bande
+  //   s'en détachent.
+  // ⚠️ contrat (décision produit) : un tronçon dont un bout est LIBRE (au-delà, rien de plus épais ni de bord du
+  //   bloc : pointe, impasse) reste, sauf au-delà de BANDE_LIBRE × son épaisseur (mur isolé levé en trait, mesuré
+  //   à 43 × dans check-detection.js ; un pilier allongé 800 × 150 est à 5 ×).
+  // ⚠️ contrat (décision produit) : un COU (partie étroite entre deux masses d'un pilier en haltère) reste si son
+  //   épaisseur moyenne dépasse BANDE_COU × l'épaisseur de la plus fine des deux masses, et que la bande ne ressort
+  //   d'aucune des deux (sinon c'est une bande qui les traverse). Seuil mesuré sur check-detection.js : les bandes
+  //   des scènes qui ne traversent pas leurs masses sont à 0,32 au plus (cou de 60 px entre masses de 200), un cou
+  //   de 80 px y est à 0,42.
+  // 🩸 Descendre BANDE_COU sous les bandes réelles garde une bande épaisse entre deux piliers : elle les SOUDE en
+  //   une seule masse. Le monter efface des cous, et la masse est mordue là où le tronçon entrait dans le pilier.
   // 🩸 Par TRONÇONS, pas par branche entière : une bande qui traverse un pilier donne une seule branche (pas de
   //   carrefour), bande et pilier mêlés ; l'écart-type de la branche la rejetait en bloc (mesuré : 41 piliers sur 54).
   //   Un tronçon s'arrête où l'épaisseur s'écarte de plus de BANDE_RUPTURE de sa moyenne courante (entrée dans un
   //   pilier) ; on n'efface jamais au-delà, le pilier n'est pas entamé.
-  const BANDE_ECART = 0.2, BANDE_LONGUEUR = 4, BANDE_RUPTURE = 0.3;
+  const BANDE_ECART = 0.2, BANDE_LONGUEUR = 4, BANDE_RUPTURE = 0.3, BANDE_LIBRE = 20, BANDE_COU = 0.4;
   function _distance(m, W, H) {   // chanfrein 3-4 (unités : 3 par pixel), 0 hors masse
     const d = new Int32Array(W * H);
     for (let i = 0; i < W * H; i++) d[i] = m[i] ? 1e6 : 0;
@@ -534,14 +545,68 @@
         }
       }
     };
-    const auBord = function (i) {   // bord du BLOC, pas du cadre
-      const x = ox + (i % W), y = oy + Math.floor(i / W);
-      return x <= 1 || y <= 1 || x >= Wb - 2 || y >= Hb - 2;
+    // bord du BLOC, pas du cadre, à `marge` pixels près
+    const auBord = function (i, marge) {
+      const x = ox + (i % W), y = oy + Math.floor(i / W), r = marge || 1;
+      return x <= r || y <= r || x >= Wb - 1 - r || y >= Hb - 1 - r;
     };
-    // tronçon [a, b[ d'une branche : un trait si assez long pour son épaisseur et d'épaisseur régulière.
+    const epais = function (i) { return (2 * dist[i]) / 3; };   // épaisseur du trait au pixel i du squelette
+    const bordDe = function (i) { return Math.ceil(epais(i) / 2) + 1; };   // le squelette s'arrête à ½ épaisseur
+    const marque = new Int32Array(W * H), pris = new Int32Array(W * H), file = [], sorties = [];
+    let tour = 0, tourPris = 0;
+    const voisins = function (q, f) {
+      for (let dy = -W; dy <= W; dy += W) for (let dx = -1; dx <= 1; dx++) {
+        const v = q + dy + dx;
+        if (v !== q && S[v] && marque[v] !== tour && pris[v] !== tourPris) f(v);
+      }
+    };
+    // Au-delà d'un bout du tronçon (pixel i ; tronçon marqué dans `pris`) : parcours du squelette jusqu'à une zone
+    // plus épaisse que `seuil` (une masse, dont on garde l'épaisseur maximale) ou jusqu'au bord du bloc. Ancré, le
+    // parcours ne s'étend plus que dans la masse : il ne va pas chercher plus loin une masse plus épaisse.
+    // → { ancre, masse (0 : ancré au bord seulement), traverse }. Rien trouvé = bout libre.
+    // traverse : une autre sortie fine quitte la masse et file sur 2 épaisseurs, ou touche une autre masse ou le
+    //   bord : la bande continue de l'autre côté. Les ergots d'une masse (coins, bosses) s'éteignent avant.
+    const auDela = function (i, seuil, moy) {
+      tour++;
+      let ancre = auBord(i, bordDe(i)), masse = 0;
+      file.length = 0;
+      sorties.length = 0;
+      file.push(i);
+      marque[i] = tour;
+      for (let k = 0; k < file.length; k++) {
+        const q = file[k], dans = k > 0 && epais(q) > seuil;
+        if (dans) { ancre = true; masse = Math.max(masse, epais(q)); }
+        else if (k > 0 && auBord(q, bordDe(q))) ancre = true;
+        if (ancre && !dans && k > 0) continue;
+        voisins(q, function (v) {
+          if (dans && epais(v) <= seuil) { sorties.push(v); return; }
+          marque[v] = tour;
+          file.push(v);
+        });
+      }
+      let traverse = false;
+      for (let n = 0; n < sorties.length && !traverse && masse > 0; n++) {
+        if (marque[sorties[n]] === tour) continue;
+        let autre = false;
+        file.length = 0;
+        file.push(sorties[n]);
+        marque[sorties[n]] = tour;
+        for (let k = 0; k < file.length && file.length < 2 * moy && !autre; k++) {
+          if (auBord(file[k], bordDe(file[k]))) autre = true;
+          voisins(file[k], function (v) {
+            if (epais(v) > seuil) { autre = true; return; }
+            marque[v] = tour;
+            file.push(v);
+          });
+        }
+        traverse = autre || file.length >= 2 * moy;
+      }
+      return { ancre: ancre, masse: masse, traverse: traverse };
+    };
+    // tronçon [a, b[ d'une branche : candidat s'il est assez long pour son épaisseur et d'épaisseur régulière.
     // 🩸 Un bout qui entre dans une zone plus épaisse (pilier) ou sort par le bord du bloc rend une épaisseur à la
     //   longueur : la transition, où la bande s'élargit, est hors du tronçon (pont court entre deux piliers mesuré
-    //   sous 4 ×). Un bout LIBRE ne rend rien : la pointe d'un pilier allongé reste un pilier.
+    //   sous 4 ×).
     const juger = function (ch, ep, a, b) {
       const L = b - a;
       if (L < 4) return;
@@ -550,9 +615,13 @@
       const moy = s / L, ecart = Math.sqrt(Math.max(0, s2 / L - moy * moy));
       const rendu = ((a > 0 && ep[a - 1] > moy) || (a === 0 && auBord(ch[0])) ? moy : 0) +
         ((b < ch.length && ep[b] > moy) || (b === ch.length && auBord(ch[ch.length - 1])) ? moy : 0);
-      if (moy > 0 && ecart <= BANDE_ECART * moy && L + rendu > BANDE_LONGUEUR * moy) {
-        for (let j = a; j < b; j++) effacer(ch[j]);
-      }
+      if (!(moy > 0 && ecart <= BANDE_ECART * moy && L + rendu > BANDE_LONGUEUR * moy)) return;
+      tourPris++;
+      for (let j = a; j < b; j++) pris[ch[j]] = tourPris;
+      const seuil = (1 + BANDE_RUPTURE) * moy, g = auDela(ch[a], seuil, moy), d = auDela(ch[b - 1], seuil, moy);
+      if (!(g.ancre && d.ancre) && L <= BANDE_LIBRE * moy) return;   // bout libre : pilier allongé, pointe
+      if (g.masse && d.masse && !g.traverse && !d.traverse && moy > BANDE_COU * Math.min(g.masse, d.masse)) return;
+      for (let j = a; j < b; j++) effacer(ch[j]);
     };
     _chemins(S, W, H).forEach(function (t) {
       const ch = t.ch;

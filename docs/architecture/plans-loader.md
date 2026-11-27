@@ -991,30 +991,40 @@ les galeries → tracés » plus bas.
   rend son cerne aux fronts ; les traits loin des piliers ne bougent pas.
 - **Limites connues** : piliers collés fusionnés (retouche dans l'aperçu) ; petit contour creux (intérieur ≤
   `trouMax`) pris pour une masse ; un contour creux de la couleur d'un front sort comme un front fermé ; case
-  « Retirer les bandes » cochée : un pilier d'épaisseur régulière plus de 4 × plus long qu'épais est pris pour une
-  bande et sort en éclats (pilier cerné de 800 × 150 px : 4 éclats d'environ 60 px, à pleine et à mi-résolution ;
-  entier jusqu'à 500 px de long), et le cou étroit d'une masse (épaisseur qui chute de plus de 30 %) fait un tronçon à
-  part, effacé par disques : morsures rondes dans les deux bouts ; un pilier traversé par une bande peut sortir en
-  deux morceaux.
+  « Retirer les bandes » cochée : un cou étroit (sous `BANDE_COU` de ses masses) est effacé par disques, avec des
+  morsures rondes là où son tronçon entrait dans les masses (cou de 60 px entre masses de 200 : un quart de chaque
+  masse) ; une chaîne de trois masses reliées par deux cous épais est prise pour un pilier traversé par une bande :
+  cous effacés, masse du milieu rongée (garde-fou : 4 morceaux) ; une bande d'impasse (un bout libre, sous 20 × son épaisseur) reste une masse ; deux grands piliers parallèles reliés par
+  une bande forment une composante compacte que le filtre saute (bande gardée, piliers soudés).
 - ⚠️ **Bandes** (décision produit) : une bande de galerie (ou un mur levé en trait) de la couleur des piliers, plus
   épaisse que l'ouverture, se soudait aux piliers qu'elle touche. Après l'ouverture, `_retirerBandes` examine les
   composantes ALLONGÉES ou PEU REMPLIES (les piliers compacts sont sautés : sur tout le bloc, le coût montait jusqu'à
   +146 %), chacune dans son cadre : distance au bord (chanfrein 3-4), squelette, branches découpées en TRONÇONS où
   l'épaisseur reste à 30 % de sa moyenne courante (une bande qui traverse un pilier donne une seule branche).
-  Un tronçon d'écart-type < 20 % de sa moyenne et plus long que 4 × son épaisseur est un trait : effacé (disque de
-  rayon = distance au bord). Un bout qui entre dans un pilier ou sort par le bord du bloc rend une épaisseur à la
-  longueur (la transition est hors du tronçon) ; un bout libre ne rend rien. Option `bandes: false` : sans le
-  critère. ⚠️ **Case « Retirer les bandes de la couleur des piliers »** (décision produit) : dans le bandeau, à
+  Un tronçon d'écart-type < 20 % de sa moyenne et plus long que 4 × son épaisseur est un CANDIDAT (un bout qui
+  entre dans un pilier ou sort par le bord du bloc rend une épaisseur à la longueur : la transition est hors du
+  tronçon). Il n'est effacé (disque de rayon = distance au bord) que s'il **relie deux masses ou sort du bloc** :
+  au-delà de chaque bout, le squelette mène à une zone plus épaisse de 30 % (une masse) ou au bord du bloc. Un bout
+  **libre** (pointe, impasse) garde le tronçon : un pilier allongé reste entier (800 × 150 px, à pleine et à
+  mi-résolution), sauf au-delà de 20 × son épaisseur (`BANDE_LIBRE` : mur isolé levé en trait, 43 × dans le
+  garde-fou). Entre deux masses, un **cou** reste si son épaisseur moyenne dépasse 0,4 × celle de la plus fine des
+  deux (`BANDE_COU`) et que la bande ne ressort d'aucune des deux : une autre sortie fine qui file sur 2 épaisseurs,
+  ou touche une autre masse ou le bord, fait d'elle une bande qui traverse (scène bleue : des bandes de 9 px y sont
+  à 0,64 de piliers de 14 px). Seuil mesuré sur le garde-fou : cou de 60 px entre masses de 200 à 0,32 (effacé),
+  80 px à 0,42 (gardé) ; bande entre deux piliers de 100 px séparée jusqu'à 36 px, soudée dès 44 px. 🩸 Plus bas,
+  une bande épaisse entre deux piliers les soude ; plus haut, des cous sont effacés et mordus. Option
+  `bandes: false` : sans le critère. ⚠️ **Case « Retirer les bandes de la couleur des piliers »** (décision produit) : dans le bandeau, à
   l'étape des couleurs et dans l'aperçu (`detectionStructures.js > _bandesActif` → `reglages.bandes`), cochée par
-  défaut (comportement des plans existants) ; décochée, piliers allongés et cous étroits restent entiers (ci-dessus,
-  « Limites connues »). Ligne d'aide visible dans l'aperçu : « Décochez si vos galeries ne sont pas de la couleur des
-  piliers. » Changer la case recalcule l'aperçu sur les blocs gardés, sans relire l'image. Retenue sur l'appareil
+  défaut ; décochée, cous étroits et bandes restent dans les masses (ci-dessus, « Limites connues »). Ligne d'aide
+  visible dans l'aperçu : « Décochez si vos galeries ne sont pas de la couleur des piliers. » Changer la case recalcule l'aperçu sur les blocs gardés, sans relire l'image. Retenue sur l'appareil
   pour tous les plans (`myktamap_detect_bandes_v1`, `"0"` = décochée), comme « Affiner les contours ». Le Générateur
   passe par le même parcours. Ni Remplir au clic, ni les galeries, ni le suivi d'un front ne passent par ce filtre ;
   les fronts d'une passe mixte en dépendent seulement par les masses retirées de leur couleur (`_masseDuTrait`).
-  🩸 Remonté sur un plan aux galeries blanches : le filtre n'y a rien à retirer et ne fait que découper. Règle plus
-  fine (n'effacer qu'un tronçon qui relie deux masses ou sort du bloc) : backlog `detect-bandes-fines`. Scène fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère), aucune bande posée.
-  Surcoût mesuré (iPhone émulé ×4) : +11 à +21 % sans bande, +50 à +76 % quand des bandes sont soudées.
+  🩸 Sur un plan aux galeries blanches, le filtre n'a rien à retirer : décocher évite tout calcul inutile. Scène
+  fabriquée : 54 piliers sur 54 sans curseur (37 sans le critère, 41 sans la traversée), aucune bande posée.
+  Surcoût mesuré (iPhone émulé ×4) : +11 à +21 % sans bande, +50 à +76 % quand des bandes sont soudées ; la règle
+  des bouts et des cous y ajoute environ 5 % sur les scènes à bandes (Node, scène bleue × 16) et retire 20 % sur un
+  pilier allongé (plus de tronçon effacé).
 - **Mesure** (iPhone 13 émulé, processeur ×4, plan fabriqué de 8 192 × 8 192 px, 2 916 piliers, 18/11/2026) :
   rectangle 2 048² ≈ 1,1 s ; 4 096² ≈ 3,4 s ; tout le plan ≈ 12 s en pleine résolution, ≈ 2,6 s à l'échelle 0,5 ;
   2 916 piliers sur 2 916. Fil principal : tâche la plus longue ≈ 180 ms en blocs de 2 048 (lecture du bloc), ≈ 85 ms

@@ -16,10 +16,13 @@
  * gardé qui n'est pas un front, rendu aux fronts quand un curseur écarte le pilier.
  * Exemple touché mesuré (aire, épaisseur, étalement, écart au fond), réglages déduits ;
  * scène brune (piliers de 6 à 50 px, bruit, dégradé, filigrane, flou) : ≥ 90 % avec 3 touchers, contre-épreuve
- * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : > 90 % sans curseur,
- * aucune bande posée, contre-épreuve sans le critère des bandes (< 70 %) ; pilier allongé gardé ; case « Retirer les
- * bandes » (pilier 800 × 150 et masse à cou étroit : entiers décochée, découpés cochée) ; front et mur en
- * trait de la couleur des piliers ; pipette sur un trait de 2 px, un coin de pilier, le fond ; scènes « fond blanc »
+ * sur les réglages d'avant (la majorité ratée) ; scène bleue à bandes de galerie soudées : tous les piliers sans
+ * curseur, aucune bande posée, contre-épreuves sans le critère des bandes (< 70 %) et sans la traversée ; pilier
+ * allongé gardé ; case « Retirer les bandes » : pilier 800 × 150 entier (contre-épreuve sans bout libre : éclats),
+ * cou étroit retiré, cou épais gardé (contre-épreuve sans règle du cou), bande fine entre deux piliers allongés
+ * effacée et piliers entiers (contre-épreuve : cou toujours gardé → soudés) ; front et mur en trait de la couleur
+ * des piliers (contre-épreuve sans la limite du bout libre : mur posé en pilier) ; pipette sur un trait de 2 px,
+ * un coin de pilier, le fond ; scènes « fond blanc »
  * (piliers blancs ou gris clair cernés d'un trait, taille maximale, contre-épreuve sans elle) ; plan au trait (piliers
  * blancs cernés de 5 à 34 px, galeries blanches, chiffres et texte, filigrane, flou, bruit) : pipette au bord des
  * petits piliers = leur intérieur, réglages déduits ≥ 90 % et ≤ 5 % de morceaux de galerie, contre-épreuves (seul
@@ -777,7 +780,7 @@ function verifierFronts() {
     return cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h;
   }));
   t("scène bleue, bandes de galerie soudées (6 à 10 px), réglages déduits SANS curseur : " + nBleu + "/" +
-    bleue.vrais.length + " piliers (> 90 %)", nBleu > 0.9 * bleue.vrais.length, { taille: dBleu.taille });
+    bleue.vrais.length + " piliers (tous)", nBleu === bleue.vrais.length, { taille: dBleu.taille });
   t("scène bleue : aucune bande posée en pilier (toute masse a son centre dans un pilier)", horsPilier.length === 0,
     horsPilier.map((m) => m.boite));
   const nSansCritere = trouvesBleu(await bleueAvec(dBleu.taille, false));
@@ -786,20 +789,38 @@ function verifierFronts() {
   // pilier allongé (12 × 48, épaisseur constante sur son axe) : la pointe libre ne rend rien, il reste un pilier
   r = await lancer(image(200, 200).rect(60, 40, 12, 48, ORANGE), { reglages: { aireMin: 100, ouverture: 7 } });
   t("pilier allongé (12 × 48) : jamais pris pour une bande", r.masses.length === 1, r.masses.map(boiteDe));
-  // Case « Retirer les bandes » (reglages.bandes) : pilier jaune cerné de noir, loin de toute couture, et masse à cou
-  // étroit. Cochée (défaut), le filtre découpe le long pilier en éclats et ronge le cou ; décochée, ils restent entiers.
+  // Case « Retirer les bandes » (reglages.bandes) : pilier jaune cerné de noir, loin de toute couture, masse à cou
+  // étroit, masse à cou épais, bande fine entre deux piliers allongés. Seul un tronçon qui relie deux masses (ou sort
+  // du bloc) est effacé : bout libre gardé, cou plus épais que BANDE_COU × la masse la plus fine gardé.
   {
     const JAUNE = [220, 180, 30];
-    const bandesSur = (img, bandes, e) => lancer(img, { classes: [{ id: "a", couleurs: [JAUNE], tolerance: 60 }],
+    const avecMoteur = (M, img, bandes, e) => M.detecter({ lireBloc: lecteur(img), region: { x: 0, y: 0, w: img.W,
+      h: img.H }, limites: { w: img.W, h: img.H }, classes: [{ id: "a", couleurs: [JAUNE], tolerance: 60 }],
       reglages: { bandes: bandes }, echelle: e });
+    const bandesSur = (img, bandes, e) => avecMoteur(D, img, bandes, e);
+    // moteur saboté : une règle des bandes retirée du source (chaque remplacement doit trouver son texte)
+    const sabote = (paires) => {
+      let src = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8");
+      for (const [a, b] of paires) {
+        if (!src.includes(a)) throw new Error("sabotage introuvable : " + a);
+        src = src.replace(a, b);
+      }
+      const mod = { exports: {} };
+      new Function("module", src)(mod);   // eslint-disable-line no-new-func
+      return mod.exports;
+    };
+    const SANS_LIBRE = sabote([["if (!(g.ancre && d.ancre) && L <= BANDE_LIBRE * moy) return;", ""]]);
     const long = image(1100, 400).rect(97, 97, 806, 156, NOIR).rect(100, 100, 800, 150, JAUNE);
     for (const e of [1, 0.5]) {
       const sans = await bandesSur(long, false, e), avec = await bandesSur(long, true, e);
-      const b = sans.masses.map(boiteDe);
+      const b = sans.masses.map(boiteDe), ba = avec.masses.map(boiteDe);
       t("case Bandes décochée, pilier 800 × 150 (échelle " + e + ") : 1 masse entière",
         sans.masses.length === 1 && proche(b[0], [100, 100, 900, 250], 1), b);
-      t("case Bandes cochée, pilier 800 × 150 (échelle " + e + ") : découpé en éclats (comportement par défaut, " +
-        avec.masses.length + " masses)", avec.masses.length > 1, avec.masses.map(boiteDe));
+      t("case Bandes cochée, pilier 800 × 150 (échelle " + e + ") : 1 masse entière (bouts libres)",
+        avec.masses.length === 1 && proche(ba[0], [100, 100, 900, 250], 1), ba);
+      const sab = await avecMoteur(SANS_LIBRE, long, true, e);
+      t("contre-épreuve : sans la règle du bout libre, le pilier 800 × 150 (échelle " + e + ") part en éclats (" +
+        sab.masses.length + " masses)", sab.masses.length > 1);
     }
     // deux masses de 200 × 200 reliées par un cou de 200 × 60 (épaisseur divisée par plus de 3)
     const cou = image(800, 500).rect(97, 147, 206, 206, NOIR).rect(497, 147, 206, 206, NOIR)
@@ -809,17 +830,67 @@ function verifierFronts() {
     t("case Bandes décochée, masse à cou étroit : 1 masse entière, aire 92 000 px²",
       couSans.masses.length === 1 && Math.abs(couSans.masses[0].aire - 92000) < 50,
       couSans.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
-    t("case Bandes cochée, masse à cou étroit : cou retiré, bouts mordus (comportement par défaut)",
+    t("case Bandes cochée, masse à cou étroit (0,3 des masses) : cou retiré, bouts mordus",
       couAvec.masses.length === 2 && couAvec.masses.every((m) => m.aire < 39000),
       couAvec.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
+    // cou épais : 200 × 100 entre les mêmes masses (moitié de leur épaisseur, au-dessus de BANDE_COU)
+    const couEpais = image(800, 500).rect(97, 147, 206, 206, NOIR).rect(497, 147, 206, 206, NOIR)
+      .rect(297, 197, 206, 106, NOIR).rect(100, 150, 200, 200, JAUNE).rect(500, 150, 200, 200, JAUNE)
+      .rect(300, 200, 200, 100, JAUNE);
+    const SANS_COU = sabote([["BANDE_COU = 0.4", "BANDE_COU = 1"]]);
+    for (const e of [1, 0.5]) {
+      const ce = await bandesSur(couEpais, true, e);
+      t("case Bandes cochée, cou épais (0,5 des masses, échelle " + e + ") : gardé, 1 masse de 100 000 px²",
+        ce.masses.length === 1 && Math.abs(ce.masses[0].aire - 100000) < 100,
+        ce.masses.map((m) => [boiteDe(m), Math.round(m.aire)]));
+      const sab = await avecMoteur(SANS_COU, couEpais, true, e);
+      t("contre-épreuve : sans la règle du cou, le cou épais (échelle " + e + ") est coupé (" + sab.masses.length +
+        " masses)", sab.masses.length !== 1);
+    }
+    // bande fine (16 px) entre deux piliers allongés 500 × 100 alignés : la bande part, les piliers restent entiers
+    const pont = image(1500, 500).rect(97, 197, 506, 106, NOIR).rect(897, 197, 506, 106, NOIR)
+      .rect(600, 239, 300, 22, NOIR).rect(100, 200, 500, 100, JAUNE).rect(900, 200, 500, 100, JAUNE)
+      .rect(600, 242, 300, 16, JAUNE);
+    const SOUDE = sabote([["BANDE_COU = 0.4", "BANDE_COU = 0"]]);
+    for (const e of [1, 0.5]) {
+      const bp = (await bandesSur(pont, true, e)).masses.map(boiteDe);
+      t("case Bandes cochée, bande fine entre deux piliers allongés (échelle " + e + ") : effacée, 2 piliers entiers",
+        bp.length === 2 && bp.some((b) => proche(b, [100, 200, 600, 300], 1)) &&
+        bp.some((b) => proche(b, [900, 200, 1400, 300], 1)), bp);
+      const sab = await avecMoteur(SOUDE, pont, true, e);
+      t("contre-épreuve : cou gardé quelle que soit son épaisseur, la bande fine (échelle " + e + ") soude les " +
+        "deux piliers (" + sab.masses.length + " masse)", sab.masses.length === 1);
+    }
+    // la bande qui ressort d'une masse la traverse : jamais un cou, même épaisse au regard d'un petit pilier
+    const SANS_TRAVERSE = sabote([["!g.traverse && !d.traverse && ", ""]]);
+    const nSansTraverse = trouvesBleu(await SANS_TRAVERSE.detecter({ lireBloc: lecteur(bleue.img),
+      region: { x: 0, y: 0, w: bleue.img.W, h: bleue.img.H }, limites: { w: bleue.img.W, h: bleue.img.H },
+      reglages: Object.assign({ bandes: true }, D.reglagesPourTaille(dBleu.taille)),
+      classes: [{ id: "a", couleurs: exBleu.map((x) => x.rgb), tolerance: dBleu.tolerances.a }] }));
+    t("contre-épreuve : sans la traversée, des bandes de la scène bleue restent des cous (" + nSansTraverse + "/" +
+      bleue.vrais.length + ")", nSansTraverse < bleue.vrais.length);
   }
   // front (4 px) et mur levé en trait (10 px) de la couleur des piliers : la classe trait les voit toujours, et le
   // mur n'est pas posé en pilier
-  r = await lancer(image(500, 300).rect(40, 40, 40, 40, ORANGE).rect(20, 150, 440, 4, ORANGE)
-    .rect(20, 220, 440, 10, ORANGE), { classes: [{ id: "a", couleurs: [ORANGE], tolerance: 14 },
-    { id: "f", nature: "trait", couleurs: [ORANGE], tolerance: 14 }], reglages: { aireMin: 100, ouverture: 7 } });
+  const MUR = image(500, 300).rect(40, 40, 40, 40, ORANGE).rect(20, 150, 440, 4, ORANGE)
+    .rect(20, 220, 440, 10, ORANGE);
+  const OPT_MUR = { classes: [{ id: "a", couleurs: [ORANGE], tolerance: 14 },
+    { id: "f", nature: "trait", couleurs: [ORANGE], tolerance: 14 }], reglages: { aireMin: 100, ouverture: 7 } };
+  r = await lancer(MUR, OPT_MUR);
   t("front et mur en trait de la couleur des piliers : 1 pilier (le mur n'en est pas un), 2 fronts trouvés",
     r.masses.length === 1 && r.traits.length === 2, { masses: r.masses.map(boiteDe), traits: r.traits.length });
+  // mur isolé (bouts libres) : effacé seulement parce qu'il dépasse BANDE_LIBRE × son épaisseur
+  {
+    let src = fs.readFileSync(path.join(__dirname, "..", "js", "ktaDetection.js"), "utf8");
+    if (!src.includes("BANDE_LIBRE = 20")) throw new Error("sabotage introuvable : BANDE_LIBRE = 20");
+    src = src.replace("BANDE_LIBRE = 20", "BANDE_LIBRE = 1e9");
+    const mod = { exports: {} };
+    new Function("module", src)(mod);   // eslint-disable-line no-new-func
+    const rs = await mod.exports.detecter(Object.assign({ lireBloc: lecteur(MUR), region: { x: 0, y: 0, w: MUR.W,
+      h: MUR.H }, limites: { w: MUR.W, h: MUR.H } }, OPT_MUR));
+    t("contre-épreuve : sans la limite du bout libre, le mur isolé est posé en pilier (" + rs.masses.length +
+      " masses)", rs.masses.length === 2);
+  }
 
   // ── Fond blanc : piliers de la couleur du fond, cernés d'un trait (curseur « Taille maximale ») ──
   for (const [nom, couleur] of [["blancs", BLANC], ["gris clair", [225, 225, 225]]]) {
