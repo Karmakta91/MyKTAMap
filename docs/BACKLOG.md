@@ -46,11 +46,6 @@
   jonction ; Vérifier le plan signale l'absence de raccord. QCM d'abord : quand ça perce, sens de −1, proposer le tracé.
   `qui: Claude · action: QCM puis lot · fini: descente 3D prouvée, raccord signalé · depuis: 14/11/2026 · taille: M
   · id: sol-abaisse-niveau-dessous`
-- **Référencement de doc.myktamap.fr** — un sitemap ne liste que son propre domaine : la doc doit publier son
-  `sitemap.xml` (pages publiques, depuis le manifeste) et un `robots.txt` avec sa ligne Sitemap, rien sous `/interne/`.
-  `qui: Claude · action: lot dans MyKTAMap-doc (générateur), relecture KARMA avant publication publique
-  · fini: sitemap et robots servis sur doc.myktamap.fr, aucune page interne listée · depuis: 16/11/2026 · taille: S
-  · id: referencement-doc`
 
 ## Plus tard
 
